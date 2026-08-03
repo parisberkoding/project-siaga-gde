@@ -1,0 +1,28 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class SuratSpdDetail extends Model
+{
+    use HasFactory;
+
+    // ✅ Sesuaikan dengan nama tabel di database kamu
+    protected $table = 'spd_surat_details';
+
+    protected $fillable = [
+        'surat_spd_id',
+        'nama_lengkap',
+        'urutan',
+    ];
+
+    /**
+     * Relationships
+     */
+    public function suratSpd()
+    {
+        return $this->belongsTo(SuratSpd::class, 'surat_spd_id');
+    }
+}

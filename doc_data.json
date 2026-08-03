@@ -1,0 +1,2464 @@
+{
+  "controllers": [
+    {
+      "class": "AuthentiactionController",
+      "path": "app/Http/Controllers/AuthentiactionController.php",
+      "methods": [
+        {
+          "name": "index",
+          "doc": "/ Display login page /"
+        },
+        {
+          "name": "authenticate",
+          "doc": "/ Proses login user dengan validasi dinamis Dilindungi dari XSS, SQL Injection, Brute Force, Session Fixation /"
+        },
+        {
+          "name": "logout",
+          "doc": "/ Redirect user berdasarkan role / protected function redirectBasedOnRole(User $user): \\Illuminate\\Http\\RedirectResponse { $name = e($user->nama_lengkap); return match($user->role) { 'requester' => redirect()->route('requester-index') ->with('success', \"Login Berhasil, Selamat datang {$name}.\"), 'admin' => redirect()->route('admin-dashboard') ->with('success', \"Login Berhasil, Selamat datang {$name}.\"), 'dispatcher' => redirect()->route('dispatcher.dispatcher-dashboard') ->with('success', \"Login Sukses, Selamat datang {$name}!\"), 'manager' => redirect()->route('superadmin.dashboard.bisnis') ->with('success', \"Login Sukses, Selamat datang {$name}!\"), 'superadmin' => redirect()->route('superadmin-dashboard') ->with('success', \"Login Sukses, Selamat datang {$name}!\"), 'non_ga_staff' => redirect()->route('profile') ->with('success', \"Login Berhasil, Selamat datang {$name}.\"), default => redirect()->intended('/home') ->with('success', \"Selamat datang, {$name}!\"), }; } / Logout user /"
+        }
+      ],
+      "use_models": [
+        "User"
+      ],
+      "references": [
+        "Auth",
+        "Hash",
+        "RateLimiter",
+        "Str",
+        "User"
+      ]
+    },
+    {
+      "class": "BodyCheckingController",
+      "path": "app/Http/Controllers/BodyCheckingController.php",
+      "methods": [
+        {
+          "name": "index",
+          "doc": "/ Tampilkan daftar pengecekan body /"
+        },
+        {
+          "name": "create",
+          "doc": "/ Tampilkan form pengecekan body Semua item body muncul dengan radio button 4 level /"
+        },
+        {
+          "name": "store",
+          "doc": "/ Simpan hasil pengecekan body Request body: - vehicle_id: required - current_driver_id: required - notes: optional - items[part_id][status]: baik|cukup|kurang|tidak - items[part_id][notes]: optional keterangan - items[part_id][needs_replacement]: 0|1 /"
+        },
+        {
+          "name": "show",
+          "doc": "/ Tampilkan detail hasil pengecekan body /"
+        }
+      ],
+      "use_models": [
+        "DamagePhoto",
+        "User",
+        "VehicleAndToolsConsumers",
+        "VehicleChecking",
+        "VehicleCheckingDetail",
+        "VehicleCheckingItemResult",
+        "VehicleCheckingSchedule",
+        "VehiclePart"
+      ],
+      "references": [
+        "Auth",
+        "Carbon",
+        "DB",
+        "DamagePhoto",
+        "User",
+        "VehicleAndToolsConsumers",
+        "VehicleChecking",
+        "VehicleCheckingDetail",
+        "VehicleCheckingItemResult",
+        "VehicleCheckingSchedule",
+        "VehiclePart"
+      ]
+    },
+    {
+      "class": "CateringGuestController",
+      "path": "app/Http/Controllers/CateringGuestController.php",
+      "methods": [
+        {
+          "name": "calendar",
+          "doc": "/ Kalender tamu catering bulanan. Superadmin bisa melihat, menambah, dan mengkonfirmasi tamu. /"
+        },
+        {
+          "name": "store",
+          "doc": "/ Simpan data tamu baru. /"
+        },
+        {
+          "name": "update",
+          "doc": "/ Update data tamu (hanya jika masih pending). /"
+        },
+        {
+          "name": "destroy",
+          "doc": "/ Hapus data tamu (hanya jika masih pending). /"
+        },
+        {
+          "name": "h2Confirm",
+          "doc": "/ Superadmin konfirmasi tamu jadi datang (H-2 confirmation). /"
+        },
+        {
+          "name": "h2Cancel",
+          "doc": "/ Superadmin batalkan tamu (H-2 cancellation). /"
+        }
+      ],
+      "use_models": [
+        "LunchGuestReservation",
+        "Site"
+      ],
+      "references": [
+        "Carbon",
+        "LunchGuestReservation",
+        "Site"
+      ]
+    },
+    {
+      "class": "Controller",
+      "path": "app/Http/Controllers/Controller.php",
+      "methods": [],
+      "use_models": [],
+      "references": []
+    },
+    {
+      "class": "DailyCheckingController",
+      "path": "app/Http/Controllers/DailyCheckingController.php",
+      "methods": [
+        {
+          "name": "index",
+          "doc": ""
+        },
+        {
+          "name": "create",
+          "doc": ""
+        },
+        {
+          "name": "store",
+          "doc": ""
+        },
+        {
+          "name": "show",
+          "doc": ""
+        }
+      ],
+      "use_models": [
+        "User",
+        "VehicleAndToolsConsumers",
+        "VehicleChecking",
+        "VehicleCheckingDetail",
+        "VehicleCheckingItemResult",
+        "VehicleCheckingSchedule",
+        "VehiclePart"
+      ],
+      "references": [
+        "Auth",
+        "Carbon",
+        "DB",
+        "User",
+        "VehicleAndToolsConsumers",
+        "VehicleChecking",
+        "VehicleCheckingDetail",
+        "VehicleCheckingItemResult",
+        "VehicleCheckingSchedule",
+        "VehiclePart"
+      ]
+    },
+    {
+      "class": "DispatcherAdministrationController",
+      "path": "app/Http/Controllers/DispatcherAdministrationController.php",
+      "methods": [
+        {
+          "name": "dashboard",
+          "doc": "/ Dashboard dispatcher: jadwal pengecekan + badge summary /"
+        },
+        {
+          "name": "generatePeriod",
+          "doc": "/ Generate header pengecekan bulanan untuk semua kendaraan aktif 1 tombol → loop semua kendaraan → create header + schedule /"
+        },
+        {
+          "name": "assignIndex",
+          "doc": "/ Halaman assign dispatcher ke kendaraan /"
+        },
+        {
+          "name": "assignUpdate",
+          "doc": "/ Update assignment dispatcher /"
+        },
+        {
+          "name": "history",
+          "doc": "/ Riwayat pengecekan Filter: kendaraan, driver, dispatcher, jenis, tanggal /"
+        },
+        {
+          "name": "replacementIndex",
+          "doc": "/ List permohonan penggantian /"
+        },
+        {
+          "name": "replacementCreate",
+          "doc": "/ Form buat permohonan penggantian Muncul setelah pengecekan yang ada item needs_replacement /"
+        },
+        {
+          "name": "replacementStore",
+          "doc": "/ Simpan permohonan penggantian sparepart Request body: - desired_driver_id: nullable (driver yang akan bawa ke service) - items[]: array of item_result_id yang dipilih untuk diganti - notes[item_result_id]: catatan per item /"
+        },
+        {
+          "name": "replacementShow",
+          "doc": "/ Detail permohonan penggantian /"
+        },
+        {
+          "name": "exportVehicleChecklist",
+          "doc": "/ Export Vehicle Checklist (summary + detail semua pengecekan per kendaraan) /"
+        },
+        {
+          "name": "exportRoutineCheck",
+          "doc": "/ Export Routine Check Report (harian, mingguan, bulanan) /"
+        },
+        {
+          "name": "exportBodyCheck",
+          "doc": "/ Export Body Check Report /"
+        }
+      ],
+      "use_models": [
+        "DamagePhoto",
+        "User",
+        "VehicleAndToolsConsumers",
+        "VehicleChecking",
+        "VehicleCheckingDetail",
+        "VehicleCheckingItemResult",
+        "VehicleCheckingSchedule",
+        "VehiclePart",
+        "VehiclePartsReplacement",
+        "VehiclePartsReplacementDetail",
+        "VehiclePartsReplacementTransaction",
+        "VehiclePartsReplacementTransactionDetail"
+      ],
+      "references": [
+        "Auth",
+        "Carbon",
+        "DB",
+        "Pdf",
+        "User",
+        "VehicleAndToolsConsumers",
+        "VehicleChecking",
+        "VehicleCheckingDetail",
+        "VehicleCheckingItemResult",
+        "VehicleCheckingSchedule",
+        "VehiclePartsReplacement",
+        "VehiclePartsReplacementDetail",
+        "VehiclePartsReplacementTransaction"
+      ]
+    },
+    {
+      "class": "GasolineTypeController",
+      "path": "app/Http/Controllers/GasolineTypeController.php",
+      "methods": [
+        {
+          "name": "index",
+          "doc": "/ Display a listing of the resource. /"
+        },
+        {
+          "name": "create",
+          "doc": "/ Show the form for creating a new resource. /"
+        },
+        {
+          "name": "store",
+          "doc": "/ Store a newly created resource in storage. /"
+        },
+        {
+          "name": "show",
+          "doc": "/ Display the specified resource. /"
+        },
+        {
+          "name": "edit",
+          "doc": "/ Show the form for editing the specified resource. /"
+        },
+        {
+          "name": "update",
+          "doc": "/ Update the specified resource in storage. /"
+        },
+        {
+          "name": "destroy",
+          "doc": "/ Remove the specified resource from storage. /"
+        }
+      ],
+      "use_models": [
+        "GasolineType"
+      ],
+      "references": []
+    },
+    {
+      "class": "EmployeeDefaultController",
+      "path": "app/Http/Controllers/Lunch/EmployeeDefaultController.php",
+      "methods": [
+        {
+          "name": "index",
+          "doc": "/ Master Employee Default: siapa saja yang makan siang dan di site mana default-nya. Ini titik masuk pertama arsitektur Lunch V2. /"
+        },
+        {
+          "name": "store",
+          "doc": ""
+        },
+        {
+          "name": "update",
+          "doc": ""
+        },
+        {
+          "name": "destroy",
+          "doc": ""
+        },
+        {
+          "name": "restore",
+          "doc": ""
+        },
+        {
+          "name": "export",
+          "doc": "/ Export master ke CSV (dipakai juga sebagai template import). /"
+        },
+        {
+          "name": "import",
+          "doc": "/ Import CSV sederhana (kolom sama dengan hasil export). Baris dengan employee_code yang sudah ada akan di-update. /"
+        }
+      ],
+      "use_models": [
+        "EmployeeAlias",
+        "EmployeeDefault",
+        "Site"
+      ],
+      "references": [
+        "EmployeeAlias",
+        "EmployeeDefault",
+        "NameNormalizer",
+        "Site"
+      ]
+    },
+    {
+      "class": "LunchAnalyticsController",
+      "path": "app/Http/Controllers/Lunch/LunchAnalyticsController.php",
+      "methods": [
+        {
+          "name": "index",
+          "doc": "/ Analytics Lunch Management: akurasi forecast, variance forecast vs aktual per site, top manual override, dan progres Learning Engine. /"
+        }
+      ],
+      "use_models": [
+        "LunchForecast",
+        "LunchTransaction",
+        "Site"
+      ],
+      "references": [
+        "CarbonPeriod",
+        "LunchForecast",
+        "LunchTransaction",
+        "Site"
+      ]
+    },
+    {
+      "class": "LunchDashboardController",
+      "path": "app/Http/Controllers/Lunch/LunchDashboardController.php",
+      "methods": [
+        {
+          "name": "index",
+          "doc": "/ Dashboard Lunch Management: forecast hari ini, kehadiran aktual (QR), akurasi kemarin, tamu, dan item yang butuh perhatian. /"
+        }
+      ],
+      "use_models": [
+        "LunchDistribution",
+        "LunchForecast",
+        "LunchGuestReservation",
+        "LunchTransaction",
+        "Site"
+      ],
+      "references": [
+        "Carbon",
+        "LunchDistribution",
+        "LunchForecast",
+        "LunchGuestReservation",
+        "LunchTransaction",
+        "Site"
+      ]
+    },
+    {
+      "class": "LunchDistributionController",
+      "path": "app/Http/Controllers/Lunch/LunchDistributionController.php",
+      "methods": [
+        {
+          "name": "__construct",
+          "doc": ""
+        },
+        {
+          "name": "index",
+          "doc": "/ Distribusi porsi per site per tanggal (angka yang dikirim vendor). /"
+        },
+        {
+          "name": "generate",
+          "doc": ""
+        },
+        {
+          "name": "lock",
+          "doc": ""
+        },
+        {
+          "name": "exportForm",
+          "doc": "/ Form filter export Excel untuk vendor. /"
+        },
+        {
+          "name": "export",
+          "doc": "/ Download Excel catering report (3 sheet). /"
+        },
+        {
+          "name": "qrCodes",
+          "doc": "/ Halaman cetak QR lokasi untuk QR Attendance. /"
+        },
+        {
+          "name": "qrImage",
+          "doc": "/ Gambar QR (SVG) untuk satu site. QR berisi URL halaman attendance publik, sehingga karyawan cukup scan dengan kamera HP apa pun. /"
+        }
+      ],
+      "use_models": [
+        "LunchDistribution",
+        "LunchGuestReservation",
+        "Site"
+      ],
+      "references": [
+        "LunchDistribution",
+        "LunchGuestReservation",
+        "Site"
+      ]
+    },
+    {
+      "class": "LunchForecastController",
+      "path": "app/Http/Controllers/Lunch/LunchForecastController.php",
+      "methods": [
+        {
+          "name": "__construct",
+          "doc": ""
+        },
+        {
+          "name": "index",
+          "doc": "/ Daftar forecast per tanggal + ringkasan per site & per sumber. /"
+        },
+        {
+          "name": "generate",
+          "doc": "/ Generate / regenerate forecast untuk satu tanggal. /"
+        },
+        {
+          "name": "override",
+          "doc": "/ Manual override — prioritas tertinggi, tidak ditimpa engine. /"
+        }
+      ],
+      "use_models": [
+        "EmployeeDefault",
+        "LunchForecast",
+        "Site"
+      ],
+      "references": [
+        "EmployeeDefault",
+        "LunchForecast",
+        "Site"
+      ]
+    },
+    {
+      "class": "LunchTransactionController",
+      "path": "app/Http/Controllers/Lunch/LunchTransactionController.php",
+      "methods": [
+        {
+          "name": "index",
+          "doc": "/ Daftar kehadiran (Lunch Transaction) — ground truth dari QR Attendance. Mendukung filter tanggal/site/status resolve & search. /"
+        },
+        {
+          "name": "feed",
+          "doc": "/ Endpoint polling ringan untuk pembaruan realtime tabel kehadiran. /"
+        }
+      ],
+      "use_models": [
+        "LunchTransaction",
+        "Site"
+      ],
+      "references": [
+        "LunchTransaction",
+        "Site"
+      ]
+    },
+    {
+      "class": "PublicAttendanceController",
+      "path": "app/Http/Controllers/Lunch/PublicAttendanceController.php",
+      "methods": [
+        {
+          "name": "landing",
+          "doc": "/ QR Attendance — halaman PUBLIK, tanpa login. Flow: Scan QR lokasi → Attendance Form → Cari Nama (alias lookup) → Submit → Popup \"Besok makan dimana?\" → Done. Keamanan tanpa auth: - endpoint dibatasi throttle (lihat routes/web.php); - konfirmasi besok hanya sah dengan confirmation_token yang dikembalikan pada submit yang sama; - tidak ada data selain nama/jabatan yang terekspos di lookup. / class PublicAttendanceController extends Controller { / Landing: buka kamera dan scan QR lokasi. /"
+        },
+        {
+          "name": "form",
+          "doc": "/ Attendance form untuk site tertentu (dibuka dari QR). /"
+        },
+        {
+          "name": "lookup",
+          "doc": "/ AJAX: autocomplete nama via alias lookup. /"
+        },
+        {
+          "name": "submit",
+          "doc": "/ Submit attendance: jalankan Identity Resolution Engine lalu simpan Lunch Transaction (primary data = hasil lookup, raw = audit trail). /"
+        },
+        {
+          "name": "confirmTomorrow",
+          "doc": "/ Popup \"Besok makan dimana?\" — simpan jawaban (PMU/PTH/BCMP/Lewati). Jawaban menjadi input prioritas ke-2 Forecast H+1. /"
+        }
+      ],
+      "use_models": [
+        "LunchTransaction",
+        "Site"
+      ],
+      "references": [
+        "Site"
+      ]
+    },
+    {
+      "class": "MonthlyCheckingController",
+      "path": "app/Http/Controllers/MonthlyCheckingController.php",
+      "methods": [
+        {
+          "name": "index",
+          "doc": ""
+        },
+        {
+          "name": "create",
+          "doc": ""
+        },
+        {
+          "name": "store",
+          "doc": ""
+        },
+        {
+          "name": "show",
+          "doc": ""
+        }
+      ],
+      "use_models": [
+        "User",
+        "VehicleAndToolsConsumers",
+        "VehicleChecking",
+        "VehicleCheckingDetail",
+        "VehicleCheckingItemResult",
+        "VehicleCheckingSchedule",
+        "VehiclePart"
+      ],
+      "references": [
+        "Auth",
+        "Carbon",
+        "DB",
+        "User",
+        "VehicleAndToolsConsumers",
+        "VehicleChecking",
+        "VehicleCheckingDetail",
+        "VehicleCheckingItemResult",
+        "VehicleCheckingSchedule",
+        "VehiclePart"
+      ]
+    },
+    {
+      "class": "ProfileController",
+      "path": "app/Http/Controllers/ProfileController.php",
+      "methods": [
+        {
+          "name": "index",
+          "doc": "/ Show user profile page /"
+        },
+        {
+          "name": "changePassword",
+          "doc": "/ Change password - versi simple (langsung ubah aja) /"
+        }
+      ],
+      "use_models": [],
+      "references": [
+        "Auth",
+        "Hash"
+      ]
+    },
+    {
+      "class": "RequestManagementController",
+      "path": "app/Http/Controllers/RequestManagementController.php",
+      "methods": [
+        {
+          "name": "requester_index",
+          "doc": "/ ========================================= Controller bagian Requester ========================================= /"
+        },
+        {
+          "name": "requester_create",
+          "doc": ""
+        },
+        {
+          "name": "requester_cancel_request",
+          "doc": ""
+        },
+        {
+          "name": "requester_history",
+          "doc": "/ LAZY CHECK: Check dan expire vouchers yang sudah melewati valid_until Dipanggil setiap user action untuk memastikan data selalu up-to-date PENGGANTI SCHEDULER - WORK DI FTP HOSTING / private function checkAndExpireVouchers() { $expiredVouchers = Approved_Request::where('status', 'approved') ->where('valid_until', '<', now()) ->get(); foreach ($expiredVouchers as $voucher) { try { DB::beginTransaction(); $voucher->update(['status' => 'cancelled']); $permohonan = Permohonan::find($voucher->permohonan_id); if ($permohonan && $permohonan->status === 'approved') { $permohonan->update([ 'status' => 'cancelled', 'requester_notes' => ($permohonan->requester_notes ?? '') . \"\\n\\n[SYSTEM AUTO-CANCEL] Voucher expired, tidak digunakan dalam 50 jam.\" ]); // ✅ PENALTY: Kurangi 1 slot untuk 3 bulan UserSlotAdjustment::create([ 'user_id' => $permohonan->requester_id, 'type' => 'penalty', 'reason' => 'voucher_expired', 'related_permohonan_id' => $permohonan->id, 'effective_from' => now(), 'effective_until' => now()->addMonths(3), 'is_active' => true ]); \\Log::info(\"❌ Auto-cancelled voucher #{$voucher->id} for request #{$permohonan->id}\"); } DB::commit(); } catch (\\Exception $e) { DB::rollBack(); \\Log::error(\"Failed to expire voucher #{$voucher->id}: \" . $e->getMessage()); } } } / ✅ Calculate max slots for user based on penalties & bonuses / private function calculateUserMaxSlots($userId) { $baseSlots = 5; // Default 5 slots $adjustments = UserSlotAdjustment::where('user_id', $userId) ->where('is_active', true) ->where('effective_from', '<=', now()) ->where('effective_until', '>=', now()) ->get(); $totalAdjustment = 0; foreach ($adjustments as $adjustment) { if ($adjustment->type === 'penalty') { $totalAdjustment -= 1; } elseif ($adjustment->type === 'bonus') { $totalAdjustment += 1; } } $maxSlots = $baseSlots + $totalAdjustment; // Min 1 slot, max 6 slots return max(1, min(6, $maxSlots)); } / ✅ Check if user eligible for reward based on submission history Kriteria: minimal 80% on-time dari 10 permohonan terakhir / private function checkRewardEligibility($userId) { $recentCompletedRequests = Permohonan::where('requester_id', $userId) ->where('status', 'completed') ->with(['approvedRequest', 'transactionProof']) ->orderBy('created_at', 'desc') ->limit(10) ->get(); // Kalau belum ada 10 permohonan, gak eligible (user baru) if ($recentCompletedRequests->count() < 10) { \\Log::info(\"User {$userId} has less than 10 completed requests: \" . $recentCompletedRequests->count()); return false; } $onTimeCount = 0; $totalCount = 0; foreach ($recentCompletedRequests as $request) { if (!$request->approvedRequest || !$request->transactionProof) { continue; } $submitTime = $request->transactionProof->created_at; $validUntil = $request->approvedRequest->valid_until; if ($submitTime->lessThan($validUntil)) { $onTimeCount++; } $totalCount++; } if ($totalCount === 0) { return false; } $onTimePercentage = ($onTimeCount / $totalCount) 100; \\Log::info(\"User {$userId} on-time rate: {$onTimePercentage}% ({$onTimeCount}/{$totalCount})\"); // Eligible kalau minimal 80% on-time return $onTimePercentage >= 80; } / Generate unique request number Format: REQ-DDMMYYYY-RANDOM6 / private function generateRequestNumber() { $date = now()->format('dmY'); $random = strtoupper(substr(md5(uniqid(rand(), true)), 0, 6)); return \"REQ-{$date}-{$random}\"; } / Show history of all requests /"
+        },
+        {
+          "name": "requester_submit_report",
+          "doc": "/ Submit transaction report (laporan pembelian BBM) / / Submit transaction report (laporan pembelian BBM) /"
+        },
+        {
+          "name": "requester_show",
+          "doc": "/ Show detail request /"
+        },
+        {
+          "name": "requester_upload_proof",
+          "doc": "/ Upload bukti transaksi (Transaction Proof) /"
+        },
+        {
+          "name": "admin_index",
+          "doc": "/ ========================================= Controller bagian Admin ========================================= /"
+        },
+        {
+          "name": "admin_approval",
+          "doc": ""
+        },
+        {
+          "name": "admin_process_request",
+          "doc": "/ Approve atau reject request /"
+        },
+        {
+          "name": "admin_bulk_process",
+          "doc": "/ Bulk approve/reject - FIXED VERSION /"
+        },
+        {
+          "name": "thermerPrint",
+          "doc": "/ Generate voucher code Format: BBMGDE-RANDOM6-DDMMYY / private function generateVoucherCode() { $date = now()->format('dmy'); $random = strtoupper(substr(md5(uniqid(rand(), true)), 0, 6)); return \"BBMGDE-{$random}-{$date}\"; } / bagian controller untuk cetak ke printer thermal / / Handle Thermer app print request Endpoint untuk aplikasi Thermer (Bluetooth Print) /"
+        },
+        {
+          "name": "getTransactionPhoto",
+          "doc": ""
+        }
+      ],
+      "use_models": [
+        "Approved_Request",
+        "GasolineType",
+        "Permohonan",
+        "Transaction_Proofs",
+        "UserSlotAdjustment",
+        "VehicleAndToolsConsumers"
+      ],
+      "references": [
+        "Approved_Request",
+        "Auth",
+        "DB",
+        "GasolineType",
+        "Log",
+        "Permohonan",
+        "Storage",
+        "Transaction_Proofs",
+        "UserSlotAdjustment",
+        "VehicleAndToolsConsumers"
+      ]
+    },
+    {
+      "class": "RoutineCheckingController",
+      "path": "app/Http/Controllers/RoutineCheckingController.php",
+      "methods": [
+        {
+          "name": "index",
+          "doc": "/ Tampilkan daftar pengecekan routine Filter: kendaraan, sub_type (daily/weekly/monthly), tanggal /"
+        },
+        {
+          "name": "create",
+          "doc": "/ Tampilkan form pengecekan routine Item muncul berdasarkan frekuensi yang due/overdue /"
+        },
+        {
+          "name": "store",
+          "doc": "/ Simpan hasil pengecekan routine Request body: - vehicle_id: required - current_driver_id: required - sub_type: daily|weekly|monthly - notes: optional - items[part_id][status]: ok|ng - items[part_id][notes]: optional - items[part_id][needs_replacement]: 0|1 /"
+        },
+        {
+          "name": "show",
+          "doc": "/ Tampilkan detail hasil pengecekan routine /"
+        },
+        {
+          "name": "getVehicleScheduleInfo",
+          "doc": "/ Get schedule info per kendaraan (AJAX) Digunakan saat dispatcher pilih kendaraan di dropdown /"
+        }
+      ],
+      "use_models": [
+        "User",
+        "VehicleAndToolsConsumers",
+        "VehicleChecking",
+        "VehicleCheckingDetail",
+        "VehicleCheckingItemResult",
+        "VehicleCheckingSchedule",
+        "VehiclePart"
+      ],
+      "references": [
+        "Auth",
+        "Carbon",
+        "DB",
+        "User",
+        "VehicleAndToolsConsumers",
+        "VehicleChecking",
+        "VehicleCheckingDetail",
+        "VehicleCheckingItemResult",
+        "VehicleCheckingSchedule",
+        "VehiclePart"
+      ]
+    },
+    {
+      "class": "SpdController",
+      "path": "app/Http/Controllers/SpdController.php",
+      "methods": [
+        {
+          "name": "createSurat",
+          "doc": "/ Show form untuk create surat SPD (requester/driver) @return \\Illuminate\\View\\View /"
+        },
+        {
+          "name": "storeSurat",
+          "doc": "/ Store surat SPD dari requester TANPA budget - budget ditentukan superadmin saat approve @param Request $request @return \\Illuminate\\Http\\RedirectResponse /"
+        },
+        {
+          "name": "indexSuratRequester",
+          "doc": "/ Show list surat SPD untuk requester @return \\Illuminate\\View\\View /"
+        },
+        {
+          "name": "showSuratRequester",
+          "doc": "/ Show detail surat SPD untuk requester @param int $id @return \\Illuminate\\View\\View /"
+        },
+        {
+          "name": "indexSuratSuperadmin",
+          "doc": "/ Show list surat SPD untuk validasi superadmin @return \\Illuminate\\View\\View /"
+        },
+        {
+          "name": "showSuratSuperadmin",
+          "doc": "/ Show detail surat SPD untuk validasi superadmin @param int $id @return \\Illuminate\\View\\View /"
+        },
+        {
+          "name": "approveSurat",
+          "doc": "/ Approve surat SPD Set status approved, budget per hari, dan calculate lpj_deadline @param Request $request @param int $id @return \\Illuminate\\Http\\RedirectResponse /"
+        },
+        {
+          "name": "rejectSurat",
+          "doc": "/ Reject surat SPD @param Request $request @param int $id @return \\Illuminate\\Http\\RedirectResponse /"
+        },
+        {
+          "name": "printSurat",
+          "doc": "/ Print surat SPD (untuk cetak) @param int $id @return \\Illuminate\\View\\View /"
+        },
+        {
+          "name": "createPerpanjangan",
+          "doc": "/ Show form untuk ajukan perpanjangan (requester) @return \\Illuminate\\View\\View /"
+        },
+        {
+          "name": "storePerpanjangan",
+          "doc": "/ Store pengajuan perpanjangan dari requester @param Request $request @return \\Illuminate\\Http\\RedirectResponse /"
+        },
+        {
+          "name": "indexPerpanjanganRequester",
+          "doc": "/ Show list perpanjangan untuk requester @return \\Illuminate\\View\\View /"
+        },
+        {
+          "name": "indexPerpanjanganSuperadmin",
+          "doc": "/ Show list perpanjangan untuk superadmin @return \\Illuminate\\View\\View /"
+        },
+        {
+          "name": "showPerpanjanganSuperadmin",
+          "doc": "/ Show detail perpanjangan untuk superadmin @param int $id @return \\Illuminate\\View\\View /"
+        },
+        {
+          "name": "approvePerpanjangan",
+          "doc": "/ Approve perpanjangan @param Request $request @param int $id @return \\Illuminate\\Http\\RedirectResponse /"
+        },
+        {
+          "name": "rejectPerpanjangan",
+          "doc": "/ Reject perpanjangan @param Request $request @param int $id @return \\Illuminate\\Http\\RedirectResponse /"
+        },
+        {
+          "name": "acknowledgePerpanjangan",
+          "doc": "/ Acknowledge perpanjangan (checklist sudah diproses) @param Request $request @param int $id @return \\Illuminate\\Http\\RedirectResponse /"
+        },
+        {
+          "name": "createLaporan",
+          "doc": "/ Show form untuk create LPJ (requester) Menampilkan dropdown surat SPD yang perlu LPJ @return \\Illuminate\\View\\View /"
+        },
+        {
+          "name": "storeLaporan",
+          "doc": "/ Store LPJ dari requester @param Request $request @return \\Illuminate\\Http\\RedirectResponse / / Store LPJ dari requester Budget diambil dari surat_spd_budgets, BUKAN dari budget_per_hari @param Request $request @return \\Illuminate\\Http\\RedirectResponse /"
+        },
+        {
+          "name": "indexLaporanRequester",
+          "doc": "/ Show list LPJ untuk requester @return \\Illuminate\\View\\View /"
+        },
+        {
+          "name": "showLaporanRequester",
+          "doc": "/ Show detail LPJ untuk requester @param int $id @return \\Illuminate\\View\\View /"
+        },
+        {
+          "name": "indexLaporanSuperadmin",
+          "doc": "/ Show list LPJ untuk validasi superadmin @return \\Illuminate\\View\\View /"
+        },
+        {
+          "name": "showLaporanSuperadmin",
+          "doc": "/ Show detail LPJ untuk validasi superadmin @param int $id @return \\Illuminate\\View\\View /"
+        },
+        {
+          "name": "approveLaporan",
+          "doc": "/ Approve LPJ @param int $id @return \\Illuminate\\Http\\RedirectResponse /"
+        },
+        {
+          "name": "rejectLaporan",
+          "doc": "/ Reject LPJ @param Request $request @param int $id @return \\Illuminate\\Http\\RedirectResponse /"
+        },
+        {
+          "name": "printLaporan",
+          "doc": "/ Print LPJ @param int $id @return \\Illuminate\\View\\View /"
+        },
+        {
+          "name": "getSuratDetail",
+          "doc": "/ Get detail surat untuk AJAX (digunakan di form LPJ) @param int $id @return \\Illuminate\\Http\\JsonResponse /"
+        },
+        {
+          "name": "getSuratListForDropdown",
+          "doc": "/ Get surat list untuk dropdown (AJAX) @param Request $request @return \\Illuminate\\Http\\JsonResponse /"
+        },
+        {
+          "name": "getDashboardStats",
+          "doc": "/ Dashboard SPD Stats (untuk dashboard) @return \\Illuminate\\Http\\JsonResponse /"
+        }
+      ],
+      "use_models": [
+        "LpjPenggantian",
+        "LpjPenggantianDetail",
+        "SpdBarcodeSignature",
+        "SuratSpd",
+        "SuratSpdBudget",
+        "SuratSpdDetail",
+        "SuratSpdExtension",
+        "User",
+        "VehicleAndToolsConsumers"
+      ],
+      "references": [
+        "Auth",
+        "Carbon",
+        "DB",
+        "Log",
+        "LpjPenggantian",
+        "LpjPenggantianDetail",
+        "SpdBarcodeSignature",
+        "SuratSpd",
+        "SuratSpdBudget",
+        "SuratSpdDetail",
+        "SuratSpdExtension",
+        "User",
+        "Validator",
+        "VehicleAndToolsConsumers"
+      ]
+    },
+    {
+      "class": "StorageFileController",
+      "path": "app/Http/Controllers/StorageFileController.php",
+      "methods": [
+        {
+          "name": "serve",
+          "doc": ""
+        }
+      ],
+      "use_models": [],
+      "references": [
+        "File"
+      ]
+    },
+    {
+      "class": "FinancialReportController",
+      "path": "app/Http/Controllers/Superadmin/FinancialReportController.php",
+      "methods": [
+        {
+          "name": "index",
+          "doc": "/ GET /superadmin/financial-report Tampilkan laporan keuangan service /"
+        },
+        {
+          "name": "export",
+          "doc": "/ GET /superadmin/financial-report/export Download Excel atau PDF /"
+        }
+      ],
+      "use_models": [
+        "Vehicle",
+        "VehiclePartsReplacement",
+        "VehiclePartsReplacementTransaction",
+        "VprtDetail"
+      ],
+      "references": [
+        "Carbon",
+        "DB",
+        "Pdf",
+        "Vehicle",
+        "VehiclePartsReplacementTransaction",
+        "VprtDetail"
+      ]
+    },
+    {
+      "class": "SuperadminController",
+      "path": "app/Http/Controllers/SuperadminController.php",
+      "methods": [
+        {
+          "name": "__construct",
+          "doc": ""
+        },
+        {
+          "name": "index",
+          "doc": ""
+        },
+        {
+          "name": "getDashboardStats",
+          "doc": ""
+        },
+        {
+          "name": "printReportPage",
+          "doc": "/ Get expense over time based on period for line chart / private function getExpenseOverTime($period = 'month') { $now = Carbon::now(); switch ($period) { case 'day': // Hourly data for current day $data = Permohonan::whereIn('status', ['completed', 'approved']) ->whereDate('request_date', $now->toDateString()) ->selectRaw('HOUR(request_date) as hour, SUM(bill_amounts) as total') ->groupBy('hour') ->orderBy('hour', 'asc') ->get() ->mapWithKeys(function($item) { return [sprintf('%02d:00', $item->hour) => $item->total]; }) ->toArray(); break; case 'year': // Monthly data for current year $data = Permohonan::whereIn('status', ['completed', 'approved']) ->whereYear('request_date', $now->year) ->selectRaw('MONTH(request_date) as month, SUM(bill_amounts) as total') ->groupBy('month') ->orderBy('month', 'asc') ->get() ->mapWithKeys(function($item) { return [Carbon::create()->month($item->month)->format('M') => $item->total]; }) ->toArray(); break; case 'month': default: // Daily data for current month $data = Permohonan::whereIn('status', ['completed', 'approved']) ->whereYear('request_date', $now->year) ->whereMonth('request_date', $now->month) ->selectRaw('DATE(request_date) as date, SUM(bill_amounts) as total') ->groupBy('date') ->orderBy('date', 'asc') ->pluck('total', 'date') ->toArray(); break; } return $data; } private function getPeriodLabel($period) { $labels = [ 'day' => 'Hari Ini', 'month' => 'Bulan Ini', 'year' => 'Tahun Ini' ]; return $labels[$period] ?? 'Bulan Ini'; } / Calculate stats from filtered transactions collection / private function calculateStats($transactions, $period = 'month') { // Jika tidak ada filter aktif, gunakan getDashboardStatsData biasa if ($transactions->isEmpty()) { return $this->getDashboardStatsData($period); } // Define date range based on period $now = Carbon::now(); switch ($period) { case 'day': $startDate = $now->copy()->startOfDay(); $endDate = $now->copy()->endOfDay(); break; case 'year': $startDate = $now->copy()->startOfYear(); $endDate = $now->copy()->endOfYear(); break; case 'month': default: $startDate = $now->copy()->startOfMonth(); $endDate = $now->copy()->endOfMonth(); break; } return [ // Period info 'period' => $period, 'periodLabel' => $this->getPeriodLabel($period), 'startDate' => $startDate->format('Y-m-d'), 'endDate' => $endDate->format('Y-m-d'), // Total from filtered transactions 'totalExpense' => $transactions->whereIn('status', ['completed', 'approved']) ->sum('bill_amounts'), // Total transactions count 'totalTransactions' => $transactions->count(), 'total' => $transactions->count(), // Alias // Average Request Value 'avgRequestValue' => $transactions->whereIn('status', ['completed', 'approved']) ->avg('bill_amounts') ?? 0, // Average Request Frequency (dari filtered data) 'avgRequestFrequency' => $this->calculateFilteredFrequency($transactions, $period), // Gasoline Distribution (dari filtered data) 'gasolineDistribution' => $transactions->whereIn('status', ['completed', 'approved']) ->groupBy('gasoline_type') ->map(function($group) { return $group->sum('bill_amounts'); }) ->toArray(), // Gasoline Expense Distribution (untuk pie chart) 'gasolineExpenseDistribution' => $transactions->whereIn('status', ['completed', 'approved']) ->groupBy('gasoline_type') ->map(function($group) { return $group->sum('bill_amounts'); }) ->toArray(), // Expense over time (dari filtered data) 'expenseOverTime' => $this->getFilteredExpenseOverTime($transactions, $period), 'vehicleExpense' => $transactions->whereIn('status', ['completed', 'approved']) ->groupBy('consumerial_tools_id') ->map(function($group) { $vehicle = $group->first()->consumerialTool; if (!$vehicle) return null; return [ 'name' => \"{$vehicle->consumerial_code} - {$vehicle->consumerial_name}\", 'total' => $group->sum('bill_amounts') ]; }) ->filter() ->sortByDesc('total') ->take(10) ->pluck('total', 'name') ->toArray(), 'driverExpense' => $transactions->whereIn('status', ['completed', 'approved']) ->groupBy('requester_id') ->map(function($group) { $driver = $group->first()->requester; if (!$driver) return null; return [ 'name' => $driver->nama_lengkap, 'total' => $group->sum('bill_amounts') ]; }) ->filter() ->sortByDesc('total') ->take(10) ->pluck('total', 'name') ->toArray(), ]; } / Calculate frequency from filtered transactions / private function calculateFilteredFrequency($transactions, $period) { if ($transactions->isEmpty()) { return ['value' => 0, 'label' => 'per hari']; } switch ($period) { case 'day': // Group by hour $grouped = $transactions->groupBy(function($item) { return $item->request_date->format('H'); }); $avgPerPeriod = $grouped->avg(function($group) { return $group->count(); }) ?? 0; $periodLabel = 'per jam'; break; case 'year': // Group by month $grouped = $transactions->groupBy(function($item) { return $item->request_date->format('m'); }); $avgPerPeriod = $grouped->avg(function($group) { return $group->count(); }) ?? 0; $periodLabel = 'per bulan'; break; case 'month': default: // Group by day $grouped = $transactions->groupBy(function($item) { return $item->request_date->format('d'); }); $avgPerPeriod = $grouped->avg(function($group) { return $group->count(); }) ?? 0; $periodLabel = 'per hari'; break; } return [ 'value' => round($avgPerPeriod, 1), 'label' => $periodLabel ]; } / Get expense over time from filtered transactions / private function getFilteredExpenseOverTime($transactions, $period) { if ($transactions->isEmpty()) { return []; } $filtered = $transactions->whereIn('status', ['completed', 'approved']); switch ($period) { case 'day': // Hourly return $filtered->groupBy(function($item) { return $item->request_date->format('H:00'); })->map(function($group) { return $group->sum('bill_amounts'); })->sortKeys()->toArray(); case 'year': // Monthly return $filtered->groupBy(function($item) { return $item->request_date->format('M'); })->map(function($group) { return $group->sum('bill_amounts'); })->toArray(); case 'month': default: // Daily return $filtered->groupBy(function($item) { return $item->request_date->format('Y-m-d'); })->map(function($group) { return $group->sum('bill_amounts'); })->sortKeys()->toArray(); } } / Tampilkan halaman form cetak laporan BBM /"
+        },
+        {
+          "name": "printReport",
+          "doc": "/ Generate dan tampilkan laporan PDF transaksi BBM /"
+        },
+        {
+          "name": "dashboardBisnis",
+          "doc": ""
+        },
+        {
+          "name": "approvalDashboard",
+          "doc": "/ Calculate average request frequency based on period / private function calculateAvgRequestFrequency($period = 'month') { $now = Carbon::now(); switch ($period) { case 'day': // Average per hour in current day $requests = Permohonan::whereDate('request_date', $now->toDateString()) ->selectRaw('HOUR(request_date) as hour, COUNT( ) as count') ->groupBy('hour') ->get(); $avgPerPeriod = $requests->avg('count') ?? 0; $periodLabel = 'per jam'; break; case 'year': // Average per month in current year $requests = Permohonan::whereYear('request_date', $now->year) ->selectRaw('MONTH(request_date) as month, COUNT( ) as count') ->groupBy('month') ->get(); $avgPerPeriod = $requests->avg('count') ?? 0; $periodLabel = 'per bulan'; break; case 'month': default: // Average per day in current month $requests = Permohonan::whereYear('request_date', $now->year) ->whereMonth('request_date', $now->month) ->selectRaw('DAY(request_date) as day, COUNT( ) as count') ->groupBy('day') ->get(); $avgPerPeriod = $requests->avg('count') ?? 0; $periodLabel = 'per hari'; break; } return [ 'value' => round($avgPerPeriod, 1), 'label' => $periodLabel ]; } private function getDriverStatisticsData() { $stats = Permohonan::with(['requester', 'transactionProof']) ->get() ->groupBy('requester_id') ->map(function ($requests, $requesterId) { $requester = $requests->first()->requester; $nominals = $requests->pluck('bill_amounts')->filter()->toArray(); return [ 'driver' => $requester->nama_lengkap ?? 'Unknown', 'total' => $requests->count(), 'rejected' => $requests->where('status', 'rejected')->count(), 'completed' => $requests->where('status', 'completed')->count(), 'approved' => $requests->where('status', 'approved')->count(), 'pending' => $requests->where('status', 'pending')->count(), 'reportRate' => $requests->count() > 0 ? round(($requests->where('status', 'completed')->count() / $requests->count()) 100, 1) : 0, 'avgNominal' => !empty($nominals) ? array_sum($nominals) / count($nominals) : 0, 'maxNominal' => !empty($nominals) ? max($nominals) : 0, 'minNominal' => !empty($nominals) ? min($nominals) : 0, ]; }) ->values() ->sortByDesc('total'); return $stats; } private function getVehicleFuelConsumptionData(Request $request = null) { $query = Transaction_Proofs::with(['permohonan.consumerialTool', 'permohonan.requester']) ->whereHas('permohonan', function($q) { $q->where('status', 'completed'); }); $proofs = $query->orderBy('purchase_datetime', 'desc')->get(); $result = $proofs->map(function ($proof) { $permohonan = $proof->permohonan; $vehicle = $permohonan->consumerialTool; return [ 'requestNumber' => $permohonan->request_number, 'vehicleId' => $vehicle->id ?? '', 'vehicleDisplay' => $vehicle ? \"{$vehicle->consumerial_code} - {$vehicle->consumerial_name}\" : '', 'platNumber' => $vehicle->consumerial_code ?? '', 'merk' => $vehicle->consumerial_name ?? '', 'jenis' => $vehicle->consumerial_type ?? '', 'driverName' => $permohonan->requester->nama_lengkap ?? 'Unknown', 'gasolineType' => $permohonan->gasoline_type, 'volume' => $proof->fuel_volume, 'nominal' => $permohonan->bill_amounts, 'tanggalPengisian' => $proof->purchase_datetime, 'requestAt' => $permohonan->request_date, ]; }); return $result; } private function getVehicleKmPerformanceData(Request $request = null) { $query = Transaction_Proofs::with(['permohonan.consumerialTool']) ->whereHas('permohonan.consumerialTool', function($q) { $q->where('consumerial_type', 'KENDARAAN'); }) ->where('km_terakhir', '>', 0) ->orderBy('purchase_datetime', 'asc'); $proofs = $query->get(); // Group by vehicle $vehicleKmData = []; foreach ($proofs as $proof) { $vehicleId = $proof->permohonan->consumerial_tools_id; if (!isset($vehicleKmData[$vehicleId])) { $vehicleKmData[$vehicleId] = []; } $vehicleKmData[$vehicleId][] = [ 'km' => $proof->km_terakhir, 'date' => $proof->purchase_datetime, ]; } // Calculate KM differences $result = []; foreach ($vehicleKmData as $vehicleId => $records) { if (count($records) < 2) continue; // Sort by date usort($records, function($a, $b) { return $a['date']->timestamp - $b['date']->timestamp; }); $kmDifferences = []; for ($i = 1; $i < count($records); $i++) { $diff = $records[$i]['km'] - $records[$i-1]['km']; // Sanity check positive difference and less than 10k km if ($diff > 0 && $diff < 10000) { $kmDifferences[] = $diff; } } if (empty($kmDifferences)) continue; $vehicle = VehicleAndToolsConsumers::find($vehicleId); if (!$vehicle) continue; $avgKmDiff = array_sum($kmDifferences) / count($kmDifferences); $result[] = [ 'vehicleId' => $vehicleId, 'vehicleDisplay' => \"{$vehicle->consumerial_code} - {$vehicle->consumerial_name}\", 'platNumber' => $vehicle->consumerial_code, 'merk' => $vehicle->consumerial_name, 'avgKmDiff' => round($avgKmDiff), 'totalTrips' => count($kmDifferences), 'maxKm' => max($kmDifferences), 'minKm' => min($kmDifferences), 'lastUpdate' => $records[count($records) - 1]['date'], 'latestOdo' => $records[count($records) - 1]['km'], ]; } // Sort by avgKmDiff descending usort($result, function($a, $b) { return $b['avgKmDiff'] - $a['avgKmDiff']; }); return collect($result); } private function getCompletePivotTableData(Request $request = null) { $query = Permohonan::with([ 'requester', 'authorizer', 'consumerialTool', 'transactionProof', 'approvedRequest' ])->whereIn('status', ['approved', 'completed']); $permohonans = $query->orderBy('request_date', 'desc')->get(); $result = $permohonans->map(function ($permohonan) { $vehicle = $permohonan->consumerialTool; $proof = $permohonan->transactionProof; $approved = $permohonan->approvedRequest; return [ 'requestId' => $permohonan->id, 'requestNumber' => $permohonan->request_number, 'driverName' => $permohonan->requester->nama_lengkap ?? 'Unknown', 'vehicleDisplay' => $vehicle ? \"{$vehicle->consumerial_code} - {$vehicle->consumerial_name}\" : '', 'platNumber' => $vehicle->consumerial_code ?? '', 'merk' => $vehicle->consumerial_name ?? '', 'jenis' => $vehicle->consumerial_type ?? '', 'requestAt' => $permohonan->request_date, 'nominal' => $permohonan->bill_amounts, 'gasolineType' => $permohonan->gasoline_type, 'status' => $permohonan->status, 'voucherCode' => $approved->voucher_code ?? '', 'proofId' => $proof->transaction_id ?? '', 'tanggalPengisian' => $proof ? $proof->purchase_datetime : null, 'volumePengisian' => $proof->fuel_volume ?? 0, 'kmTerakhir' => $proof->km_terakhir ?? 0, 'tanggalLaporan' => $proof ? $proof->created_at : null, ]; }); return $result; } // kendaran rental approval flow // Tambahkan method baru di SuperadminController / Tampilkan dashboard approval kendaraan rental & permohonan /"
+        },
+        {
+          "name": "approveVehicle",
+          "doc": "/ Approve kendaraan rental /"
+        },
+        {
+          "name": "rejectVehicle",
+          "doc": "/ Reject kendaraan rental /"
+        },
+        {
+          "name": "getDriverStatistics",
+          "doc": ""
+        },
+        {
+          "name": "getVehicleFuelConsumption",
+          "doc": ""
+        },
+        {
+          "name": "getVehicleKmPerformance",
+          "doc": ""
+        },
+        {
+          "name": "getCompletePivotTable",
+          "doc": ""
+        },
+        {
+          "name": "getDetailedDriverStats",
+          "doc": ""
+        },
+        {
+          "name": "createUser",
+          "doc": ""
+        },
+        {
+          "name": "indexUsers",
+          "doc": ""
+        },
+        {
+          "name": "storeUser",
+          "doc": ""
+        },
+        {
+          "name": "updateUser",
+          "doc": ""
+        },
+        {
+          "name": "deleteUser",
+          "doc": ""
+        },
+        {
+          "name": "resetPassword",
+          "doc": ""
+        },
+        {
+          "name": "restoreUser",
+          "doc": ""
+        },
+        {
+          "name": "createVehicle",
+          "doc": ""
+        },
+        {
+          "name": "indexVehicles",
+          "doc": ""
+        },
+        {
+          "name": "storeVehicle",
+          "doc": ""
+        },
+        {
+          "name": "updateVehicle",
+          "doc": ""
+        },
+        {
+          "name": "deleteVehicle",
+          "doc": ""
+        },
+        {
+          "name": "restoreVehicle",
+          "doc": ""
+        },
+        {
+          "name": "indexPermohonan",
+          "doc": "/ Index - Kelola Permohonan & Pelaporan /"
+        },
+        {
+          "name": "updatePermohonan",
+          "doc": "/ Update Permohonan /"
+        },
+        {
+          "name": "cancelPermohonan",
+          "doc": "/ Cancel Permohonan (ubah status jadi cancelled_by_driver) /"
+        },
+        {
+          "name": "deletePermohonan",
+          "doc": "/ Delete Permohonan (Soft Delete) /"
+        },
+        {
+          "name": "updateLaporan",
+          "doc": "/ Update Laporan Transaksi /"
+        },
+        {
+          "name": "deleteLaporan",
+          "doc": "/ Delete Laporan Transaksi /"
+        },
+        {
+          "name": "generateTripAnalysis",
+          "doc": ""
+        },
+        {
+          "name": "validateTrip",
+          "doc": "/ Get trip validations data (auto-generated, only for diff_odo >= 300) / private function getAllTripsData() { // Get all vehicles $vehicles = VehicleAndToolsConsumers::where('consumerial_type', 'KENDARAAN') ->where('is_approved', true) ->get(); $allTrips = collect(); foreach ($vehicles as $vehicle) { // Get transaction proofs untuk kendaraan ini $proofs = Transaction_Proofs::whereHas('permohonan', function($q) use ($vehicle) { $q->where('consumerial_tools_id', $vehicle->id) ->where('status', 'completed'); }) ->where('km_terakhir', '>', 0) ->orderBy('purchase_datetime', 'asc') ->get(); // Skip jika kurang dari 2 transaksi if ($proofs->count() < 2) { continue; } // Loop untuk setiap pasangan berurutan for ($i = 0; $i < $proofs->count() - 1; $i++) { $prevProof = $proofs[$i]; $latestProof = $proofs[$i + 1]; $diffOdo = $latestProof->km_terakhir - $prevProof->km_terakhir; // Skip jika tidak masuk akal (KM turun atau terlalu besar) if ($diffOdo <= 0 || $diffOdo > 10000) { continue; } $needsValidation = $diffOdo >= 300; // Cek apakah ada validasi di database (hanya untuk yang >= 300 KM) $validation = null; if ($needsValidation) { $validation = TripValidation::where('transaction_proof_previous_id', $prevProof->id) ->where('transaction_proof_latest_id', $latestProof->id) ->first(); // Kalau belum ada validasi, buat entry baru if (!$validation) { $validation = TripValidation::create([ 'transaction_proof_previous_id' => $prevProof->id, 'transaction_proof_latest_id' => $latestProof->id, 'previous_odo' => $prevProof->km_terakhir, 'latest_odo' => $latestProof->km_terakhir, 'diff_odo' => $diffOdo, 'is_long_trip' => false, 'long_trip_notes' => null, 'validated_by' => null, 'validated_at' => null, ]); $validation->calculateMetrics(); } } $allTrips->push([ 'validationId' => $validation ? $validation->id : null, 'prevProofId' => $prevProof->id, 'latestProofId' => $latestProof->id, 'previousOdo' => $prevProof->km_terakhir, 'latestOdo' => $latestProof->km_terakhir, 'diffOdo' => $diffOdo, 'needsValidation' => $needsValidation, // Validation status (hanya ada jika >= 300 KM) 'isValidated' => $validation ? ($validation->validated_at !== null) : false, 'isLongTrip' => $validation ? $validation->is_long_trip : null, 'longTripNotes' => $validation ? $validation->long_trip_notes : null, 'validatedBy' => $validation && $validation->validator ? $validation->validator->nama_lengkap : null, 'validatedAt' => $validation ? $validation->validated_at : null, 'statusBadge' => $validation ? $validation->status_badge : null, 'statusLabel' => $validation ? $validation->status_label : null, // Info tambahan 'vehicleDisplay' => \"{$vehicle->consumerial_code} - {$vehicle->consumerial_name}\", 'vehicleCode' => $vehicle->consumerial_code, 'requesterName' => $prevProof->permohonan->requester->nama_lengkap ?? 'Unknown', 'datePrevious' => $prevProof->purchase_datetime, 'dateLatest' => $latestProof->purchase_datetime, 'daysDiff' => $prevProof->purchase_datetime->diffInDays($latestProof->purchase_datetime), 'requestNumberPrev' => $prevProof->permohonan->request_number ?? '-', 'requestNumberLatest' => $latestProof->permohonan->request_number ?? '-', // Hitung efisiensi BBM 'fuelVolume' => $prevProof->fuel_volume, 'fuelEfficiency' => $prevProof->fuel_volume > 0 ? round($diffOdo / $prevProof->fuel_volume, 2) : 0, ]); } } return $allTrips->sortByDesc('diffOdo'); } / Validate single trip / / Validate single trip dengan baseline override /"
+        },
+        {
+          "name": "bulkValidateTrips",
+          "doc": "/ Bulk validate trips /"
+        },
+        {
+          "name": "vehicleActivation",
+          "doc": "/ Get trip analysis statistics / // public function getTripAnalysisStats() // { // try { // $stats = [ // 'totalTrips' => VehicleTripAnalysis::count(), // 'normalTrips' => VehicleTripAnalysis::normal()->count(), // 'longDistanceTrips' => VehicleTripAnalysis::longDistance()->count(), // 'suspiciousTrips' => VehicleTripAnalysis::suspicious()->count(), // 'needValidation' => VehicleTripAnalysis::needValidation()->count(), // 'validated' => VehicleTripAnalysis::where('is_validated', true)->count(), // // Average metrics // 'avgKmDifference' => round(VehicleTripAnalysis::avg('km_difference'), 2), // 'avgFuelEfficiency' => round(VehicleTripAnalysis::avg('fuel_efficiency'), 2), // 'avgDaysDifference' => round(VehicleTripAnalysis::avg('days_difference'), 2), // // Latest long distance trips // 'latestLongDistance' => VehicleTripAnalysis::with(['requester', 'vehicle']) // ->longDistance() // ->where('is_validated', false) // ->orderBy('filling_date_end', 'desc') // ->limit(5) // ->get() // ->map(function($trip) { // return [ // 'id' => $trip->id, // 'requester' => $trip->requester->nama_lengkap ?? 'Unknown', // 'vehicle' => $trip->vehicle->consumerial_code ?? 'Unknown', // 'kmDiff' => $trip->km_difference, // 'dateRange' => $trip->filling_date_start->format('d/m/Y') . ' - ' . $trip->filling_date_end->format('d/m/Y'), // ]; // }), // ]; // return response()->json([ // 'success' => true, // 'data' => $stats // ]); // } catch (\\Exception $e) { // return response()->json([ // 'success' => false, // 'message' => 'Gagal memuat statistik trip: ' . $e->getMessage() // ], 500); // } // } // ==================== ACTIVITY LOG ==================== // public function getActivityLog() // { // try { // // Get recent login activities from sessions table // // Alternative: buat table login_logs sendiri untuk tracking lebih detail // $activities = DB::table('sessions') // ->join('users', 'sessions.user_id', '=', 'users.id') // ->select( // 'users.id as user_id', // 'users.username', // 'users.fullname', // 'users.role', // 'sessions.last_activity', // 'sessions.ip_address', // 'sessions.user_agent' // ) // ->whereNotNull('sessions.user_id') // ->orderBy('sessions.last_activity', 'desc') // ->limit(100) // ->get(); // $formattedActivities = $activities->map(function ($activity) { // return [ // 'userId' => $activity->user_id, // 'username' => $activity->username, // 'fullname' => $activity->fullname, // 'role' => $activity->role, // 'lastActivity' => Carbon::createFromTimestamp($activity->last_activity)->toISOString(), // 'ipAddress' => $activity->ip_address, // 'userAgent' => $activity->user_agent, // 'isActive' => (time() - $activity->last_activity) < 3600, // Active jika < 1 jam // ]; // }); // return response()->json([ // 'success' => true, // 'data' => $formattedActivities // ]); // } catch (\\Exception $e) { // return response()->json([ // 'success' => false, // 'message' => 'Gagal memuat log aktivitas: ' . $e->getMessage() // ], 500); // } // } // ==================== VEHICLE ACTIVATION MANAGEMENT ==================== / Show vehicle activation management page /"
+        },
+        {
+          "name": "activateVehicle",
+          "doc": "/ Activate vehicle /"
+        },
+        {
+          "name": "deactivateVehicle",
+          "doc": "/ Deactivate vehicle /"
+        },
+        {
+          "name": "bulkActivateVehicles",
+          "doc": "/ Bulk activate vehicles /"
+        },
+        {
+          "name": "bulkDeactivateVehicles",
+          "doc": "/ Bulk deactivate vehicles /"
+        },
+        {
+          "name": "recalculateAllTripMetrics",
+          "doc": "/ Recalculate all trip metrics (manual trigger) /"
+        },
+        {
+          "name": "indexTripAnalysis",
+          "doc": "/ Index Trip Analysis - Dedicated view untuk analisis trip /"
+        }
+      ],
+      "use_models": [
+        "Approved_Request",
+        "ConsumerialTool",
+        "Permohonan",
+        "Transaction_Proofs",
+        "TripValidation",
+        "User",
+        "VehicleAndToolsConsumers",
+        "VehicleBarcode",
+        "VehicleTripAnalysis"
+      ],
+      "references": [
+        "Auth",
+        "Carbon",
+        "Collection",
+        "DB",
+        "GasolineType",
+        "Hash",
+        "Imagick",
+        "LengthAwarePaginator",
+        "Pdf",
+        "Permohonan",
+        "Site",
+        "Storage",
+        "Transaction_Proofs",
+        "TripValidation",
+        "User",
+        "VehicleAndToolsConsumers",
+        "VehicleBarcode",
+        "VehicleTripAnalysis"
+      ]
+    },
+    {
+      "class": "UserController",
+      "path": "app/Http/Controllers/UserController.php",
+      "methods": [],
+      "use_models": [],
+      "references": []
+    },
+    {
+      "class": "VehicleCheckingSuperadminController",
+      "path": "app/Http/Controllers/VehicleCheckingSuperadminController.php",
+      "methods": [
+        {
+          "name": "vehicleHealthIndex",
+          "doc": ""
+        },
+        {
+          "name": "vehicleHealthShow",
+          "doc": ""
+        },
+        {
+          "name": "financialReportIndex",
+          "doc": ""
+        },
+        {
+          "name": "financialReportExport",
+          "doc": ""
+        },
+        {
+          "name": "transactionReportIndex",
+          "doc": ""
+        }
+      ],
+      "use_models": [
+        "TripValidation",
+        "User",
+        "VehicleAndToolsConsumers",
+        "VehicleCheckingDetail",
+        "VehiclePartsReplacement",
+        "VehiclePartsReplacementTransaction",
+        "VprtDetail"
+      ],
+      "references": [
+        "Carbon",
+        "DB",
+        "Pdf",
+        "TripValidation",
+        "User",
+        "VehicleAndToolsConsumers",
+        "VehicleCheckingDetail",
+        "VehicleCheckingSchedule",
+        "VehiclePartsReplacement",
+        "VehiclePartsReplacementTransaction",
+        "VprtDetail"
+      ]
+    },
+    {
+      "class": "VehicleHealthHistoryController",
+      "path": "app/Http/Controllers/VehicleHealthHistoryController.php",
+      "methods": [
+        {
+          "name": "scanView",
+          "doc": "/ Tampilan kamera scan QR code kendaraan. Accessible oleh: dispatcher, superadmin, admin /"
+        },
+        {
+          "name": "vehicleHistory",
+          "doc": "/ Tampilkan riwayat pengecekan kendaraan berdasarkan hasil scan QR code. QR code mengandung JSON: {\"id\": N, \"value\": \"PLATE|NAME\"} Manual input: consumerial_code (plat nomor) GET /dispatcher/scan-vehicle/result?code={payload} /"
+        },
+        {
+          "name": "downloadBarcode",
+          "doc": "/ Download QR code satu kendaraan. Accessible oleh: superadmin, dispatcher /"
+        },
+        {
+          "name": "downloadAllBarcodesZip",
+          "doc": "/ Download semua QR code kendaraan sebagai satu file ZIP. Accessible oleh: superadmin /"
+        }
+      ],
+      "use_models": [
+        "VehicleAndToolsConsumers",
+        "VehicleBarcode",
+        "VehicleCheckingDetail"
+      ],
+      "references": [
+        "Auth",
+        "VehicleAndToolsConsumers",
+        "VehicleBarcode",
+        "VehicleCheckingDetail",
+        "ZipArchive"
+      ]
+    },
+    {
+      "class": "VehicleRepairmentDriverController",
+      "path": "app/Http/Controllers/VehicleRepairmentDriverController.php",
+      "methods": [
+        {
+          "name": "acknowledgementIndex",
+          "doc": ""
+        },
+        {
+          "name": "acknowledgementShow",
+          "doc": ""
+        },
+        {
+          "name": "acknowledge",
+          "doc": ""
+        },
+        {
+          "name": "replacementScheduleIndex",
+          "doc": ""
+        },
+        {
+          "name": "transactionCreate",
+          "doc": ""
+        },
+        {
+          "name": "transactionStore",
+          "doc": ""
+        },
+        {
+          "name": "transactionIndex",
+          "doc": ""
+        }
+      ],
+      "use_models": [
+        "VehicleAndToolsConsumers",
+        "VehicleCheckingDetail",
+        "VehiclePartsReplacement",
+        "VehiclePartsReplacementTransaction",
+        "VprtDetail"
+      ],
+      "references": [
+        "Auth",
+        "Carbon",
+        "DB",
+        "Storage",
+        "VehicleAndToolsConsumers",
+        "VehicleCheckingDetail",
+        "VehiclePartsReplacement",
+        "VehiclePartsReplacementTransaction",
+        "VprtDetail"
+      ]
+    },
+    {
+      "class": "VehicleSparepartRequestRepairController",
+      "path": "app/Http/Controllers/VehicleSparepartRequestRepairController.php",
+      "methods": [
+        {
+          "name": "index",
+          "doc": ""
+        },
+        {
+          "name": "show",
+          "doc": ""
+        },
+        {
+          "name": "approve",
+          "doc": ""
+        },
+        {
+          "name": "reject",
+          "doc": ""
+        },
+        {
+          "name": "schedule",
+          "doc": ""
+        },
+        {
+          "name": "schedulingIndex",
+          "doc": ""
+        },
+        {
+          "name": "transactionMonitoringIndex",
+          "doc": ""
+        },
+        {
+          "name": "markCompleted",
+          "doc": ""
+        }
+      ],
+      "use_models": [
+        "User",
+        "VehicleAndToolsConsumers",
+        "VehiclePartsReplacement",
+        "VehiclePartsReplacementTransaction"
+      ],
+      "references": [
+        "Auth",
+        "Carbon",
+        "User",
+        "VehicleAndToolsConsumers",
+        "VehiclePartsReplacement",
+        "VehiclePartsReplacementTransaction"
+      ]
+    },
+    {
+      "class": "VoucherController",
+      "path": "app/Http/Controllers/VoucherController.php",
+      "methods": [
+        {
+          "name": "thermerJsonResponse",
+          "doc": "/ Generate JSON response untuk Thermer App Method ini akan dipanggil oleh Bluetooth Print App /"
+        }
+      ],
+      "use_models": [
+        "Permohonan"
+      ],
+      "references": [
+        "Permohonan"
+      ]
+    },
+    {
+      "class": "WeeklyCheckingController",
+      "path": "app/Http/Controllers/WeeklyCheckingController.php",
+      "methods": [
+        {
+          "name": "index",
+          "doc": ""
+        },
+        {
+          "name": "create",
+          "doc": ""
+        },
+        {
+          "name": "store",
+          "doc": ""
+        },
+        {
+          "name": "show",
+          "doc": ""
+        }
+      ],
+      "use_models": [
+        "User",
+        "VehicleAndToolsConsumers",
+        "VehicleChecking",
+        "VehicleCheckingDetail",
+        "VehicleCheckingItemResult",
+        "VehicleCheckingSchedule",
+        "VehiclePart"
+      ],
+      "references": [
+        "Auth",
+        "Carbon",
+        "DB",
+        "User",
+        "VehicleAndToolsConsumers",
+        "VehicleChecking",
+        "VehicleCheckingDetail",
+        "VehicleCheckingItemResult",
+        "VehicleCheckingSchedule",
+        "VehiclePart"
+      ]
+    }
+  ],
+  "models": [
+    {
+      "class": "Approved_Request",
+      "path": "app/Models/Approved_Request.php",
+      "table": "approved_requests",
+      "fillable": [
+        "permohonan_id",
+        "approval_date",
+        "voucher_code",
+        "valid_until",
+        "approved_amount",
+        "authorizer_id",
+        "approval_notes",
+        "status"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "DamagePhoto",
+      "path": "app/Models/DamagePhoto.php",
+      "table": "damage_photos",
+      "fillable": [
+        "vehicle_checking_detail_id",
+        "photo",
+        "zone",
+        "description"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "EmployeeAlias",
+      "path": "app/Models/EmployeeAlias.php",
+      "table": null,
+      "fillable": [
+        "employee_default_id",
+        "alias",
+        "source"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "EmployeeDefault",
+      "path": "app/Models/EmployeeDefault.php",
+      "table": null,
+      "fillable": [
+        "user_id",
+        "employee_code",
+        "employee_name",
+        "division",
+        "position",
+        "default_site_id",
+        "is_active"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "GasolineType",
+      "path": "app/Models/GasolineType.php",
+      "table": null,
+      "fillable": [],
+      "guarded": []
+    },
+    {
+      "class": "LearningProfile",
+      "path": "app/Models/LearningProfile.php",
+      "table": null,
+      "fillable": [
+        "employee_default_id",
+        "site_id",
+        "transaction_count",
+        "last_transaction_date"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "LpjPenggantian",
+      "path": "app/Models/LpjPenggantian.php",
+      "table": "lpj_penggantians",
+      "fillable": [
+        "surat_spd_id",
+        "user_id",
+        "nama",
+        "jabatan",
+        "vehicle_id",
+        "nomor_polisi",
+        "uraian",
+        "tanggal_lpj",
+        "due_date",
+        "is_late",
+        "days_late",
+        "total_biaya_tol",
+        "total_biaya_portir",
+        "total_biaya_bbm",
+        "total_biaya_lain",
+        "total_pengeluaran",
+        "uang_dari",
+        "jumlah_diberikan",
+        "pengembalian",
+        "kekurangan",
+        "budget_per_hari",
+        "is_over_budget",
+        "over_budget_reason",
+        "catatan",
+        "status",
+        "approved_by_pengguna",
+        "approved_pengguna_at",
+        "approved_by_divisi_ga",
+        "approved_divisi_ga_at",
+        "rejected_by",
+        "rejected_at",
+        "rejection_reason"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "LpjPenggantianDetail",
+      "path": "app/Models/LpjPenggantianDetail.php",
+      "table": "lpj_penggantian_details",
+      "fillable": [
+        "lpj_penggantian_id",
+        "tanggal",
+        "tipe_penggunaan",
+        "nominal",
+        "keterangan",
+        "urutan"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "LunchDistribution",
+      "path": "app/Models/LunchDistribution.php",
+      "table": null,
+      "fillable": [
+        "distribution_date",
+        "site_id",
+        "employee_count",
+        "guest_count",
+        "total_count",
+        "forecast_batch_id",
+        "is_locked",
+        "locked_at",
+        "locked_by"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "LunchForecast",
+      "path": "app/Models/LunchForecast.php",
+      "table": "lunch_forecasts",
+      "fillable": [
+        "user_id",
+        "employee_default_id",
+        "lunch_date",
+        "predicted_site_id",
+        "actual_site_id",
+        "prediction_source",
+        "confidence",
+        "is_prediction_correct",
+        "forecast_batch_id",
+        "created_by",
+        "updated_by"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "LunchForecastBatch",
+      "path": "app/Models/LunchForecastBatch.php",
+      "table": null,
+      "fillable": [
+        "forecast_date",
+        "generated_by_type",
+        "generated_by_user_id",
+        "algorithm_version",
+        "history_sample_size",
+        "status",
+        "finalized_at"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "LunchGuestReservation",
+      "path": "app/Models/LunchGuestReservation.php",
+      "table": "lunch_guest_reservations",
+      "fillable": [
+        "reservation_date",
+        "guest_name",
+        "institution",
+        "guest_count",
+        "site_id",
+        "notes",
+        "status",
+        "confirmed_at",
+        "created_by"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "LunchTransaction",
+      "path": "app/Models/LunchTransaction.php",
+      "table": null,
+      "fillable": [
+        "transaction_date",
+        "site_id",
+        "employee_default_id",
+        "employee_name",
+        "division",
+        "position",
+        "raw_alias",
+        "raw_position",
+        "raw_division",
+        "confidence_score",
+        "resolution_method",
+        "tomorrow_site_id",
+        "confirmation_token",
+        "source",
+        "scanned_at"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "Permohonan",
+      "path": "app/Models/Permohonan.php",
+      "table": "permohonans",
+      "fillable": [
+        "request_number",
+        "requester_id",
+        "request_date",
+        "gasoline_type",
+        "bill_amounts",
+        "status",
+        "requester_notes",
+        "authorizer_id",
+        "authorization_date",
+        "authorizer_notes",
+        "consumerial_tools_id"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "Site",
+      "path": "app/Models/Site.php",
+      "table": null,
+      "fillable": [
+        "code",
+        "name",
+        "is_active"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "SpdBarcodeSignature",
+      "path": "app/Models/SpdBarcodeSignature.php",
+      "table": "spd_barcode_signatures",
+      "fillable": [
+        "spd_id",
+        "signature_path"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "SuratSpd",
+      "path": "app/Models/SuratSpd.php",
+      "table": "surat_spds",
+      "fillable": [
+        "nomor_surat",
+        "nomor_urut",
+        "pemberi_tugas_nama",
+        "pemberi_tugas_jabatan",
+        "user_id",
+        "pengemudi_nama",
+        "tempat_tujuan",
+        "melayani_bidang",
+        "jumlah_pemakai",
+        "vehicle_id",
+        "tanggal_berangkat",
+        "tanggal_kembali",
+        "lama_perjalanan_hari",
+        "total_budget",
+        "parent_surat_id",
+        "is_extension",
+        "lpj_deadline",
+        "catatan",
+        "tanggal_surat",
+        "status",
+        "approved_by",
+        "approved_at",
+        "rejected_by",
+        "rejected_at",
+        "rejection_reason"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "SuratSpdBudget",
+      "path": "app/Models/SuratSpdBudget.php",
+      "table": "surat_spd_budgets",
+      "fillable": [
+        "surat_spd_id",
+        "tanggal",
+        "nominal",
+        "catatan"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "SuratSpdDetail",
+      "path": "app/Models/SuratSpdDetail.php",
+      "table": "spd_surat_details",
+      "fillable": [
+        "surat_spd_id",
+        "nama_lengkap",
+        "urutan"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "SuratSpdExtension",
+      "path": "app/Models/SuratSpdExtension.php",
+      "table": "surat_spd_extensions",
+      "fillable": [
+        "original_surat_id",
+        "extension_surat_id",
+        "nomor_surat_extension",
+        "tanggal_kembali_original",
+        "tanggal_kembali_baru",
+        "durasi_tambahan_hari",
+        "budget_tambahan",
+        "alasan_perpanjangan",
+        "status",
+        "approved_by",
+        "approved_at",
+        "rejected_by",
+        "rejected_at",
+        "rejection_reason",
+        "is_acknowledged",
+        "acknowledged_by",
+        "acknowledged_at",
+        "acknowledgement_note",
+        "catatan"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "Transaction_Proofs",
+      "path": "app/Models/Transaction_Proofs.php",
+      "table": "transaction_proofs",
+      "fillable": [
+        "transaction_id",
+        "req_id",
+        "requester_id",
+        "voucher_number",
+        "purchase_datetime",
+        "fuel_volume",
+        "km_terakhir",
+        "struk_bbm_path",
+        "odometer_photo_path"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "TripValidation",
+      "path": "app/Models/TripValidation.php",
+      "table": null,
+      "fillable": [
+        "transaction_proof_previous_id",
+        "transaction_proof_latest_id",
+        "previous_odo",
+        "latest_odo",
+        "diff_odo",
+        "is_long_trip",
+        "long_trip_notes",
+        "validated_by",
+        "validated_at",
+        "fuel_type",
+        "fuel_volume",
+        "fuel_cost",
+        "actual_efficiency",
+        "expected_efficiency",
+        "efficiency_deviation_percent",
+        "baseline_override",
+        "baseline_override_reason",
+        "baseline_overridden_by",
+        "baseline_overridden_at",
+        "expected_range_km",
+        "range_usage_percent",
+        "is_premature_refuel",
+        "alert_level",
+        "system_notes",
+        "days_between_refuel"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "User",
+      "path": "app/Models/User.php",
+      "table": null,
+      "fillable": [
+        "user_code",
+        "username",
+        "password",
+        "nama_lengkap",
+        "role",
+        "jabatan",
+        "default_site_id",
+        "email",
+        "added_at"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "UserSlotAdjustment",
+      "path": "app/Models/UserSlotAdjustment.php",
+      "table": "user_slot_adjustments",
+      "fillable": [
+        "user_id",
+        "type",
+        "reason",
+        "related_permohonan_id",
+        "effective_from",
+        "effective_until",
+        "is_active"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "VehicleAndToolsConsumers",
+      "path": "app/Models/VehicleAndToolsConsumers.php",
+      "table": "vehicle_and_tools_consumers",
+      "fillable": [
+        "consumerial_type",
+        "consumerial_code",
+        "consumerial_name",
+        "consumerial_notes",
+        "optimum_jarak_per_liter",
+        "satuan",
+        "is_approved",
+        "is_active",
+        "approved_by",
+        "created_by"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "VehicleBarcode",
+      "path": "app/Models/VehicleBarcode.php",
+      "table": "vehicle_barcodes",
+      "fillable": [
+        "vehicle_and_tools_consumer_id",
+        "barcode_path"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "VehicleChecking",
+      "path": "app/Models/VehicleChecking.php",
+      "table": "vehicle_checkings",
+      "fillable": [
+        "checking_code",
+        "vehicle_id",
+        "nopol",
+        "revision",
+        "period_start",
+        "period_end",
+        "generated_by",
+        "status"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "VehicleCheckingDetail",
+      "path": "app/Models/VehicleCheckingDetail.php",
+      "table": "vehicle_checking_details",
+      "fillable": [
+        "checking_detail_code",
+        "vehicle_checking_id",
+        "type",
+        "sub_type",
+        "dispatcher_id",
+        "current_driver_id",
+        "checked_at",
+        "driver_acknowledged",
+        "driver_acknowledged_at",
+        "notes"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "VehicleCheckingItemResult",
+      "path": "app/Models/VehicleCheckingItemResult.php",
+      "table": "vehicle_checking_item_results",
+      "fillable": [
+        "vehicle_checking_detail_id",
+        "vehicle_part_id",
+        "status",
+        "notes",
+        "needs_replacement"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "VehicleCheckingSchedule",
+      "path": "app/Models/VehicleCheckingSchedule.php",
+      "table": "vehicle_checking_schedules",
+      "fillable": [
+        "schedule_code",
+        "vehicle_id",
+        "check_frequency",
+        "assigned_dispatcher_id",
+        "last_checked_at",
+        "last_checked_by",
+        "next_due_date",
+        "status",
+        "is_active"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "VehicleFuelBaseline",
+      "path": "app/Models/VehicleFuelBaseline.php",
+      "table": "vehicle_fuel_baselines",
+      "fillable": [
+        "vehicle_id",
+        "fuel_type",
+        "optimal_efficiency_km_per_liter",
+        "calculation_method",
+        "sample_size",
+        "last_calibrated_at",
+        "calibrated_by",
+        "notes"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "VehiclePart",
+      "path": "app/Models/VehiclePart.php",
+      "table": "vehicle_parts",
+      "fillable": [
+        "part_code",
+        "name",
+        "category",
+        "checking_group",
+        "check_frequency",
+        "status_type",
+        "standard_description",
+        "sort_order",
+        "is_active"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "VehiclePartsReplacement",
+      "path": "app/Models/VehiclePartsReplacement.php",
+      "table": "vehicle_parts_replacements",
+      "fillable": [
+        "vpr_code",
+        "vehicle_checking_detail_id",
+        "vehicle_id",
+        "nopol",
+        "dispatcher_id",
+        "last_driver_id",
+        "desired_driver_id",
+        "approved_by",
+        "status",
+        "scheduled_date",
+        "service_location",
+        "rejection_reason",
+        "approved_at",
+        "rejected_at",
+        "scheduled_at",
+        "completed_at"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "VehiclePartsReplacementDetail",
+      "path": "app/Models/VehiclePartsReplacementDetail.php",
+      "table": "vehicle_parts_replacement_details",
+      "fillable": [
+        "vprd_code",
+        "vehicle_parts_replacement_id",
+        "vehicle_part_id",
+        "item_name",
+        "condition_status",
+        "dispatcher_notes"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "VehiclePartsReplacementTransaction",
+      "path": "app/Models/VehiclePartsReplacementTransaction.php",
+      "table": "vehicle_parts_replacement_transactions",
+      "fillable": [
+        "vprt_code",
+        "vehicle_parts_replacement_id",
+        "vpr_code",
+        "driver_id",
+        "service_location",
+        "service_date",
+        "total_amount",
+        "proof_photo",
+        "deadline_date",
+        "reported_at",
+        "is_overdue"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "VehicleTripAnalysis",
+      "path": "app/Models/VehicleTripAnalysis.php",
+      "table": "vehicle_trip_analyses",
+      "fillable": [
+        "requester_id",
+        "consumerial_tools_id",
+        "transaction_proof_start_id",
+        "odo_start",
+        "fuel_volume_start",
+        "filling_date_start",
+        "transaction_proof_end_id",
+        "odo_end",
+        "fuel_volume_end",
+        "filling_date_end",
+        "km_difference",
+        "fuel_consumed",
+        "fuel_efficiency",
+        "days_difference",
+        "trip_category",
+        "is_validated",
+        "validated_by",
+        "validated_at",
+        "validation_status",
+        "system_notes",
+        "admin_notes"
+      ],
+      "guarded": []
+    },
+    {
+      "class": "VprtDetail",
+      "path": "app/Models/VprtDetail.php",
+      "table": "vprt_details",
+      "fillable": [
+        "vprt_detail_code",
+        "vprt_id",
+        "part_name",
+        "quantity",
+        "unit_price",
+        "total_price"
+      ],
+      "guarded": []
+    }
+  ],
+  "migrations": [
+    {
+      "name": "0001_01_01_000000_create_users_table.php",
+      "path": "database/migrations/0001_01_01_000000_create_users_table.php",
+      "class": "extends",
+      "tables": [
+        "password_reset_tokens",
+        "sessions",
+        "users"
+      ]
+    },
+    {
+      "name": "0001_01_01_000001_create_cache_table.php",
+      "path": "database/migrations/0001_01_01_000001_create_cache_table.php",
+      "class": "extends",
+      "tables": [
+        "cache",
+        "cache_locks"
+      ]
+    },
+    {
+      "name": "0001_01_01_000002_create_jobs_table.php",
+      "path": "database/migrations/0001_01_01_000002_create_jobs_table.php",
+      "class": "extends",
+      "tables": [
+        "failed_jobs",
+        "job_batches",
+        "jobs"
+      ]
+    },
+    {
+      "name": "2025_11_11_013323_create_vehicle_and_tools_consumers_table.php",
+      "path": "database/migrations/2025_11_11_013323_create_vehicle_and_tools_consumers_table.php",
+      "class": "extends",
+      "tables": [
+        "vehicle_and_tools_consumers"
+      ]
+    },
+    {
+      "name": "2025_11_11_013700_create_permohonans_table.php",
+      "path": "database/migrations/2025_11_11_013700_create_permohonans_table.php",
+      "class": "extends",
+      "tables": [
+        "permohonans"
+      ]
+    },
+    {
+      "name": "2025_11_11_013701_create_approved_requests_table.php",
+      "path": "database/migrations/2025_11_11_013701_create_approved_requests_table.php",
+      "class": "extends",
+      "tables": [
+        "approved__requests",
+        "approved_requests"
+      ]
+    },
+    {
+      "name": "2025_11_11_013702_create_transaction_proofs_table.php",
+      "path": "database/migrations/2025_11_11_013702_create_transaction_proofs_table.php",
+      "class": "extends",
+      "tables": [
+        "transaction__proofs",
+        "transaction_proofs"
+      ]
+    },
+    {
+      "name": "2025_11_17_065240_create_gasoline_types_table.php",
+      "path": "database/migrations/2025_11_17_065240_create_gasoline_types_table.php",
+      "class": "extends",
+      "tables": [
+        "gasoline_types"
+      ]
+    },
+    {
+      "name": "2025_12_06_091836_create_vehicle_trip_analyses_table.php",
+      "path": "database/migrations/2025_12_06_091836_create_vehicle_trip_analyses_table.php",
+      "class": "extends",
+      "tables": [
+        "vehicle_trip_analyses"
+      ]
+    },
+    {
+      "name": "2025_12_11_024359_create_user_slot_adjustments_table.php",
+      "path": "database/migrations/2025_12_11_024359_create_user_slot_adjustments_table.php",
+      "class": "extends",
+      "tables": [
+        "user_slot_adjustments"
+      ]
+    },
+    {
+      "name": "2025_12_29_215206_create_trip_validations_table.php",
+      "path": "database/migrations/2025_12_29_215206_create_trip_validations_table.php",
+      "class": "extends",
+      "tables": [
+        "trip_validations"
+      ]
+    },
+    {
+      "name": "2026_01_07_094705_create_vehicle_fuel_baselines_table.php",
+      "path": "database/migrations/2026_01_07_094705_create_vehicle_fuel_baselines_table.php",
+      "class": "extends",
+      "tables": [
+        "vehicle_fuel_baselines"
+      ]
+    },
+    {
+      "name": "2026_01_13_064900_create_surat_spds_table.php",
+      "path": "database/migrations/2026_01_13_064900_create_surat_spds_table.php",
+      "class": "extends",
+      "tables": [
+        "surat_spds"
+      ]
+    },
+    {
+      "name": "2026_01_13_065345_create_surat_spd_details_table.php",
+      "path": "database/migrations/2026_01_13_065345_create_surat_spd_details_table.php",
+      "class": "extends",
+      "tables": [
+        "spd_surat_details"
+      ]
+    },
+    {
+      "name": "2026_01_14_153647_surat_spd_extensions.php",
+      "path": "database/migrations/2026_01_14_153647_surat_spd_extensions.php",
+      "class": "extends",
+      "tables": [
+        "spd_surat_extensions",
+        "surat_spd_extensions"
+      ]
+    },
+    {
+      "name": "2026_01_14_154054_lpj_penggantians.php",
+      "path": "database/migrations/2026_01_14_154054_lpj_penggantians.php",
+      "class": "extends",
+      "tables": [
+        "lpj_penggantians"
+      ]
+    },
+    {
+      "name": "2026_01_14_154618_lpj_penggantian_details.php",
+      "path": "database/migrations/2026_01_14_154618_lpj_penggantian_details.php",
+      "class": "extends",
+      "tables": [
+        "lpj_penggantian_details"
+      ]
+    },
+    {
+      "name": "2026_01_21_022006_create_surat_spd_budgets_table.php",
+      "path": "database/migrations/2026_01_21_022006_create_surat_spd_budgets_table.php",
+      "class": "extends",
+      "tables": [
+        "surat_spd_budgets",
+        "surat_spds"
+      ]
+    },
+    {
+      "name": "2026_02_12_080724_create_vehicle_parts_table.php",
+      "path": "database/migrations/2026_02_12_080724_create_vehicle_parts_table.php",
+      "class": "extends",
+      "tables": [
+        "vehicle_parts"
+      ]
+    },
+    {
+      "name": "2026_02_12_080758_create_vehicle_checkings_table.php",
+      "path": "database/migrations/2026_02_12_080758_create_vehicle_checkings_table.php",
+      "class": "extends",
+      "tables": [
+        "vehicle_checkings"
+      ]
+    },
+    {
+      "name": "2026_02_12_080815_create_vehicle_checking_details_table.php",
+      "path": "database/migrations/2026_02_12_080815_create_vehicle_checking_details_table.php",
+      "class": "extends",
+      "tables": [
+        "vehicle_checking_details"
+      ]
+    },
+    {
+      "name": "2026_02_12_080836_create_vehicle_checking_item_results_table.php",
+      "path": "database/migrations/2026_02_12_080836_create_vehicle_checking_item_results_table.php",
+      "class": "extends",
+      "tables": [
+        "vehicle_checking_item_results"
+      ]
+    },
+    {
+      "name": "2026_02_12_080853_create_vehicle_checking_schedules_table.php",
+      "path": "database/migrations/2026_02_12_080853_create_vehicle_checking_schedules_table.php",
+      "class": "extends",
+      "tables": [
+        "vehicle_checking_schedules"
+      ]
+    },
+    {
+      "name": "2026_02_12_081008_create_vehicle_parts_replacements_table.php",
+      "path": "database/migrations/2026_02_12_081008_create_vehicle_parts_replacements_table.php",
+      "class": "extends",
+      "tables": [
+        "vehicle_parts_replacements"
+      ]
+    },
+    {
+      "name": "2026_02_12_081021_create_vehicle_parts_replacement_details_table.php",
+      "path": "database/migrations/2026_02_12_081021_create_vehicle_parts_replacement_details_table.php",
+      "class": "extends",
+      "tables": [
+        "vehicle_parts_replacement_details"
+      ]
+    },
+    {
+      "name": "2026_02_12_081040_create_vehicle_parts_replacement_transactions_table.php",
+      "path": "database/migrations/2026_02_12_081040_create_vehicle_parts_replacement_transactions_table.php",
+      "class": "extends",
+      "tables": [
+        "vehicle_parts_replacement_transactions"
+      ]
+    },
+    {
+      "name": "2026_02_12_081100_create_vprt_details_table.php",
+      "path": "database/migrations/2026_02_12_081100_create_vprt_details_table.php",
+      "class": "extends",
+      "tables": [
+        "vprt_details"
+      ]
+    },
+    {
+      "name": "2026_02_19_000001_create_vehicle_specifications_table.php",
+      "path": "database/migrations/2026_02_19_000001_create_vehicle_specifications_table.php",
+      "class": "extends",
+      "tables": [
+        "vehicle_specifications"
+      ]
+    },
+    {
+      "name": "2026_02_19_000002_create_driver_schedules_table.php",
+      "path": "database/migrations/2026_02_19_000002_create_driver_schedules_table.php",
+      "class": "extends",
+      "tables": [
+        "driver_schedules"
+      ]
+    },
+    {
+      "name": "2026_02_19_000003_create_trips_table.php",
+      "path": "database/migrations/2026_02_19_000003_create_trips_table.php",
+      "class": "extends",
+      "tables": [
+        "trips"
+      ]
+    },
+    {
+      "name": "2026_02_19_000004_create_trip_passengers_table.php",
+      "path": "database/migrations/2026_02_19_000004_create_trip_passengers_table.php",
+      "class": "extends",
+      "tables": [
+        "trip_passengers"
+      ]
+    },
+    {
+      "name": "2026_02_19_000005_create_lunch_trackings_table.php",
+      "path": "database/migrations/2026_02_19_000005_create_lunch_trackings_table.php",
+      "class": "extends",
+      "tables": [
+        "lunch_trackings"
+      ]
+    },
+    {
+      "name": "2026_02_20_000001_create_trip_booking_requests_table.php",
+      "path": "database/migrations/2026_02_20_000001_create_trip_booking_requests_table.php",
+      "class": "extends",
+      "tables": [
+        "trip_booking_requests"
+      ]
+    },
+    {
+      "name": "2026_02_20_000002_add_default_location_to_users_table.php",
+      "path": "database/migrations/2026_02_20_000002_add_default_location_to_users_table.php",
+      "class": "extends",
+      "tables": [
+        "users"
+      ]
+    },
+    {
+      "name": "2026_02_27_000001_create_pekerja_patuha_table.php",
+      "path": "database/migrations/2026_02_27_000001_create_pekerja_patuha_table.php",
+      "class": "extends",
+      "tables": [
+        "pekerja_patuha"
+      ]
+    },
+    {
+      "name": "2026_02_27_000002_create_catering_guests_table.php",
+      "path": "database/migrations/2026_02_27_000002_create_catering_guests_table.php",
+      "class": "extends",
+      "tables": [
+        "catering_guests"
+      ]
+    },
+    {
+      "name": "2026_03_04_230556_create_vehicle_barcodes_table.php",
+      "path": "database/migrations/2026_03_04_230556_create_vehicle_barcodes_table.php",
+      "class": "extends",
+      "tables": [
+        "vehicle_barcodes"
+      ]
+    },
+    {
+      "name": "2026_03_12_000001_add_user_code_to_users_table.php",
+      "path": "database/migrations/2026_03_12_000001_add_user_code_to_users_table.php",
+      "class": "extends",
+      "tables": [
+        "users"
+      ]
+    },
+    {
+      "name": "2026_03_12_000002_add_trip_code_to_trips_table.php",
+      "path": "database/migrations/2026_03_12_000002_add_trip_code_to_trips_table.php",
+      "class": "extends",
+      "tables": [
+        "trips"
+      ]
+    },
+    {
+      "name": "2026_03_12_000003_add_schedule_code_to_driver_schedules_table.php",
+      "path": "database/migrations/2026_03_12_000003_add_schedule_code_to_driver_schedules_table.php",
+      "class": "extends",
+      "tables": [
+        "driver_schedules"
+      ]
+    },
+    {
+      "name": "2026_03_12_000004_add_booking_code_to_trip_booking_requests_table.php",
+      "path": "database/migrations/2026_03_12_000004_add_booking_code_to_trip_booking_requests_table.php",
+      "class": "extends",
+      "tables": [
+        "trip_booking_requests"
+      ]
+    },
+    {
+      "name": "2026_03_25_022841_create_spd_barcode_signatures_table.php",
+      "path": "database/migrations/2026_03_25_022841_create_spd_barcode_signatures_table.php",
+      "class": "extends",
+      "tables": [
+        "spd_barcode_signatures"
+      ]
+    },
+    {
+      "name": "2026_03_31_000001_create_damage_photos_table.php",
+      "path": "database/migrations/2026_03_31_000001_create_damage_photos_table.php",
+      "class": "extends",
+      "tables": [
+        "damage_photos"
+      ]
+    },
+    {
+      "name": "2026_07_07_100001_create_sites_table.php",
+      "path": "database/migrations/2026_07_07_100001_create_sites_table.php",
+      "class": "extends",
+      "tables": [
+        "sites"
+      ]
+    },
+    {
+      "name": "2026_07_07_100002_add_default_site_id_to_users_table.php",
+      "path": "database/migrations/2026_07_07_100002_add_default_site_id_to_users_table.php",
+      "class": "extends",
+      "tables": [
+        "users"
+      ]
+    },
+    {
+      "name": "2026_07_07_100003_create_lunch_forecast_batches_table.php",
+      "path": "database/migrations/2026_07_07_100003_create_lunch_forecast_batches_table.php",
+      "class": "extends",
+      "tables": [
+        "lunch_forecast_batches"
+      ]
+    },
+    {
+      "name": "2026_07_07_100004_redesign_lunch_trackings_table.php",
+      "path": "database/migrations/2026_07_07_100004_redesign_lunch_trackings_table.php",
+      "class": "extends",
+      "tables": [
+        "lunch_trackings"
+      ]
+    },
+    {
+      "name": "2026_07_07_100005_rename_catering_guests_to_lunch_guest_reservations.php",
+      "path": "database/migrations/2026_07_07_100005_rename_catering_guests_to_lunch_guest_reservations.php",
+      "class": "extends",
+      "tables": [
+        "lunch_guest_reservations"
+      ]
+    },
+    {
+      "name": "2026_07_07_100006_create_lunch_distributions_table.php",
+      "path": "database/migrations/2026_07_07_100006_create_lunch_distributions_table.php",
+      "class": "extends",
+      "tables": [
+        "lunch_distributions"
+      ]
+    },
+    {
+      "name": "2026_07_13_000001_create_employee_defaults_table.php",
+      "path": "database/migrations/2026_07_13_000001_create_employee_defaults_table.php",
+      "class": "extends",
+      "tables": [
+        "employee_defaults"
+      ]
+    },
+    {
+      "name": "2026_07_13_000002_create_employee_aliases_table.php",
+      "path": "database/migrations/2026_07_13_000002_create_employee_aliases_table.php",
+      "class": "extends",
+      "tables": [
+        "employee_aliases"
+      ]
+    },
+    {
+      "name": "2026_07_13_000003_create_lunch_transactions_table.php",
+      "path": "database/migrations/2026_07_13_000003_create_lunch_transactions_table.php",
+      "class": "extends",
+      "tables": [
+        "lunch_transactions"
+      ]
+    },
+    {
+      "name": "2026_07_13_000004_create_learning_profiles_table.php",
+      "path": "database/migrations/2026_07_13_000004_create_learning_profiles_table.php",
+      "class": "extends",
+      "tables": [
+        "learning_profiles"
+      ]
+    },
+    {
+      "name": "2026_07_13_000005_refactor_lunch_trackings_to_lunch_forecasts.php",
+      "path": "database/migrations/2026_07_13_000005_refactor_lunch_trackings_to_lunch_forecasts.php",
+      "class": "extends",
+      "tables": [
+        "lunch_trackings"
+      ]
+    },
+    {
+      "name": "2026_07_13_000006_add_bcmp_site.php",
+      "path": "database/migrations/2026_07_13_000006_add_bcmp_site.php",
+      "class": "extends",
+      "tables": []
+    },
+    {
+      "name": "2026_07_13_000007_drop_vehicle_tracking_tables.php",
+      "path": "database/migrations/2026_07_13_000007_drop_vehicle_tracking_tables.php",
+      "class": "extends",
+      "tables": [
+        "driver_schedules",
+        "pekerja_patuha",
+        "trip_booking_requests",
+        "trip_passengers",
+        "trips",
+        "vehicle_specifications"
+      ]
+    }
+  ]
+}
