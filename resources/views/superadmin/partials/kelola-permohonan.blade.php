@@ -324,11 +324,12 @@
                         <select class="form-select" name="consumerial_tools_id" id="editVehicleId" required>
                             <option value="">-- Pilih Kendaraan/Alat --</option>
                             @foreach($vehicles as $vehicle)
-                            <option value="{{ $vehicle->id }}">
-                                {{ $vehicle->consumerial_code }} - {{ $vehicle->consumerial_name }} ({{ $vehicle->consumerial_type }})
+                            <option value="{{ $vehicle->id }}" data-budget="{{ $vehicle->detail->nominal_full_tank ?? '' }}">
+                                {{ $vehicle->dropdown_label }} ({{ $vehicle->consumerial_type }})
                             </option>
                             @endforeach
                         </select>
+                        <div class="form-text" id="editVehicleBudgetInfo"></div>
                     </div>
 
                     <div class="row">
@@ -603,6 +604,45 @@
     }
 
     // ✅ Modal Functions
+    // Budget dinamis dari Master Vehicle: tampilkan info + susun opsi nominal
+    function updateVehicleBudgetUI() {
+        const vehicleSelect = document.getElementById('editVehicleId');
+        const infoEl = document.getElementById('editVehicleBudgetInfo');
+        const billSelect = document.getElementById('editBillAmounts');
+        if (!vehicleSelect || !infoEl || !billSelect) return;
+
+        const opt = vehicleSelect.options[vehicleSelect.selectedIndex];
+        const budget = opt && opt.dataset.budget ? parseFloat(opt.dataset.budget) : 0;
+        const prevValue = billSelect.value;
+
+        if (budget > 0) {
+            infoEl.innerHTML = '<i class="bi bi-fuel-pump"></i> Budget full tank: <strong>Rp ' +
+                new Intl.NumberFormat('id-ID').format(budget) + '</strong>';
+        } else {
+            infoEl.textContent = 'Budget full tank kendaraan belum diisi di Master Vehicle.';
+        }
+
+        // Susun ulang opsi nominal maksimal budget full tank (kelipatan 50rb)
+        billSelect.innerHTML = '';
+        const max = budget > 0 ? Math.min(budget, 850000) : 850000;
+        for (let i = 50000; i <= max; i += 50000) {
+            const op = document.createElement('option');
+            op.value = i;
+            op.textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(i);
+            billSelect.appendChild(op);
+        }
+        if (prevValue && parseFloat(prevValue) <= max) {
+            billSelect.value = prevValue;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const vhSel = document.getElementById('editVehicleId');
+        if (vhSel) {
+            vhSel.addEventListener('change', updateVehicleBudgetUI);
+        }
+    });
+
     window.openEditPermohonanModal = function(id, requestNumber, vehicleId, gasolineType, billAmounts, requesterNotes, authorizerNotes) {
         console.log('openEditPermohonanModal called', id);
 
@@ -642,6 +682,9 @@
         if (elements.editBillAmounts) elements.editBillAmounts.value = billAmounts;
         if (elements.editRequesterNotes) elements.editRequesterNotes.value = requesterNotes;
         if (elements.editAuthorizerNotes) elements.editAuthorizerNotes.value = authorizerNotes;
+
+        // Susun ulang opsi nominal sesuai budget full tank kendaraan terpilih
+        updateVehicleBudgetUI();
 
         // Show modal
         const modal = new bootstrap.Modal(modalElement, {

@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 
 use App\Models\SpdBarcodeSignature;
+use App\Services\ImageCompressor;
+use Illuminate\Support\Facades\Storage;
 
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
@@ -239,19 +241,6 @@ class SpdController extends Controller
      */
 public function approveSurat(Request $request, $id)
 {
-    // Validasi budget per tanggal
-    $request->validate([
-        'budgets' => 'required|array|min:1',
-        'budgets.*.tanggal' => 'required|date',
-        'budgets.*.nominal' => 'required|numeric|min:0',
-        'budgets.*.catatan' => 'nullable|string|max:255',
-    ], [
-        'budgets.required' => 'Budget wajib diisi!',
-        'budgets.*.tanggal.required' => 'Tanggal budget wajib diisi!',
-        'budgets.*.nominal.required' => 'Nominal budget wajib diisi!',
-        'budgets.*.nominal.min' => 'Nominal budget tidak boleh negatif!',
-    ]);
-
     $surat = SuratSpd::findOrFail($id);
 
     if ($surat->status !== 'pending') {
@@ -259,29 +248,10 @@ public function approveSurat(Request $request, $id)
             ->with('error', 'Surat ini sudah diproses sebelumnya.');
     }
 
-    // Hitung total budget
-    $totalBudget = collect($request->budgets)->sum('nominal');
-
-    if ($totalBudget <= 0) {
-        return redirect()->back()
-            ->with('error', 'Total budget tidak boleh Rp 0!')
-            ->withInput();
-    }
-
     DB::beginTransaction();
     try {
-        // Simpan budget per tanggal
-        foreach ($request->budgets as $budgetData) {
-            SuratSpdBudget::create([
-                'surat_spd_id' => $surat->id,
-                'tanggal' => $budgetData['tanggal'],
-                'nominal' => $budgetData['nominal'],
-                'catatan' => $budgetData['catatan'] ?? null,
-            ]);
-        }
-
-        // ✅ HANYA set total_budget (kolom ini ADA di table)
-        $surat->total_budget = $totalBudget;
+        // Alur sementara: budgeting per hari di-skip, cukup persetujuan.
+        // total_budget dibiarkan 0 (tidak diisi dari input budget).
 
         // Set approval fields
         $surat->status = 'approved';
@@ -296,8 +266,7 @@ public function approveSurat(Request $request, $id)
         DB::commit();
 
         return redirect()->route('surat.superadmin.index')
-            ->with('success', 'Surat Tugas berhasil disetujui! Total Budget: Rp ' .
-                number_format($totalBudget, 0, ',', '.') . '. Deadline LPJ: ' .
+            ->with('success', 'Surat Tugas berhasil disetujui! Deadline LPJ: ' .
                 $surat->lpj_deadline->format('d M Y'));
 
     } catch (\Exception $e) {
@@ -928,9 +897,17 @@ public function approveSurat(Request $request, $id)
             'catatan' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.tanggal' => 'required|date',
-            'items.*.tipe_penggunaan' => 'required|in:BBM,Tol,Parkir,Lain-lain',
+            // Alur baru: setiap item = 1 gambar struk + kategori (AI/manual).
+            // tipe_penggunaan lama tetap dipakai sebagai fallback.
+            'items.*.struk_kategori' => 'nullable|in:BBM,Tol,Parkir,Lainnya',
+            'items.*.kategori_source' => 'nullable|in:ai,manual',
+            'items.*.tipe_penggunaan' => 'nullable|in:BBM,Tol,Parkir,Lain-lain',
             'items.*.nominal' => 'required|numeric|min:0',
             'items.*.keterangan' => 'nullable|string',
+            'items.*.struk' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
+        ], [
+            'items.required' => 'Minimal harus ada 1 item pengeluaran.',
+            'items.*.struk_kategori.in' => 'Kategori tidak valid.',
         ]);
 
         if ($validator->fails()) {
@@ -943,6 +920,7 @@ public function approveSurat(Request $request, $id)
         $surat = SuratSpd::forUser(Auth::id())
             ->where('status', 'approved')
             ->whereDoesntHave('lpjPenggantian')
+            ->with('vehicle')
             ->findOrFail($request->surat_spd_id);
 
         // Check deadline
@@ -957,30 +935,11 @@ public function approveSurat(Request $request, $id)
         // ✅ Hitung total pengeluaran
         $totalPengeluaran = collect($request->items)->sum('nominal');
 
-        // ✅ Group pengeluaran per tanggal & cek over budget
-        $pengeluaranPerTanggal = collect($request->items)
-            ->groupBy('tanggal')
-            ->map(fn($items) => $items->sum('nominal'));
-
-        $overBudgetDetails = [];
-        foreach ($pengeluaranPerTanggal as $tanggal => $spent) {
-            $budgetHari = $budgets[$tanggal]
-                ?? $budgets[Carbon::parse($tanggal)->format('Y-m-d')]
-                ?? 0;
-
-            if ($spent > $budgetHari) {
-                $overBudgetDetails[] = Carbon::parse($tanggal)->format('d M Y') .
-                    ': ' . number_format($spent, 0, ',', '.') .
-                    ' / ' . number_format($budgetHari, 0, ',', '.') .
-                    ' (over Rp ' . number_format($spent - $budgetHari, 0, ',', '.') . ')';
-            }
-        }
-
         $isOverBudget = $totalPengeluaran > $totalBudgetFromTable;
 
         DB::beginTransaction();
         try {
-            // ✅ Create LPJ - semua field NOT NULL dikasih default value
+            // ✅ Create LPJ
             $lpj = LpjPenggantian::create([
                 'surat_spd_id'     => $surat->id,
                 'user_id'          => Auth::id(),
@@ -994,23 +953,60 @@ public function approveSurat(Request $request, $id)
                 'total_pengeluaran'=> $totalPengeluaran,
                 'budget_per_hari'  => $totalBudgetFromTable > 0
                     ? round($totalBudgetFromTable / max($budgets->count(), 1))
-                    : 0, // rata-rata budget per hari sebagai fallback
+                    : 0,
                 'catatan'          => $request->catatan ?? '',
                 'status'           => 'pending',
                 'is_late'          => $isOverdue,
                 'is_over_budget'   => $isOverBudget,
             ]);
 
-            // Create LPJ details
+            // Create LPJ details (+ struk_items untuk alur baru)
             foreach ($request->items as $index => $item) {
-                LpjPenggantianDetail::create([
+                $kategori = $item['struk_kategori'] ?? null;
+
+                // Normalisasi kategori AI ke 4 kategori valid (Lainnya = Lain-lain di tipe lama)
+                if ($kategori) {
+                    $kategori = \App\Models\StrukItem::normalizeKategori($kategori);
+                    $tipePenggunaan = $kategori === 'Lainnya' ? 'Lain-lain' : $kategori;
+                } else {
+                    $tipePenggunaan = $item['tipe_penggunaan'];
+                }
+
+                $detail = LpjPenggantianDetail::create([
                     'lpj_penggantian_id' => $lpj->id,
                     'tanggal'            => $item['tanggal'],
-                    'tipe_penggunaan'    => $item['tipe_penggunaan'],
+                    'tipe_penggunaan'    => $tipePenggunaan,
                     'nominal'            => $item['nominal'],
                     'keterangan'         => $item['keterangan'] ?? '',
                     'urutan'             => $index + 1,
                 ]);
+
+                // Alur baru: item membawa gambar struk → simpan (kompres 50%, tanpa resize)
+                if (! empty($item['struk']) && $item['struk'] instanceof \Illuminate\Http\UploadedFile) {
+                    $path = $this->storeStrukImage($item['struk'], $surat->nomor_surat);
+
+                    $itemCode = \App\Models\StrukItem::generateItemCode(
+                        $kategori ?: ($tipePenggunaan === 'Lain-lain' ? 'Lainnya' : $tipePenggunaan),
+                        $surat->nomor_surat,
+                        $item['tanggal']
+                    );
+
+                    \App\Models\StrukItem::create([
+                        'spd_id'          => $surat->id,
+                        'nomor_surat_spd' => $surat->nomor_surat,
+                        'lpj_id'          => $lpj->id,
+                        'lpj_detail_id'   => $detail->id,
+                        'item_code'       => $itemCode,
+                        'path_image'      => $path,
+                        'struk_kategori'  => $kategori ?: ($tipePenggunaan === 'Lain-lain' ? 'Lainnya' : $tipePenggunaan),
+                        'kategori_source' => $item['kategori_source'] ?? 'manual',
+                        'metadata_json'   => ! empty($item['metadata_json']) ? $item['metadata_json'] : null,
+                        'nominal'         => $item['nominal'],
+                        'tanggal'         => $item['tanggal'],
+                        'keterangan'      => $item['keterangan'] ?? '',
+                        'urutan'          => $index + 1,
+                    ]);
+                }
             }
 
             DB::commit();
@@ -1023,9 +1019,6 @@ public function approveSurat(Request $request, $id)
             if ($isOverBudget) {
                 $message .= ' ⚠️ Over budget Rp ' .
                     number_format($totalPengeluaran - $totalBudgetFromTable, 0, ',', '.') . '.';
-            }
-            if (!empty($overBudgetDetails)) {
-                $message .= ' Detail over per tanggal: ' . implode('; ', $overBudgetDetails);
             }
 
             return redirect()->route('requester.lpj.index')
@@ -1045,7 +1038,7 @@ public function approveSurat(Request $request, $id)
     {
         $laporan = LpjPenggantian::where('user_id', Auth::id())
             ->where('status', 'rejected')
-            ->with(['suratSpd', 'suratSpd.vehicle', 'details', 'suratSpd.budgets'])
+            ->with(['suratSpd', 'suratSpd.vehicle', 'details.strukItem', 'suratSpd.budgets'])
             ->findOrFail($id);
 
         $surat = $laporan->suratSpd;
@@ -1084,9 +1077,12 @@ public function approveSurat(Request $request, $id)
             'catatan' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.tanggal' => 'required|date',
-            'items.*.tipe_penggunaan' => 'required|in:BBM,Tol,Parkir,Lain-lain',
+            'items.*.struk_kategori' => 'nullable|in:BBM,Tol,Parkir,Lainnya',
+            'items.*.kategori_source' => 'nullable|in:ai,manual',
+            'items.*.tipe_penggunaan' => 'nullable|in:BBM,Tol,Parkir,Lain-lain',
             'items.*.nominal' => 'required|numeric|min:0',
             'items.*.keterangan' => 'nullable|string',
+            'items.*.struk' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
         ]);
 
         if ($validator->fails()) {
@@ -1126,17 +1122,78 @@ public function approveSurat(Request $request, $id)
                 'is_over_budget' => $isOverBudget,
             ]);
 
-            // Delete old details and recreate
+            // Simpan struk_items lama (urutannya) supaya bisa di-reuse bila
+            // user tidak mengupload ulang gambar pada item yang sama.
+            $oldStrukItems = $laporan->strukItems()->orderBy('urutan')->get();
+
+            // Delete old details, recreate (struk_items tetap dipertahankan & di-re-link)
             $laporan->details()->delete();
+
+            $createdDetailIds = [];
+            $replacedIndices = []; // index yang upload struk baru (menggantikan yang lama)
             foreach ($request->items as $index => $item) {
-                LpjPenggantianDetail::create([
+                $kategori = $item['struk_kategori'] ?? null;
+
+                if ($kategori) {
+                    $kategori = \App\Models\StrukItem::normalizeKategori($kategori);
+                    $tipePenggunaan = $kategori === 'Lainnya' ? 'Lain-lain' : $kategori;
+                } else {
+                    $tipePenggunaan = $item['tipe_penggunaan'];
+                }
+
+                $detail = LpjPenggantianDetail::create([
                     'lpj_penggantian_id' => $laporan->id,
                     'tanggal' => $item['tanggal'],
-                    'tipe_penggunaan' => $item['tipe_penggunaan'],
+                    'tipe_penggunaan' => $tipePenggunaan,
                     'nominal' => $item['nominal'],
                     'keterangan' => $item['keterangan'] ?? '',
                     'urutan' => $index + 1,
                 ]);
+
+                $createdDetailIds[$index] = $detail->id;
+
+                if (! empty($item['struk']) && $item['struk'] instanceof \Illuminate\Http\UploadedFile) {
+                    $path = $this->storeStrukImage($item['struk'], $surat->nomor_surat);
+
+                    $itemCode = \App\Models\StrukItem::generateItemCode(
+                        $kategori ?: ($tipePenggunaan === 'Lain-lain' ? 'Lainnya' : $tipePenggunaan),
+                        $surat->nomor_surat,
+                        $item['tanggal']
+                    );
+
+                    \App\Models\StrukItem::create([
+                        'spd_id'          => $surat->id,
+                        'nomor_surat_spd' => $surat->nomor_surat,
+                        'lpj_id'          => $laporan->id,
+                        'lpj_detail_id'   => $detail->id,
+                        'item_code'       => $itemCode,
+                        'path_image'      => $path,
+                        'struk_kategori'  => $kategori ?: ($tipePenggunaan === 'Lain-lain' ? 'Lainnya' : $tipePenggunaan),
+                        'kategori_source' => $item['kategori_source'] ?? 'manual',
+                        'metadata_json'   => ! empty($item['metadata_json']) ? $item['metadata_json'] : null,
+                        'nominal'         => $item['nominal'],
+                        'tanggal'         => $item['tanggal'],
+                        'keterangan'      => $item['keterangan'] ?? '',
+                        'urutan'          => $index + 1,
+                    ]);
+
+                    $replacedIndices[] = $index;
+                }
+            }
+
+            // Re-link struk_items lama ke detail baru (posisi sama), hapus yang tidak dipakai
+            foreach ($oldStrukItems as $index => $old) {
+                if (isset($createdDetailIds[$index]) && ! in_array($index, $replacedIndices, true)) {
+                    $old->update([
+                        'lpj_detail_id'   => $createdDetailIds[$index],
+                        'urutan'          => $index + 1,
+                        'nominal'         => $request->items[$index]['nominal'] ?? $old->nominal,
+                        'tanggal'         => $request->items[$index]['tanggal'] ?? $old->tanggal,
+                        'keterangan'      => $request->items[$index]['keterangan'] ?? $old->keterangan,
+                    ]);
+                } else {
+                    $old->delete();
+                }
             }
 
             DB::commit();
@@ -1183,7 +1240,7 @@ public function approveSurat(Request $request, $id)
     public function showLaporanRequester($id)
     {
         $laporan = LpjPenggantian::where('user_id', Auth::id())
-            ->with(['suratSpd', 'vehicle', 'details', 'approverPengguna', 'approverDivisiGa', 'rejector'])
+            ->with(['suratSpd', 'vehicle', 'details.strukItem', 'approverPengguna', 'approverDivisiGa', 'rejector'])
             ->findOrFail($id);
 
         return view('requester.spd.lpj.show', compact('laporan'));
@@ -1252,7 +1309,7 @@ public function approveSurat(Request $request, $id)
     public function showLaporanSuperadmin($id)
     {
         $laporan = LpjPenggantian::with([
-            'details',
+            'details.strukItem',
             'suratSpd.parentSurat',
             'suratSpd.vehicle',
             'suratSpd.details',
@@ -1583,5 +1640,29 @@ SVG;
     }
 
     return str_replace('</svg>', $logoElements . "\n</svg>", $svg);
+}
+
+/**
+ * Simpan gambar struk ke storage dengan kompresi 50% (tanpa resize).
+ * Hanya path yang disimpan ke DB — tidak ada base64.
+ */
+protected function storeStrukImage($file, string $context): string
+{
+    $tmp = $file->getRealPath();
+    $jpeg = ImageCompressor::compressJpeg($tmp, 50);
+
+    $ext = $file->getClientOriginalExtension() ?: 'jpg';
+    $filename = 'S.' . preg_replace('/[^A-Za-z0-9\-]/', '_', $context)
+        . '-' . now()->format('dmY-His') . '-' . strtoupper(substr(uniqid(), -6)) . '.' . $ext;
+
+    $path = 'transaction_proofs/struk/' . $filename;
+
+    if ($jpeg !== null) {
+        Storage::disk('public')->put($path, $jpeg);
+    } else {
+        $file->storeAs('transaction_proofs/struk', $filename, 'public');
+    }
+
+    return $path;
 }
 }

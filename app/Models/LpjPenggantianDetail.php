@@ -59,6 +59,14 @@ class LpjPenggantianDetail extends Model
     }
 
     /**
+     * Struk bukti yang menjadi dasar detail ini (path gambar, kategori, item_code)
+     */
+    public function strukItem()
+    {
+        return $this->hasOne(StrukItem::class, 'lpj_detail_id');
+    }
+
+    /**
      * Get formatted nominal
      */
     public function getFormattedNominalAttribute()

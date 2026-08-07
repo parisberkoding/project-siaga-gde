@@ -110,7 +110,46 @@
                         @enderror
                     </div>
 
-                    <div class="alert alert-success border-0 bg-success bg-opacity-10">
+                    <hr>
+
+                    {{-- Master Vehicle: data budget BBM (sinkron dengan tabel detail) --}}
+                    <h6 class="fw-semibold mb-3"><i class="bi bi-fuel-pump me-2"></i>Data Kendaraan & Budget BBM</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Site / Lokasi Operasional</label>
+                            <select class="form-select" name="site_id">
+                                <option value="">-- Pilih Site --</option>
+                                @foreach($sites ?? [] as $site)
+                                <option value="{{ $site->id }}" {{ old('site_id') == $site->id ? 'selected' : '' }}>{{ $site->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Kapasitas Penumpang</label>
+                            <input type="number" class="form-control" name="kapasitas_penumpang"
+                                   value="{{ old('kapasitas_penumpang') }}" min="1" max="100" placeholder="Contoh: 7">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Kapasitas Tangki BBM (liter)</label>
+                            <input type="number" step="0.01" class="form-control" name="volume_tangki"
+                                   value="{{ old('volume_tangki') }}" min="0" placeholder="Contoh: 45">
+                            <small class="text-muted">Volume maksimal tangki bahan bakar.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Default Nominal Operasional (Rp)</label>
+                            <input type="number" step="0.01" class="form-control" name="nominal_full_tank"
+                                   value="{{ old('nominal_full_tank') }}" min="0" placeholder="Contoh: 450000">
+                            <small class="text-muted">Patokan budget isi full tank & validasi nominal BBM operasional.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Default Nominal SPD (Rp)</label>
+                            <input type="number" step="0.01" class="form-control" name="nominal_spd_default"
+                                   value="{{ old('nominal_spd_default') }}" min="0" placeholder="Contoh: 200000">
+                            <small class="text-muted">Budget default per hari untuk SPD kendaraan ini.</small>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-success border-0 bg-success bg-opacity-10 mt-3">
                         <i class="bi bi-info-circle me-2 text-success"></i>
                         <small>Kendaraan/Alat yang ditambahkan oleh <strong>Superadmin</strong> akan langsung berstatus <strong>Approved</strong> dan siap digunakan.</small>
                     </div>

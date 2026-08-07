@@ -73,11 +73,14 @@
                                         id="vehicle_id" name="vehicle_id">
                                     <option value="">Pilih Kendaraan/Alat</option>
                                     @foreach($vehicles->where('is_approved', true) as $vehicle)
-                                    <option value="{{ $vehicle->id }}" {{ old('vehicle_id') == $vehicle->id ? 'selected' : '' }}>
-                                        {{ $vehicle->consumerial_code }} - {{ $vehicle->consumerial_name }} ({{ $vehicle->consumerial_type }})
+                                    <option value="{{ $vehicle->id }}"
+                                            data-budget="{{ $vehicle->detail?->nominal_full_tank ?? '' }}"
+                                            {{ old('vehicle_id') == $vehicle->id ? 'selected' : '' }}>
+                                        {{ $vehicle->dropdown_label }} ({{ $vehicle->consumerial_type }})
                                     </option>
                                     @endforeach
                                 </select>
+                                <div class="form-text" id="vehicleBudgetInfo"></div>
                                 @error('vehicle_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -283,6 +286,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const vehicleSelect = document.getElementById('vehicle_id');
     const newVehicleInputs = ['new_vehicle_type', 'new_vehicle_code', 'new_vehicle_name'];
 
+    function updateVehicleBudgetInfo() {
+        const infoEl = document.getElementById('vehicleBudgetInfo');
+        if (!infoEl) return;
+        const opt = vehicleSelect.options[vehicleSelect.selectedIndex];
+        const budget = opt && opt.dataset.budget ? parseFloat(opt.dataset.budget) : 0;
+        if (budget > 0) {
+            infoEl.innerHTML = '<i class="bi bi-fuel-pump"></i> Budget full tank: <strong>Rp ' +
+                new Intl.NumberFormat('id-ID').format(budget) + '</strong>';
+        } else {
+            infoEl.textContent = 'Budget full tank belum diisi di Master Vehicle.';
+        }
+    }
+
     function toggleSections() {
         if (existingRadio.checked) {
             existingSection.style.display = 'block';
@@ -303,6 +319,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     existingRadio.addEventListener('change', toggleSections);
     newRadio.addEventListener('change', toggleSections);
+    vehicleSelect.addEventListener('change', updateVehicleBudgetInfo);
+    updateVehicleBudgetInfo();
 });
 </script>
 @endsection

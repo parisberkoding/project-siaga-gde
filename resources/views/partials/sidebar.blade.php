@@ -1,774 +1,237 @@
 <!-- ======= Sidebar ======= -->
 <aside id="sidebar" class="sidebar">
 
+  @php
+    $user       = Auth::user();
+    $pcodes     = $user->getPermissionCodes();
+
+    // Role efektif: gabungkan legacy role column + RBAC roles, dinormalisasi ke kode RBAC
+    // (selaras dengan CheckRole::LEGACY_TO_RBAC)
+    $normalizeRole = function ($code) {
+        return match ($code) {
+            'admin', 'admin_bbm', 'general_affairs' => 'general_affairs',
+            'driver', 'requester'                   => 'requester',
+            'non_ga_staff', 'view_only'             => 'view_only',
+            default                                 => $code,
+        };
+    };
+    $roleCodes = collect(array_merge([$user->role], $user->roles()->pluck('code')->all()))
+        ->map($normalizeRole)->unique()->values()->all();
+
+    // Item tampil jika: role ada di whitelist (jika diisi) DAN user punya salah satu permission (jika diisi)
+    $showItem = function ($item) use ($roleCodes, $pcodes) {
+        if (!empty($item['roles']) && empty(array_intersect($item['roles'], $roleCodes))) {
+            return false;
+        }
+        if (!empty($item['perms']) && empty(array_intersect($item['perms'], $pcodes))) {
+            return false;
+        }
+        return true;
+    };
+
+    $routeIsAny = function ($patterns) {
+        foreach ($patterns as $pat) {
+            if (request()->routeIs($pat)) return true;
+        }
+        return false;
+    };
+
+    $dashboardItem = match (true) {
+        in_array('dispatcher', $roleCodes, true)      => ['label' => 'Dashboard', 'icon' => 'bi bi-speedometer2', 'route' => 'dispatcher.dispatcher-dashboard', 'active' => ['dispatcher.dispatcher-dashboard']],
+        in_array('superadmin', $roleCodes, true)      => ['label' => 'Dashboard', 'icon' => 'bi bi-speedometer2', 'route' => 'superadmin.dashboard.bisnis', 'active' => ['admin-dashboard', 'superadmin.dashboard.bisnis']],
+        in_array('manager', $roleCodes, true)         => ['label' => 'Dashboard Bisnis', 'icon' => 'bi bi-graph-up', 'route' => 'superadmin.dashboard.bisnis', 'active' => ['superadmin.dashboard.bisnis']],
+        in_array('general_affairs', $roleCodes, true) => ['label' => 'Dashboard', 'icon' => 'bi bi-speedometer2', 'route' => 'admin-dashboard', 'active' => ['admin-dashboard']],
+        default                                       => null,
+    };
+
+    $menuDef = [
+        // ── Beranda (permission group: dashboard) ──
+        ['heading' => 'Beranda', 'children' => $dashboardItem ? [
+            ['label' => $dashboardItem['label'], 'icon' => $dashboardItem['icon'], 'route' => $dashboardItem['route'], 'active' => $dashboardItem['active']],
+        ] : []],
+
+        // ── BBM / Permohonan (permission group: bbm) ──
+        ['heading' => 'BBM / Permohonan', 'children' => [
+            ['label' => 'Permohonan Baru', 'icon' => 'bi bi-fuel-pump', 'route' => 'requester-index', 'active' => ['requester-index'], 'roles' => ['requester'], 'perms' => ['bbm.request']],
+            ['label' => 'Riwayat Permohonan', 'icon' => 'bi bi-clock-history', 'route' => 'requester-history', 'active' => ['requester-history'], 'roles' => ['requester'], 'perms' => ['bbm.report']],
+            ['label' => 'Approval BBM', 'icon' => 'bi bi-check2-square', 'route' => 'admin-approval', 'active' => ['admin-approval'], 'roles' => ['general_affairs'], 'perms' => ['bbm.approve']],
+            ['label' => 'Manajemen Permohonan', 'icon' => 'bi bi-file-earmark-text', 'route' => 'superadmin.permohonan', 'active' => ['superadmin.permohonan*'], 'roles' => ['superadmin'], 'perms' => ['bbm.approve']],
+        ]],
+
+        // ── SPD - variant requester (permission group: spd/lpj) ──
+        ['heading' => 'Surat Perjalanan Dinas', 'collapsible' => true, 'id' => 'spd-requester-nav', 'label' => 'SPD Management', 'icon' => 'bi bi-envelope-paper', 'roles' => ['requester'], 'active' => ['requester.surat.*', 'requester.lpj.*'], 'children' => [
+            ['label' => 'Daftar Surat Tugas', 'icon' => 'bi bi-circle', 'route' => 'requester.surat.index', 'active' => ['requester.surat.index', 'requester.surat.show'], 'roles' => ['requester']],
+            ['label' => 'Buat Surat Tugas', 'icon' => 'bi bi-circle', 'route' => 'requester.surat.create', 'active' => ['requester.surat.create'], 'roles' => ['requester']],
+            ['label' => 'Laporan Penggantian (LPJ)', 'icon' => 'bi bi-circle', 'route' => 'requester.lpj.create', 'active' => ['requester.lpj.*'], 'roles' => ['requester'], 'perms' => ['lpj.create']],
+        ]],
+
+        // ── SPD - variant admin/superadmin (permission group: spd/lpj) ──
+        ['heading' => 'Surat Perjalanan Dinas', 'collapsible' => true, 'id' => 'spd-staff-nav', 'label' => 'SPD Management', 'icon' => 'bi bi-envelope-paper', 'roles' => ['general_affairs', 'superadmin'], 'active' => ['surat.superadmin.*', 'perpanjangan.superadmin.*', 'lpj.superadmin.*'], 'children' => [
+            ['label' => 'Daftar Surat SPD', 'icon' => 'bi bi-circle', 'route' => 'surat.superadmin.index', 'active' => ['surat.superadmin.index'], 'perms' => ['spd.view']],
+            ['label' => 'Buat Surat (Shortcut)', 'icon' => 'bi bi-circle', 'route' => 'surat.superadmin.create-shortcut', 'active' => ['surat.superadmin.create-shortcut', 'surat.superadmin.store-shortcut'], 'perms' => ['spd.create']],
+            ['label' => 'Perpanjangan (ETD)', 'icon' => 'bi bi-circle', 'route' => 'perpanjangan.superadmin.index', 'active' => ['perpanjangan.superadmin.*'], 'perms' => ['spd.update']],
+            ['label' => 'Validasi Laporan', 'icon' => 'bi bi-circle', 'route' => 'lpj.superadmin.index', 'active' => ['lpj.superadmin.*'], 'perms' => ['lpj.validate']],
+            ['label' => 'Laporan SPD', 'icon' => 'bi bi-circle', 'route' => 'surat.superadmin.report', 'active' => ['surat.superadmin.report'], 'perms' => ['spd.view']],
+        ]],
+
+        // ── Pelaporan (permission group: pelaporan) ──
+        ['heading' => 'Pelaporan', 'children' => [
+            ['label' => 'Pelaporan BBM & SPD', 'icon' => 'bi bi-journal-text', 'route' => 'pelaporan.index', 'active' => ['pelaporan.*'], 'perms' => ['pelaporan.view']],
+        ]],
+
+        // ── Master Data - Kendaraan & Alat (permission group: vehicle) ──
+        ['heading' => 'Master Data', 'collapsible' => true, 'id' => 'vehicles-nav', 'label' => 'Kendaraan & Alat', 'icon' => 'bi bi-truck', 'roles' => ['general_affairs', 'superadmin'], 'active' => ['vehicles', 'vehicles.create', 'superadmin.vehicle-activation*', 'superadmin.approval*'], 'children' => [
+            ['label' => 'Daftar Kendaraan', 'icon' => 'bi bi-circle', 'route' => 'vehicles', 'params' => ['tab' => 'list'], 'active' => ['vehicles'], 'perms' => ['vehicle.view']],
+            ['label' => 'Tambah Kendaraan', 'icon' => 'bi bi-circle', 'route' => 'vehicles.create', 'active' => ['vehicles.create'], 'perms' => ['vehicle.create']],
+            ['label' => 'Aktivasi Kendaraan', 'icon' => 'bi bi-circle', 'route' => 'superadmin.vehicle-activation', 'active' => ['superadmin.vehicle-activation*'], 'roles' => ['superadmin'], 'perms' => ['vehicle.checking']],
+            ['label' => 'Kendaraan Baru via Request', 'icon' => 'bi bi-circle', 'route' => 'superadmin.approval', 'active' => ['superadmin.approval*'], 'roles' => ['superadmin'], 'perms' => ['vehicle.approve']],
+        ]],
+
+        // ── Manajemen User (permission group: users) ──
+        ['heading' => 'Manajemen User', 'collapsible' => true, 'id' => 'users-nav', 'label' => 'Pengguna', 'icon' => 'bi bi-people', 'roles' => ['superadmin'], 'active' => ['users', 'users.create'], 'children' => [
+            ['label' => 'Daftar User', 'icon' => 'bi bi-circle', 'route' => 'users', 'params' => ['tab' => 'list'], 'active' => ['users'], 'perms' => ['users.view']],
+            ['label' => 'Tambah User', 'icon' => 'bi bi-circle', 'route' => 'users.create', 'active' => ['users.create'], 'perms' => ['users.create']],
+        ]],
+
+        // ── RBAC & Hak Akses (permission group: rbac) ──
+        ['heading' => 'RBAC & Hak Akses', 'children' => [
+            ['label' => 'Role & Permission', 'icon' => 'bi bi-shield-lock', 'route' => 'superadmin.rbac.index', 'active' => ['superadmin.rbac.*'], 'roles' => ['superadmin'], 'perms' => ['rbac.view']],
+        ]],
+
+        // ── Suplemen: Pengecekan Kendaraan (requester) ──
+        ['heading' => 'Pengecekan Kendaraan', 'collapsible' => true, 'id' => 'requester-checking-nav', 'label' => 'Pengecekan & Service', 'icon' => 'bi bi-clipboard-check', 'roles' => ['requester'], 'active' => ['requester.checking-acknowledgement.*', 'requester.replacement-schedule.*', 'requester.service-transaction.*'], 'children' => [
+            ['label' => 'Hasil Pengecekan', 'icon' => 'bi bi-circle', 'route' => 'requester.checking-acknowledgement.index', 'active' => ['requester.checking-acknowledgement.*'], 'roles' => ['requester'], 'badge' => fn () => \App\Models\VehicleCheckingDetail::forDriver($user->id)->unacknowledged()->count(), 'badgeClass' => 'bg-danger'],
+            ['label' => 'Jadwal Service', 'icon' => 'bi bi-circle', 'route' => 'requester.replacement-schedule.index', 'active' => ['requester.replacement-schedule.*'], 'roles' => ['requester'], 'badge' => fn () => \App\Models\VehiclePartsReplacement::where(function ($q) use ($user) {
+                $q->where('desired_driver_id', $user->id)->orWhere('last_driver_id', $user->id);
+            })->whereIn('status', ['approved', 'scheduled', 'in_service'])->doesntHave('transaction')->count(), 'badgeClass' => 'bg-warning text-dark'],
+            ['label' => 'Riwayat Transaksi Service', 'icon' => 'bi bi-circle', 'route' => 'requester.service-transaction.index', 'active' => ['requester.service-transaction.*'], 'roles' => ['requester']],
+        ]],
+
+        // ── Suplemen: Barcode & Scanner (dispatcher) ──
+        ['heading' => 'Barcode & Scanner', 'roles' => ['dispatcher'], 'children' => [
+            ['label' => 'Scan Riwayat Kendaraan', 'icon' => 'bi bi-clock-history', 'route' => 'dispatcher.scan-vehicle', 'active' => ['dispatcher.scan-vehicle*'], 'roles' => ['dispatcher']],
+            ['label' => 'Scan untuk Periksa', 'icon' => 'bi bi-tools', 'route' => 'dispatcher.dispatcher-scanner', 'active' => ['dispatcher.dispatcher-scanner*'], 'roles' => ['dispatcher']],
+        ]],
+
+        // ── Suplemen: Pemeriksaan Kendaraan (dispatcher) ──
+        ['heading' => 'Pemeriksaan Kendaraan', 'roles' => ['dispatcher'], 'children' => [
+            ['label' => 'Periksa Harian', 'icon' => 'bi bi-calendar-day', 'route' => 'dispatcher.daily-check.index', 'active' => ['dispatcher.daily-check.*'], 'roles' => ['dispatcher']],
+            ['label' => 'Periksa Mingguan', 'icon' => 'bi bi-calendar-week', 'route' => 'dispatcher.weekly-check.index', 'active' => ['dispatcher.weekly-check.*'], 'roles' => ['dispatcher']],
+            ['label' => 'Periksa Bulanan', 'icon' => 'bi bi-calendar-month', 'route' => 'dispatcher.monthly-check.index', 'active' => ['dispatcher.monthly-check.*'], 'roles' => ['dispatcher']],
+            ['label' => 'Periksa Body', 'icon' => 'bi bi-car-front', 'route' => 'dispatcher.body-check.index', 'active' => ['dispatcher.body-check.*'], 'roles' => ['dispatcher']],
+        ]],
+
+        // ── Suplemen: Penggantian & Perbaikan (dispatcher) ──
+        ['heading' => 'Penggantian & Perbaikan', 'roles' => ['dispatcher'], 'children' => [
+            ['label' => 'Permohonan Penggantian', 'icon' => 'bi bi-tools', 'route' => 'dispatcher.replacement.index', 'active' => ['dispatcher.replacement.*'], 'roles' => ['dispatcher'], 'badge' => fn () => \App\Models\VehiclePartsReplacement::forDispatcher($user->id)->pending()->count(), 'badgeClass' => 'bg-warning text-dark'],
+        ]],
+
+        // ── Suplemen: Laporan (dispatcher) ──
+        ['heading' => 'Laporan', 'roles' => ['dispatcher'], 'children' => [
+            ['label' => 'Riwayat & Laporan', 'icon' => 'bi bi-clock-history', 'route' => 'dispatcher.history', 'active' => ['dispatcher.history'], 'roles' => ['dispatcher']],
+        ]],
+
+        // ── Suplemen: Pengecekan & Sparepart (admin/superadmin) ──
+        ['heading' => 'Pengecekan & Sparepart', 'roles' => ['general_affairs', 'superadmin'], 'children' => [
+            ['label' => 'Scan Riwayat Kendaraan', 'icon' => 'bi bi-clock-history', 'route' => 'dispatcher.scan-vehicle', 'active' => ['dispatcher.scan-vehicle*'], 'roles' => ['general_affairs', 'superadmin']],
+            ['label' => 'Scan untuk Periksa', 'icon' => 'bi bi-tools', 'route' => 'dispatcher.dispatcher-scanner', 'active' => ['dispatcher.dispatcher-scanner*'], 'roles' => ['general_affairs', 'superadmin']],
+            ['label' => 'Permohonan Sparepart', 'icon' => 'bi bi-wrench-adjustable', 'route' => 'admin.sparepart-request.index', 'active' => ['admin.sparepart-request.*'], 'roles' => ['general_affairs', 'superadmin'], 'badge' => fn () => \App\Models\VehiclePartsReplacement::pending()->count(), 'badgeClass' => 'bg-danger'],
+            ['label' => 'Jadwal Service', 'icon' => 'bi bi-calendar-week', 'route' => 'admin.service-scheduling.index', 'active' => ['admin.service-scheduling.*'], 'roles' => ['general_affairs', 'superadmin']],
+            ['label' => 'Monitoring Transaksi', 'icon' => 'bi bi-eye', 'route' => 'admin.transaction-monitoring.index', 'active' => ['admin.transaction-monitoring.*'], 'roles' => ['general_affairs', 'superadmin']],
+            ['label' => 'Vehicle Health', 'icon' => 'bi bi-heart-pulse', 'route' => 'superadmin.vehicle-health.index', 'active' => ['superadmin.vehicle-health.*'], 'roles' => ['superadmin']],
+        ]],
+
+        // ── Suplemen: Lunch Management (admin/superadmin) ──
+        ['heading' => 'Lunch Management', 'collapsible' => true, 'id' => 'lunch-nav', 'label' => 'Lunch Management', 'icon' => 'bi bi-egg-fried', 'roles' => ['general_affairs', 'superadmin'], 'active' => ['lunch.*'], 'children' => [
+            ['label' => 'Dashboard Lunch', 'icon' => 'bi bi-circle', 'route' => 'lunch.dashboard', 'active' => ['lunch.dashboard'], 'roles' => ['general_affairs', 'superadmin']],
+            ['label' => 'Employee Default', 'icon' => 'bi bi-circle', 'route' => 'lunch.employee-defaults.index', 'active' => ['lunch.employee-defaults.*'], 'roles' => ['general_affairs', 'superadmin']],
+            ['label' => 'Guest Reservation', 'icon' => 'bi bi-circle', 'route' => 'lunch.guests.calendar', 'active' => ['lunch.guests.*'], 'roles' => ['general_affairs', 'superadmin']],
+            ['label' => 'Lunch Forecast', 'icon' => 'bi bi-circle', 'route' => 'lunch.forecasts.index', 'active' => ['lunch.forecasts.*'], 'roles' => ['general_affairs', 'superadmin']],
+            ['label' => 'Lunch Distribution', 'icon' => 'bi bi-circle', 'route' => 'lunch.distributions.index', 'active' => ['lunch.distributions.*'], 'roles' => ['general_affairs', 'superadmin']],
+            ['label' => 'Lunch Transactions', 'icon' => 'bi bi-circle', 'route' => 'lunch.transactions.index', 'active' => ['lunch.transactions.*'], 'roles' => ['general_affairs', 'superadmin']],
+            ['label' => 'Analytics', 'icon' => 'bi bi-circle', 'route' => 'lunch.analytics.index', 'active' => ['lunch.analytics.*'], 'roles' => ['general_affairs', 'superadmin']],
+            ['label' => 'QR Lokasi', 'icon' => 'bi bi-circle', 'route' => 'lunch.qr-codes', 'active' => ['lunch.qr-codes'], 'roles' => ['general_affairs', 'superadmin']],
+            ['label' => 'Export Vendor', 'icon' => 'bi bi-circle', 'route' => 'lunch.export-form', 'active' => ['lunch.export-form'], 'roles' => ['general_affairs', 'superadmin']],
+            ['label' => 'Booking Mandiri', 'icon' => 'bi bi-circle', 'route' => 'lunch.self-booking.index', 'active' => ['lunch.self-booking.*'], 'roles' => ['general_affairs', 'superadmin']],
+        ]],
+
+        // ── Suplemen: Laporan (admin) ──
+        ['heading' => 'Laporan', 'roles' => ['general_affairs'], 'children' => [
+            ['label' => 'Cetak Laporan BBM', 'icon' => 'bi bi-printer', 'route' => 'superadmin.print-report', 'active' => ['superadmin.print-report*'], 'roles' => ['general_affairs']],
+        ]],
+
+        // ── Suplemen: Laporan & Analisis (superadmin) ──
+        ['heading' => 'Laporan & Analisis', 'roles' => ['superadmin'], 'children' => [
+            ['label' => 'Analisis Trip & Efisiensi BBM', 'icon' => 'bi bi-graph-up-arrow', 'route' => 'superadmin.trip-analysis.index', 'active' => ['trip-analysis*'], 'roles' => ['superadmin']],
+            ['label' => 'Lap. Keuangan Service', 'icon' => 'bi bi-currency-dollar', 'route' => 'superadmin.financial-report.index', 'active' => ['superadmin.financial-report.*'], 'roles' => ['superadmin']],
+            ['label' => 'Lap. Transaksi Sparepart', 'icon' => 'bi bi-journal-text', 'route' => 'superadmin.transaction-report.index', 'active' => ['superadmin.transaction-report.*'], 'roles' => ['superadmin']],
+            ['label' => 'Cetak Laporan BBM', 'icon' => 'bi bi-printer', 'route' => 'superadmin.print-report', 'active' => ['superadmin.print-report*'], 'roles' => ['superadmin']],
+        ]],
+    ];
+
+    // Filter: hapus section yang tidak punya child yang valid
+    $sections = [];
+    foreach ($menuDef as $section) {
+        $children = array_values(array_filter($section['children'], $showItem));
+        if (empty($children)) continue;
+        if (!empty($section['roles']) && empty(array_intersect($section['roles'], $roleCodes))) continue;
+        $sections[] = ['heading' => $section['heading'], 'collapsible' => !empty($section['collapsible']), 'id' => $section['id'] ?? null, 'label' => $section['label'] ?? null, 'icon' => $section['icon'] ?? null, 'active' => $section['active'] ?? [], 'children' => $children];
+    }
+  @endphp
+
   <ul class="sidebar-nav" id="sidebar-nav">
 
-    {{-- ╔══════════════════════════════════════════════════════════╗ --}}
-    {{-- ║  REQUESTER / DRIVER                                      ║ --}}
-    {{-- ╚══════════════════════════════════════════════════════════╝ --}}
-    @if (Auth::user()->role === 'requester')
-
-      <li class="nav-heading">Permohonan BBM</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('requester-index') ? '' : 'collapsed' }}"
-           href="{{ route('requester-index') }}">
-          <i class="bi bi-fuel-pump"></i>
-          <span>Permohonan Baru</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('requester-history') ? '' : 'collapsed' }}"
-           href="{{ route('requester-history') }}">
-          <i class="bi bi-clock-history"></i>
-          <span>Riwayat Permohonan</span>
-        </a>
-      </li>
-
-      <li class="nav-heading">Surat Perjalanan Dinas</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('requester.surat.*') || request()->routeIs('requester.lpj.*') ? '' : 'collapsed' }}"
-           data-bs-target="#requester-spd-nav"
-           data-bs-toggle="collapse"
-           href="#">
-          <i class="bi bi-envelope-paper"></i>
-          <span>SPD Management</span>
-          <i class="bi bi-chevron-down ms-auto"></i>
-        </a>
-        <ul id="requester-spd-nav"
-            class="nav-content collapse {{ request()->routeIs('requester.surat.*') || request()->routeIs('requester.lpj.*') ? 'show' : '' }}"
-            data-bs-parent="#sidebar-nav">
-          <li>
-            <a href="{{ route('requester.surat.index') }}"
-               class="{{ request()->routeIs('requester.surat.index') || request()->routeIs('requester.surat.show') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Daftar Surat Tugas</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('requester.surat.create') }}"
-               class="{{ request()->routeIs('requester.surat.create') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Buat Surat Tugas</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('requester.lpj.create') }}"
-               class="{{ request()->routeIs('requester.lpj.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Laporan Penggantian (LPJ)</span>
-            </a>
-          </li>
-        </ul>
-      </li>
-
-      <li class="nav-heading">Pengecekan Kendaraan</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('requester.checking-acknowledgement.*') || request()->routeIs('requester.replacement-schedule.*') || request()->routeIs('requester.service-transaction.*') ? '' : 'collapsed' }}"
-           data-bs-target="#requester-checking-nav"
-           data-bs-toggle="collapse"
-           href="#">
-          <i class="bi bi-clipboard-check"></i>
-          <span>Pengecekan & Service</span>
-          <i class="bi bi-chevron-down ms-auto"></i>
-        </a>
-        <ul id="requester-checking-nav"
-            class="nav-content collapse {{ request()->routeIs('requester.checking-acknowledgement.*') || request()->routeIs('requester.replacement-schedule.*') || request()->routeIs('requester.service-transaction.*') ? 'show' : '' }}"
-            data-bs-parent="#sidebar-nav">
-          <li>
-            <a href="{{ route('requester.checking-acknowledgement.index') }}"
-               class="{{ request()->routeIs('requester.checking-acknowledgement.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Hasil Pengecekan</span>
-              @php
-                $pendingAck = \App\Models\VehicleCheckingDetail::forDriver(Auth::user()->id)->unacknowledged()->count();
-              @endphp
-              @if($pendingAck > 0)
-                <span class="badge bg-danger rounded-pill ms-auto">{{ $pendingAck }}</span>
+    @foreach ($sections as $section)
+      @if (!empty($section['collapsible']))
+        @php $parentActive = $routeIsAny($section['active']); @endphp
+        <li class="nav-heading">{{ $section['heading'] }}</li>
+        <li class="nav-item">
+          <a class="nav-link {{ $parentActive ? '' : 'collapsed' }}"
+             data-bs-target="#{{ $section['id'] }}"
+             data-bs-toggle="collapse"
+             href="#">
+            <i class="{{ $section['icon'] }}"></i>
+            <span>{{ $section['label'] }}</span>
+            <i class="bi bi-chevron-down ms-auto"></i>
+          </a>
+          <ul id="{{ $section['id'] }}"
+              class="nav-content collapse {{ $parentActive ? 'show' : '' }}"
+              data-bs-parent="#sidebar-nav">
+            @foreach ($section['children'] as $item)
+              <li>
+                <a href="{{ !empty($item['params']) ? route($item['route'], $item['params']) : route($item['route']) }}"
+                   class="{{ $routeIsAny($item['active']) ? 'active' : '' }}">
+                  <i class="{{ $item['icon'] }}"></i><span>{{ $item['label'] }}</span>
+                  @if (!empty($item['badge']))
+                    @php $badgeValue = $item['badge'](); @endphp
+                    @if ($badgeValue > 0)
+                      <span class="badge {{ $item['badgeClass'] ?? 'bg-danger' }} rounded-pill ms-auto">{{ $badgeValue }}</span>
+                    @endif
+                  @endif
+                </a>
+              </li>
+            @endforeach
+          </ul>
+        </li>
+      @else
+        <li class="nav-heading">{{ $section['heading'] }}</li>
+        @foreach ($section['children'] as $item)
+          <li class="nav-item">
+            <a class="nav-link {{ $routeIsAny($item['active']) ? '' : 'collapsed' }}"
+               href="{{ !empty($item['params']) ? route($item['route'], $item['params']) : route($item['route']) }}">
+              <i class="{{ $item['icon'] }}"></i>
+              <span>{{ $item['label'] }}</span>
+              @if (!empty($item['badge']))
+                @php $badgeValue = $item['badge'](); @endphp
+                @if ($badgeValue > 0)
+                  <span class="badge {{ $item['badgeClass'] ?? 'bg-danger' }} rounded-pill ms-auto">{{ $badgeValue }}</span>
+                @endif
               @endif
             </a>
           </li>
-          <li>
-            <a href="{{ route('requester.replacement-schedule.index') }}"
-               class="{{ request()->routeIs('requester.replacement-schedule.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Jadwal Service</span>
-              @php
-                $activeVpr = \App\Models\VehiclePartsReplacement::where(function($q) {
-                    $q->where('desired_driver_id', Auth::id())->orWhere('last_driver_id', Auth::id());
-                })->whereIn('status', ['approved','scheduled','in_service'])->doesntHave('transaction')->count();
-              @endphp
-              @if($activeVpr > 0)
-                <span class="badge bg-warning text-dark rounded-pill ms-auto">{{ $activeVpr }}</span>
-              @endif
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('requester.service-transaction.index') }}"
-               class="{{ request()->routeIs('requester.service-transaction.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Riwayat Transaksi Service</span>
-            </a>
-          </li>
-        </ul>
-      </li>
-
-    {{-- ╔══════════════════════════════════════════════════════════╗ --}}
-    {{-- ║  DISPATCHER                                              ║ --}}
-    {{-- ╚══════════════════════════════════════════════════════════╝ --}}
-    @elseif (Auth::user()->role === 'dispatcher')
-
-      <li class="nav-heading">Beranda</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('dispatcher.dispatcher-dashboard') ? '' : 'collapsed' }}"
-           href="{{ route('dispatcher.dispatcher-dashboard') }}">
-          <i class="bi bi-speedometer2"></i>
-          <span>Dashboard</span>
-        </a>
-      </li>
-
-      <li class="nav-heading">Barcode & Scanner</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('dispatcher.scan-vehicle*') ? '' : 'collapsed' }}"
-           href="{{ route('dispatcher.scan-vehicle') }}">
-          <i class="bi bi-clock-history"></i>
-          <span>Scan Riwayat Kendaraan</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('dispatcher.dispatcher-scanner*') ? '' : 'collapsed' }}"
-           href="{{ route('dispatcher.dispatcher-scanner') }}">
-          <i class="bi bi-tools"></i>
-          <span>Scan untuk Periksa</span>
-        </a>
-      </li>
-
-      <li class="nav-heading">Pemeriksaan Kendaraan</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('dispatcher.daily-check.*') ? '' : 'collapsed' }}"
-           href="{{ route('dispatcher.daily-check.index') }}">
-          <i class="bi bi-calendar-day"></i>
-          <span>Periksa Harian</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('dispatcher.weekly-check.*') ? '' : 'collapsed' }}"
-           href="{{ route('dispatcher.weekly-check.index') }}">
-          <i class="bi bi-calendar-week"></i>
-          <span>Periksa Mingguan</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('dispatcher.monthly-check.*') ? '' : 'collapsed' }}"
-           href="{{ route('dispatcher.monthly-check.index') }}">
-          <i class="bi bi-calendar-month"></i>
-          <span>Periksa Bulanan</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('dispatcher.body-check.*') ? '' : 'collapsed' }}"
-           href="{{ route('dispatcher.body-check.index') }}">
-          <i class="bi bi-car-front"></i>
-          <span>Periksa Body</span>
-        </a>
-      </li>
-
-      <li class="nav-heading">Penggantian & Perbaikan</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('dispatcher.replacement.*') ? '' : 'collapsed' }}"
-           href="{{ route('dispatcher.replacement.index') }}">
-          <i class="bi bi-tools"></i>
-          <span>Permohonan Penggantian</span>
-          @php
-            $pendingVpr = \App\Models\VehiclePartsReplacement::forDispatcher(Auth::id())->pending()->count();
-          @endphp
-          @if($pendingVpr > 0)
-            <span class="badge bg-warning text-dark rounded-pill ms-auto">{{ $pendingVpr }}</span>
-          @endif
-        </a>
-      </li>
-
-      <li class="nav-heading">Laporan</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('dispatcher.history') ? '' : 'collapsed' }}"
-           href="{{ route('dispatcher.history') }}">
-          <i class="bi bi-clock-history"></i>
-          <span>Riwayat & Laporan</span>
-        </a>
-      </li>
-
-    {{-- ╔══════════════════════════════════════════════════════════╗ --}}
-    {{-- ║                HAK AKSES ADMIN                           ║ --}}
-    {{-- ╚══════════════════════════════════════════════════════════╝ --}}
-    @elseif (Auth::user()->role === 'admin')
-
-      <li class="nav-heading">Beranda</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('admin-dashboard') ? '' : 'collapsed' }}"
-           href="{{ route('admin-dashboard') }}">
-          <i class="bi bi-speedometer2"></i>
-          <span>Dashboard</span>
-        </a>
-      </li>
-
-      <li class="nav-heading">Approval BBM</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('admin-approval') ? '' : 'collapsed' }}"
-           href="{{ route('admin-approval') }}">
-          <i class="bi bi-check2-square"></i>
-          <span>Approval BBM</span>
-        </a>
-      </li>
-
-      <li class="nav-heading">Pengecekan & Sparepart</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('dispatcher.scan-vehicle*') ? '' : 'collapsed' }}"
-           href="{{ route('dispatcher.scan-vehicle') }}">
-          <i class="bi bi-clock-history"></i>
-          <span>Scan Riwayat Kendaraan</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('dispatcher.dispatcher-scanner*') ? '' : 'collapsed' }}"
-           href="{{ route('dispatcher.dispatcher-scanner') }}">
-          <i class="bi bi-tools"></i>
-          <span>Scan untuk Periksa</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('admin.sparepart-request.*') ? '' : 'collapsed' }}"
-           href="{{ route('admin.sparepart-request.index') }}">
-          <i class="bi bi-wrench-adjustable"></i>
-          <span>Permohonan Sparepart</span>
-          @php
-            $pendingSparepartAdmin = \App\Models\VehiclePartsReplacement::pending()->count();
-          @endphp
-          @if($pendingSparepartAdmin > 0)
-            <span class="badge bg-danger rounded-pill ms-auto">{{ $pendingSparepartAdmin }}</span>
-          @endif
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('admin.service-scheduling.*') ? '' : 'collapsed' }}"
-           href="{{ route('admin.service-scheduling.index') }}">
-          <i class="bi bi-calendar-week"></i>
-          <span>Jadwal Service</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('admin.transaction-monitoring.*') ? '' : 'collapsed' }}"
-           href="{{ route('admin.transaction-monitoring.index') }}">
-          <i class="bi bi-eye"></i>
-          <span>Monitoring Transaksi</span>
-        </a>
-      </li>
-
-      <li class="nav-heading">Lunch Management</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('lunch.*') ? '' : 'collapsed' }}"
-           data-bs-target="#admin-lunch-nav"
-           data-bs-toggle="collapse"
-           href="#">
-          <i class="bi bi-egg-fried"></i>
-          <span>Lunch Management</span>
-          <i class="bi bi-chevron-down ms-auto"></i>
-        </a>
-        <ul id="admin-lunch-nav"
-            class="nav-content collapse {{ request()->routeIs('lunch.*') ? 'show' : '' }}"
-            data-bs-parent="#sidebar-nav">
-          <li>
-            <a href="{{ route('lunch.dashboard') }}" class="{{ request()->routeIs('lunch.dashboard') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Dashboard Lunch</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lunch.employee-defaults.index') }}" class="{{ request()->routeIs('lunch.employee-defaults.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Employee Default</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lunch.guests.calendar') }}" class="{{ request()->routeIs('lunch.guests.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Guest Reservation</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lunch.forecasts.index') }}" class="{{ request()->routeIs('lunch.forecasts.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Lunch Forecast</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lunch.distributions.index') }}" class="{{ request()->routeIs('lunch.distributions.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Lunch Distribution</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lunch.transactions.index') }}" class="{{ request()->routeIs('lunch.transactions.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Lunch Transactions</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lunch.analytics.index') }}" class="{{ request()->routeIs('lunch.analytics.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Analytics</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lunch.qr-codes') }}" class="{{ request()->routeIs('lunch.qr-codes') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>QR Lokasi</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lunch.export-form') }}" class="{{ request()->routeIs('lunch.export-form') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Export Vendor</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lunch.self-booking.index') }}" class="{{ request()->routeIs('lunch.self-booking.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Booking Mandiri</span>
-            </a>
-          </li>
-        </ul>
-      </li>
-
-      <li class="nav-heading">SPD Management</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('surat.superadmin.*') || request()->routeIs('perpanjangan.superadmin.*') || request()->routeIs('lpj.superadmin.*') ? '' : 'collapsed' }}"
-           data-bs-target="#admin-spd-nav"
-           data-bs-toggle="collapse"
-           href="#">
-          <i class="bi bi-envelope-paper"></i>
-          <span>SPD Management</span>
-          <i class="bi bi-chevron-down ms-auto"></i>
-        </a>
-        <ul id="admin-spd-nav"
-            class="nav-content collapse {{ request()->routeIs('surat.superadmin.*') || request()->routeIs('perpanjangan.superadmin.*') || request()->routeIs('lpj.superadmin.*') ? 'show' : '' }}"
-            data-bs-parent="#sidebar-nav">
-          <li>
-            <a href="{{ route('surat.superadmin.index') }}"
-               class="{{ request()->routeIs('surat.superadmin.index') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Daftar Surat SPD</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('surat.superadmin.create-shortcut') }}"
-               class="{{ request()->routeIs('surat.superadmin.create-shortcut') || request()->routeIs('surat.superadmin.store-shortcut') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Buat Surat</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('perpanjangan.superadmin.index') }}"
-               class="{{ request()->routeIs('perpanjangan.superadmin.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Perpanjangan (ETD)</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lpj.superadmin.index') }}"
-               class="{{ request()->routeIs('lpj.superadmin.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Validasi Laporan</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('surat.superadmin.report') }}"
-               class="{{ request()->routeIs('surat.superadmin.report') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Laporan SPD</span>
-            </a>
-          </li>
-        </ul>
-      </li>
-
-      <li class="nav-heading">Laporan</li>
-
-      {{-- <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('superadmin.vehicle-health.*') ? '' : 'collapsed' }}"
-           href="{{ route('superadmin.vehicle-health.index') }}">
-          <i class="bi bi-heart-pulse"></i>
-          <span>Vehicle Health</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('superadmin.financial-report.*') ? '' : 'collapsed' }}"
-           href="{{ route('superadmin.financial-report.index') }}">
-          <i class="bi bi-currency-dollar"></i>
-          <span>Lap. Keuangan Service</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('superadmin.transaction-report.*') ? '' : 'collapsed' }}"
-           href="{{ route('superadmin.transaction-report.index') }}">
-          <i class="bi bi-journal-text"></i>
-          <span>Lap. Transaksi Sparepart</span>
-        </a>
-      </li> --}}
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('superadmin.print-report*') ? '' : 'collapsed' }}"
-           href="{{ route('superadmin.print-report') }}">
-          <i class="bi bi-printer"></i>
-          <span>Cetak Laporan BBM</span>
-        </a>
-      </li>
-
-    {{-- ╔══════════════════════════════════════════════════════════╗ --}}
-    {{-- ║  SUPERADMIN                                              ║ --}}
-    {{-- ╚══════════════════════════════════════════════════════════╝ --}}
-    @elseif (Auth::user()->role === 'superadmin')
-
-      <li class="nav-heading">Dashboard</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('admin-dashboard') || request()->routeIs('superadmin.dashboard.bisnis') ? '' : 'collapsed' }}"
-           href="{{ route('superadmin.dashboard.bisnis') }}">
-          <i class="bi bi-speedometer2"></i>
-          <span>Dashboard</span>
-        </a>
-      </li>
-
-      <li class="nav-heading">Approval & Permohonan BBM</li>
-
-      {{-- <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('admin-approval') ? '' : 'collapsed' }}"
-           href="{{ route('admin-approval') }}">
-          <i class="bi bi-check2-square"></i>
-          <span>Approval BBM</span>
-        </a>
-      </li> --}}
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('superadmin.permohonan*') ? '' : 'collapsed' }}"
-           href="{{ route('superadmin.permohonan') }}">
-          <i class="bi bi-file-earmark-text"></i>
-          <span>Manajemen Permohonan</span>
-        </a>
-      </li>
-
-      <li class="nav-heading">Master Data</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('vehicles') || request()->routeIs('vehicles.create') ? '' : 'collapsed' }}"
-           data-bs-target="#vehicles-nav"
-           data-bs-toggle="collapse"
-           href="#">
-          <i class="bi bi-truck"></i>
-          <span>Kendaraan & Alat</span>
-          <i class="bi bi-chevron-down ms-auto"></i>
-        </a>
-        <ul id="vehicles-nav"
-            class="nav-content collapse {{ request()->routeIs('vehicles') || request()->routeIs('vehicles.create') ? 'show' : '' }}"
-            data-bs-parent="#sidebar-nav">
-          <li>
-            <a href="{{ route('vehicles', ['tab' => 'list']) }}"
-               class="{{ request()->routeIs('vehicles') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Daftar Kendaraan</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('vehicles.create') }}"
-               class="{{ request()->routeIs('vehicles.create') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Tambah Kendaraan</span>
-            </a>
-          </li>
-        </ul>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('superadmin.vehicle-activation*') ? '' : 'collapsed' }}"
-           href="{{ route('superadmin.vehicle-activation') }}">
-          <i class="bi bi-toggles"></i>
-          <span>Aktivasi Kendaraan</span>
-        </a>
-      </li>
-
-       <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('superadmin.approval*') ? '' : 'collapsed' }}"
-           href="{{ route('superadmin.approval') }}">
-          <i class="bi bi-patch-check"></i>
-          <span>Kendaraan Baru via Request</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('users') || request()->routeIs('users.create') ? '' : 'collapsed' }}"
-           data-bs-target="#users-nav"
-           data-bs-toggle="collapse"
-           href="#">
-          <i class="bi bi-people"></i>
-          <span>Pengguna</span>
-          <i class="bi bi-chevron-down ms-auto"></i>
-        </a>
-        <ul id="users-nav"
-            class="nav-content collapse {{ request()->routeIs('users') || request()->routeIs('users.create') ? 'show' : '' }}"
-            data-bs-parent="#sidebar-nav">
-          <li>
-            <a href="{{ route('users', ['tab' => 'list']) }}"
-               class="{{ request()->routeIs('users') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Daftar User</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('users.create') }}"
-               class="{{ request()->routeIs('users.create') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Tambah User</span>
-            </a>
-          </li>
-        </ul>
-      </li>
-
-      <li class="nav-heading">RBAC & Hak Akses</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('superadmin.rbac.*') ? '' : 'collapsed' }}"
-           href="{{ route('superadmin.rbac.index') }}">
-          <i class="bi bi-shield-lock"></i>
-          <span>Role & Permission</span>
-        </a>
-      </li>
-
-      <li class="nav-heading">Pengecekan & Sparepart</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('dispatcher.scan-vehicle*') ? '' : 'collapsed' }}"
-           href="{{ route('dispatcher.scan-vehicle') }}">
-          <i class="bi bi-clock-history"></i>
-          <span>Scan Riwayat Kendaraan</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('dispatcher.dispatcher-scanner*') ? '' : 'collapsed' }}"
-           href="{{ route('dispatcher.dispatcher-scanner') }}">
-          <i class="bi bi-tools"></i>
-          <span>Scan untuk Periksa</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('admin.sparepart-request.*') ? '' : 'collapsed' }}"
-           href="{{ route('admin.sparepart-request.index') }}">
-          <i class="bi bi-wrench-adjustable"></i>
-          <span>Permohonan Sparepart</span>
-          @php
-            $pendingSparepart = \App\Models\VehiclePartsReplacement::pending()->count();
-          @endphp
-          @if($pendingSparepart > 0)
-            <span class="badge bg-danger rounded-pill ms-auto">{{ $pendingSparepart }}</span>
-          @endif
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('admin.service-scheduling.*') ? '' : 'collapsed' }}"
-           href="{{ route('admin.service-scheduling.index') }}">
-          <i class="bi bi-calendar-week"></i>
-          <span>Jadwal Service</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('admin.transaction-monitoring.*') ? '' : 'collapsed' }}"
-           href="{{ route('admin.transaction-monitoring.index') }}">
-          <i class="bi bi-eye"></i>
-          <span>Monitoring Transaksi</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('superadmin.vehicle-health.*') ? '' : 'collapsed' }}"
-           href="{{ route('superadmin.vehicle-health.index') }}">
-          <i class="bi bi-heart-pulse"></i>
-          <span>Vehicle Health</span>
-        </a>
-      </li>
-
-      <li class="nav-heading">SPD Management</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('surat.superadmin.*') || request()->routeIs('perpanjangan.superadmin.*') || request()->routeIs('lpj.superadmin.*') ? '' : 'collapsed' }}"
-           data-bs-target="#spd-superadmin-nav"
-           data-bs-toggle="collapse"
-           href="#">
-          <i class="bi bi-envelope-paper"></i>
-          <span>SPD Management</span>
-          <i class="bi bi-chevron-down ms-auto"></i>
-        </a>
-        <ul id="spd-superadmin-nav"
-            class="nav-content collapse {{ request()->routeIs('surat.superadmin.*') || request()->routeIs('perpanjangan.superadmin.*') || request()->routeIs('lpj.superadmin.*') ? 'show' : '' }}"
-            data-bs-parent="#sidebar-nav">
-          <li>
-            <a href="{{ route('surat.superadmin.index') }}"
-               class="{{ request()->routeIs('surat.superadmin.index') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Daftar Surat SPD</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('surat.superadmin.create-shortcut') }}"
-               class="{{ request()->routeIs('surat.superadmin.create-shortcut') || request()->routeIs('surat.superadmin.store-shortcut') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Buat Surat (Shortcut)</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('perpanjangan.superadmin.index') }}"
-               class="{{ request()->routeIs('perpanjangan.superadmin.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Perpanjangan (ETD)</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lpj.superadmin.index') }}"
-               class="{{ request()->routeIs('lpj.superadmin.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Validasi Laporan</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('surat.superadmin.report') }}"
-               class="{{ request()->routeIs('surat.superadmin.report') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Laporan SPD</span>
-            </a>
-          </li>
-        </ul>
-      </li>
-
-      <li class="nav-heading">Lunch Management</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('lunch.*') ? '' : 'collapsed' }}"
-           data-bs-target="#lunch-nav"
-           data-bs-toggle="collapse"
-           href="#">
-          <i class="bi bi-egg-fried"></i>
-          <span>Lunch Management</span>
-          <i class="bi bi-chevron-down ms-auto"></i>
-        </a>
-        <ul id="lunch-nav"
-            class="nav-content collapse {{ request()->routeIs('lunch.*') ? 'show' : '' }}"
-            data-bs-parent="#sidebar-nav">
-          <li>
-            <a href="{{ route('lunch.dashboard') }}"
-               class="{{ request()->routeIs('lunch.dashboard') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Dashboard Lunch</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lunch.employee-defaults.index') }}"
-               class="{{ request()->routeIs('lunch.employee-defaults.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Employee Default</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lunch.guests.calendar') }}"
-               class="{{ request()->routeIs('lunch.guests.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Guest Reservation</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lunch.forecasts.index') }}"
-               class="{{ request()->routeIs('lunch.forecasts.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Lunch Forecast</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lunch.distributions.index') }}"
-               class="{{ request()->routeIs('lunch.distributions.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Lunch Distribution</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lunch.transactions.index') }}"
-               class="{{ request()->routeIs('lunch.transactions.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Lunch Transactions</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lunch.analytics.index') }}"
-               class="{{ request()->routeIs('lunch.analytics.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Analytics</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lunch.qr-codes') }}"
-               class="{{ request()->routeIs('lunch.qr-codes') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>QR Lokasi</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lunch.export-form') }}"
-               class="{{ request()->routeIs('lunch.export-form') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Export Vendor</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ route('lunch.self-booking.index') }}"
-               class="{{ request()->routeIs('lunch.self-booking.*') ? 'active' : '' }}">
-              <i class="bi bi-circle"></i><span>Booking Mandiri</span>
-            </a>
-          </li>
-        </ul>
-      </li>
-
-      <li class="nav-heading">Laporan & Analisis</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ Request::is('trip-analysis*') ? '' : 'collapsed' }}"
-           href="{{ route('superadmin.trip-analysis.index') }}">
-          <i class="bi bi-graph-up-arrow"></i>
-          <span>Analisis Trip & Efisiensi BBM</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('superadmin.financial-report.*') ? '' : 'collapsed' }}"
-           href="{{ route('superadmin.financial-report.index') }}">
-          <i class="bi bi-currency-dollar"></i>
-          <span>Lap. Keuangan Service</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('superadmin.transaction-report.*') ? '' : 'collapsed' }}"
-           href="{{ route('superadmin.transaction-report.index') }}">
-          <i class="bi bi-journal-text"></i>
-          <span>Lap. Transaksi Sparepart</span>
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('superadmin.print-report*') ? '' : 'collapsed' }}"
-           href="{{ route('superadmin.print-report') }}">
-          <i class="bi bi-printer"></i>
-          <span>Cetak Laporan BBM</span>
-        </a>
-      </li>
-
-    {{-- ╔══════════════════════════════════════════════════════════╗ --}}
-    {{-- ║  MANAGER                                                 ║ --}}
-    {{-- ╚══════════════════════════════════════════════════════════╝ --}}
-    @elseif (Auth::user()->role === 'manager')
-
-      <li class="nav-heading">Beranda</li>
-
-      <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('superadmin.dashboard.bisnis') ? '' : 'collapsed' }}"
-           href="{{ route('superadmin.dashboard.bisnis') }}">
-          <i class="bi bi-graph-up"></i>
-          <span>Dashboard Bisnis</span>
-        </a>
-      </li>
-
-    @endif
+        @endforeach
+      @endif
+    @endforeach
 
     {{-- ── Profil (semua role) ── --}}
     <li class="nav-heading">Akun</li>

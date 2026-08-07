@@ -149,78 +149,11 @@
                     <hr>
                      <form action="{{ route('surat.superadmin.approve', $surat->id) }}" method="POST" id="approveForm">
                         @csrf
-                        {{-- Header --}}
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <label class="form-label fw-bold mb-0">
-                                    <i class="bi bi-cash-stack text-success"></i> Informasi Budget Per Hari
-                                </label>
-                                {{-- <button type="button" class="btn btn-sm btn-outline-primary" id="btnFillAll">
-                                    <i class="bi bi-magic"></i> Isi Semua
-                                </button> --}}
-                            </div>
-
-                            {{-- Quick Fill --}}
-                            <div class="input-group input-group-sm mb-3">
-                                <span class="input-group-text">Rp</span>
-                                <input type="number" class="form-control" id="quickFillAmount"
-                                       placeholder="Isi nominal untuk semua tanggal" min="0" step="1000">
-                                <button type="button" class="btn btn-outline-secondary" id="btnApplyQuickFill">
-                                    Terapkan
-                                </button>
-                            </div>
-
-                            {{-- Budget Rows Container --}}
-                            <div class="budget-rows-container" style="max-height: 400px; overflow-y: auto;">
-                                @php
-                                    $tanggalBerangkat = \Carbon\Carbon::parse($surat->tanggal_berangkat);
-                                    $tanggalKembali = \Carbon\Carbon::parse($surat->tanggal_kembali);
-                                    $index = 0;
-                                @endphp
-
-                                @while($tanggalBerangkat->lte($tanggalKembali))
-                                    <div class="card mb-2 budget-row">
-                                        <div class="card-body p-2">
-                                            <div class="row g-2 align-items-center">
-                                                <div class="col-12">
-                                                    <small class="text-muted fw-bold">
-                                                        Hari {{ $index + 1 }} - {{ $tanggalBerangkat->translatedFormat('l, d M Y') }}
-                                                    </small>
-                                                    <input type="hidden" name="budgets[{{ $index }}][tanggal]" value="{{ $tanggalBerangkat->format('Y-m-d') }}">
-                                                </div>
-                                                <div class="col-6">
-                                                    <div class="input-group input-group-sm">
-                                                        <span class="input-group-text">Rp</span>
-                                                        <input type="number" class="form-control budget-nominal"
-                                                               name="budgets[{{ $index }}][nominal]"
-                                                               min="0" step="1000" required
-                                                               placeholder="0"
-                                                               value="{{ old('budgets.' . $index . '.nominal') }}">
-                                                    </div>
-                                                </div>
-                                                <div class="col-6">
-                                                    <input type="text" class="form-control form-control-sm"
-                                                           name="budgets[{{ $index }}][catatan]"
-                                                           placeholder="Catatan (opsional)"
-                                                           value="{{ old('budgets.' . $index . '.catatan') }}">
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    @php
-                                        $tanggalBerangkat->addDay();
-                                        $index++;
-                                    @endphp
-                                @endwhile
-                            </div>
-
-                            {{-- Total Budget --}}
-                            <div class="alert alert-success py-2 mt-3 mb-3">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span><strong>Total Budget:</strong></span>
-                                    <span class="fs-5 fw-bold" id="totalBudgetDisplay">Rp 0</span>
-                                </div>
-                                <small class="text-muted">{{ $surat->lama_perjalanan_hari }} hari perjalanan</small>
-                            </div>
+                        {{-- Alur sementara: budgeting per hari di-skip, cukup persetujuan --}}
+                        <div class="alert alert-info py-2 mb-3">
+                            <i class="bi bi-info-circle"></i>
+                            Menyetujui surat tugas akan mengunci data perjalanan dan menetapkan tenggat LPJ.
+                        </div>
 
                     {{-- Budget Per Tanggal (jika sudah ada) --}}
                     @if($surat->status == 'approved' || $surat->status == 'completed')
@@ -359,10 +292,10 @@
                     </div>
                     <div class="card-body">
                         <p class="text-muted small mb-3">
-                            Tentukan budget per tanggal sebelum menyetujui surat tugas.
+                            Setujui atau tolak surat tugas ini.
                         </p>
 
-                        {{-- Form Approve dengan Input Budget Per Tanggal --}}
+                        {{-- Form Approve (tanpa budget per tanggal) --}}
 
                             <button type="button" class="btn btn-success w-100 mb-2" data-bs-toggle="modal" data-bs-target="#approveModalSurat">
                                 <i class="bi bi-check-circle"></i> Setujui Surat Tugas
@@ -501,9 +434,6 @@
                     <strong>{{ $surat->nomor_surat }}</strong><br>
                     <small class="text-muted">{{ $surat->pengemudi_nama }} - {{ $surat->tempat_tujuan }}</small>
                 </div>
-                <div class="alert alert-info py-2 mb-0" id="modalBudgetInfo">
-                    <small><i class="bi bi-info-circle"></i> Total budget: <strong id="modalBudgetTotal">Rp 0</strong></small>
-                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -517,73 +447,10 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const budgetInputs = document.querySelectorAll('.budget-nominal');
-    const totalDisplay = document.getElementById('totalBudgetDisplay');
-    const quickFillAmount = document.getElementById('quickFillAmount');
-    const btnApplyQuickFill = document.getElementById('btnApplyQuickFill');
-    const btnFillAll = document.getElementById('btnFillAll');
-    const modalBudgetTotal = document.getElementById('modalBudgetTotal');
-
-    function formatRupiah(num) {
-        return 'Rp ' + new Intl.NumberFormat('id-ID').format(num);
-    }
-
-    function calculateTotal() {
-        let total = 0;
-        budgetInputs.forEach(input => {
-            total += parseFloat(input.value) || 0;
-        });
-        totalDisplay.textContent = formatRupiah(total);
-        if (modalBudgetTotal) modalBudgetTotal.textContent = formatRupiah(total);
-    }
-
-    budgetInputs.forEach(input => {
-        input.addEventListener('input', calculateTotal);
-    });
-
-    btnApplyQuickFill?.addEventListener('click', function() {
-        const amount = parseFloat(quickFillAmount.value) || 0;
-        budgetInputs.forEach(input => { input.value = amount; });
-        calculateTotal();
-    });
-
-    btnFillAll?.addEventListener('click', function() {
-        const amount = prompt('Masukkan nominal budget untuk semua tanggal:', '500000');
-        if (amount !== null && !isNaN(amount)) {
-            budgetInputs.forEach(input => { input.value = parseFloat(amount) || 0; });
-            calculateTotal();
-        }
-    });
-
-    // Update modal budget when it opens
-    document.getElementById('approveModalSurat')?.addEventListener('show.bs.modal', function() {
-        calculateTotal();
-    });
-
     // Confirm approve via modal
     document.getElementById('confirmApproveSurat')?.addEventListener('click', function() {
-        let total = 0;
-        let hasZero = false;
-
-        budgetInputs.forEach(input => {
-            const val = parseFloat(input.value) || 0;
-            total += val;
-            if (val === 0) hasZero = true;
-        });
-
-        if (total === 0) {
-            alert('Total budget tidak boleh Rp 0!\n\nSilakan isi budget untuk setiap tanggal.');
-            return;
-        }
-
-        if (hasZero && !confirm('Ada tanggal dengan budget Rp 0.\n\nApakah Anda yakin ingin melanjutkan?')) {
-            return;
-        }
-
         document.getElementById('approveForm').submit();
     });
-
-    calculateTotal();
 });
 </script>
 

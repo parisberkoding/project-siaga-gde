@@ -240,6 +240,14 @@ class SuratSpd extends Model
     }
 
     /**
+     * Rincian struk pengeluaran SPD (upload bukti per item)
+     */
+    public function strukItems()
+    {
+        return $this->hasMany(StrukItem::class, 'spd_id')->orderBy('urutan');
+    }
+
+    /**
      * Get total budget dari detail budgets
      */
     public function getTotalBudgetFromDetails(): float

@@ -91,11 +91,12 @@
                         <th width="110">Tipe</th>
                         <th>Kode</th>
                         <th>Nama</th>
+                        <th>Site</th>
+                        <th width="80">Penumpang</th>
+                        <th width="80">Tangki</th>
+                        <th width="100">Budget Ops.</th>
+                        <th width="100">Budget SPD</th>
                         <th width="100">Barcode</th>
-                        <th>Catatan</th>
-                        <th>Dibuat Oleh</th>
-                        <th>Disetujui Oleh</th>
-                        <th>Tanggal Dibuat</th>
                         <th width="110">Aksi</th>
                     </tr>
                 </thead>
@@ -112,6 +113,11 @@
                         </td>
                         <td><strong>{{ $vehicle->consumerial_code }}</strong></td>
                         <td>{{ $vehicle->consumerial_name }}</td>
+                        <td><small>{{ $vehicle->detail?->site?->name ?? '-' }}</small></td>
+                        <td><small>{{ $vehicle->detail?->kapasitas_penumpang ? $vehicle->detail->kapasitas_penumpang . ' org' : '-' }}</small></td>
+                        <td><small>{{ $vehicle->detail?->volume_tangki ? $vehicle->detail->volume_tangki . ' L' : '-' }}</small></td>
+                        <td><small class="text-success">{{ $vehicle->detail?->nominal_full_tank ? 'Rp ' . number_format($vehicle->detail->nominal_full_tank, 0, ',', '.') : '-' }}</small></td>
+                        <td><small class="text-primary">{{ $vehicle->detail?->nominal_spd_default ? 'Rp ' . number_format($vehicle->detail->nominal_spd_default, 0, ',', '.') : '-' }}</small></td>
                         <td>
                         @php
                             $barcode  = $vehicle->barcode ?? null;
@@ -178,7 +184,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="10">
+                        <td colspan="11">
                             <div class="text-center py-5 text-muted">
                                 <i class="bi bi-inbox fs-1 opacity-50 d-block mb-2"></i>
                                 <p class="mb-0">Belum ada data kendaraan/alat</p>

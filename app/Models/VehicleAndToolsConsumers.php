@@ -124,4 +124,34 @@ class VehicleAndToolsConsumers extends Model
     {
         return $this->hasOne(VehicleDetail::class, 'vehicle_and_tools_consumer_id');
     }
+
+    /**
+     * Budget operasional (nominal_full_tank) dari detail master vehicle.
+     * Sumber tunggal untuk nominal default 1x pengisian full tank.
+     */
+    public function getNominalFullTankAttribute(): ?float
+    {
+        return $this->detail?->nominal_full_tank !== null
+            ? (float) $this->detail->nominal_full_tank
+            : null;
+    }
+
+    /**
+     * Label dropdown: "Plat - Merk" (contoh: B 1234 XYZ - Toyota Avanza)
+     */
+    public function getDropdownLabelAttribute(): string
+    {
+        $code = $this->consumerial_code ?? '';
+        $name = $this->consumerial_name ?? '';
+        $merk = $this->detail?->merk;
+        $model = $this->detail?->model;
+
+        $merkModel = trim(implode(' ', array_filter([$merk, $model])));
+
+        if ($merkModel) {
+            return "{$code} - {$merkModel}";
+        }
+
+        return "{$code} - {$name}";
+    }
 }

@@ -28,6 +28,7 @@ use App\Http\Controllers\Lunch\LunchForecastController;
 use App\Http\Controllers\Lunch\LunchTransactionController;
 use App\Http\Controllers\Lunch\PublicAttendanceController;
 use App\Http\Controllers\Lunch\SelfBookingController;
+use App\Http\Controllers\ReportingController;
 
 Route::get('/files/storage/{path}', [StorageFileController::class, 'serve'])
     ->where('path', '.*')
@@ -48,12 +49,12 @@ Route::get('/', function () {
 Route::get('/login', [AuthentiactionController::class, 'index'])->name('login');
 Route::post('/login-process', [AuthentiactionController::class, 'authenticate'])->name('login-process');
 
-// Route::get();
-
-Route::middleware(['auth', 'role:requester,admin,superadmin,manager,dispatcher'])->group(function () {
-    Route::post('/logout', [AuthentiactionController::class, 'logout'])->name('logout');
+// Logout: dukung GET & POST, tanpa batasan role (semua user authenticated boleh logout)
+Route::middleware(['auth'])->group(function () {
+    Route::match(['get', 'post'], '/logout', [AuthentiactionController::class, 'logout'])->name('logout');
 });
-Route::middleware(['auth', 'role:requester,admin,superadmin,manager'])->prefix('spd')->name('spd.')->group(function () {
+
+Route::middleware(['auth', 'role:requester,admin,superadmin,manager,dispatcher'])->prefix('spd')->name('spd.')->group(function () {
     Route::get('/surat/{id}/print', [SpdController::class, 'printSurat'])->name('surat.print');
     Route::get('/laporan/{id}/print', [SpdController::class, 'printLaporan'])->name('laporan.print');
 });
@@ -62,7 +63,18 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
     Route::put('/profile/change-password', [ProfileController::class, 'changePassword'])->name('profile.change-password');
 });
-
+// ────────────────────────────────────────────────────────────────────────
+// SINGLE PAGE PELAPORAN BBM OPERASIONAL & SPD (ReportingController)
+// Di bawah permission pelaporan baru. Menangani upload struk + AI/OCR,
+// mode SPD & mode operasional dalam satu halaman.
+// ────────────────────────────────────────────────────────────────────────
+Route::middleware(['auth', 'permission:pelaporan.view,pelaporan.create'])->prefix('pelaporan')->name('pelaporan.')->group(function () {
+    Route::get('/', [ReportingController::class, 'index'])->name('index');
+    Route::post('/analyze-struk', [ReportingController::class, 'analyzeStruk'])->name('analyze-struk');
+    Route::post('/vehicle-budget', [ReportingController::class, 'vehicleBudget'])->name('vehicle-budget');
+    Route::post('/spd', [ReportingController::class, 'storeSpd'])->name('spd.store');
+    Route::post('/operational', [ReportingController::class, 'storeOperational'])->name('operational.store');
+});
 
 // Requester Routes
 Route::middleware(['auth', 'permission:bbm.request,bbm.view,bbm.report'])->group(function () {

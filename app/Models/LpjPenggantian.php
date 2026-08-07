@@ -287,6 +287,14 @@ class LpjPenggantian extends Model
         return $this->hasMany(LpjPenggantianDetail::class, 'lpj_penggantian_id')->orderBy('urutan');
     }
 
+    /**
+     * Struk bukti pengeluaran per item (dengan gambar, kategori & item_code)
+     */
+    public function strukItems()
+    {
+        return $this->hasMany(StrukItem::class, 'lpj_id')->orderBy('urutan');
+    }
+
     public function approverPengguna()
     {
         return $this->belongsTo(User::class, 'approved_by_pengguna');

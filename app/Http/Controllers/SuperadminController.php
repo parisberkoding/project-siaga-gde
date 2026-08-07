@@ -13,6 +13,8 @@ use App\Models\TripValidation;
 use App\Models\VehicleBarcode;
 use App\Models\VehicleDetail;
 use App\Models\Role;
+use App\Models\Site;
+use App\Models\StrukItem;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -1060,7 +1062,8 @@ private function calculateAvgRequestFrequency($period = 'month')
     {
         $vehicle = VehicleAndToolsConsumers::with('detail')->findOrFail($id);
         $detail = $vehicle->detail ?? new VehicleDetail();
-        return view('superadmin.vehicles.detail-form', compact('vehicle', 'detail'));
+        $sites = Site::active()->orderBy('name')->get();
+        return view('superadmin.vehicles.detail-form', compact('vehicle', 'detail', 'sites'));
     }
 
     public function updateVehicleDetail(Request $request, $id)
@@ -1068,6 +1071,7 @@ private function calculateAvgRequestFrequency($period = 'month')
         $vehicle = VehicleAndToolsConsumers::findOrFail($id);
 
         $validated = $request->validate([
+            'site_id' => 'nullable|exists:sites,id',
             'jenis_kendaraan' => 'nullable|string|max:100',
             'merk' => 'nullable|string|max:100',
             'model' => 'nullable|string|max:100',
@@ -1079,6 +1083,8 @@ private function calculateAvgRequestFrequency($period = 'month')
             'kapasitas_bahan_bakar' => 'nullable|numeric|min:0|max:99999',
             'jenis_bahan_bakar' => 'nullable|string|max:50',
             'volume_tangki' => 'nullable|numeric|min:0|max:99999',
+            'nominal_full_tank' => 'nullable|numeric|min:0',
+            'nominal_spd_default' => 'nullable|numeric|min:0',
             'catatan' => 'nullable|string|max:2000',
         ]);
 
@@ -1852,7 +1858,8 @@ public function getCompletePivotTable(Request $request)
         public function createVehicle()
         {
             $title = "Tambah Kendaraan / Alat";
-            return view('superadmin.vehicles.create', compact('title'));
+            $sites = Site::active()->orderBy('name')->get();
+            return view('superadmin.vehicles.create', compact('title', 'sites'));
         }
 
        public function indexVehicles(Request $request)
@@ -1865,7 +1872,7 @@ public function getCompletePivotTable(Request $request)
             $tab = $request->get('tab', 'list'); // list, add, deleted
 
             // Query vehicles/tools - HANYA YANG SUDAH APPROVED
-            $query = VehicleAndToolsConsumers::with(['creator', 'approver', 'barcode'])
+            $query = VehicleAndToolsConsumers::with(['creator', 'approver', 'barcode', 'detail.site'])
                 ->where('is_approved', true); // Hanya tampilkan yang approved
 
             // ✅ Filter berdasarkan tipe (uppercase)
@@ -1896,12 +1903,14 @@ public function getCompletePivotTable(Request $request)
           $barcode_path = VehicleBarcode::whereIn('vehicle_and_tools_consumer_id', $vehicles->pluck('id'))
     ->get()->pluck('barcode_path', 'vehicle_and_tools_consumer_id');
 
+          $sites = Site::active()->orderBy('name')->get();
 
             return view('superadmin.partials.kelola-consumerialtools', compact(
                 'title',
                 'vehicles',
                 'deletedVehicles',
                 'barcode_path',
+                'sites',
                 'tab',
                 'type',
                 'search'
@@ -1915,6 +1924,12 @@ public function getCompletePivotTable(Request $request)
                 'consumerial_code' => 'required|unique:vehicle_and_tools_consumers,consumerial_code|max:255',
                 'consumerial_name' => 'required|max:255',
                 'consumerial_notes' => 'nullable|string|max:500',
+                // Master Vehicle (budget & unit asal) — optional saat create
+                'site_id' => 'nullable|exists:sites,id',
+                'kapasitas_penumpang' => 'nullable|integer|min:1|max:100',
+                'volume_tangki' => 'nullable|numeric|min:0|max:99999',
+                'nominal_full_tank' => 'nullable|numeric|min:0',
+                'nominal_spd_default' => 'nullable|numeric|min:0',
             ], [
                 'consumerial_type.required' => 'Tipe konsumsi harus diisi',
                 'consumerial_type.in' => 'Tipe konsumsi harus Kendaraan atau Alat',
@@ -1924,7 +1939,9 @@ public function getCompletePivotTable(Request $request)
             ]);
 
             try {
-                VehicleAndToolsConsumers::create([
+                DB::beginTransaction();
+
+                $vehicle = VehicleAndToolsConsumers::create([
                     'consumerial_type' => $validated['consumerial_type'],
                     'consumerial_code' => strtoupper($validated['consumerial_code']),
                     'consumerial_name' => strtoupper($validated['consumerial_name']),
@@ -1935,11 +1952,26 @@ public function getCompletePivotTable(Request $request)
                     'is_active' => true,
                 ]);
 
+                // Auto-create VehicleDetail dengan field budget (Master Vehicle)
+                VehicleDetail::updateOrCreate(
+                    ['vehicle_and_tools_consumer_id' => $vehicle->id],
+                    [
+                        'site_id' => $validated['site_id'] ?? null,
+                        'kapasitas_penumpang' => $validated['kapasitas_penumpang'] ?? null,
+                        'volume_tangki' => $validated['volume_tangki'] ?? null,
+                        'nominal_full_tank' => $validated['nominal_full_tank'] ?? null,
+                        'nominal_spd_default' => $validated['nominal_spd_default'] ?? null,
+                    ]
+                );
+
+                DB::commit();
+
                 return redirect()
                     ->route('vehicles', ['tab' => 'list'])
                     ->with('success', ucfirst($validated['consumerial_type']) . ' berhasil ditambahkan');
 
             } catch (\Exception $e) {
+                DB::rollBack();
                 return redirect()
                     ->back()
                     ->withInput()
@@ -1956,6 +1988,9 @@ public function getCompletePivotTable(Request $request)
                 'consumerial_code' => 'required|max:255|unique:vehicle_and_tools_consumers,consumerial_code,' . $id,
                 'consumerial_name' => 'required|max:255',
                 'consumerial_notes' => 'nullable|string|max:500',
+                'site_id' => 'nullable|exists:sites,id',
+                'nominal_full_tank' => 'nullable|numeric|min:0',
+                'kapasitas_bbm_tahunan' => 'nullable|numeric|min:0',
             ], [
                 'consumerial_type.required' => 'Tipe konsumsi harus diisi',
                 'consumerial_type.in' => 'Tipe konsumsi harus Kendaraan atau Alat',
@@ -1965,6 +2000,8 @@ public function getCompletePivotTable(Request $request)
             ]);
 
             try {
+                DB::beginTransaction();
+
                 $vehicle->update([
                     'consumerial_type' => $validated['consumerial_type'],
                     'consumerial_code' => $validated['consumerial_code'],
@@ -1972,11 +2009,24 @@ public function getCompletePivotTable(Request $request)
                     'consumerial_notes' => $validated['consumerial_notes'] ?? null,
                 ]);
 
+                // Update Master Vehicle detail (budget & unit asal)
+                VehicleDetail::updateOrCreate(
+                    ['vehicle_and_tools_consumer_id' => $vehicle->id],
+                    [
+                        'site_id' => $validated['site_id'] ?? null,
+                        'nominal_full_tank' => $validated['nominal_full_tank'] ?? null,
+                        'kapasitas_bbm_tahunan' => $validated['kapasitas_bbm_tahunan'] ?? null,
+                    ]
+                );
+
+                DB::commit();
+
                 return redirect()
                     ->route('vehicles', ['tab' => 'list'])
                     ->with('success', ucfirst($validated['consumerial_type']) . ' berhasil diupdate');
 
             } catch (\Exception $e) {
+                DB::rollBack();
                 return redirect()
                     ->back()
                     ->with('error', 'Gagal update: ' . $e->getMessage());
@@ -2085,8 +2135,9 @@ public function indexPermohonan(Request $request)
 
     $laporans = $queryLaporan->orderBy('created_at', 'desc')->paginate(20, ['*'], 'laporan_page');
 
-    // Get all vehicles for dropdown
-    $vehicles = VehicleAndToolsConsumers::where('is_approved', true)
+    // Get all vehicles for dropdown (+ detail utk label "Plat - Merk" & budget full tank)
+    $vehicles = VehicleAndToolsConsumers::with('detail')
+        ->where('is_approved', true)
         ->orderBy('consumerial_type')
         ->orderBy('consumerial_name')
         ->get();
@@ -2113,19 +2164,32 @@ public function updatePermohonan(Request $request, $id)
 {
     $permohonan = Permohonan::findOrFail($id);
 
-    $validated = $request->validate([
-        'consumerial_tools_id' => 'required|exists:vehicle_and_tools_consumers,id',
-        'gasoline_type' => 'required|string',
-        'bill_amounts' => 'required|numeric|min:150000|max:850000',
-        'requester_notes' => 'nullable|string|max:500',
-        'authorizer_notes' => 'nullable|string|max:500',
-    ], [
+    // ✅ Budget dinamis dari Master Vehicle (nominal_full_tank), bukan hardcoded
+    $maxNominal = null;
+    if ($request->consumerial_tools_id) {
+        $vehicle = VehicleAndToolsConsumers::with('detail')->find($request->consumerial_tools_id);
+        $maxNominal = $vehicle?->detail?->nominal_full_tank;
+    }
+
+    $billRules = ['required', 'numeric', 'min:0'];
+    $billMessages = [
         'consumerial_tools_id.required' => 'Kendaraan/Alat harus dipilih',
         'gasoline_type.required' => 'Jenis BBM harus dipilih',
         'bill_amounts.required' => 'Nominal harus diisi',
-        'bill_amounts.min' => 'Nominal minimal Rp 150.000',
-        'bill_amounts.max' => 'Nominal maksimal Rp 850.000',
-    ]);
+    ];
+    if ($maxNominal !== null) {
+        $billRules[] = 'max:' . $maxNominal;
+        $billMessages['bill_amounts.max'] = 'Nominal melebihi budget full tank kendaraan (Rp ' .
+            number_format($maxNominal, 0, ',', '.') . '). Sesuaikan di Master Vehicle bila perlu.';
+    }
+
+    $validated = $request->validate([
+        'consumerial_tools_id' => 'required|exists:vehicle_and_tools_consumers,id',
+        'gasoline_type' => 'required|string',
+        'bill_amounts' => $billRules,
+        'requester_notes' => 'nullable|string|max:500',
+        'authorizer_notes' => 'nullable|string|max:500',
+    ], $billMessages);
 
     try {
         DB::beginTransaction();
@@ -2242,6 +2306,9 @@ public function deletePermohonan($id)
  */
 public function updateLaporan(Request $request, $id)
 {
+    // Catatan: laporan ini adalah BBM OPERASIONAL (Transaction_Proofs), 1 permohonan = 1 struk.
+    // Rincian per-item dengan gambar + kategori + item_code (struk_items) khusus SPD,
+    // divisualisasikan pada validasi LPJ (SpdController::showLaporanSuperadmin → superadmin/spd/lpj/*).
     $laporan = Transaction_Proofs::findOrFail($id);
 
     $validated = $request->validate([
@@ -2373,6 +2440,34 @@ public function generateTripAnalysis()
                 ->orderBy('purchase_datetime', 'asc')
                 ->get();
 
+            // ── BBM SPD (struk_items) sebagai sumber data pelengkap ──
+            // Ambil semua struk BBM dari LPJ yang sudah approved untuk kendaraan ini.
+            $spdBbms = StrukItem::where('struk_kategori', 'BBM')
+                ->whereHas('suratSpd', function ($q) use ($vehicle) {
+                    $q->where('vehicle_id', $vehicle->id);
+                })
+                ->whereHas('lpj', function ($q) {
+                    $q->where('status', 'approved');
+                })
+                ->whereNotNull('tanggal')
+                ->get();
+
+            // Harga referensi per liter dari riwayat BBM operasional kendaraan ini
+            // (bill_amounts / fuel_volume), dipakai untuk estimasi liter struk SPD
+            // saat metadata OCR tidak membacakan volume.
+            $avgPrice = null;
+            $priceTotals = $proofs->map(function ($p) {
+                $nominal = (float) ($p->permohonan->bill_amounts ?? 0);
+                $volume  = (float) $p->fuel_volume;
+                return $volume > 0 ? $nominal / $volume : null;
+            })->filter();
+            if ($priceTotals->count() > 0) {
+                $avgPrice = round($priceTotals->avg(), 2);
+            }
+
+            // Konversi struk SPD → liter BBM.
+            $spdLiters = fn ($struk) => $this->estimateStrukLiters($struk, $avgPrice);
+
             // Skip jika kurang dari 2 transaksi
             if ($proofs->count() < 2) {
                 continue;
@@ -2394,9 +2489,23 @@ public function generateTripAnalysis()
                 // Hitung selisih hari
                 $daysDiff = $startProof->purchase_datetime->diffInDays($endProof->purchase_datetime);
 
+                // BBM SPD yang jatuh di dalam rentang waktu pengukuran trip ini
+                $windowSpd = $spdBbms->filter(function ($struk) use ($startProof, $endProof) {
+                    $date = $struk->tanggal ? $struk->tanggal->startOfDay() : null;
+                    return $date
+                        && $date->between(
+                            $startProof->purchase_datetime->startOfDay(),
+                            $endProof->purchase_datetime->endOfDay()
+                        );
+                });
+                $spdFuel = round($windowSpd->map($spdLiters)->sum(), 2);
+
+                // Total BBM yang dikonsumsi pada rentang trip ini
+                $fuelConsumed = round((float) $startProof->fuel_volume + $spdFuel, 2);
+
                 // Hitung fuel efficiency
-                $fuelEfficiency = $startProof->fuel_volume > 0
-                    ? round($kmDiff / $startProof->fuel_volume, 2)
+                $fuelEfficiency = $fuelConsumed > 0
+                    ? round($kmDiff / $fuelConsumed, 2)
                     : null;
 
                 // Tentukan kategori trip
@@ -2416,18 +2525,24 @@ public function generateTripAnalysis()
                     ->where('transaction_proof_end_id', $endProof->id)
                     ->first();
 
+                // Catatan sistem: sertakan info BBM SPD jika ada kontribusi
+                $spdNote = '';
+                if ($spdFuel > 0) {
+                    $spdNote = "\n🧾 Termasuk BBM SPD (LPJ disetujui): {$spdFuel} L.";
+                }
+
                 if ($existingAnalysis) {
                     // Update existing
                     $existingAnalysis->update([
                         'km_difference' => $kmDiff,
-                        'fuel_consumed' => $startProof->fuel_volume,
+                        'fuel_consumed' => $fuelConsumed,
                         'fuel_efficiency' => $fuelEfficiency,
                         'days_difference' => $daysDiff,
                         'trip_category' => $tripCategory,
                     ]);
 
                     $existingAnalysis->update([
-                        'system_notes' => $existingAnalysis->generateSystemNotes()
+                        'system_notes' => $existingAnalysis->generateSystemNotes() . $spdNote
                     ]);
                 } else {
                     // Create new
@@ -2443,7 +2558,7 @@ public function generateTripAnalysis()
                         'fuel_volume_end' => $endProof->fuel_volume,
                         'filling_date_end' => $endProof->purchase_datetime,
                         'km_difference' => $kmDiff,
-                        'fuel_consumed' => $startProof->fuel_volume,
+                        'fuel_consumed' => $fuelConsumed,
                         'fuel_efficiency' => $fuelEfficiency,
                         'days_difference' => $daysDiff,
                         'trip_category' => $tripCategory,
@@ -2451,7 +2566,7 @@ public function generateTripAnalysis()
                     ]);
 
                     $analysis->update([
-                        'system_notes' => $analysis->generateSystemNotes()
+                        'system_notes' => $analysis->generateSystemNotes() . $spdNote
                     ]);
 
                     $totalAnalysis++;
@@ -2471,6 +2586,34 @@ public function generateTripAnalysis()
             ->back()
             ->with('error', 'Gagal generate trip analysis: ' . $e->getMessage());
     }
+}
+
+/**
+ * Estimasi volume (liter) sebuah struk BBM SPD.
+ * Prioritas: metadata OCR (volume) → harga_per_liter → harga rata-rata BBM
+ * operasional kendaraan (bill_amounts / fuel_volume). Jika tidak bisa
+ * diestimasi, dikembalikan 0.
+ */
+private function estimateStrukLiters(StrukItem $struk, ?float $avgPrice): float
+{
+    $meta = $struk->metadata_json ?? [];
+
+    $volume = (float) ($meta['volume'] ?? 0);
+    if ($volume > 0) {
+        return round($volume, 2);
+    }
+
+    $nominal = (float) $struk->nominal;
+    if ($nominal <= 0) {
+        return 0.0;
+    }
+
+    $price = (float) ($meta['harga_per_liter'] ?? 0);
+    if ($price <= 0) {
+        $price = (float) $avgPrice;
+    }
+
+    return $price > 0 ? round($nominal / $price, 2) : 0.0;
 }
 
 
@@ -3307,12 +3450,9 @@ private function compressToJpeg(string $imagePath, int $quality = 80): ?string
         return null;
     }
 
-    // Untuk PDF report, 800px sudah lebih dari cukup
-    $maxDim = 800;
-
     try {
         if (!extension_loaded('imagick')) {
-            return $this->compressToJpegGD($imagePath, $quality, $maxDim);
+            return $this->compressToJpegGD($imagePath, $quality);
         }
 
         $imagick = new \Imagick($imagePath);
@@ -3323,16 +3463,7 @@ private function compressToJpeg(string $imagePath, int $quality = 80): ?string
         // Optimasi dengan strip metadata
         $imagick->stripImage();
 
-        // Resize - 800px cukup untuk PDF
-        $width = $imagick->getImageWidth();
-        $height = $imagick->getImageHeight();
-
-        if ($width > $maxDim || $height > $maxDim) {
-            // Gunakan FILTER_TRIANGLE (lebih cepat dari LANCZOS, cukup bagus untuk downscale)
-            $imagick->resizeImage($maxDim, $maxDim, \Imagick::FILTER_TRIANGLE, 1, true);
-        }
-
-        // Set kompresi
+        // ✅ TANPA RESIZE — hanya turunkan kualitas (dimensi gambar dipertahankan)
         $imagick->setImageCompression(\Imagick::COMPRESSION_JPEG);
         $imagick->setImageCompressionQuality($quality);
 
@@ -3350,15 +3481,13 @@ private function compressToJpeg(string $imagePath, int $quality = 80): ?string
     }
 }
 
-// Fallback GD dengan optimasi lebih baik
-private function compressToJpegGD(string $imagePath, int $quality = 80, int $maxDimension = 800): ?string
+// Fallback GD dengan optimasi lebih baik — TANPA resize, hanya turunkan kualitas
+private function compressToJpegGD(string $imagePath, int $quality = 80): ?string
 {
     // Cek dimensi dulu SEBELUM load full image ke memory
     $imageInfo = getimagesize($imagePath);
     if (!$imageInfo) return null;
 
-    $srcW = $imageInfo[0];
-    $srcH = $imageInfo[1];
     $mimeType = $imageInfo['mime'];
 
     // Load image berdasarkan tipe
@@ -3379,17 +3508,11 @@ private function compressToJpegGD(string $imagePath, int $quality = 80, int $max
 
     if (!$source) return null;
 
-    if ($srcW > $maxDimension || $srcH > $maxDimension) {
-        $ratio = min($maxDimension / $srcW, $maxDimension / $srcH);
-        $newW = (int) round($srcW * $ratio);
-        $newH = (int) round($srcH * $ratio);
+    // Pertahankan alpha untuk PNG transparan
+    imagealphablending($source, false);
+    imagesavealpha($source, true);
 
-        $resized = imagecreatetruecolor($newW, $newH);
-        imagecopyresampled($resized, $source, 0, 0, 0, 0, $newW, $newH, $srcW, $srcH);
-        imagedestroy($source);
-        $source = $resized;
-    }
-
+    // ✅ TANPA RESIZE — dimensi asli dipertahankan, hanya kualitas JPEG yang turun
     ob_start();
     imagejpeg($source, null, $quality);
     $compressed = ob_get_clean();

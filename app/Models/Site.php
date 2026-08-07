@@ -54,6 +54,14 @@ class Site extends Model
         return $this->hasMany(LunchDistribution::class);
     }
 
+    /**
+     * Kendaraan yang ber-unit di site ini (lewat vehicle_details.site_id)
+     */
+    public function vehicleDetails()
+    {
+        return $this->hasMany(VehicleDetail::class, 'site_id');
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);

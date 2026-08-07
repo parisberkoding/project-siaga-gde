@@ -158,6 +158,7 @@
                                     <th>Tanggal</th>
                                     <th>Tipe</th>
                                     <th class="text-end">Nominal</th>
+                                    <th>Struk</th>
                                     <th>Keterangan</th>
                                 </tr>
                             </thead>
@@ -170,13 +171,33 @@
                                             <span class="badge {{ $detail->getTipeBadgeClass() }}">
                                                 {{ $detail->tipe_penggunaan }}
                                             </span>
+                                            @if($detail->strukItem && $detail->strukItem->kategori_source === 'ai')
+                                                <span class="badge bg-info-subtle text-info" title="Dianalisis AI/OCR">
+                                                    <i class="bi bi-stars"></i> AI
+                                                </span>
+                                            @endif
                                         </td>
                                         <td class="text-end">Rp {{ number_format($detail->nominal, 0, ',', '.') }}</td>
+                                        <td>
+                                            @if($detail->strukItem && $detail->strukItem->path_image)
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <a href="{{ asset('storage/' . $detail->strukItem->path_image) }}"
+                                                       target="_blank" class="btn btn-sm btn-outline-primary"
+                                                       title="Lihat struk">
+                                                        <i class="bi bi-image"></i>
+                                                    </a>
+                                                    <small class="text-muted font-monospace"
+                                                           style="font-size: 0.7rem;">{{ $detail->strukItem->item_code }}</small>
+                                                </div>
+                                            @else
+                                                <span class="text-muted">-</span>
+                                            @endif
+                                        </td>
                                         <td>{{ $detail->keterangan ?? '-' }}</td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="5" class="text-center text-muted">Tidak ada data pengeluaran</td>
+                                        <td colspan="6" class="text-center text-muted">Tidak ada data pengeluaran</td>
                                     </tr>
                                 @endforelse
                             </tbody>

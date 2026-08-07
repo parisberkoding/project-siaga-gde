@@ -42,7 +42,7 @@
         <br><small class="text-muted">Silakan perbaiki laporan di bawah lalu ajukan ulang.</small>
     </div>
 
-    <form action="{{ route('requester.lpj.update', $laporan->id) }}" method="POST" id="formLpj">
+    <form action="{{ route('requester.lpj.update', $laporan->id) }}" method="POST" id="formLpj" enctype="multipart/form-data">
         @csrf
         @method('PUT')
         <div class="row">
@@ -267,6 +267,8 @@
 {{-- Pass budget data ke JS --}}
 <script>
     const budgetsPerSurat = @json($budgetsPerSurat ?? []);
+    const analyzeUrl = @json(route('pelaporan.analyze-struk'));
+    const csrfToken = @json(csrf_token());
 </script>
 
 <script>
@@ -297,7 +299,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
     }
 
-    function addItemRow(tanggal = '', tipe = 'BBM', nominal = '', keterangan = '') {
+    function addItemRow(tanggal = '', tipe = 'BBM', nominal = '', keterangan = '', strukKategori = '', kategoriSource = 'manual', metadataJson = '', hasStruk = false) {
         itemCount++;
         const card = document.createElement('div');
         card.className = 'card item-card border shadow-sm';
@@ -340,6 +342,28 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
 
+                <div class="row g-2 mt-1 align-items-end">
+                    <div class="col-md-8">
+                        <label class="form-label small text-muted mb-1">Foto Struk <small>(kosongkan bila struk lama tetap dipakai)</small></label>
+                        <input type="file" class="form-control form-control-sm item-struk" name="items[${itemCount}][struk]"
+                               accept="image/jpeg,image/png,image/webp">
+                    </div>
+                    <div class="col-md-4 d-flex gap-2 align-items-center">
+                        <button type="button" class="btn btn-sm btn-outline-primary item-analyze" disabled>
+                            <i class="bi bi-stars"></i> Analisis AI
+                        </button>
+                        <span class="item-ai-status small text-muted"></span>
+                    </div>
+                </div>
+                <div class="mt-2 item-struk-preview" style="display:none;">
+                    <img class="img-thumbnail" alt="Pratinjau struk" style="max-height:90px;">
+                </div>
+
+                {{-- Field AI/struk (hidden) --}}
+                <input type="hidden" class="item-struk-kategori" name="items[${itemCount}][struk_kategori]" value="${strukKategori}">
+                <input type="hidden" class="item-kategori-source" name="items[${itemCount}][kategori_source]" value="${kategoriSource}">
+                <input type="hidden" class="item-metadata-json" name="items[${itemCount}][metadata_json]" value="${metadataJson}">
+
                 <div class="mt-2">
                     <label class="form-label small text-muted mb-1">Keterangan</label>
                     <input type="text" class="form-control form-control-sm" name="items[${itemCount}][keterangan]"
@@ -354,6 +378,8 @@ document.addEventListener('DOMContentLoaded', function() {
         card.querySelector('.item-nominal').addEventListener('input', calculateTotal);
         card.querySelector('.item-tipe').addEventListener('change', calculateTotal);
         card.querySelector('.item-tanggal').addEventListener('change', calculateTotal);
+        card.querySelector('.item-struk').addEventListener('change', function() { handleStrukFile(this, card); });
+        card.querySelector('.item-analyze').addEventListener('click', function() { analyzeStruk(card); });
         card.querySelector('.btn-remove-item').addEventListener('click', function() {
             card.remove();
             renumberRows();
@@ -362,6 +388,79 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('itemsEmpty').style.display = 'block';
             }
         });
+    }
+
+    // Handle pemilihan file struk: preview + aktifkan tombol AI
+    function handleStrukFile(input, card) {
+        const file = input.files[0];
+        const preview = card.querySelector('.item-struk-preview');
+        const btn = card.querySelector('.item-analyze');
+        const status = card.querySelector('.item-ai-status');
+        if (!file) {
+            preview.style.display = 'none';
+            preview.querySelector('img').src = '';
+            btn.disabled = true;
+            status.textContent = '';
+            status.className = 'item-ai-status small text-muted';
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = e => { preview.querySelector('img').src = e.target.result; preview.style.display = 'block'; };
+        reader.readAsDataURL(file);
+        btn.disabled = false;
+        status.textContent = 'Klik AI utk isi otomatis';
+        status.className = 'item-ai-status small text-primary';
+    }
+
+    // Kirim struk ke AI/OCR
+    async function analyzeStruk(card) {
+        const input = card.querySelector('.item-struk');
+        const file = input.files[0];
+        if (!file) return;
+        const btn = card.querySelector('.item-analyze');
+        const status = card.querySelector('.item-ai-status');
+        btn.disabled = true;
+        status.textContent = 'Menganalisis...';
+        status.className = 'item-ai-status small text-primary';
+
+        const fd = new FormData();
+        fd.append('image', file);
+        try {
+            const res = await fetch(analyzeUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }, body: fd });
+            const data = await res.json();
+            if (data.success) {
+                const kategori = data.kategori;
+                const metadata = data.metadata || {};
+                const text = data.text || '';
+                const tipeMap = { 'BBM': 'BBM', 'Tol': 'Tol', 'Parkir': 'Parkir', 'Lainnya': 'Lain-lain' };
+
+                card.querySelector('.item-struk-kategori').value = kategori;
+                card.querySelector('.item-kategori-source').value = 'ai';
+                card.querySelector('.item-metadata-json').value = JSON.stringify({ kategori, metadata, text });
+
+                const tipeSelect = card.querySelector('.item-tipe');
+                if (tipeSelect.value === 'BBM' || tipeSelect.value === 'Hotel' || !tipeSelect.value) {
+                    tipeSelect.value = tipeMap[kategori] || 'Lain-lain';
+                }
+                if (metadata.nominal && !(parseFloat(card.querySelector('.item-nominal').value) > 0)) {
+                    card.querySelector('.item-nominal').value = metadata.nominal;
+                }
+                if (text && !card.querySelector('input[name*="[keterangan]"]').value.trim()) {
+                    card.querySelector('input[name*="[keterangan]"]').value = text.substring(0, 200);
+                }
+                status.textContent = '✓ ' + kategori + (metadata.nominal ? ' • ' + formatRupiah(metadata.nominal) : '');
+                status.className = 'item-ai-status small text-success';
+                calculateTotal();
+            } else {
+                status.textContent = 'Gagal: ' + (data.message || 'tersedia');
+                status.className = 'item-ai-status small text-danger';
+            }
+        } catch (e) {
+            status.textContent = 'Error koneksi';
+            status.className = 'item-ai-status small text-danger';
+        } finally {
+            btn.disabled = false;
+        }
     }
 
     function renumberRows() {
@@ -569,7 +668,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Load existing items
     existingItems.forEach(item => {
-        addItemRow(item.tanggal, item.tipe_penggunaan, item.nominal, item.keterangan);
+        const struk = item.strukItem || null;
+        addItemRow(
+            item.tanggal,
+            item.tipe_penggunaan,
+            item.nominal,
+            item.keterangan,
+            struk ? struk.struk_kategori : '',
+            struk ? struk.kategori_source : 'manual',
+            struk && struk.metadata_json ? struk.metadata_json.replace(/"/g, '&quot;') : '',
+            !!struk
+        );
     });
 
     jumlahDiberikan.addEventListener('input', calculateTotal);
