@@ -35,4 +35,17 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Google Gemini (AI Assistant - masih pengembangan / belum stabil)
+    |--------------------------------------------------------------------------
+    | Model: Gemini 3 Flash Live (function calling untuk query data real-time).
+    | API key didapat dari Google AI Studio. Simpan di .env sebagai GEMINI_API_KEY.
+    */
+    'gemini' => [
+        'api_key' => env('GEMINI_CHAT_API_KEY', env('GEMINI_API_KEY')),
+        'model'   => env('GEMINI_CHAT_MODEL', env('GEMINI_MODEL', 'gemini-2.5-flash')),
+        'url'     => env('GEMINI_API_URL', 'https://generativelanguage.googleapis.com/v1beta'),
+    ],
+
 ];

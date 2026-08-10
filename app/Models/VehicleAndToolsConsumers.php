@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\VehicleChecking;
 use App\Models\VehicleCheckingSchedule;
 use App\Models\VehiclePartsReplacement;
+use App\Services\FuelBenchmarkService;
 
 class VehicleAndToolsConsumers extends Model
 {
@@ -153,5 +154,30 @@ class VehicleAndToolsConsumers extends Model
         }
 
         return "{$code} - {$name}";
+    }
+
+    /**
+     * Benchmark BBM per unit (volume_tangki x harga region -> kelipatan 50.000).
+     * null bila data teknis/harga belum tersedia.
+     */
+    public function getFuelBenchmarkAttribute(): ?int
+    {
+        return FuelBenchmarkService::benchmarkForVehicle($this);
+    }
+
+    /**
+     * Rentang nominal yang diizinkan (benchmark +/- 500.000).
+     */
+    public function getFuelBenchmarkRangeAttribute(): array
+    {
+        return FuelBenchmarkService::rangeForBenchmark($this->fuel_benchmark);
+    }
+
+    /**
+     * Opsi nominal (kelipatan 50.000) untuk dropdown permohonan.
+     */
+    public function getFuelBenchmarkOptionsAttribute(): array
+    {
+        return FuelBenchmarkService::optionsForBenchmark($this->fuel_benchmark);
     }
 }

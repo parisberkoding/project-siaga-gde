@@ -80,11 +80,12 @@
         ]],
 
         // ── Master Data - Kendaraan & Alat (permission group: vehicle) ──
-        ['heading' => 'Master Data', 'collapsible' => true, 'id' => 'vehicles-nav', 'label' => 'Kendaraan & Alat', 'icon' => 'bi bi-truck', 'roles' => ['general_affairs', 'superadmin'], 'active' => ['vehicles', 'vehicles.create', 'superadmin.vehicle-activation*', 'superadmin.approval*'], 'children' => [
+        ['heading' => 'Master Data', 'collapsible' => true, 'id' => 'vehicles-nav', 'label' => 'Kendaraan & Alat', 'icon' => 'bi bi-truck', 'roles' => ['general_affairs', 'superadmin'], 'active' => ['vehicles', 'vehicles.create', 'superadmin.vehicle-activation*', 'superadmin.approval*', 'master-gasoline.*'], 'children' => [
             ['label' => 'Daftar Kendaraan', 'icon' => 'bi bi-circle', 'route' => 'vehicles', 'params' => ['tab' => 'list'], 'active' => ['vehicles'], 'perms' => ['vehicle.view']],
             ['label' => 'Tambah Kendaraan', 'icon' => 'bi bi-circle', 'route' => 'vehicles.create', 'active' => ['vehicles.create'], 'perms' => ['vehicle.create']],
             ['label' => 'Aktivasi Kendaraan', 'icon' => 'bi bi-circle', 'route' => 'superadmin.vehicle-activation', 'active' => ['superadmin.vehicle-activation*'], 'roles' => ['superadmin'], 'perms' => ['vehicle.checking']],
             ['label' => 'Kendaraan Baru via Request', 'icon' => 'bi bi-circle', 'route' => 'superadmin.approval', 'active' => ['superadmin.approval*'], 'roles' => ['superadmin'], 'perms' => ['vehicle.approve']],
+            ['label' => 'Harga BBM (Master Gasoline)', 'icon' => 'bi bi-fuel-pump', 'route' => 'master-gasoline.index', 'active' => ['master-gasoline.*'], 'roles' => ['general_affairs', 'superadmin']],
         ]],
 
         // ── Manajemen User (permission group: users) ──
@@ -166,6 +167,7 @@
             ['label' => 'Lap. Keuangan Service', 'icon' => 'bi bi-currency-dollar', 'route' => 'superadmin.financial-report.index', 'active' => ['superadmin.financial-report.*'], 'roles' => ['superadmin']],
             ['label' => 'Lap. Transaksi Sparepart', 'icon' => 'bi bi-journal-text', 'route' => 'superadmin.transaction-report.index', 'active' => ['superadmin.transaction-report.*'], 'roles' => ['superadmin']],
             ['label' => 'Cetak Laporan BBM', 'icon' => 'bi bi-printer', 'route' => 'superadmin.print-report', 'active' => ['superadmin.print-report*'], 'roles' => ['superadmin']],
+            ['label' => 'AI Assistant (Beta)', 'icon' => 'bi bi-robot', 'route' => 'ai-assistant.index', 'active' => ['ai-assistant.*'], 'roles' => ['superadmin']],
         ]],
     ];
 

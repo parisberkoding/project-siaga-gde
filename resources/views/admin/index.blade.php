@@ -71,13 +71,14 @@
     }
   }
   .bulk-action-bar {
-    background: #f1f5ff;
+    background: #ffffff;
     padding: 15px 20px;
     border-radius: 8px;
     margin-bottom: 15px;
     display: none;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    color: #0a1427;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    color: #212529;
   }
 
   .bulk-action-bar.show {
@@ -284,77 +285,71 @@
       </div>
     </div>
 
-    {{-- Pending Requests Table --}}
-    <div class="table-responsive">
-      <table class="table table-hover" id="pendingTable">
-        <thead>
-          <tr>
-            <th style="width: 120px;">Request ID</th>
-            <th>Pemohon</th>
-            <th>Tanggal</th>
-            <th>Kendaraan</th>
-            <th>BBM</th>
-            <th>Jumlah</th>
-            <th>Catatan</th>
-            <th>Catatan Admin</th>
-            <th style="width: 220px;">Aksi</th>
-          </tr>
-        </thead>
-        <tbody>
-          @forelse($pendingRequests as $req)
-            <tr>
-              <td><small class="text-muted">{{ $req->request_number }}</small></td>
-              <td><strong>{{ $req->requester->nama_lengkap }}</strong></td>
-              <td data-order="{{ $req->request_date->timestamp }}">
-                <small>{{ $req->request_date->format('d/m/Y H:i') }}</small>
-              </td>
-              <td>
-                <div><strong>{{ $req->vehicle->consumerial_name }}</strong></div>
-                <small class="text-muted">{{ $req->vehicle->consumerial_type }}</small>
-              </td>
-              <td><span class="badge badge-sm bg-info">{{ $req->gasoline_type }}</span></td>
-              <td data-order="{{ $req->bill_amounts }}">
-                <strong>Rp {{ number_format($req->bill_amounts, 0, ',', '.') }}</strong>
-              </td>
-              <td><small class="text-muted">{{ $req->requester_notes ?? '-' }}</small></td>
-              <td>
-                <input type="text" name="catatan_admin[]" id="catatan_admin_{{ $req->id }}" class="form-control" placeholder="Catatan Admin (opsional)">
-              </td>
-              <td>
-                <div class="action-checkbox-group">
-                  <div class="form-check">
-                    <input class="form-check-input decision-checkbox" type="checkbox"
-                           data-id="{{ $req->id }}"
-                           data-action="approve"
-                           id="approve_{{ $req->id }}">
-                    <label class="form-check-label text-success" for="approve_{{ $req->id }}">
+    {{-- Daftar Permohonan Pending (Card per request) --}}
+    <div class="row g-3" id="pendingCards">
+      @forelse($pendingRequests as $req)
+        <div class="col-12">
+          <div class="card request-card" id="card_{{ $req->id }}">
+            <div class="card-body py-3">
+              <div class="row align-items-center g-3">
+
+                {{-- Kolom 1: Informasi Permohonan --}}
+                <div class="col-12 col-lg-4">
+                  <small class="text-muted" style="opacity: .75; font-size: 12px;">
+                    {{ $req->request_number }} &middot; {{ $req->request_date->format('d/m/Y H:i') }}
+                  </small>
+                  <div class="fw-bold text-dark mt-1" style="font-size: 13px;">
+                    {{ $req->requester->nama_lengkap }}
+                  </div>
+                  <div class="fw-bold text-dark" style="font-size: 12px;">
+                    {{ $req->vehicle->consumerial_code }} - {{ $req->vehicle->consumerial_name }}
+                  </div>
+                  <div class="fw-bold text-primary" style="font-size: 12px;">
+                    Rp {{ number_format($req->bill_amounts, 0, ',', '.') }}
+                  </div>
+                  <span class="badge badge-sm bg-info mt-1">{{ $req->gasoline_type }}</span>
+                  @if($req->requester_notes)
+                    <small class="d-block text-muted mt-1" style="font-size: 12px;">
+                      <i class="bi bi-chat-dots"></i> {{ $req->requester_notes }}
+                    </small>
+                  @endif
+                </div>
+
+                {{-- Kolom 2: Komentar Admin --}}
+                <div class="col-12 col-lg-4">
+                  <label class="form-label small text-muted mb-1" for="catatan_admin_{{ $req->id }}">
+                    <i class="bi bi-chat-left-text"></i> Komentar Admin
+                  </label>
+                  <input type="text" name="catatan_admin[]" id="catatan_admin_{{ $req->id }}"
+                         class="form-control form-control-sm" placeholder="Tulis komentar..." autocomplete="off">
+                </div>
+
+                {{-- Kolom 3: Tombol Keputusan --}}
+                <div class="col-12 col-lg-4 d-flex justify-content-lg-end">
+                  <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-success btn-sm decision-btn"
+                            data-id="{{ $req->id }}" data-action="approve" id="approve_{{ $req->id }}">
                       <i class="bi bi-check-circle"></i> Approve
-                    </label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input decision-checkbox" type="checkbox"
-                           data-id="{{ $req->id }}"
-                           data-action="reject"
-                           id="reject_{{ $req->id }}">
-                    <label class="form-check-label text-danger" for="reject_{{ $req->id }}">
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm decision-btn"
+                            data-id="{{ $req->id }}" data-action="reject" id="reject_{{ $req->id }}">
                       <i class="bi bi-x-circle"></i> Reject
-                    </label>
+                    </button>
                   </div>
                 </div>
-              </td>
-            </tr>
-          @empty
-            <tr>
-              <td colspan="8">
-                <div class="text-center py-4 text-muted">
-                  <i class="bi bi-inbox" style="font-size: 2rem; opacity: 0.5;"></i>
-                  <div class="mt-2">Tidak ada permohonan pending</div>
-                </div>
-              </td>
-            </tr>
-          @endforelse
-        </tbody>
-      </table>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      @empty
+        <div class="col-12">
+          <div class="text-center py-4 text-muted">
+            <i class="bi bi-inbox" style="font-size: 2rem; opacity: 0.5;"></i>
+            <div class="mt-2">Tidak ada permohonan pending</div>
+          </div>
+        </div>
+      @endforelse
     </div>
   </form>
 </div>
@@ -383,93 +378,49 @@
   // ✅ Global object untuk menyimpan keputusan
   // Format: { "123": "approve", "124": "reject" }
   const bulkDecisions = {};
-  let pendingDataTable = null;
 
   // Initialize everything when DOM is ready
   document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Initializing Admin Dashboard...');
-    initializeDataTable();
-    initializeCheckboxes();
-    console.log('✅ Dashboard initialized successfully');
+    initializeDecisionButtons();
   });
 
-  // Initialize DataTable
-  function initializeDataTable() {
-    const pendingTable = document.getElementById('pendingTable');
-    if (pendingTable && pendingTable.querySelector('tbody tr td:not([colspan])')) {
-      try {
-        pendingDataTable = new simpleDatatables.DataTable(pendingTable, {
-          searchable: true,
-          fixedHeight: false,
-          perPage: 10,
-          perPageSelect: [5, 10, 25, 50, 100],
-          labels: {
-            placeholder: "Cari permohonan...",
-            perPage: "Per halaman:",
-            noRows: "Tidak ada data",
-            info: "Menampilkan {start} sampai {end} dari {rows} data"
-          },
-          columns: [
-            { select: 2, sort: "desc" },
-            { select: 7, sortable: false }
-          ]
-        });
-
-        setTimeout(() => {
-          initializeCheckboxes();
-          console.log('✅ Checkbox listeners re-attached after DataTable');
-        }, 100);
-
-        console.log('✅ DataTable initialized');
-      } catch (error) {
-        console.error('❌ DataTable initialization error:', error);
-      }
-    }
-  }
-
-  // Initialize checkbox event listeners
-  function initializeCheckboxes() {
-    const checkboxes = document.querySelectorAll('.decision-checkbox');
-    console.log(`📋 Found ${checkboxes.length} checkboxes`);
-
-    checkboxes.forEach(checkbox => {
-      checkbox.addEventListener('change', function() {
+  // Attach click listener ke setiap tombol keputusan
+  function initializeDecisionButtons() {
+    document.querySelectorAll('.decision-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
         const requestId = this.dataset.id;
         const action = this.dataset.action;
-        handleCheckboxChange(requestId, action, this.checked);
+        toggleDecision(requestId, action, this);
       });
     });
-
-    console.log('✅ Checkbox listeners attached');
   }
 
-  // Handle checkbox change
-  function handleCheckboxChange(requestId, action, isChecked) {
-    const approveCheckbox = document.getElementById(`approve_${requestId}`);
-    const rejectCheckbox = document.getElementById(`reject_${requestId}`);
+  // Toggle keputusan approve/reject (mutually exclusive per request)
+  function toggleDecision(requestId, action, btn) {
+    const approveBtn = document.getElementById(`approve_${requestId}`);
+    const rejectBtn = document.getElementById(`reject_${requestId}`);
 
-    console.log(`🔄 Checkbox: ID=${requestId}, Action=${action}, Checked=${isChecked}`);
-
-    if (action === 'approve') {
-      if (isChecked) {
-        rejectCheckbox.checked = false;
-        bulkDecisions[requestId] = 'approve';
-      } else {
-        delete bulkDecisions[requestId];
-      }
+    if (bulkDecisions[requestId] === action) {
+      delete bulkDecisions[requestId];
+      setButtonState(approveBtn, false);
+      setButtonState(rejectBtn, false);
+    } else {
+      bulkDecisions[requestId] = action;
+      setButtonState(approveBtn, action === 'approve');
+      setButtonState(rejectBtn, action === 'reject');
     }
 
-    if (action === 'reject') {
-      if (isChecked) {
-        approveCheckbox.checked = false;
-        bulkDecisions[requestId] = 'reject';
-      } else {
-        delete bulkDecisions[requestId];
-      }
-    }
-
-    console.log('📊 Current decisions:', bulkDecisions);
     updateBulkActionBar();
+  }
+
+  // Ubah tampilan tombol sesuai state aktif/non-aktif
+  function setButtonState(btn, active) {
+    if (!btn) return;
+    const isApprove = btn.dataset.action === 'approve';
+    btn.classList.remove(isApprove ? 'btn-success' : 'btn-danger', isApprove ? 'btn-outline-success' : 'btn-outline-danger');
+    btn.classList.add(active
+      ? (isApprove ? 'btn-success' : 'btn-danger')
+      : (isApprove ? 'btn-outline-success' : 'btn-outline-danger'));
   }
 
   // Update bulk action bar
@@ -490,48 +441,39 @@
     }
   }
 
-  // Save bulk actions
+  // Simpan keputusan bulk (+ komentar admin per request)
   window.saveBulkActions = function() {
-    console.log('💾 saveBulkActions called!');
-
     const totalSelected = Object.keys(bulkDecisions).length;
     if (totalSelected === 0) {
-      alert('❌ Tidak ada permohonan yang dipilih');
+      alert('Tidak ada permohonan yang dipilih');
       return;
     }
 
-    // ✅ Convert decisions object ke array dengan struktur yang diminta
-    // Format: [{ "request_id": 123, "status": "approve" }, ...]
+    // Format: [{ "request_id": 123, "status": "approve", "note": "..." }, ...]
     const decisionsArray = [];
     for (const [requestId, status] of Object.entries(bulkDecisions)) {
+      const input = document.getElementById(`catatan_admin_${requestId}`);
+      const note = input ? input.value.trim() : '';
       decisionsArray.push({
         request_id: parseInt(requestId),
-        status: status
+        status: status,
+        note: note || null
       });
     }
-
-    console.log('📋 Decisions to send:', decisionsArray);
 
     const approveCount = decisionsArray.filter(d => d.status === 'approve').length;
     const rejectCount = decisionsArray.filter(d => d.status === 'reject').length;
 
-    // Confirm
     const message = `Simpan keputusan?\n\n` +
                     `Approve: ${approveCount} permohonan\n` +
                     `Reject: ${rejectCount} permohonan`;
 
     if (!confirm(message)) {
-      console.log('❌ User cancelled');
       return;
     }
 
     // ✅ Set hidden input dengan JSON string
-    const decisionsInput = document.getElementById('decisionsInput');
-    decisionsInput.value = JSON.stringify(decisionsArray);
-
-    console.log('📤 Submitting form with decisions:', decisionsInput.value);
-
-    // Submit form
+    document.getElementById('decisionsInput').value = JSON.stringify(decisionsArray);
     document.getElementById('bulkApprovalForm').submit();
   }
 </script>

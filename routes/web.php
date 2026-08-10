@@ -22,6 +22,7 @@ use App\Http\Controllers\VehicleSparepartRequestRepairController;
 use App\Http\Controllers\VehicleCheckingSuperadminController;
 use App\Http\Controllers\CateringGuestController;
 use App\Http\Controllers\VehicleHealthHistoryController;
+use App\Http\Controllers\MasterGasolineController;
 use App\Http\Controllers\Lunch\EmployeeDefaultController;
 use App\Http\Controllers\Lunch\LunchAnalyticsController;
 use App\Http\Controllers\Lunch\LunchDashboardController;
@@ -31,6 +32,7 @@ use App\Http\Controllers\Lunch\LunchTransactionController;
 use App\Http\Controllers\Lunch\PublicAttendanceController;
 use App\Http\Controllers\Lunch\SelfBookingController;
 use App\Http\Controllers\ReportingController;
+use App\Http\Controllers\AiAssistantController;
 
 Route::get('/files/storage/{path}', [StorageFileController::class, 'serve'])
     ->where('path', '.*')
@@ -230,6 +232,14 @@ Route::middleware(['auth', 'role:admin,superadmin'])->group(function () {
 
     Route::get('/admin/transaction-monitoring', [VehicleSparepartRequestRepairController::class, 'transactionMonitoringIndex'])
         ->name('admin.transaction-monitoring.index');
+
+    // ────────────────────────────────────────────────────────────────────────
+    // MASTER HARGA BBM (Master Gasoline) - Superadmin & Admin/GA
+    // ────────────────────────────────────────────────────────────────────────
+    Route::prefix('master-gasoline')->name('master-gasoline.')->group(function () {
+        Route::get('/', [MasterGasolineController::class, 'index'])->name('index');
+        Route::post('/sync', [MasterGasolineController::class, 'sync'])->name('sync');
+    });
 });
 
 // export laporan transaksi bbm
@@ -246,6 +256,11 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
     Route::get('/dashboard/stats', [SuperadminController::class, 'getDashboardStats'])->name('dashboard.stats');
     Route::get('/dashboard/driver-stats', [SuperadminController::class, 'getDetailedDriverStats'])->name('dashboard.driver-stats');
 
+    // ==================== AI ASSISTANT (Gemini, masih pengembangan) ====================
+    Route::get('/ai-assistant', [AiAssistantController::class, 'index'])->name('ai-assistant.index');
+    Route::post('/ai-assistant/send', [AiAssistantController::class, 'send'])->name('ai-assistant.send');
+    Route::delete('/ai-assistant/sessions/{session}', [AiAssistantController::class, 'destroySession'])->name('ai-assistant.sessions.destroy');
+
     // ==================== USER MANAGEMENT ====================
     Route::get('users', [SuperadminController::class, 'indexUsers'])->name('users');
     Route::get('users/create', [SuperadminController::class, 'createUser'])->name('users.create');
@@ -258,6 +273,7 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
     // ==================== VEHICLE MANAGEMENT ====================
     Route::get('vehicles', [SuperadminController::class, 'indexVehicles'])->name('vehicles');
     Route::get('vehicles/create', [SuperadminController::class, 'createVehicle'])->name('vehicles.create');
+    Route::get('vehicles/{id}/edit', [SuperadminController::class, 'editVehicle'])->name('vehicles.edit');
     Route::post('vehicles/store', [SuperadminController::class, 'storeVehicle'])->name('vehicles.store');
     Route::post('vehicles/{id}/update', [SuperadminController::class, 'updateVehicle'])->name('vehicles.update');
     Route::post('vehicles/{id}/delete', [SuperadminController::class, 'deleteVehicle'])->name('vehicles.delete');

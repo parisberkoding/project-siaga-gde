@@ -184,44 +184,107 @@
 
         /* Print Buttons */
         .no-print {
-            text-align: center;
-            margin: 15px 0;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 5px;
+            position: sticky;
+            top: 12px;
+            z-index: 100;
+            margin: 0 0 20px;
+            padding: 12px 18px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
         }
 
-        .btn-print {
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 10px 25px;
-            font-size: 13pt;
-            cursor: pointer;
-            border-radius: 5px;
+        .toolbar {
+            max-width: 21cm;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .toolbar-title .doc-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            background: #eef2ff;
+            color: #4338ca;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+
+        .toolbar-title .doc-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .act-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid transparent;
+            padding: 10px 18px;
             font-family: Arial, sans-serif;
-            font-weight: bold;
-        }
-
-        .btn-print:hover {
-            background: #218838;
-        }
-
-        .btn-close {
-            background: #dc3545;
-            color: white;
-            border: none;
-            padding: 10px 25px;
-            font-size: 13pt;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1;
             cursor: pointer;
-            border-radius: 5px;
-            margin-left: 10px;
-            font-family: Arial, sans-serif;
-            font-weight: bold;
+            border-radius: 8px;
+            transition: all 0.15s ease;
+            text-decoration: none;
         }
 
-        .btn-close:hover {
-            background: #c82333;
+        .act-btn svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .act-btn-print {
+            background: #16a34a;
+            color: #fff;
+            box-shadow: 0 1px 3px rgba(22, 163, 74, 0.35);
+        }
+
+        .act-btn-print:hover {
+            background: #15803d;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(22, 163, 74, 0.3);
+        }
+
+        .act-btn-close {
+            background: #ffffff;
+            color: #374151;
+            border-color: #d1d5db;
+        }
+
+        .act-btn-close:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+            transform: translateY(-1px);
         }
 
         /* Print Specific Styles */
@@ -362,12 +425,29 @@
     @else
     {{-- Print Buttons --}}
     <div class="no-print">
-        <button onclick="window.print()" class="btn-print">
-            PRINT / SAVE AS PDF
-        </button>
-        <button onclick="window.close()" class="btn-close">
-            TUTUP
-        </button>
+        <div class="toolbar">
+            <div class="toolbar-title">
+                <span class="doc-badge">DOKUMEN</span>
+                <span class="doc-name">Surat Tugas — {{ $surat->nomor_surat }}</span>
+            </div>
+            <div class="toolbar-actions">
+                <button onclick="window.print()" class="act-btn act-btn-print">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                        <rect x="6" y="14" width="12" height="8"></rect>
+                    </svg>
+                    Cetak / Simpan PDF
+                </button>
+                <button onclick="window.close()" class="act-btn act-btn-close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                    Tutup
+                </button>
+            </div>
+        </div>
     </div>
 
     {{-- Main Document --}}
@@ -388,7 +468,7 @@
                 <div class="header-text">
                     <div class="company-name">PT. GEO DIPA ENERGI UNIT PATUHA</div>
                     <div class="address">
-                        Jl. Raya Rancabolasng KM. 14, Kp. Kendeng - Ds. Sugihmukti, Kec. Pasir Jambu - Kab. Bandung 40973
+                        Jl. Raya Rancabolang KM. 14, Kp. Kendeng - Ds. Sugihmukti, Kec. Pasir Jambu - Kab. Bandung 40973
                     </div>
                 </div>
             </div>

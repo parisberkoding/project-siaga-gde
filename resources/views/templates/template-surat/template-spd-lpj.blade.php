@@ -57,6 +57,16 @@
             margin-bottom: 14px;
         }
 
+        .intro {
+            margin: 12px 0 4px;
+            font-weight: bold;
+        }
+
+        .closing-text {
+            margin-top: 16px;
+            text-align: justify;
+        }
+
         /* ── Kop Surat ── */
         .kop {
             display: flex;
@@ -164,12 +174,59 @@
         table.rincian td.num { text-align: right; }
         table.rincian tr.total td { font-weight: bold; background: #f7f7f7; }
 
+        /* ── Halaman Surat SPD — harus muat 1 lembar A4 ── */
+        .spd-page {
+            font-size: 10.5pt;
+            line-height: 1.25;
+        }
+
+        .spd-page .page-title {
+            font-size: 12pt;
+            margin: 6px 0 2px;
+        }
+
+        .spd-page .page-subtitle {
+            font-size: 9.5pt;
+            margin-bottom: 8px;
+        }
+
+        .spd-page .intro {
+            margin: 8px 0 2px;
+        }
+
+        .spd-page table.info td {
+            padding: 1px 4px;
+        }
+
+        .spd-page table.nama td {
+            padding: 1px 4px;
+        }
+
+        .spd-page .closing-text {
+            margin-top: 10px;
+        }
+
+        .spd-page .signature-loc {
+            margin-top: 20px;
+        }
+
+        /* ── Halaman Rincian — TTD selalu di bawah halaman ── */
+        .rincian-page {
+            display: flex;
+            flex-direction: column;
+            min-height: 237mm;
+        }
+
+        .rincian-page .ttd-wrap {
+            margin-top: auto;
+            padding-top: 34px;
+        }
+
         /* ── Tanda Tangan ── */
         .ttd-wrap {
             display: flex;
             justify-content: space-between;
             gap: 16px;
-            margin-top: 34px;
             page-break-inside: avoid;
         }
 
@@ -274,29 +331,110 @@
             padding: 20px;
         }
 
-        /* ── Tombol print (hidden saat cetak) ── */
+        /* ── Toolbar cetak (hidden saat cetak) ── */
         .no-print {
-            text-align: center;
-            margin: 15px 0;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 5px;
+            position: sticky;
+            top: 12px;
+            z-index: 100;
+            margin: 0 0 20px;
+            padding: 12px 18px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
         }
 
-        .btn-print, .btn-close {
-            border: none;
-            padding: 10px 25px;
-            font-size: 13pt;
-            cursor: pointer;
-            border-radius: 5px;
+        .toolbar {
+            max-width: 21cm;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .toolbar-title .doc-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            background: #eef2ff;
+            color: #4338ca;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+
+        .toolbar-title .doc-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .act-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid transparent;
+            padding: 10px 18px;
             font-family: Arial, sans-serif;
-            font-weight: bold;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.15s ease;
+            text-decoration: none;
         }
 
-        .btn-print { background: #28a745; color: #fff; }
-        .btn-print:hover { background: #218838; }
-        .btn-close { background: #dc3545; color: #fff; margin-left: 10px; }
-        .btn-close:hover { background: #c82333; }
+        .act-btn svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .act-btn-print {
+            background: #16a34a;
+            color: #fff;
+            box-shadow: 0 1px 3px rgba(22, 163, 74, 0.35);
+        }
+
+        .act-btn-print:hover {
+            background: #15803d;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(22, 163, 74, 0.3);
+        }
+
+        .act-btn-close {
+            background: #ffffff;
+            color: #374151;
+            border-color: #d1d5db;
+        }
+
+        .act-btn-close:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+            transform: translateY(-1px);
+        }
 
         @media print {
             body { background: #fff; }
@@ -317,15 +455,37 @@
 <body>
 
 <div class="no-print">
-    <button onclick="window.print()" class="btn-print">PRINT / SAVE AS PDF</button>
-    <button onclick="window.close()" class="btn-close">TUTUP</button>
+    <div class="toolbar">
+        <div class="toolbar-title">
+            <span class="doc-badge">DOKUMEN</span>
+            <span class="doc-name">Surat SPD &amp; LPJ — {{ $surat->nomor_surat }}</span>
+        </div>
+        <div class="toolbar-actions">
+            <button onclick="window.print()" class="act-btn act-btn-print">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                    <rect x="6" y="14" width="12" height="8"></rect>
+                </svg>
+                Cetak / Simpan PDF
+            </button>
+            <button onclick="window.close()" class="act-btn act-btn-close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                Tutup
+            </button>
+        </div>
+    </div>
 </div>
 
 <div class="sheet">
 
     {{-- ═══════════════════════════════════════════════════════════
-         PAGE 1 : RINGKASAN SURAT TUGAS
+         PAGE 1 : SURAT TUGAS (SPD) — template lengkap dari template-spd
          ═══════════════════════════════════════════════════════════ --}}
+    <div class="spd-page">
     <div class="kop">
         <div class="kop-logo">
             @if($logoBase64)
@@ -338,8 +498,25 @@
         </div>
     </div>
 
-    <div class="page-title">Ringkasan Surat Tugas</div>
+    <div class="page-title">Surat Tugas</div>
     <div class="page-subtitle">Nomor: <strong>{{ $surat->nomor_surat }}</strong></div>
+
+    <p class="intro">Yang bertanda tangan dibawah ini,</p>
+
+    <table class="info">
+        <tr>
+            <td class="label">Nama</td>
+            <td>:</td>
+            <td class="value">{{ $surat->pemberi_tugas_nama }}</td>
+        </tr>
+        <tr>
+            <td class="label">Jabatan</td>
+            <td>:</td>
+            <td class="value">{{ $surat->pemberi_tugas_jabatan }}</td>
+        </tr>
+    </table>
+
+    <p class="intro">Dengan ini menugaskan kepada,</p>
 
     <table class="info">
         <tr>
@@ -348,17 +525,12 @@
             <td class="value">{{ $surat->pengemudi_nama }}</td>
         </tr>
         <tr>
-            <td class="label">Kendaraan yang dibawa</td>
-            <td>:</td>
-            <td class="value">{{ $laporan->kendaraan_label }}</td>
-        </tr>
-        <tr>
             <td class="label">Tempat Tujuan</td>
             <td>:</td>
             <td class="value">{{ $surat->tempat_tujuan }}</td>
         </tr>
         <tr>
-            <td class="label">Bidang yang dilayani</td>
+            <td class="label">Melayani Bidang</td>
             <td>:</td>
             <td class="value">{{ $surat->melayani_bidang }}</td>
         </tr>
@@ -366,6 +538,34 @@
             <td class="label">Jumlah Pemakai</td>
             <td>:</td>
             <td class="value">{{ $surat->jumlah_pemakai }} orang</td>
+        </tr>
+        <tr>
+            <td class="label">Nama Lengkap</td>
+            <td>:</td>
+            <td class="value"></td>
+        </tr>
+    </table>
+
+    <table class="nama">
+        @foreach($surat->details->take(7) as $index => $detail)
+        <tr>
+            <td class="no">{{ $index + 1 }}.</td>
+            <td class="nm">{{ $detail->nama_lengkap }}</td>
+        </tr>
+        @endforeach
+        @for($i = $surat->details->count(); $i < 7; $i++)
+        <tr>
+            <td class="no">{{ $i + 1 }}.</td>
+            <td class="nm">&nbsp;</td>
+        </tr>
+        @endfor
+    </table>
+
+    <table class="info" style="margin-top: 12px;">
+        <tr>
+            <td class="label">Lama Perjalanan Dinas</td>
+            <td>:</td>
+            <td class="value">{{ $surat->lama_perjalanan_hari }} hari</td>
         </tr>
         <tr>
             <td class="label">Tanggal Berangkat</td>
@@ -378,38 +578,25 @@
             <td class="value">{{ \Carbon\Carbon::parse($surat->tanggal_kembali)->locale('id')->translatedFormat('l, d F Y') }}</td>
         </tr>
         <tr>
-            <td class="label">Nama Lengkap Pemakai</td>
+            <td class="label">Kendaraan No. Pol.</td>
             <td>:</td>
-            <td class="value"></td>
+            <td class="value">{{ $surat->vehicle->consumerial_code }} - {{ $surat->vehicle->consumerial_name }}</td>
         </tr>
     </table>
 
-    <table class="nama">
-        @php $passengerCount = $surat->details->count(); @endphp
-        @foreach($surat->details as $index => $detail)
-        <tr>
-            <td class="no">{{ $index + 1 }}.</td>
-            <td class="nm">{{ $detail->nama_lengkap }}</td>
-        </tr>
-        @endforeach
-        @for($i = $passengerCount; $i < max($surat->jumlah_pemakai, $passengerCount); $i++)
-        <tr>
-            <td class="no">{{ $i + 1 }}.</td>
-            <td class="nm">&nbsp;</td>
-        </tr>
-        @endfor
-    </table>
+    <p class="closing-text">Demikian agar dilaksanakan dengan sebaik-baiknya.</p>
 
-    <div style="margin-top: 26px; text-align: right; page-break-inside: avoid;">
+    <div style="margin-top: 20px; text-align: right; page-break-inside: avoid;">
         <div>{{ $surat->tanggal_surat }}</div>
         <div style="font-weight: bold; margin-top: 8px;">Yang Memberi Perintah,</div>
         @if(!empty($qrSvgContent))
-        <div class="signature-barcode" style="width: 72px; height: 72px; margin: 10px 0 0 auto;">
+        <div class="signature-barcode" style="width: 64px; height: 64px; margin: 8px 0 0 auto;">
             {!! $qrSvgContent !!}
         </div>
         @endif
-        <div style="margin: 22mm 0 2px; font-weight: bold; text-decoration: underline;">{{ $surat->pemberi_tugas_nama }}</div>
+        <div style="margin: 14mm 0 2px; font-weight: bold; text-decoration: underline;">{{ $surat->pemberi_tugas_nama }}</div>
         <div>{{ $surat->pemberi_tugas_jabatan }}</div>
+    </div>
     </div>
 
     {{-- ═══════════════════════════════════════════════════════════
@@ -496,6 +683,7 @@
          ═══════════════════════════════════════════════════════════ --}}
     <div class="page-break"></div>
 
+    <div class="rincian-page">
     <div class="page-title">Rincian Penggunaan</div>
     <div class="page-subtitle">{{ $surat->nomor_surat }}</div>
 
@@ -551,6 +739,7 @@
             <div class="name">_________________</div>
             <div class="role">Management</div>
         </div>
+    </div>
     </div>
 
     {{-- ═══════════════════════════════════════════════════════════

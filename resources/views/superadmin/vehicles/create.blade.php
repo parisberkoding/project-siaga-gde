@@ -136,6 +136,16 @@
                             <small class="text-muted">Volume maksimal tangki bahan bakar.</small>
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label fw-semibold">Jenis Bahan Bakar</label>
+                            <select class="form-select" name="jenis_bahan_bakar">
+                                <option value="">-- Pilih --</option>
+                                @foreach(['Premium', 'Pertalite', 'Pertamax', 'Pertamax Turbo', 'Solar', 'Biosolar', 'Dexlite', 'Pertamina Dex'] as $bbm)
+                                <option value="{{ $bbm }}" {{ old('jenis_bahan_bakar') == $bbm ? 'selected' : '' }}>{{ $bbm }}</option>
+                                @endforeach
+                            </select>
+                            <small class="text-muted">Menentukan harga BBM untuk benchmark.</small>
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label fw-semibold">Default Nominal Operasional (Rp)</label>
                             <input type="number" step="0.01" class="form-control" name="nominal_full_tank"
                                    value="{{ old('nominal_full_tank') }}" min="0" placeholder="Contoh: 450000">

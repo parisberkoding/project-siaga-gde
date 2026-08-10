@@ -12,6 +12,7 @@ use App\Models\Approved_Request;
 use App\Models\Transaction_Proofs;
 use Carbon\Carbon;
 use App\Models\UserSlotAdjustment;
+use App\Services\FuelBenchmarkService;
 
 class RequestManagementController extends Controller
 {
@@ -64,7 +65,7 @@ class RequestManagementController extends Controller
     }
 
     // Get all vehicles (only approved ones) — + detail untuk label "Plat - Merk" & budget
-    $vehicles = VehicleAndToolsConsumers::with('detail')
+    $vehicles = VehicleAndToolsConsumers::with('detail.site')
         ->where('is_approved', true)
         ->where('is_active', true)
         ->orderBy('consumerial_type')
@@ -75,6 +76,9 @@ class RequestManagementController extends Controller
 
     // Get gasoline types
     $gasolineTypes = GasolineType::all();
+
+    // Opsi nominal fallback (tanpa benchmark) untuk kendaraan yang datanya belum lengkap
+    $fallbackOptions = FuelBenchmarkService::optionsForBenchmark(null);
 
    // ✅ Calculate max slots & on-time rate
 $maxSlots = $this->calculateUserMaxSlots($user->id);
@@ -115,7 +119,8 @@ return view('requester.view_request_bbm', compact(
     'maxSlots',
     'onTimeRate',
     'onTimeCount',
-    'totalWithProof'
+    'totalWithProof',
+    'fallbackOptions'
 ));
 }
 
@@ -135,23 +140,26 @@ return view('requester.view_request_bbm', compact(
         return back()->with('error', "Anda sudah memiliki {$maxSlots} permohonan aktif (maksimal untuk saat ini). Selesaikan permohonan terlebih dahulu.");
     }
 
-    // ✅ Budget dinamis: nominal_full_tank dari Master Vehicle (bukan dropdown hardcoded)
-    $maxNominal = null;
+    // ✅ Validasi nominal berbasis benchmark kendaraan:
+    // rentang = benchmark +/- 500.000 (kelipatan 50.000, batas 50.000 - 3.000.000)
+    $benchmark = null;
     if ($request->vehicle_id) {
-        $v = VehicleAndToolsConsumers::with('detail')->find($request->vehicle_id);
-        $maxNominal = $v?->detail?->nominal_full_tank;
+        $v = VehicleAndToolsConsumers::with('detail.site')->find($request->vehicle_id);
+        $benchmark = $v?->fuel_benchmark;
     }
 
-    $billRules = ['required', 'numeric', 'min:0'];
+    $range = FuelBenchmarkService::rangeForBenchmark($benchmark);
+
+    $billRules = ['required', 'numeric', 'min:' . $range['min'], 'max:' . $range['max'], 'multiple_of:50000'];
     $messages = [
         'gasoline_type.required' => 'Jenis BBM harus dipilih',
         'bill_payment.required' => 'Nominal harus diisi',
+        'bill_payment.min' => 'Nominal di bawah rentang benchmark BBM (min Rp ' .
+            number_format($range['min'], 0, ',', '.') . ').',
+        'bill_payment.max' => 'Nominal melebihi rentang benchmark BBM (maks Rp ' .
+            number_format($range['max'], 0, ',', '.') . ').',
+        'bill_payment.multiple_of' => 'Nominal harus kelipatan Rp 50.000.',
     ];
-    if ($maxNominal !== null) {
-        $billRules[] = 'max:' . $maxNominal;
-        $messages['bill_payment.max'] = 'Nominal melebihi budget full tank kendaraan (Rp ' .
-            number_format($maxNominal, 0, ',', '.') . ').';
-    }
 
     // Validasi input
     $validated = $request->validate([
@@ -1033,12 +1041,19 @@ public function admin_bulk_process(Request $request)
 
             $newStatus = $status === 'approve' ? 'approved' : 'rejected';
 
+            // Komentar admin per permohonan (opsional)
+            $note = isset($decision['note']) && trim((string) $decision['note']) !== ''
+                ? trim((string) $decision['note'])
+                : null;
+
             // Update permohonan
             $permohonan->update([
                 'status' => $newStatus,
                 'authorizer_id' => Auth::id(),
                 'authorization_date' => now(),
-                'authorizer_notes' => $newStatus === 'rejected' ? '[ADMIN REJECTION] Bulk rejection' : '[ADMIN APPROVAL]'
+                'authorizer_notes' => $newStatus === 'rejected'
+                    ? ($note ? '[ADMIN REJECTION] ' . $note : '[ADMIN REJECTION] Bulk rejection')
+                    : ($note ? '[ADMIN APPROVAL] ' . $note : '[ADMIN APPROVAL]')
             ]);
 
             // ✅ Jika APPROVED, buat voucher di approved_requests

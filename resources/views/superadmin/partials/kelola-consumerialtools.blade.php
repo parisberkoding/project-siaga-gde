@@ -88,16 +88,16 @@
                 <thead class="table-light">
                     <tr>
                         <th width="50">ID</th>
-                        <th width="110">Tipe</th>
+                        <th width="100">Tipe</th>
                         <th>Kode</th>
                         <th>Nama</th>
                         <th>Site</th>
-                        <th width="80">Penumpang</th>
-                        <th width="80">Tangki</th>
-                        <th width="100">Budget Ops.</th>
-                        <th width="100">Budget SPD</th>
+                        <th width="70">Penumpang</th>
+                        <th width="70">Tangki</th>
+                        <th width="110">Jenis BBM</th>
+                        <th width="110">Benchmark BBM</th>
                         <th width="100">Barcode</th>
-                        <th width="110">Aksi</th>
+                        <th width="140">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -116,8 +116,22 @@
                         <td><small>{{ $vehicle->detail?->site?->name ?? '-' }}</small></td>
                         <td><small>{{ $vehicle->detail?->kapasitas_penumpang ? $vehicle->detail->kapasitas_penumpang . ' org' : '-' }}</small></td>
                         <td><small>{{ $vehicle->detail?->volume_tangki ? $vehicle->detail->volume_tangki . ' L' : '-' }}</small></td>
-                        <td><small class="text-success">{{ $vehicle->detail?->nominal_full_tank ? 'Rp ' . number_format($vehicle->detail->nominal_full_tank, 0, ',', '.') : '-' }}</small></td>
-                        <td><small class="text-primary">{{ $vehicle->detail?->nominal_spd_default ? 'Rp ' . number_format($vehicle->detail->nominal_spd_default, 0, ',', '.') : '-' }}</small></td>
+                        <td>
+                            @if($vehicle->detail?->jenis_bahan_bakar)
+                                <span class="badge bg-secondary">{{ $vehicle->detail->jenis_bahan_bakar }}</span>
+                            @else
+                                <span class="badge bg-light text-muted border">-</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if($vehicle->detail?->nominal_full_tank)
+                                <small class="text-success fw-semibold">
+                                    Rp {{ number_format($vehicle->detail->nominal_full_tank, 0, ',', '.') }}
+                                </small>
+                            @else
+                                <span class="badge bg-light text-muted border">-</span>
+                            @endif
+                        </td>
                         <td>
                         @php
                             $barcode  = $vehicle->barcode ?? null;
@@ -146,40 +160,26 @@
                             <span class="badge bg-light text-muted border">Belum ada</span>
                         @endif
                     </td>
-
-
-                        <td><small class="text-muted">{{ $vehicle->consumerial_notes ?? '-' }}</small></td>
-                        <td><small>{{ $vehicle->creator->nama_lengkap ?? 'Unknown' }}</small></td>
-                        <td>
-                            @if($vehicle->approver)
-                                <small class="text-success">
-                                    <i class="bi bi-check-circle"></i> {{ $vehicle->approver->nama_lengkap }}
-                                </small>
-                            @else
-                                <small class="text-muted">-</small>
-                            @endif
-                        </td>
-                        <td><small>{{ $vehicle->created_at->format('d/m/Y H:i') }}</small></td>
                         <td>
                             <div class="btn-group btn-group-sm">
                                 <a href="{{ route('superadmin.vehicle.detail', $vehicle->id) }}"
                                    class="btn btn-info" title="Detail">
                                     <i class="bi bi-info-circle"></i>
                                 </a>
-                                <button class="btn btn-warning"
-                                        onclick="openEditModal({{ $vehicle->id }}, '{{ $vehicle->consumerial_type }}', '{{ $vehicle->consumerial_code }}', '{{ addslashes($vehicle->consumerial_name) }}', '{{ addslashes($vehicle->consumerial_notes ?? '') }}')"
-                                        title="Edit">
+                                <a href="{{ route('vehicles.edit', $vehicle->id) }}"
+                                   class="btn btn-warning" title="Edit">
                                     <i class="bi bi-pencil"></i>
-                                </button>
+                                </a>
                                 <form action="{{ route('vehicles.delete', $vehicle->id) }}"
                                   method="POST"
                                   style="display: inline;"
                                   onsubmit="return confirm('Yakin ingin menghapus {{ $vehicle->consumerial_type }} {{ $vehicle->consumerial_code }}?\n\nData dapat dipulihkan dari tab Data Terhapus.')">
                                 @csrf
-                                <button type="submit" class="btn btn-danger btn-sm" title="Hapus">
+                                <button type="submit" class="btn btn-danger" title="Hapus">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </form>
+                            </div>
                         </td>
                     </tr>
                     @empty
@@ -279,64 +279,7 @@
 </div>
 @endif
 
-<!-- Modal: Edit Kendaraan/Alat -->
-<div class="modal fade" id="editVehicleModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form id="editVehicleForm" method="POST">
-                @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Kendaraan/Alat</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Tipe Konsumsi *</label>
-                        <select class="form-select" name="consumerial_type" id="editConsumerialType" required>
-                            <option value="KENDARAAN">Kendaraan</option>
-                            <option value="ALAT">Alat</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Kode *</label>
-                        <input type="text" class="form-control" name="consumerial_code" id="editConsumerialCode" required>
-                        <small class="text-muted">Akan otomatis diubah ke uppercase</small>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Nama *</label>
-                        <input type="text" class="form-control" name="consumerial_name" id="editConsumerialName" required>
-                        <small class="text-muted">Akan otomatis diubah ke uppercase</small>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Catatan</label>
-                        <textarea class="form-control" name="consumerial_notes" id="editConsumerialNotes" rows="3"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-save me-2"></i>Simpan Perubahan
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 <script>
-function openEditModal(id, type, code, name, notes) {
-    const form = document.getElementById('editVehicleForm');
-    form.action = `/vehicles/${id}/update`;
-
-    document.getElementById('editConsumerialType').value = type;
-    document.getElementById('editConsumerialCode').value = code;
-    document.getElementById('editConsumerialName').value = name;
-    document.getElementById('editConsumerialNotes').value = notes || '';
-
-    const modal = new bootstrap.Modal(document.getElementById('editVehicleModal'));
-    modal.show();
-}
-
 document.addEventListener('DOMContentLoaded', function() {
     const alerts = document.querySelectorAll('.alert');
     alerts.forEach(alert => {

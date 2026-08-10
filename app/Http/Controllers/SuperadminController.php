@@ -12,6 +12,8 @@ use App\Models\VehicleTripAnalysis;
 use App\Models\TripValidation;
 use App\Models\VehicleBarcode;
 use App\Models\VehicleDetail;
+use App\Models\MasterGasoline;
+use App\Services\FuelBenchmarkService;
 use App\Models\Role;
 use App\Models\Site;
 use App\Models\StrukItem;
@@ -590,10 +592,11 @@ public function printReport(Request $request)
 }
 
 // ==================== BUSINESS DASHBOARD VIEW ====================
-public function dashboardBisnis(Request $request)
+ public function dashboardBisnis(Request $request)
 {
     $title = "Dashboard Bisnis";
     $period = $request->get('period', 'month');
+    $tab = $request->get('tab', 'grafik'); // grafik | tabel (preserve active tab)
 
     if (!$request->hasAny(['start_date', 'end_date', 'status', 'gasoline_type', 'vehicle_id', 'requester_id', 'nominal_range'])) {
         // ✅ TIDAK ADA FILTER
@@ -630,7 +633,7 @@ public function dashboardBisnis(Request $request)
 
         return view('superadmin.partials.dashboard-bisnis', compact(
             'title', 'stats', 'driverStats',
-            'kmPerformance', 'pivotData', 'allTrips', 'vehicles', 'drivers', 'approvers'
+            'kmPerformance', 'pivotData', 'allTrips', 'vehicles', 'drivers', 'approvers', 'tab'
         ));
     }
 
@@ -715,7 +718,7 @@ public function dashboardBisnis(Request $request)
 
     return view('superadmin.partials.dashboard-bisnis', compact(
         'title', 'stats', 'driverStats',
-        'kmPerformance', 'pivotData', 'allTrips', 'vehicles', 'drivers', 'approvers'
+        'kmPerformance', 'pivotData', 'allTrips', 'vehicles', 'drivers', 'approvers', 'tab'
     ));
 }
 
@@ -1862,6 +1865,26 @@ public function getCompletePivotTable(Request $request)
             return view('superadmin.vehicles.create', compact('title', 'sites'));
         }
 
+       public function editVehicle($id)
+        {
+            $title = "Edit Kendaraan / Alat";
+            $vehicle = VehicleAndToolsConsumers::with('detail.site')->findOrFail($id);
+            $detail = $vehicle->detail ?? new VehicleDetail();
+            $sites = Site::active()->orderBy('name')->get();
+
+            // Harga BBM region unit kendaraan (untuk kalkulasi benchmark otomatis)
+            $regionPrices = [];
+            $slug = $detail->site?->province_slug ?: 'jawa-barat';
+            foreach (['PERTAMAX', 'PERTAMINA DEX'] as $fuel) {
+                $price = MasterGasoline::latestPrice($slug, $fuel);
+                if ($price !== null) {
+                    $regionPrices[$fuel] = $price;
+                }
+            }
+
+            return view('superadmin.vehicles.edit', compact('title', 'vehicle', 'detail', 'sites', 'regionPrices'));
+        }
+
        public function indexVehicles(Request $request)
         {
             $title = "Kelola Kendaraan & Alat";
@@ -1928,6 +1951,7 @@ public function getCompletePivotTable(Request $request)
                 'site_id' => 'nullable|exists:sites,id',
                 'kapasitas_penumpang' => 'nullable|integer|min:1|max:100',
                 'volume_tangki' => 'nullable|numeric|min:0|max:99999',
+                'jenis_bahan_bakar' => 'nullable|string|max:50',
                 'nominal_full_tank' => 'nullable|numeric|min:0',
                 'nominal_spd_default' => 'nullable|numeric|min:0',
             ], [
@@ -1952,13 +1976,15 @@ public function getCompletePivotTable(Request $request)
                     'is_active' => true,
                 ]);
 
-                // Auto-create VehicleDetail dengan field budget (Master Vehicle)
+                // Auto-create VehicleDetail dengan field budget & kapasitas (Master Vehicle)
                 VehicleDetail::updateOrCreate(
                     ['vehicle_and_tools_consumer_id' => $vehicle->id],
                     [
                         'site_id' => $validated['site_id'] ?? null,
                         'kapasitas_penumpang' => $validated['kapasitas_penumpang'] ?? null,
                         'volume_tangki' => $validated['volume_tangki'] ?? null,
+                        'kapasitas_bahan_bakar' => $validated['volume_tangki'] ?? null,
+                        'jenis_bahan_bakar' => $validated['jenis_bahan_bakar'] ?? null,
                         'nominal_full_tank' => $validated['nominal_full_tank'] ?? null,
                         'nominal_spd_default' => $validated['nominal_spd_default'] ?? null,
                     ]
@@ -1989,7 +2015,11 @@ public function getCompletePivotTable(Request $request)
                 'consumerial_name' => 'required|max:255',
                 'consumerial_notes' => 'nullable|string|max:500',
                 'site_id' => 'nullable|exists:sites,id',
+                'kapasitas_penumpang' => 'nullable|integer|min:1|max:100',
+                'volume_tangki' => 'nullable|numeric|min:0|max:99999',
+                'jenis_bahan_bakar' => 'nullable|string|max:50',
                 'nominal_full_tank' => 'nullable|numeric|min:0',
+                'nominal_spd_default' => 'nullable|numeric|min:0',
                 'kapasitas_bbm_tahunan' => 'nullable|numeric|min:0',
             ], [
                 'consumerial_type.required' => 'Tipe konsumsi harus diisi',
@@ -2009,12 +2039,17 @@ public function getCompletePivotTable(Request $request)
                     'consumerial_notes' => $validated['consumerial_notes'] ?? null,
                 ]);
 
-                // Update Master Vehicle detail (budget & unit asal)
+                // Update Master Vehicle detail (budget, kapasitas & unit asal)
                 VehicleDetail::updateOrCreate(
                     ['vehicle_and_tools_consumer_id' => $vehicle->id],
                     [
                         'site_id' => $validated['site_id'] ?? null,
+                        'kapasitas_penumpang' => $validated['kapasitas_penumpang'] ?? null,
+                        'volume_tangki' => $validated['volume_tangki'] ?? null,
+                        'kapasitas_bahan_bakar' => $validated['volume_tangki'] ?? null,
+                        'jenis_bahan_bakar' => $validated['jenis_bahan_bakar'] ?? null,
                         'nominal_full_tank' => $validated['nominal_full_tank'] ?? null,
+                        'nominal_spd_default' => $validated['nominal_spd_default'] ?? null,
                         'kapasitas_bbm_tahunan' => $validated['kapasitas_bbm_tahunan'] ?? null,
                     ]
                 );

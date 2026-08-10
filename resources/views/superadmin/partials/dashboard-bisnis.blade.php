@@ -151,13 +151,13 @@
      ============================================================ --}}
 <ul class="nav nav-tabs dashboard-tabs mb-3" id="dashboardMainTabs" role="tablist">
     <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="tab-grafik" data-bs-toggle="tab"
+        <button class="nav-link {{ $tab != 'tabel' ? 'active' : '' }}" id="tab-grafik" data-bs-toggle="tab"
                 data-bs-target="#pane-grafik" type="button" role="tab">
             <i class="bi bi-bar-chart-line-fill me-2"></i>Grafik & Ringkasan
         </button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-tabel" data-bs-toggle="tab"
+        <button class="nav-link {{ $tab == 'tabel' ? 'active' : '' }}" id="tab-tabel" data-bs-toggle="tab"
                 data-bs-target="#pane-tabel" type="button" role="tab">
             <i class="bi bi-table me-2"></i>Tabel Detail
         </button>
@@ -169,7 +169,7 @@
     {{-- ============================================================
          TAB 1 — GRAFIK & RINGKASAN
          ============================================================ --}}
-    <div class="tab-pane fade show active" id="pane-grafik" role="tabpanel">
+    <div class="tab-pane fade {{ $tab != 'tabel' ? 'show active' : '' }}" id="pane-grafik" role="tabpanel">
 
         {{-- Filter Panel --}}
         <div class="card border-0 shadow-sm mb-3">
@@ -188,6 +188,7 @@
             <div class="collapse show" id="advancedFilter">
                 <div class="card-body">
                     <form id="filterForm" method="GET" action="{{ route('superadmin.dashboard.bisnis') }}">
+                        <input type="hidden" name="tab" id="activeTabInput" value="{{ $tab }}">
                         <div class="row g-3">
 
                             {{-- Tanggal Mulai --}}
@@ -515,7 +516,7 @@
     {{-- ============================================================
          TAB 2 — TABEL DETAIL
          ============================================================ --}}
-    <div class="tab-pane fade" id="pane-tabel" role="tabpanel">
+    <div class="tab-pane fade {{ $tab == 'tabel' ? 'show active' : '' }}" id="pane-tabel" role="tabpanel">
 
         {{-- Statistik Detail per Driver --}}
         <div class="card shadow-sm mb-4">
@@ -968,7 +969,28 @@
         updateFilterBadge();
         initToggleFilterChevron();
         initPdfOverlay();
+        initTabPersistence();
     });
+
+    // ================================================================
+    // TAB PERSISTENCE + CHART RESIZE
+    // ================================================================
+    function initTabPersistence() {
+        const tabs = document.getElementById('dashboardMainTabs');
+        const hiddenInput = document.getElementById('activeTabInput');
+        if (!tabs || !hiddenInput) return;
+
+        const charts = () => [expenseLineChart, gasolinePieChart, vehicleExpenseChart, driverExpenseChart].filter(Boolean);
+
+        tabs.addEventListener('shown.bs.tab', function (event) {
+            // Simpan tab aktif ke hidden input (ikut saat filter disubmit)
+            if (hiddenInput) hiddenInput.value = event.target.dataset.bsTarget === '#pane-tabel' ? 'tabel' : 'grafik';
+            // Chart di pane yang baru tampil perlu resize ulang agar tidak blank/pecah
+            charts().forEach(function (chart) {
+                if (typeof chart.resize === 'function') chart.resize();
+            });
+        });
+    }
 
     // ================================================================
     // TOGGLE FILTER CHEVRON
@@ -1353,9 +1375,13 @@
     }
 
     // ── Expose global helpers ──
-    window.updatePeriod      = period => window.location.href = `{{ route('superadmin.dashboard.bisnis') }}?period=${period}`;
-    window.updateChartPeriod = period => window.location.href = `{{ route('superadmin.dashboard.bisnis') }}?period=${period}`;
-    window.resetFilters      = () => { document.getElementById('filterForm').reset(); window.location.href = '{{ route("superadmin.dashboard.bisnis") }}'; };
+    window.currentTab = () => {
+        const input = document.getElementById('activeTabInput');
+        return input ? input.value : 'grafik';
+    };
+    window.updatePeriod      = period => window.location.href = `{{ route('superadmin.dashboard.bisnis') }}?period=${period}&tab=${window.currentTab()}`;
+    window.updateChartPeriod = period => window.location.href = `{{ route('superadmin.dashboard.bisnis') }}?period=${period}&tab=${window.currentTab()}`;
+    window.resetFilters      = () => { document.getElementById('filterForm').reset(); window.location.href = '{{ route("superadmin.dashboard.bisnis") }}?tab=' + window.currentTab(); };
     window.toggleAllStatus   = checked => document.querySelectorAll('input[name="status[]"]').forEach(cb => cb.checked = checked);
 
     window.exportTableToCSV  = function (tableId, filename) {

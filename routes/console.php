@@ -16,3 +16,10 @@ use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('lunch:generate-forecast')
     ->dailyAt(config('siaga.forecast_generate_at', '15:00'));
+
+/*
+ * Master Gasoline — sinkronisasi harga BBM (PERTAMAX & PERTAMINA DEX)
+ * dari bensin-api setiap pagi sebelum jam operasional.
+ */
+Schedule::command('gasoline:sync')
+    ->dailyAt('06:00');

@@ -35,6 +35,8 @@ class DatabaseSeeder extends Seeder
             LunchDemoSeeder::class,
             SpdDemoSeeder::class,
             VehicleDemoSeeder::class,
+            MasterGasolineSeeder::class,
+            VehicleCapacitySeeder::class,
         ]);
     }
 }
