@@ -135,11 +135,11 @@
                     <h6 class="text-warning mb-3"><i class="bi bi-calendar-check"></i> Jadwal Perjalanan</h6>
                     <div class="row mb-2">
                         <div class="col-md-4">Tanggal Berangkat:</div>
-                        <div class="col-md-8"><strong>{{ $surat->tanggal_berangkat->translatedFormat('d F Y') }}</strong></div>
+                        <div class="col-md-8"><strong>{{ $surat->tanggal_berangkat->locale('id')->translatedFormat('l, d F Y') }}</strong></div>
                     </div>
                     <div class="row mb-2">
                         <div class="col-md-4">Tanggal Kembali:</div>
-                        <div class="col-md-8"><strong>{{ $surat->tanggal_kembali->translatedFormat('d F Y') }}</strong></div>
+                        <div class="col-md-8"><strong>{{ $surat->tanggal_kembali->locale('id')->translatedFormat('l, d F Y') }}</strong></div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-4">Lama Perjalanan:</div>
@@ -223,14 +223,14 @@
                             @if($surat->status == 'approved' || $surat->status == 'completed')
                                 <strong><i class="bi bi-check-circle"></i> Disetujui</strong> oleh
                                 <strong>{{ $surat->approver->nama_lengkap ?? $surat->approver->name ?? '-' }}</strong><br>
-                                <small>{{ $surat->approved_at->translatedFormat('d F Y H:i') }}</small>
+                                <small>{{ \Carbon\Carbon::parse($surat->approved_at)->locale('id')->translatedFormat('l, d F Y') }}</small>
                                 @if($surat->lpj_deadline)
-                                    <br><small class="text-muted">Deadline LPJ: {{ $surat->lpj_deadline->format('d M Y') }}</small>
+                                    <br><small class="text-muted">Deadline LPJ: {{ \Carbon\Carbon::parse($surat->lpj_deadline)->locale('id')->translatedFormat('l, d F Y') }}</small>
                                 @endif
                             @else
                                 <strong><i class="bi bi-x-circle"></i> Ditolak</strong> oleh
                                 <strong>{{ $surat->rejector->nama_lengkap ?? $surat->rejector->name ?? '-' }}</strong><br>
-                                <small>{{ $surat->rejected_at->translatedFormat('d F Y H:i') }}</small><br>
+                                <small>{{ \Carbon\Carbon::parse($surat->rejected_at)->locale('id')->translatedFormat('l, d F Y') }}</small><br>
                                 <strong>Alasan:</strong> {{ $surat->rejection_reason }}
                             @endif
                         </div>

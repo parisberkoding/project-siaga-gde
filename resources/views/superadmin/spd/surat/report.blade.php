@@ -143,6 +143,12 @@
                                             <i class="bi bi-printer"></i>
                                         </a>
                                     @endif
+                                    @if($surat->lpjPenggantian)
+                                        <a href="{{ route('spd.laporan.export', $surat->lpjPenggantian) }}"
+                                           class="btn btn-sm btn-outline-primary" target="_blank" title="Cetak SPD + LPJ (1 bundel: tabel, spending, lampiran)">
+                                            <i class="bi bi-file-earmark-pdf"></i>
+                                        </a>
+                                    @endif
                                 </td>
                             </tr>
                         @empty

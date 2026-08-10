@@ -192,7 +192,7 @@
                                                 <i class="bi bi-eye"></i>
                                             </a> --}}
                                             @if($surat->status == 'approved' && !$surat->lpjPenggantian)
-                                                <a href="{{ route('requester.lpj.create') }}?surat_id={{ $surat->id }}"
+                                                <a href="{{ route('requester.lpj.create', $surat) }}"
                                                    class="btn btn-sm btn-outline-success" title="Buat LPJ">
                                                     <i class="bi bi-file-earmark-plus"></i>
                                                 </a>

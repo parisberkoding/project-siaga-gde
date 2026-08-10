@@ -62,7 +62,7 @@
         ['heading' => 'Surat Perjalanan Dinas', 'collapsible' => true, 'id' => 'spd-requester-nav', 'label' => 'SPD Management', 'icon' => 'bi bi-envelope-paper', 'roles' => ['requester'], 'active' => ['requester.surat.*', 'requester.lpj.*'], 'children' => [
             ['label' => 'Daftar Surat Tugas', 'icon' => 'bi bi-circle', 'route' => 'requester.surat.index', 'active' => ['requester.surat.index', 'requester.surat.show'], 'roles' => ['requester']],
             ['label' => 'Buat Surat Tugas', 'icon' => 'bi bi-circle', 'route' => 'requester.surat.create', 'active' => ['requester.surat.create'], 'roles' => ['requester']],
-            ['label' => 'Laporan Penggantian (LPJ)', 'icon' => 'bi bi-circle', 'route' => 'requester.lpj.create', 'active' => ['requester.lpj.*'], 'roles' => ['requester'], 'perms' => ['lpj.create']],
+            ['label' => 'Laporan Penggantian (LPJ)', 'icon' => 'bi bi-circle', 'route' => 'requester.lpj.index', 'active' => ['requester.lpj.*'], 'roles' => ['requester'], 'perms' => ['lpj.create']],
         ]],
 
         // ── SPD - variant admin/superadmin (permission group: spd/lpj) ──

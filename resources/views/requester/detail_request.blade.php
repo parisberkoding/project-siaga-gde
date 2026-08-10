@@ -79,6 +79,57 @@
                     </div>
                 </div>
 
+                <hr>
+
+                @if($request->transactionProof)
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <h6 class="mb-0"><i class="bi bi-check2-circle text-success"></i> Laporan Terkirim</h6>
+                    </div>
+                    <div class="col-sm-9 text-secondary">
+                        <span class="badge bg-info">Completed</span>
+                        <div class="mt-1 small">
+                            <div>Tanggal Beli: {{ $request->transactionProof->purchase_datetime->format('d M Y H:i') }}</div>
+                            <div>Volume BBM: {{ number_format((float) $request->transactionProof->fuel_volume, 2, ',', '.') }} liter</div>
+                            @if($request->transactionProof->km_terakhir)
+                                <div>KM Akhir: {{ number_format((float) $request->transactionProof->km_terakhir, 0, ',', '.') }} km</div>
+                            @endif
+                            <div class="text-muted">ID Transaksi: {{ $request->transactionProof->transaction_id }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    @if($request->transactionProof->struk_bbm_path)
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label small text-muted">Foto Struk BBM</label>
+                        <a href="{{ asset('storage/' . $request->transactionProof->struk_bbm_path) }}" target="_blank">
+                            <img src="{{ asset('storage/' . $request->transactionProof->struk_bbm_path) }}" alt="Struk BBM"
+                                 style="max-height:180px; max-width:100%; border-radius:6px; object-fit:cover;" class="border">
+                        </a>
+                    </div>
+                    @endif
+                    @if($request->transactionProof->odometer_photo_path)
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label small text-muted">Foto Odometer</label>
+                        <a href="{{ asset('storage/' . $request->transactionProof->odometer_photo_path) }}" target="_blank">
+                            <img src="{{ asset('storage/' . $request->transactionProof->odometer_photo_path) }}" alt="Odometer"
+                                 style="max-height:180px; max-width:100%; border-radius:6px; object-fit:cover;" class="border">
+                        </a>
+                    </div>
+                    @endif
+                </div>
+                @else
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <h6 class="mb-0">Laporan</h6>
+                    </div>
+                    <div class="col-sm-9 text-secondary">
+                        <span class="text-muted">Belum ada laporan yang dikirim untuk permohonan ini.</span>
+                    </div>
+                </div>
+                @endif
+
             </div>
         </div>
     </div>

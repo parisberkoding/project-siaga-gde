@@ -16,7 +16,7 @@ beforeEach(function () {
     }
 });
 
-it('merender LPJ create dengan item upload-sederhana + Simpan Laporan', function () {
+it('merender halaman validasi LPJ (Validasi Semua Laporan SPD dan generate LPJ) via slug', function () {
     $user = User::factory()->create(['role' => 'requester']);
     $role = \App\Models\Role::where('code', 'requester')->first();
     if ($role) {
@@ -29,17 +29,17 @@ it('merender LPJ create dengan item upload-sederhana + Simpan Laporan', function
         'is_active'        => true,
     ]);
 
-    SuratSpd::factory()->create([
+    $surat = SuratSpd::factory()->create([
         'user_id'    => $user->id,
         'vehicle_id' => $vehicle->id,
         'status'     => 'approved',
     ]);
 
     $this->actingAs($user)
-        ->get(route('requester.lpj.create'))
+        ->get(route('requester.lpj.create', $surat))
         ->assertStatus(200)
-        ->assertSee('Simpan Laporan', false)
-        ->assertSee('Foto Struk', false)
+        ->assertSee('Validasi Seluruh Laporan untuk Membuat LPJ', false)
+        ->assertSee('Submit sebagai LPJ', false)
         ->assertDontSee('Analisis AI');
 });
 

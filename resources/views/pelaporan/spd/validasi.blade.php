@@ -172,7 +172,7 @@
 
 <script>
     @php
-        $updateItemUrlBase = str_replace('__SLUG__', '', route('pelaporan.spd.daily.update-item', ['surat' => $surat, 'item' => '__SLUG__']));
+        $updateItemUrlBase = rtrim(str_replace('/__SLUG__', '', route('pelaporan.spd.daily.update-item', ['surat' => $surat, 'item' => '__SLUG__'])), '/');
     @endphp
     const updateItemUrlBase = @json($updateItemUrlBase);
     const csrfToken = @json(csrf_token());

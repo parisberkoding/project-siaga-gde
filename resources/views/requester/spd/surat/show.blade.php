@@ -211,7 +211,7 @@
                     </div>
                     <div class="card-body">
                         @if(!$surat->lpjPenggantian)
-                            <a href="{{ route('requester.lpj.create') }}?surat_id={{ $surat->id }}" class="btn btn-success w-100 mb-2">
+                            <a href="{{ route('requester.lpj.create', $surat) }}" class="btn btn-success w-100 mb-2">
                                 <i class="bi bi-file-earmark-plus"></i> Buat Laporan LPJ
                             </a>
                         @endif

@@ -187,6 +187,10 @@
                                                        class="btn btn-sm btn-primary" title="Detail & Validasi">
                                                         <i class="bi bi-eye"></i> Detail
                                                     </a>
+                                                    <a href="{{ route('spd.laporan.export', $lpj) }}"
+                                                       class="btn btn-sm btn-outline-primary" target="_blank" title="Cetak SPD + LPJ (1 bundel: tabel, spending, lampiran)">
+                                                        <i class="bi bi-file-earmark-pdf"></i>
+                                                    </a>
                                                 </div>
                                             </td>
                                         </tr>
@@ -243,6 +247,10 @@
                                                     <a href="{{ route('lpj.superadmin.print', $lpj) }}"
                                                        class="btn btn-sm btn-outline-success" target="_blank" title="Cetak">
                                                         <i class="bi bi-printer"></i>
+                                                    </a>
+                                                    <a href="{{ route('spd.laporan.export', $lpj) }}"
+                                                       class="btn btn-sm btn-outline-primary" target="_blank" title="Cetak SPD + LPJ (1 bundel: tabel, spending, lampiran)">
+                                                        <i class="bi bi-file-earmark-pdf"></i>
                                                     </a>
                                                 </div>
                                             </td>

@@ -801,66 +801,15 @@ public function approveSurat(Request $request, SuratSpd $surat)
     // ╚═══════════════════════════════════════════════════════════════════════════╝
 
     /**
-     * Show form untuk create LPJ (requester)
-     * Menampilkan dropdown surat SPD yang perlu LPJ
+     * Halaman validasi semua laporan harian SPD lalu generate LPJ (requester).
+     * Reuses pelaporan.spd.validasi; route di-key dengan slug nomor surat.
      *
+     * @param \App\Models\SuratSpd $surat
      * @return \Illuminate\View\View
      */
-    public function createLaporan()
+    public function createLaporan(SuratSpd $surat)
     {
-        $suratList = SuratSpd::forUser(Auth::id())
-            ->where('status', 'approved')
-            ->whereDoesntHave('lpjPenggantian')
-            ->with(['vehicle', 'parentSurat', 'budgets']) // ✅ Tambah budgets
-            ->orderBy('tanggal_kembali', 'desc')
-            ->get();
-
-        // ✅ Siapkan budget per surat untuk JS
-        $budgetsPerSurat = [];
-        foreach ($suratList as $surat) {
-            $budgetsPerSurat[$surat->id] = SuratSpdBudget::where('surat_spd_id', $surat->id)
-                ->orderBy('tanggal')
-                ->get()
-                ->map(function ($b) {
-                    return [
-                        'tanggal' => $b->tanggal->format('Y-m-d'),
-                        'nominal' => $b->nominal,
-                        'catatan' => $b->catatan,
-                    ];
-                });
-        }
-        // Format untuk dropdown dengan indikator extension
-        $suratForDropdown = $suratList->map(function ($surat) {
-            $label = $surat->nomor_surat;
-            $sublabel = $surat->tempat_tujuan . ' | ' .
-                $surat->tanggal_berangkat->format('d M') . ' - ' .
-                $surat->tanggal_kembali->format('d M Y');
-
-            // Tambah indikator jika ini extension
-            if ($surat->is_extension) {
-                $label = '└── ' . $label . ' (Perpanjangan)';
-                $sublabel .= ' | Dari: ' . $surat->parentSurat->nomor_surat;
-            }
-
-            // Cek deadline
-            $deadline = $surat->lpj_deadline;
-            $isOverdue = $surat->isLpjDeadlineOverdue();
-
-            return [
-                'id' => $surat->id,
-                'nomor_surat' => $surat->nomor_surat,
-                'label' => $label,
-                'sublabel' => $sublabel,
-                'is_extension' => $surat->is_extension,
-                'deadline' => $deadline ? $deadline->format('d M Y') : '-',
-                'is_overdue' => $isOverdue,
-                'days_left' => $surat->getDaysUntilLpjDeadline(),
-            ];
-        });
-
-          return view('requester.spd.lpj.create', compact(
-                'suratForDropdown', 'suratList', 'budgetsPerSurat'
-            ));
+        return app(\App\Http\Controllers\SpdDailyReportController::class)->validasi($surat);
     }
 
     /**

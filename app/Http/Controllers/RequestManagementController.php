@@ -513,10 +513,12 @@ private function checkRewardEligibility($userId)
         $title = "Riwayat Permohonan BBM";
         $user = Auth::user();
 
-        // Get all requests with relationships
+        // Get all requests with relationships.
+        // Urutkan berdasar aktivitas laporan terbaru (submission report / tanggal request)
+        // supaya permohonan yang baru saja dilaporkan langsung muncul di paling atas.
         $history = Permohonan::where('requester_id', $user->id)
             ->with(['vehicle', 'authorizer', 'approvedRequest', 'transactionProof'])
-            ->orderBy('request_date', 'desc')
+            ->orderByDesc(DB::raw('COALESCE((SELECT created_at FROM transaction_proofs tp WHERE tp.req_id = permohonans.id), request_date)'))
             ->paginate(20);
 
         return view('requester.history_request', compact('title', 'history'));

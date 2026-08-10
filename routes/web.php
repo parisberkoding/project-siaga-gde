@@ -142,7 +142,7 @@ Route::middleware(['auth', 'permission:bbm.request,bbm.view,bbm.report'])->group
      // ────────────────────────────────────────────────────────────────────────
      Route::prefix('lpj')->name('requester.lpj.')->middleware('permission:lpj.create,lpj.view')->group(function () {
          Route::get('/main-lpj', [SpdController::class, 'indexLaporanRequester'])->name('index');
-         Route::get('/create', [SpdController::class, 'createLaporan'])->name('create');
+         Route::get('/create/{surat}', [SpdController::class, 'createLaporan'])->name('create');
          Route::post('/store', [SpdController::class, 'storeLaporan'])->name('store');
          Route::get('/show/{laporan}', [SpdController::class, 'showLaporanRequester'])->name('show');
          Route::get('/{laporan}/edit', [SpdController::class, 'editLaporanRequester'])->name('edit');

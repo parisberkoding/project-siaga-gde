@@ -403,14 +403,13 @@
     <div style="margin-top: 26px; text-align: right; page-break-inside: avoid;">
         <div>{{ $surat->tanggal_surat }}</div>
         <div style="font-weight: bold; margin-top: 8px;">Yang Memberi Perintah,</div>
-        <div style="margin: 22mm 0 2px; font-weight: bold; text-decoration: underline;">{{ $surat->pemberi_tugas_nama }}</div>
-        <div>{{ $surat->pemberi_tugas_jabatan }}</div>
-
         @if(!empty($qrSvgContent))
         <div class="signature-barcode" style="width: 72px; height: 72px; margin: 10px 0 0 auto;">
             {!! $qrSvgContent !!}
         </div>
         @endif
+        <div style="margin: 22mm 0 2px; font-weight: bold; text-decoration: underline;">{{ $surat->pemberi_tugas_nama }}</div>
+        <div>{{ $surat->pemberi_tugas_jabatan }}</div>
     </div>
 
     {{-- ═══════════════════════════════════════════════════════════

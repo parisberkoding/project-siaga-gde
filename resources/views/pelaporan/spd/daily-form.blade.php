@@ -158,7 +158,7 @@
 
 <script>
     @php
-        $deleteItemUrlBase = str_replace('__SLUG__', '', route('pelaporan.spd.daily.delete-item', ['surat' => $surat, 'item' => '__SLUG__']));
+        $deleteItemUrlBase = rtrim(str_replace('/__SLUG__', '', route('pelaporan.spd.daily.delete-item', ['surat' => $surat, 'item' => '__SLUG__'])), '/');
     @endphp
     const uploadItemUrl = @json(route('pelaporan.spd.daily.upload-item', $surat));
     const deleteItemUrlBase = @json($deleteItemUrlBase);

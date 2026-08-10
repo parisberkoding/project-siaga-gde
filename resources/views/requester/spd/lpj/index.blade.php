@@ -104,7 +104,7 @@
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="card-title mb-0"><i class="bi bi-file-earmark-check"></i> Daftar Laporan Pertanggungjawaban</h5>
-                <a href="{{ route('requester.lpj.create') }}" class="btn btn-primary">
+                <a href="{{ route('requester.surat.index') }}" class="btn btn-primary">
                     <i class="bi bi-plus-lg"></i> Buat Laporan Baru
                 </a>
             </div>
@@ -113,7 +113,7 @@
                 <div class="text-center py-5">
                     <i class="bi bi-file-earmark-x text-muted" style="font-size: 4rem;"></i>
                     <p class="text-muted mt-3 mb-3">Belum ada laporan pertanggungjawaban</p>
-                    <a href="{{ route('requester.lpj.create') }}" class="btn btn-primary">
+                    <a href="{{ route('requester.surat.index') }}" class="btn btn-primary">
                         <i class="bi bi-plus-lg"></i> Buat Laporan Pertama
                     </a>
                 </div>
@@ -173,6 +173,10 @@
                                         <a href="{{ route('requester.lpj.show', $lpj) }}"
                                            class="btn btn-sm btn-outline-primary" title="Detail">
                                             <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{{ route('spd.laporan.export', $lpj) }}"
+                                           class="btn btn-sm btn-outline-primary" target="_blank" title="Cetak SPD + LPJ (1 bundel: tabel, spending, lampiran)">
+                                            <i class="bi bi-file-earmark-pdf"></i>
                                         </a>
                                         @if($lpj->status == 'rejected')
                                             <a href="{{ route('requester.lpj.edit', $lpj) }}"
