@@ -45,7 +45,8 @@ class RbacSeeder extends Seeder
             ['code' => 'bbm',       'name' => 'BBM / Permohonan', 'icon' => 'bi bi-fuel-pump',    'order' => 2],
             ['code' => 'spd',       'name' => 'Perjalanan Dinas', 'icon' => 'bi bi-car-front',    'order' => 3],
             ['code' => 'lpj',       'name' => 'LPJ',              'icon' => 'bi bi-receipt',      'order' => 4],
-            ['code' => 'vehicle',   'name' => 'Kendaraan & Alat', 'icon' => 'bi bi-truck',        'order' => 5],
+            ['code' => 'pelaporan', 'name' => 'Pelaporan',        'icon' => 'bi bi-journal-text', 'order' => 5],
+            ['code' => 'vehicle',   'name' => 'Kendaraan & Alat', 'icon' => 'bi bi-truck',        'order' => 6],
             ['code' => 'users',     'name' => 'Manajemen User',   'icon' => 'bi bi-people',       'order' => 8],
             ['code' => 'rbac',      'name' => 'RBAC & Hak Akses', 'icon' => 'bi bi-shield-lock',  'order' => 9],
             ['code' => 'settings',  'name' => 'Pengaturan',       'icon' => 'bi bi-gear',         'order' => 10],
@@ -87,6 +88,11 @@ class RbacSeeder extends Seeder
             ['lpj', 'validate','lpj', 'Memvalidasi LPJ'],
             ['lpj', 'export',  'lpj', 'Export LPJ'],
 
+            // Pelaporan (single page pelaporan BBM operasional & SPD + AI/OCR struk)
+            ['pelaporan', 'view',   'pelaporan', 'Melihat halaman pelaporan'],
+            ['pelaporan', 'create', 'pelaporan', 'Membuat pelaporan (SPD & operasional)'],
+            ['pelaporan', 'analyze','pelaporan', 'Analisis struk dengan AI/OCR'],
+
             // Vehicle
             ['vehicle', 'view',      'vehicle', 'Melihat kendaraan & alat'],
             ['vehicle', 'create',    'vehicle', 'Menambah kendaraan & alat'],
@@ -94,6 +100,7 @@ class RbacSeeder extends Seeder
             ['vehicle', 'delete',    'vehicle', 'Menghapus kendaraan & alat'],
             ['vehicle', 'approve',   'vehicle', 'Menyetujui kendaraan & alat'],
             ['vehicle', 'checking',  'vehicle', 'Input body & daily checking'],
+            ['vehicle', 'master',    'vehicle', 'Kelola Master Vehicle (budget, site, kuota BBM)'],
 
             // Users
             ['users', 'view',   'users', 'Melihat user'],
@@ -143,8 +150,9 @@ class RbacSeeder extends Seeder
                     'bbm.view', 'bbm.request', 'bbm.report', 'bbm.approve', 'bbm.export',
                     'spd.view', 'spd.create', 'spd.update', 'spd.delete', 'spd.approve', 'spd.assign',
                     'lpj.view', 'lpj.create', 'lpj.update', 'lpj.delete', 'lpj.validate', 'lpj.export',
+                    'pelaporan.view', 'pelaporan.create', 'pelaporan.analyze',
                     'vehicle.view', 'vehicle.create', 'vehicle.update', 'vehicle.delete',
-                    'vehicle.approve', 'vehicle.checking',
+                    'vehicle.approve', 'vehicle.checking', 'vehicle.master',
                     'settings.view',
                 ],
             ],
@@ -157,6 +165,7 @@ class RbacSeeder extends Seeder
                     'spd.view', 'spd.create', 'spd.update', 'spd.approve', 'spd.assign',
                     'vehicle.view', 'vehicle.checking', 'vehicle.approve',
                     'bbm.view', 'bbm.approve',
+                    'pelaporan.view',
                 ],
             ],
             'requester' => [
@@ -168,6 +177,7 @@ class RbacSeeder extends Seeder
                     'bbm.view', 'bbm.request', 'bbm.report',
                     'spd.view',
                     'lpj.view', 'lpj.create', 'lpj.update',
+                    'pelaporan.view', 'pelaporan.create', 'pelaporan.analyze',
                     'vehicle.view',
                 ],
             ],
@@ -189,7 +199,7 @@ class RbacSeeder extends Seeder
                 'is_system'   => true,
                 'permissions' => [
                     'dashboard.view',
-                    'bbm.view', 'spd.view', 'lpj.view', 'vehicle.view',
+                    'bbm.view', 'spd.view', 'lpj.view', 'vehicle.view', 'pelaporan.view',
                 ],
             ],
         ];

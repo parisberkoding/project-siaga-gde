@@ -302,7 +302,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </td>
                 <td>
                     <input type="number" class="form-control form-control-sm budget-nominal"
-                           name="budgets[${i}][nominal]" min="0" step="5000" value="1400000" required
+                           name="budgets[${i}][nominal]" min="0" step="5000" value="1400000"
                            onchange="updateTotalBudget()" oninput="updateTotalBudget()">
                 </td>
                 <td>

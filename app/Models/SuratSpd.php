@@ -14,6 +14,7 @@ class SuratSpd extends Model
     protected $table = 'surat_spds';
 
     protected $fillable = [
+        'slug',
         'nomor_surat',
         'nomor_urut',
         'pemberi_tugas_nama',
@@ -66,6 +67,11 @@ class SuratSpd extends Model
                 $surat->generateNomorSurat();
             }
 
+            // Slug URL-safe dari nomor surat (slash diganti strip)
+            if (empty($surat->slug)) {
+                $surat->slug = str_replace('/', '-', $surat->nomor_surat);
+            }
+
             // Calculate lama perjalanan
             $surat->calculateLamaPerjalanan();
 
@@ -88,11 +94,12 @@ class SuratSpd extends Model
     }
 
     /**
-     * Gunakan nomor_surat sebagai route key agar ID tidak tampil di URL.
+     * Gunakan slug (kode surat URL-safe) sebagai route key agar ID tidak
+     * tampil di URL. nomor_surat berisi slash sehingga tidak aman untuk URL.
      */
     public function getRouteKeyName(): string
     {
-        return 'nomor_surat';
+        return 'slug';
     }
 
     /**
@@ -232,11 +239,27 @@ class SuratSpd extends Model
     }
 
     /**
+     * Laporan harian SPD (pre-fixed report) selama perjalanan dinas
+     */
+    public function dailyReports()
+    {
+        return $this->hasMany(SpdDailyReport::class, 'surat_spd_id');
+    }
+
+    /**
      * Budget per tanggal untuk surat ini
      */
     public function budgets()
     {
         return $this->hasMany(SuratSpdBudget::class, 'surat_spd_id')->orderBy('tanggal');
+    }
+
+    /**
+     * Rincian struk pengeluaran SPD (upload bukti per item)
+     */
+    public function strukItems()
+    {
+        return $this->hasMany(StrukItem::class, 'spd_id')->orderBy('urutan');
     }
 
     /**

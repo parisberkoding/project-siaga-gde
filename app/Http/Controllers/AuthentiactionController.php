@@ -70,41 +70,54 @@ class AuthentiactionController extends Controller
 
         RateLimiter::clear($throttleKey);
 
-        $request->session()->regenerate(true);
+        // Simpan intended URL sebelum invalidate, supaya redirect()->intended() tetap jalan
+        $intended = $request->session()->get('url.intended');
+
+        // Invalidate session lama (anti session-fixation: hapus semua data + rotate ID)
+        $request->session()->invalidate();
+
+        // Restore intended URL ke session baru
+        if ($intended) {
+            $request->session()->put('url.intended', $intended);
+        }
 
         Auth::login($user, $request->filled('remember'));
 
-        return $this->redirectBasedOnRole($user);
+        // Redirect ke halaman yang user mau akses sebelum login, fallback ke dashboard role
+        return redirect()->intended($this->defaultRouteForRole($user))
+            ->with('success', "Login Berhasil, Selamat datang {$user->nama_lengkap}.");
     }
 
     /**
-     * Redirect user berdasarkan role
+     * Tentukan route default berdasarkan role (dipakai sebagai fallback intended)
      */
-    protected function redirectBasedOnRole(User $user): \Illuminate\Http\RedirectResponse
+    protected function defaultRouteForRole(User $user): string
     {
-        $name = e($user->nama_lengkap);
+        // Normalisasi legacy role column ke kode RBAC
+        $effectiveRole = match ($user->role) {
+            'admin', 'admin_bbm', 'general_affairs' => 'general_affairs',
+            'driver', 'requester'                   => 'requester',
+            'non_ga_staff', 'view_only', ''         => 'view_only',
+            default                                 => $user->role,
+        };
 
-        return match($user->role) {
-            'requester' => redirect()->route('requester-index')
-                ->with('success', "Login Berhasil, Selamat datang {$name}."),
+        // Cek RBAC pivot kalau legacy role tidak cocok
+        if (in_array($effectiveRole, ['view_only', ''])) {
+            $rbacCodes = $user->roles()->pluck('code')->all();
+            if (in_array('superadmin', $rbacCodes)) $effectiveRole = 'superadmin';
+            elseif (in_array('general_affairs', $rbacCodes)) $effectiveRole = 'general_affairs';
+            elseif (in_array('manager', $rbacCodes)) $effectiveRole = 'manager';
+            elseif (in_array('dispatcher', $rbacCodes)) $effectiveRole = 'dispatcher';
+            elseif (in_array('requester', $rbacCodes)) $effectiveRole = 'requester';
+        }
 
-            'admin' => redirect()->route('admin-dashboard')
-                ->with('success', "Login Berhasil, Selamat datang {$name}."),
-
-            'dispatcher' => redirect()->route('dispatcher.dispatcher-dashboard')
-                ->with('success', "Login Sukses, Selamat datang {$name}!"),
-
-            'manager' => redirect()->route('superadmin.dashboard.bisnis')
-                ->with('success', "Login Sukses, Selamat datang {$name}!"),
-
-            'superadmin' => redirect()->route('superadmin-dashboard')
-                ->with('success', "Login Sukses, Selamat datang {$name}!"),
-
-            'non_ga_staff' => redirect()->route('profile')
-                ->with('success', "Login Berhasil, Selamat datang {$name}."),
-
-            default => redirect()->intended('/home')
-                ->with('success', "Selamat datang, {$name}!"),
+        return match($effectiveRole) {
+            'requester'        => route('requester-index'),
+            'general_affairs'  => route('admin-dashboard'),
+            'dispatcher'       => route('dispatcher.dispatcher-dashboard'),
+            'manager'          => route('superadmin.dashboard.bisnis'),
+            'superadmin'       => route('superadmin-dashboard'),
+            default            => route('profile'),
         };
     }
 

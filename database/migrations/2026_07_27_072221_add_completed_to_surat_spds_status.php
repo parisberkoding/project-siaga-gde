@@ -11,7 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE surat_spds MODIFY COLUMN status ENUM('pending','approved','rejected','extended','completed') NOT NULL DEFAULT 'pending'");
+        Schema::table('surat_spds', function (Blueprint $table) {
+            $table->enum('status', ['pending', 'approved', 'rejected', 'extended', 'completed'])
+                ->default('pending')
+                ->change();
+        });
     }
 
     /**
@@ -19,6 +23,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE surat_spds MODIFY COLUMN status ENUM('pending','approved','rejected','extended') NOT NULL DEFAULT 'pending'");
+        Schema::table('surat_spds', function (Blueprint $table) {
+            $table->enum('status', ['pending', 'approved', 'rejected', 'extended'])
+                ->default('pending')
+                ->change();
+        });
     }
 };

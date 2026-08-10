@@ -294,7 +294,7 @@
                                                 <br><small class="text-muted">{{ $ext->acknowledged_at->format('d M Y H:i') }}</small>
                                             </td>
                                             <td class="text-center">
-                                                <a href="{{ route('surat.superadmin.show', $ext->extension_surat_id) }}"
+                                                <a href="{{ route('surat.superadmin.show', $ext->extensionSurat) }}"
                                                    class="btn btn-sm btn-outline-primary">
                                                     <i class="bi bi-eye"></i>
                                                 </a>

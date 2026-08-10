@@ -63,8 +63,9 @@ class RequestManagementController extends Controller
         $activeSlots[] = $request;
     }
 
-    // Get all vehicles (only approved ones)
-    $vehicles = VehicleAndToolsConsumers::where('is_approved', true)
+    // Get all vehicles (only approved ones) — + detail untuk label "Plat - Merk" & budget
+    $vehicles = VehicleAndToolsConsumers::with('detail')
+        ->where('is_approved', true)
         ->where('is_active', true)
         ->orderBy('consumerial_type')
         ->orderBy('consumerial_name')
@@ -134,6 +135,24 @@ return view('requester.view_request_bbm', compact(
         return back()->with('error', "Anda sudah memiliki {$maxSlots} permohonan aktif (maksimal untuk saat ini). Selesaikan permohonan terlebih dahulu.");
     }
 
+    // ✅ Budget dinamis: nominal_full_tank dari Master Vehicle (bukan dropdown hardcoded)
+    $maxNominal = null;
+    if ($request->vehicle_id) {
+        $v = VehicleAndToolsConsumers::with('detail')->find($request->vehicle_id);
+        $maxNominal = $v?->detail?->nominal_full_tank;
+    }
+
+    $billRules = ['required', 'numeric', 'min:0'];
+    $messages = [
+        'gasoline_type.required' => 'Jenis BBM harus dipilih',
+        'bill_payment.required' => 'Nominal harus diisi',
+    ];
+    if ($maxNominal !== null) {
+        $billRules[] = 'max:' . $maxNominal;
+        $messages['bill_payment.max'] = 'Nominal melebihi budget full tank kendaraan (Rp ' .
+            number_format($maxNominal, 0, ',', '.') . ').';
+    }
+
     // Validasi input
     $validated = $request->validate([
         'vehicle_id' => 'nullable|exists:vehicle_and_tools_consumers,id',
@@ -142,14 +161,9 @@ return view('requester.view_request_bbm', compact(
         'new_vehicle_name' => 'nullable|string|max:255',
         'new_vehicle_notes' => 'nullable|string|max:500',
         'gasoline_type' => 'required|string',
-        'bill_payment' => 'required|numeric|min:150000|max:850000',
+        'bill_payment' => $billRules,
         'requester_notes' => 'nullable|string|max:500'
-    ], [
-        'gasoline_type.required' => 'Jenis BBM harus dipilih',
-        'bill_payment.required' => 'Nominal harus dipilih',
-        'bill_payment.min' => 'Nominal minimal Rp 150.000',
-        'bill_payment.max' => 'Nominal maksimal Rp 850.000',
-    ]);
+    ], $messages);
 
     try {
         DB::beginTransaction();
@@ -573,14 +587,14 @@ public function requester_submit_report(Request $request, $id)
     try {
         DB::beginTransaction();
 
-        // Generate nama file dengan format: STRUK-REQUESTNUMBER-DDMMYYYY
+        // Generate nama file dengan format: S.OPRS-[req_number]-...
         $dateFormat = now()->format('dmY');
         $requestNumber = $permohonan->request_number;
 
         // Upload foto struk BBM (wajib untuk semua)
         $strukFile = $request->file('foto_struk');
         $strukExtension = $strukFile->getClientOriginalExtension();
-        $strukFileName = "STRUK-{$requestNumber}-{$dateFormat}.{$strukExtension}";
+        $strukFileName = "S.OPRS-{$requestNumber}-{$dateFormat}.{$strukExtension}";
         $strukPath = $strukFile->storeAs('transaction_proofs/struk', $strukFileName, 'public');
 
         // Upload foto odometer (hanya jika ada)
@@ -588,7 +602,7 @@ public function requester_submit_report(Request $request, $id)
         if ($request->hasFile('foto_km')) {
             $odoFile = $request->file('foto_km');
             $odoExtension = $odoFile->getClientOriginalExtension();
-            $odoFileName = "ODO-{$requestNumber}-{$dateFormat}.{$odoExtension}";
+            $odoFileName = "S.OPRS-{$requestNumber}-ODO-{$dateFormat}.{$odoExtension}";
             $odoPath = $odoFile->storeAs('transaction_proofs/odometer', $odoFileName, 'public');
         }
 

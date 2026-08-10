@@ -93,6 +93,25 @@
                             <label class="form-label fw-semibold">Volume Tangki (liter)</label>
                             <input type="number" step="0.01" class="form-control" name="volume_tangki" value="{{ old('volume_tangki', $detail->volume_tangki) }}" min="0" placeholder="Contoh: 45">
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Site / Lokasi Operasional</label>
+                            <select class="form-select" name="site_id">
+                                <option value="">-- Pilih Site --</option>
+                                @foreach($sites ?? [] as $site)
+                                <option value="{{ $site->id }}" {{ old('site_id', $detail->site_id) == $site->id ? 'selected' : '' }}>{{ $site->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Nominal Full Tank (Rp)</label>
+                            <input type="number" step="0.01" class="form-control" name="nominal_full_tank" value="{{ old('nominal_full_tank', $detail->nominal_full_tank) }}" min="0" placeholder="Contoh: 450000">
+                            <small class="text-muted">Dipakai sebagai patokan budget isi full tank & validasi nominal BBM otomatis.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Default Nominal SPD (Rp)</label>
+                            <input type="number" step="0.01" class="form-control" name="nominal_spd_default" value="{{ old('nominal_spd_default', $detail->nominal_spd_default) }}" min="0" placeholder="Contoh: 200000">
+                            <small class="text-muted">Budget default per hari untuk SPD kendaraan ini.</small>
+                        </div>
                         <div class="col-12">
                             <label class="form-label fw-semibold">Catatan</label>
                             <textarea class="form-control" name="catatan" rows="3" placeholder="Catatan tambahan...">{{ old('catatan', $detail->catatan) }}</textarea>

@@ -170,12 +170,12 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group">
-                                        <a href="{{ route('requester.lpj.show', $lpj->id) }}"
+                                        <a href="{{ route('requester.lpj.show', $lpj) }}"
                                            class="btn btn-sm btn-outline-primary" title="Detail">
                                             <i class="bi bi-eye"></i>
                                         </a>
                                         @if($lpj->status == 'rejected')
-                                            <a href="{{ route('requester.lpj.edit', $lpj->id) }}"
+                                            <a href="{{ route('requester.lpj.edit', $lpj) }}"
                                                class="btn btn-sm btn-outline-warning" title="Revisi LPJ">
                                                 <i class="bi bi-pencil"></i> Revisi
                                             </a>

@@ -112,46 +112,62 @@
                     <div class="table-responsive">
                         <table class="table table-bordered">
                             <thead class="table-light">
-                                <tr>
-                                    <th style="width: 50px;">No</th>
-                                    <th>Tanggal</th>
-                                    <th>Tipe</th>
-                                    <th class="text-end">Nominal</th>
-                                    <th>Keterangan</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($laporan->details as $index => $detail)
-                                    <tr>
-                                        <td class="text-center">{{ $index + 1 }}</td>
-                                        <td>{{ $detail->tanggal ? $detail->tanggal->format('d M Y') : '-' }}</td>
-                                        <td>
-                                            @php
-                                                $badgeClass = match($detail->tipe_penggunaan) {
-                                                    'BBM' => 'bg-primary',
-                                                    'Tol' => 'bg-info',
-                                                    'Portir' => 'bg-warning text-dark',
-                                                    default => 'bg-secondary'
-                                                };
-                                            @endphp
-                                            <span class="badge {{ $badgeClass }}">{{ $detail->tipe_penggunaan }}</span>
-                                        </td>
-                                        <td class="text-end">Rp {{ number_format($detail->nominal, 0, ',', '.') }}</td>
-                                        <td>{{ $detail->keterangan ?? '-' }}</td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="5" class="text-center text-muted">Tidak ada data pengeluaran</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                            <tfoot class="table-dark">
-                                <tr>
-                                    <th colspan="3" class="text-end">Total Pengeluaran:</th>
-                                    <th class="text-end">Rp {{ number_format($laporan->total_pengeluaran, 0, ',', '.') }}</th>
-                                    <th></th>
-                                </tr>
-                            </tfoot>
+                                 <tr>
+                                     <th style="width: 50px;">No</th>
+                                     <th>Tanggal</th>
+                                     <th>Tipe</th>
+                                     <th class="text-end">Nominal</th>
+                                     <th>Struk</th>
+                                     <th>Keterangan</th>
+                                 </tr>
+                             </thead>
+                             <tbody>
+                                 @forelse($laporan->details as $index => $detail)
+                                     <tr>
+                                         <td class="text-center">{{ $index + 1 }}</td>
+                                         <td>{{ $detail->tanggal ? $detail->tanggal->format('d M Y') : '-' }}</td>
+                                         <td>
+                                             @php
+                                                 $badgeClass = match($detail->tipe_penggunaan) {
+                                                     'BBM' => 'bg-primary',
+                                                     'Tol' => 'bg-info',
+                                                     'Portir' => 'bg-warning text-dark',
+                                                     default => 'bg-secondary'
+                                                 };
+                                             @endphp
+                                             <span class="badge {{ $badgeClass }}">{{ $detail->tipe_penggunaan }}</span>
+                                             @if($detail->strukItem && $detail->strukItem->kategori_source === 'ai')
+                                                 <span class="badge bg-info-subtle text-info" title="Dianalisis AI/OCR">
+                                                     <i class="bi bi-stars"></i> AI
+                                                 </span>
+                                             @endif
+                                         </td>
+                                         <td class="text-end">Rp {{ number_format($detail->nominal, 0, ',', '.') }}</td>
+                                         <td>
+                                             @if($detail->strukItem && $detail->strukItem->path_image)
+                                                 <a href="{{ asset('storage/' . $detail->strukItem->path_image) }}"
+                                                    target="_blank" class="btn btn-sm btn-outline-primary" title="Lihat struk">
+                                                     <i class="bi bi-image"></i>
+                                                 </a>
+                                             @else
+                                                 <span class="text-muted">-</span>
+                                             @endif
+                                         </td>
+                                         <td>{{ $detail->keterangan ?? '-' }}</td>
+                                     </tr>
+                                 @empty
+                                     <tr>
+                                         <td colspan="6" class="text-center text-muted">Tidak ada data pengeluaran</td>
+                                     </tr>
+                                 @endforelse
+                             </tbody>
+                             <tfoot class="table-dark">
+                                 <tr>
+                                     <th colspan="3" class="text-end">Total Pengeluaran:</th>
+                                     <th class="text-end">Rp {{ number_format($laporan->total_pengeluaran, 0, ',', '.') }}</th>
+                                     <th colspan="2"></th>
+                                 </tr>
+                             </tfoot>
                         </table>
                     </div>
                 </div>
@@ -266,7 +282,7 @@
                             <i class="bi bi-x-circle"></i> Laporan ditolak
                             <br><small>{{ $laporan->rejection_reason }}</small>
                         </div>
-                        <a href="{{ route('requester.lpj.edit', $laporan->id) }}" class="btn btn-warning w-100 mt-2">
+                        <a href="{{ route('requester.lpj.edit', $laporan) }}" class="btn btn-warning w-100 mt-2">
                             <i class="bi bi-pencil"></i> Revisi LPJ
                         </a>
                     @endif
@@ -311,6 +327,20 @@
                     <div class="card-body">
                         <h6 class="card-title"><i class="bi bi-journal-text"></i> Catatan</h6>
                         <p class="mb-0">{{ $laporan->catatan }}</p>
+                    </div>
+                </div>
+            @endif
+
+            {{-- Cetak Dokumen --}}
+            @if($laporan->status == 'approved')
+                <div class="card border-success">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0"><i class="bi bi-printer"></i> Cetak Dokumen</h6>
+                    </div>
+                    <div class="card-body">
+                        <a href="{{ route('spd.laporan.export', $laporan) }}" target="_blank" class="btn btn-primary w-100">
+                            <i class="bi bi-file-earmark-pdf"></i> Cetak SPD + LPJ
+                        </a>
                     </div>
                 </div>
             @endif

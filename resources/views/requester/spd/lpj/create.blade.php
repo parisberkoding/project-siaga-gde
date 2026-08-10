@@ -47,7 +47,7 @@
             </div>
         </div>
     @else
-        <form action="{{ route('requester.lpj.store') }}" method="POST" id="formLpj">
+        <form action="{{ route('requester.lpj.store') }}" method="POST" id="formLpj" enctype="multipart/form-data">
             @csrf
             <div class="row">
                 {{-- Form Utama --}}
@@ -150,6 +150,36 @@
                                 @error('uraian')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Informasi Tempuh Kendaraan --}}
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="bi bi-speedometer2"></i> Informasi Tempuh Kendaraan</h5>
+                            <small class="text-muted d-block mb-3">Data odometer & kebutuhan BBM untuk dokumen cetak LPJ (opsional).</small>
+
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Odometer sebelum SPD (km)</label>
+                                    <input type="number" class="form-control" name="odo_before"
+                                           id="odoBefore" value="{{ old('odo_before') }}" min="0" step="0.01">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Odometer setelah SPD (km)</label>
+                                    <input type="number" class="form-control" name="odo_after"
+                                           id="odoAfter" value="{{ old('odo_after') }}" min="0" step="0.01">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Kebutuhan BBM (liter)</label>
+                                    <input type="number" class="form-control" name="kebutuhan_bbm_liter"
+                                           id="kebutuhanBbm" value="{{ old('kebutuhan_bbm_liter') }}" min="0" step="0.01">
+                                </div>
+                            </div>
+
+                            <div class="alert alert-light border py-2 mb-0">
+                                <small class="text-muted">Jarak tempuh otomatis dihitung: <strong id="jarakTempuh">-</strong></small>
                             </div>
                         </div>
                     </div>
@@ -300,7 +330,7 @@
                             </table>
 
                             <button type="submit" class="btn btn-success w-100 mb-2" id="btnSubmit">
-                                <i class="bi bi-send"></i> Kirim Laporan
+                                <i class="bi bi-send"></i> Simpan Laporan
                             </button>
 
                             <a href="{{ route('requester.lpj.index') }}" class="btn btn-secondary w-100">
@@ -372,39 +402,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
 
                 <div class="row g-2">
-                    <div class="col-6 col-md-3">
+                    <div class="col-6 col-md-4">
                         <label class="form-label small text-muted mb-1">Tanggal</label>
                         <input type="date" class="form-control form-control-sm item-tanggal" name="items[${itemCount}][tanggal]"
                                value="${tanggal}" required>
                     </div>
-                    <div class="col-6 col-md-3">
-                        <label class="form-label small text-muted mb-1">Kategori</label>
-                        <select class="form-select form-select-sm item-tipe" name="items[${itemCount}][tipe_penggunaan]" required>
-                            <option value="Hotel" ${tipe === 'Hotel' ? 'selected' : ''}>Hotel</option>
-                            <option value="BBM" ${tipe === 'BBM' ? 'selected' : ''}>BBM</option>
-                            <option value="Parkir" ${tipe === 'Parkir' ? 'selected' : ''}>Parkir</option>
-                            <option value="Tol" ${tipe === 'Tol' ? 'selected' : ''}>Tol</option>
-                            <option value="Lain-lain" ${tipe === 'Lain-lain' ? 'selected' : ''}>Lain-lain</option>
-                        </select>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label small text-muted mb-1">Foto Struk <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control form-control-sm item-struk" name="items[${itemCount}][struk]"
+                               accept="image/jpeg,image/png,image/webp" required>
                     </div>
-                    <div class="col-6 col-md-3">
-                        <label class="form-label small text-muted mb-1">Nominal (Rp)</label>
-                        <input type="number" class="form-control form-control-sm item-nominal" name="items[${itemCount}][nominal]"
-                               value="${nominal}" min="0" required placeholder="0">
-                    </div>
-                    <div class="col-6 col-md-3 d-flex align-items-end">
-                        <div class="item-total-display w-100 text-end small text-muted">
-                            <span class="d-block">Subtotal</span>
-                            <strong class="item-subtotal text-dark">Rp 0</strong>
+                    <div class="col-md-4 d-flex align-items-end justify-content-end">
+                        <div class="item-ai-result w-100 text-end small" style="display:none;">
+                            <span class="badge item-ai-badge bg-secondary">-</span>
+                            <strong class="item-ai-nominal text-dark ms-1">Rp 0</strong>
                         </div>
                     </div>
                 </div>
 
-                <div class="mt-2">
-                    <label class="form-label small text-muted mb-1">Keterangan</label>
-                    <input type="text" class="form-control form-control-sm" name="items[${itemCount}][keterangan]"
-                           value="${keterangan}" placeholder="Contoh: SPBU Pertamina, hotel menginap 1 malam, tukang parkir, dll">
+                <div class="mt-2 item-struk-preview" style="display:none;">
+                    <img class="img-thumbnail" alt="Pratinjau struk" style="max-height:90px;">
                 </div>
+                <div class="item-ai-status small text-muted mt-2"></div>
+
+                {{-- Field AI/struk (hidden, diisi otomatis oleh AI setelah upload) --}}
+                <input type="hidden" class="item-tipe" name="items[${itemCount}][tipe_penggunaan]" value="BBM">
+                <input type="hidden" class="item-nominal" name="items[${itemCount}][nominal]" value="0">
+                <input type="hidden" class="item-struk-kategori" name="items[${itemCount}][struk_kategori]" value="">
+                <input type="hidden" class="item-kategori-source" name="items[${itemCount}][kategori_source]" value="manual">
+                <input type="hidden" class="item-metadata-json" name="items[${itemCount}][metadata_json]" value="">
+                <input type="hidden" class="item-keterangan" name="items[${itemCount}][keterangan]" value="">
             </div>
         `;
         itemsContainer.appendChild(card);
@@ -415,6 +442,9 @@ document.addEventListener('DOMContentLoaded', function() {
         card.querySelector('.item-nominal').addEventListener('input', calculateTotal);
         card.querySelector('.item-tipe').addEventListener('change', calculateTotal);
         card.querySelector('.item-tanggal').addEventListener('change', calculateTotal);
+        card.querySelector('.item-struk').addEventListener('change', function() {
+            handleStrukFile(this, card);
+        });
         card.querySelector('.btn-remove-item').addEventListener('click', function() {
             card.remove();
             renumberRows();
@@ -423,6 +453,103 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('itemsEmpty').style.display = 'block';
             }
         });
+    }
+
+    // Handle pemilihan file struk: preview + auto-analisis AI
+    function handleStrukFile(input, card) {
+        const file = input.files[0];
+        const previewWrap = card.querySelector('.item-struk-preview');
+        const statusEl = card.querySelector('.item-ai-status');
+
+        if (!file) {
+            previewWrap.style.display = 'none';
+            previewWrap.querySelector('img').src = '';
+            statusEl.textContent = '';
+            statusEl.className = 'item-ai-status small text-muted';
+            card.querySelector('.item-struk-kategori').value = '';
+            card.querySelector('.item-kategori-source').value = 'manual';
+            card.querySelector('.item-metadata-json').value = '';
+            card.querySelector('.item-tipe').value = 'BBM';
+            card.querySelector('.item-nominal').value = 0;
+            card.querySelector('.item-ai-result').style.display = 'none';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewWrap.querySelector('img').src = e.target.result;
+            previewWrap.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+
+        // Jalankan AI/OCR otomatis setelah file dipilih
+        analyzeStruk(card);
+    }
+
+    // Label & warna badge per kategori struk
+    const kategoriLabels = { 'BBM': 'Struk BBM', 'Tol': 'Struk Tol', 'Parkir': 'Struk Parkir', 'Lainnya': 'Struk Lainnya', 'Tambahan': 'Tambahan' };
+    function kategoriLabel(k) { return kategoriLabels[k] || ('Struk ' + (k || '-')); }
+    function kategoriBadgeClass(kategori) {
+        return { 'BBM': 'bg-danger', 'Tol': 'bg-primary', 'Parkir': 'bg-info', 'Lainnya': 'bg-secondary', 'Tambahan': 'bg-warning text-dark' }[kategori] || 'bg-secondary';
+    }
+
+    // Kirim struk ke AI/OCR untuk isi otomatis kategori & nominal
+    async function analyzeStruk(card) {
+        const input = card.querySelector('.item-struk');
+        const file = input.files[0];
+        if (!file) return;
+
+        const statusEl = card.querySelector('.item-ai-status');
+
+        statusEl.textContent = 'Menganalisis struk...';
+        statusEl.className = 'item-ai-status small text-primary';
+
+        const fd = new FormData();
+        fd.append('image', file);
+
+        try {
+            const res = await fetch('{{ route("pelaporan.analyze-struk") }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': @json(csrf_token()),
+                    'Accept': 'application/json'
+                },
+                body: fd
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                const kategori = data.kategori;
+                const metadata = data.metadata || {};
+                const nominal = metadata.nominal;
+                const text = data.text || '';
+                const tipeMap = { 'BBM': 'BBM', 'Tol': 'Tol', 'Parkir': 'Parkir', 'Lainnya': 'Lain-lain' };
+
+                // Isi field hidden untuk disimpan ke backend
+                card.querySelector('.item-struk-kategori').value = kategori;
+                card.querySelector('.item-kategori-source').value = 'ai';
+                card.querySelector('.item-metadata-json').value = JSON.stringify({ kategori, metadata, text });
+                card.querySelector('.item-tipe').value = tipeMap[kategori] || 'Lain-lain';
+                card.querySelector('.item-nominal').value = (nominal && nominal > 0) ? nominal : 0;
+
+                // Tampilkan hasil AI (read-only) untuk validasi
+                const badge = card.querySelector('.item-ai-badge');
+                badge.textContent = kategoriLabel(kategori);
+                badge.className = 'badge item-ai-badge ' + kategoriBadgeClass(kategori);
+                card.querySelector('.item-ai-nominal').textContent = formatRupiah(nominal || 0);
+                card.querySelector('.item-ai-result').style.display = 'block';
+
+                statusEl.textContent = '✓ AI mendeteksi: ' + kategoriLabel(kategori) + '. Periksa hasil lalu simpan.';
+                statusEl.className = 'item-ai-status small text-success';
+                calculateTotal();
+            } else {
+                statusEl.textContent = 'Gagal: ' + (data.message || 'analisis tidak tersedia');
+                statusEl.className = 'item-ai-status small text-danger';
+            }
+        } catch (err) {
+            statusEl.textContent = 'Error koneksi';
+            statusEl.className = 'item-ai-status small text-danger';
+        }
     }
 
     // Renumber cards after deletion
@@ -713,6 +840,24 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize
     addItemRow(); // Add first row
     updateSuratInfo(); // Load info if pre-selected
+
+    // Tempuh kendaraan: hitung jarak otomatis
+    const odoBefore = document.getElementById('odoBefore');
+    const odoAfter = document.getElementById('odoAfter');
+    const jarakTempuh = document.getElementById('jarakTempuh');
+
+    function hitungJarak() {
+        const sebelum = parseFloat(odoBefore?.value) || 0;
+        const sesudah = parseFloat(odoAfter?.value) || 0;
+        if (jarakTempuh) {
+            jarakTempuh.textContent = (sebelum > 0 && sesudah > 0)
+                ? new Intl.NumberFormat('id-ID').format(sesudah - sebelum) + ' km'
+                : '-';
+        }
+    }
+    odoBefore?.addEventListener('input', hitungJarak);
+    odoAfter?.addEventListener('input', hitungJarak);
+    hitungJarak();
 });
 </script>
 
