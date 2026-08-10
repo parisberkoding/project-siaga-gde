@@ -159,7 +159,7 @@
                                                 <br><small>{{ $surat->vehicle->consumerial_name ?? '' }}</small>
                                             </td>
                                             <td class="text-center">
-                                                <a href="{{ route('surat.superadmin.show', $surat->id) }}"
+                                                <a href="{{ route('surat.superadmin.show', $surat) }}"
                                                    class="btn btn-sm btn-primary">
                                                     <i class="bi bi-eye"></i> Detail & Validasi
                                                 </a>
@@ -243,11 +243,11 @@
                                             </td>
                                             <td class="text-center">
                                                 <div class="btn-group">
-                                                    <a href="{{ route('surat.superadmin.show', $surat->id) }}"
+                                                    <a href="{{ route('surat.superadmin.show', $surat) }}"
                                                        class="btn btn-sm btn-outline-primary" title="Detail">
                                                         <i class="bi bi-eye"></i>
                                                     </a>
-                                                    <a href="{{ route('surat.superadmin.print', $surat->id) }}"
+                                                    <a href="{{ route('surat.superadmin.print', $surat) }}"
                                                        class="btn btn-sm btn-outline-success" target="_blank" title="Cetak">
                                                         <i class="bi bi-printer"></i>
                                                     </a>
@@ -293,7 +293,7 @@
                                             
                                             <td>{{ Str::limit($surat->rejection_reason, 40) }}</td>
                                             <td class="text-center">
-                                                <a href="{{ route('surat.superadmin.show', $surat->id) }}"
+                                                <a href="{{ route('surat.superadmin.show', $surat) }}"
                                                    class="btn btn-sm btn-outline-primary">
                                                     <i class="bi bi-eye"></i> Detail
                                                 </a>

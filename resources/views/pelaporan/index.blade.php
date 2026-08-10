@@ -28,6 +28,13 @@
         </div>
     @endif
 
+    @if(session('info'))
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <i class="bi bi-info-circle me-2"></i>{{ session('info') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
     @if($errors->any())
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="bi bi-exclamation-triangle me-2"></i>
@@ -52,7 +59,7 @@
                     </div>
                     <div>
                         <h5 class="mb-1 fw-bold">Laporan SPD (LPJ)</h5>
-                        <small class="text-muted">Laporkan pengeluaran perjalanan dinas (BBM, Tol, Parkir, dll) dengan upload struk + AI</small>
+                        <small class="text-muted">Laporkan pengeluaran per hari selama perjalanan dinas, lalu validasi untuk membuat LPJ</small>
                     </div>
                     <i class="bi bi-chevron-right ms-auto text-muted"></i>
                 </div>
@@ -85,179 +92,81 @@
     {{-- ═══════════════ MODE SPD ═══════════════ --}}
     @if($spdMode)
     <div id="panel-spd" style="display:none;">
-        <form action="{{ route('pelaporan.spd.store') }}" method="POST" id="formSpd" enctype="multipart/form-data">
-            @csrf
-            <div class="row">
-                <div class="col-lg-8">
-                    {{-- Pilih Surat --}}
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="bi bi-file-earmark-text"></i> Pilih Surat Tugas</h5>
-                            <div class="mb-3">
-                                <label class="form-label">Surat Tugas yang Dilaporkan <span class="text-danger">*</span></label>
-                                <select class="form-select" name="surat_spd_id" id="selectSuratSpd" required>
-                                    <option value="">-- Pilih Surat Tugas --</option>
-                                    @foreach($suratForDropdown as $item)
-                                        <option value="{{ $item['id'] }}"
-                                                data-tujuan="{{ $suratList->where('id', $item['id'])->first()->tempat_tujuan ?? '' }}"
-                                                data-berangkat="{{ $suratList->where('id', $item['id'])->first()->tanggal_berangkat->format('Y-m-d') ?? '' }}"
-                                                data-kembali="{{ $suratList->where('id', $item['id'])->first()->tanggal_kembali->format('Y-m-d') ?? '' }}"
-                                                data-budget="{{ $suratList->where('id', $item['id'])->first()->budget_per_hari ?? 0 }}"
-                                                data-total-budget="{{ $suratList->where('id', $item['id'])->first()->total_budget ?? 0 }}"
-                                                data-vehicle="{{ $suratList->where('id', $item['id'])->first()->vehicle->consumerial_code ?? '' }}">
-                                            {{ $item['label'] }} - {{ $item['sublabel'] }}
-                                            @if($item['is_overdue']) (TERLAMBAT!) @endif
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div id="infoSuratSpd" class="alert alert-info" style="display:none;"></div>
-                        </div>
-                    </div>
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-file-earmark-text"></i> Surat Tugas SPD</h5>
 
-                    {{-- Informasi Pelapor --}}
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="bi bi-person"></i> Informasi Pelapor</h5>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Nama Pelapor <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" name="nama"
-                                           value="{{ old('nama', Auth::user()->nama_lengkap ?? Auth::user()->name) }}" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Jabatan <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" name="jabatan" value="{{ old('jabatan', 'Pengemudi') }}" required>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Uraian Perjalanan <span class="text-danger">*</span></label>
-                                <textarea class="form-control" name="uraian" rows="3" required
-                                          placeholder="Jelaskan singkat kegiatan perjalanan dinas...">{{ old('uraian') }}</textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Rincian Pengeluaran --}}
-                    <div class="card">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="card-title mb-0"><i class="bi bi-list-check"></i> Rincian Pengeluaran</h5>
-                                <button type="button" class="btn btn-primary btn-sm" id="btnAddItemSpd">
-                                    <i class="bi bi-plus-lg"></i> Tambah Item
-                                </button>
-                            </div>
-
-                            <div class="alert alert-info py-2">
-                                <i class="bi bi-stars me-1"></i>
-                                <small>Upload foto struk untuk setiap item — AI akan mengisi kategori & nominal otomatis.</small>
-                            </div>
-
-                            <div id="itemsContainerSpd" class="d-flex flex-column gap-3"></div>
-
-                            <div id="itemsEmptySpd" class="text-center text-muted py-4">
-                                <i class="bi bi-inbox" style="font-size: 2.5rem;"></i>
-                                <p class="mb-0 mt-2 small">Belum ada item. Klik "Tambah Item" untuk mulai.</p>
-                            </div>
-
-                            <hr>
-                            <div class="d-flex justify-content-between align-items-center px-1">
-                                <span class="fw-bold">Total Pengeluaran:</span>
-                                <span id="totalPengeluaranSpd" class="fw-bold text-primary fs-5">Rp 0</span>
-                            </div>
-                            <div class="alert alert-warning py-2 mt-3" id="alertOverBudgetSpd" style="display:none;">
-                                <i class="bi bi-exclamation-triangle"></i> Total pengeluaran melebihi budget!
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Keuangan --}}
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="bi bi-cash-stack"></i> Informasi Keuangan</h5>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Uang Dari</label>
-                                    <input type="text" class="form-control" name="uang_dari" value="{{ old('uang_dari', 'KAS') }}">
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Jumlah Diberikan</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text">Rp</span>
-                                        <input type="number" class="form-control" name="jumlah_diberikan" id="jumlahDiberikanSpd"
-                                               value="{{ old('jumlah_diberikan', 0) }}" min="0">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="alert alert-success py-2 mb-0">
-                                        <small>Pengembalian:</small>
-                                        <br><strong id="pengembalianSpd">Rp 0</strong>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="alert alert-warning py-2 mb-0">
-                                        <small>Kekurangan:</small>
-                                        <br><strong id="kekuranganSpd">Rp 0</strong>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="bi bi-journal-text"></i> Catatan (Opsional)</h5>
-                            <textarea class="form-control" name="catatan" rows="2">{{ old('catatan') }}</textarea>
-                        </div>
-                    </div>
+                <div class="alert alert-info py-2">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <small>Laporkan pengeluaran <strong>per hari</strong> selama perjalanan dinas (laporan harian tersimpan otomatis, tidak hilang saat refresh). Setelah SPD selesai, klik <strong>"Validasi Seluruh Laporan untuk Membuat LPJ"</strong> untuk direview & dikirim sebagai LPJ.</small>
                 </div>
 
-                <div class="col-lg-4">
-                    <div class="card border-primary">
-                        <div class="card-header bg-primary text-white">
-                            <h6 class="mb-0"><i class="bi bi-calculator"></i> Ringkasan</h6>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-sm table-borderless mb-3">
-                                <tr>
-                                    <td class="text-muted">Total Budget:</td>
-                                    <td class="text-end"><strong id="summaryBudgetSpd">-</strong></td>
-                                </tr>
-                                <tr>
-                                    <td class="text-muted">Total Pengeluaran:</td>
-                                    <td class="text-end"><strong id="summaryPengeluaranSpd">Rp 0</strong></td>
-                                </tr>
-                                <tr>
-                                    <td class="text-muted">BBM:</td>
-                                    <td class="text-end" id="summaryBBMSpd">Rp 0</td>
-                                </tr>
-                                <tr>
-                                    <td class="text-muted">Tol:</td>
-                                    <td class="text-end" id="summaryTolSpd">Rp 0</td>
-                                </tr>
-                                <tr>
-                                    <td class="text-muted">Parkir:</td>
-                                    <td class="text-end" id="summaryParkirSpd">Rp 0</td>
-                                </tr>
-                                <tr>
-                                    <td class="text-muted">Lainnya:</td>
-                                    <td class="text-end" id="summaryLainSpd">Rp 0</td>
-                                </tr>
-                                <tr>
-                                    <td class="text-muted"><span class="badge bg-warning text-dark" style="font-size:0.65rem;">Tambahan</span></td>
-                                    <td class="text-end text-muted" id="summaryTambahanSpd" style="font-size:0.85rem;">0 foto</td>
-                                </tr>
-                            </table>
-                            <button type="submit" class="btn btn-success w-100">
-                                <i class="bi bi-send"></i> Kirim Laporan SPD
-                            </button>
-                        </div>
-                    </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Surat Tugas</th>
+                                <th>Jadwal</th>
+                                <th>Kendaraan</th>
+                                <th>Laporan Harian</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($suratList as $surat)
+                            <tr>
+                                <td>
+                                    <strong>{{ $surat->nomor_surat }}</strong>
+                                    @if($surat->is_extension)
+                                        <span class="badge bg-secondary">Perpanjangan</span>
+                                    @endif
+                                    <br>
+                                    <small class="text-muted">{{ $surat->tempat_tujuan }}</small>
+                                </td>
+                                <td>
+                                    <small>
+                                        {{ $surat->tanggal_berangkat->format('d M Y') }} s/d<br>
+                                        {{ $surat->tanggal_kembali->format('d M Y') }}
+                                    </small>
+                                </td>
+                                <td><small>{{ $surat->vehicle?->consumerial_code ?? '-' }}</small></td>
+                                <td>
+                                    @if($surat->daily_reports_available)
+                                        <span class="badge bg-success">{{ $surat->daily_submitted_count }} hari terkirim</span>
+                                        <small class="text-muted d-block">· {{ $surat->daily_item_count }} item</small>
+                                        @if($surat->has_draft_daily)
+                                            <span class="badge bg-warning text-dark">ada draft</span>
+                                        @endif
+                                    @else
+                                        <span class="badge bg-light text-muted">belum ada</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <a href="{{ route('pelaporan.spd.daily.index', $surat) }}" class="btn btn-sm btn-outline-primary mb-1">
+                                        <i class="bi bi-calendar3"></i> Kelola Laporan Harian
+                                    </a>
+                                    @if($surat->can_finalize)
+                                        <div>
+                                            <a href="{{ route('pelaporan.spd.validasi', $surat) }}" class="btn btn-sm btn-success">
+                                                <i class="bi bi-check2-square"></i> Validasi Seluruh Laporan untuk Membuat LPJ
+                                            </a>
+                                        </div>
+                                    @endif
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    <i class="bi bi-inbox" style="font-size:2rem;"></i><br>
+                                    Tidak ada surat SPD yang perlu dilaporkan.
+                                </td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
             </div>
-        </form>
+        </div>
     </div>
     @endif
 
@@ -297,7 +206,7 @@
                                 <label class="form-label">Foto Struk / Tambahan <span class="text-danger">*</span></label>
                                 <input type="file" class="form-control" name="foto_files[]" id="fotoFilesOp"
                                        accept="image/jpeg,image/png,image/webp" multiple required>
-                                <small class="text-muted">Upload 1 foto atau nhiều foto sekaligus (struk BBM, odometoo, dashboard, dll). AI akan menganalisis tiap foto.</small>
+                                <small class="text-muted">Upload 1 foto atau banyak foto sekaligus (struk BBM, odometer, dashboard, dll). AI akan menganalisis tiap foto.</small>
                             </div>
 
                             {{-- Preview & hasil AI per file --}}
@@ -329,7 +238,7 @@
                         <ul class="small text-muted mb-0">
                             <li>Pilih permohonan yang sudah disetujui</li>
                             <li>Upload foto struk & tambahan (odometer, dashboard) — AI otomatis mengkategorikan</li>
-                            <li>Foto odometoo/dashboard = <span class="badge bg-warning text-dark">Tambahan</span> (bukan struk)</li>
+                            <li>Foto odometer/dashboard = <span class="badge bg-warning text-dark">Tambahan</span> (bukan struk)</li>
                             <li>Periksa hasil AI, lalu klik <strong>Kirim Laporan</strong></li>
                             <li>1 permohonan = 1 laporan BBM</li>
                         </ul>
@@ -343,7 +252,6 @@
 <script>
     const analyzeUrl = @json(route('pelaporan.analyze-struk'));
     const csrfToken = @json(csrf_token());
-    const budgetsPerSurat = @json($budgetsPerSurat ?? []);
 </script>
 
 <script>
@@ -355,8 +263,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Label & warna badge per kategori struk
     const kategoriLabels = { 'BBM': 'Struk BBM', 'Tol': 'Struk Tol', 'Parkir': 'Struk Parkir', 'Lainnya': 'Struk Lainnya', 'Tambahan': 'Tambahan' };
     const kategoriBadges = { 'BBM': 'bg-danger', 'Tol': 'bg-primary', 'Parkir': 'bg-info', 'Lainnya': 'bg-secondary', 'Tambahan': 'bg-warning text-dark' };
-    function kategoriLabel(k) { return kategoriLabels[k] || ('Struk ' + (k || '-')); }
-    function kategoriBadgeClass(k) { return kategoriBadges[k] || 'bg-secondary'; }
 
     // ── Mode switching (persist di URL supaya refresh tidak lompat) ──
     const cards = document.querySelectorAll('.mode-card');
@@ -390,188 +296,6 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         activateMode(panelSpd ? 'spd' : 'operational', false);
     }
-
-    // ── SPD items ──
-    let itemCount = 0;
-    let totalBudgetSpd = 0;
-
-    function addItemSpd(tanggal = '') {
-        itemCount++;
-        const container = document.getElementById('itemsContainerSpd');
-        const card = document.createElement('div');
-        card.className = 'card item-card border shadow-sm';
-        card.innerHTML = `
-            <div class="card-body p-3">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="item-number badge bg-primary rounded-pill">#${itemCount}</span>
-                    <button type="button" class="btn btn-sm btn-outline-danger btn-remove-item">
-                        <i class="bi bi-trash"></i> Hapus
-                    </button>
-                </div>
-                <div class="row g-2">
-                    <div class="col-6 col-md-4">
-                        <label class="form-label small text-muted mb-1">Tanggal</label>
-                        <input type="date" class="form-control form-control-sm item-tanggal"
-                               name="items[${itemCount}][tanggal]" value="${tanggal}" required>
-                    </div>
-                    <div class="col-6 col-md-8">
-                        <label class="form-label small text-muted mb-1">Foto Struk <span class="text-danger">*</span></label>
-                        <input type="file" class="form-control form-control-sm item-struk" name="items[${itemCount}][struk]"
-                               accept="image/jpeg,image/png,image/webp" required>
-                    </div>
-                </div>
-
-                <div class="mt-2 item-struk-preview" style="display:none;">
-                    <img class="img-thumbnail" style="max-height:90px;" alt="Pratinjau">
-                </div>
-
-                <div class="item-ai-result mt-2" style="display:none;">
-                    <span class="badge item-ai-badge bg-secondary">-</span>
-                    <strong class="item-ai-nominal text-dark ms-1">Rp 0</strong>
-                </div>
-                <span class="item-ai-status small text-muted"></span>
-
-                <input type="hidden" class="item-tipe" name="items[${itemCount}][struk_kategori]" value="">
-                <input type="hidden" class="item-nominal" name="items[${itemCount}][nominal]" value="0">
-                <input type="hidden" class="item-kategori-source" name="items[${itemCount}][kategori_source]" value="manual">
-                <input type="hidden" class="item-metadata-json" name="items[${itemCount}][metadata_json]" value="">
-                <input type="hidden" class="item-keterangan" name="items[${itemCount}][keterangan]" value="">
-            </div>
-        `;
-        container.appendChild(card);
-        document.getElementById('itemsEmptySpd').style.display = 'none';
-
-        card.querySelector('.item-tanggal').addEventListener('change', calculateSpd);
-        card.querySelector('.item-struk').addEventListener('change', function() { handleStrukSpd(this, card); });
-        card.querySelector('.btn-remove-item').addEventListener('click', function() {
-            card.remove();
-            calculateSpd();
-            if (container.querySelectorAll('.item-card').length === 0) {
-                document.getElementById('itemsEmptySpd').style.display = 'block';
-            }
-        });
-    }
-
-    function handleStrukSpd(input, card) {
-        const file = input.files[0];
-        const preview = card.querySelector('.item-struk-preview');
-        const status = card.querySelector('.item-ai-status');
-        if (!file) {
-            preview.style.display = 'none';
-            preview.querySelector('img').src = '';
-            status.textContent = '';
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = e => { preview.querySelector('img').src = e.target.result; preview.style.display = 'block'; };
-        reader.readAsDataURL(file);
-        // Auto-analisis AI setelah file dipilih
-        analyzeStrukSpd(card);
-    }
-
-    async function analyzeStrukSpd(card) {
-        const input = card.querySelector('.item-struk');
-        const file = input.files[0];
-        if (!file) return;
-        const status = card.querySelector('.item-ai-status');
-        status.textContent = 'Menganalisis struk...';
-        status.className = 'item-ai-status small text-primary';
-
-        const fd = new FormData();
-        fd.append('image', file);
-        try {
-            const res = await fetch(analyzeUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }, body: fd });
-            const data = await res.json();
-            if (data.success) {
-                const kategori = data.kategori;
-                const metadata = data.metadata || {};
-                const text = data.text || '';
-
-                // Isi hidden fields
-                card.querySelector('.item-tipe').value = kategori;
-                card.querySelector('.item-kategori-source').value = 'ai';
-                card.querySelector('.item-metadata-json').value = JSON.stringify({ kategori, metadata, text });
-                card.querySelector('.item-nominal').value = (metadata.nominal && metadata.nominal > 0) ? metadata.nominal : 0;
-                card.querySelector('.item-keterangan').value = text ? text.substring(0, 200) : '';
-
-                // Tampilkan hasil AI (read-only) untuk validasi
-                const badge = card.querySelector('.item-ai-badge');
-                badge.textContent = kategoriLabel(kategori);
-                badge.className = 'badge item-ai-badge ' + kategoriBadgeClass(kategori);
-                card.querySelector('.item-ai-nominal').textContent = formatRupiah(metadata.nominal || 0);
-                card.querySelector('.item-ai-result').style.display = 'block';
-
-                status.textContent = '✓ AI mendeteksi: ' + kategoriLabel(kategori) + '. Periksa hasil lalu simpan.';
-                status.className = 'item-ai-status small text-success';
-                calculateSpd();
-            } else {
-                status.textContent = 'Gagal: ' + (data.message || 'tersedia');
-                status.className = 'item-ai-status small text-danger';
-            }
-        } catch (e) {
-            status.textContent = 'Error koneksi';
-            status.className = 'item-ai-status small text-danger';
-        }
-    }
-
-    function calculateSpd() {
-        let total = 0, bbm = 0, tol = 0, parkir = 0, lain = 0, tambahanCount = 0;
-        document.querySelectorAll('#itemsContainerSpd .item-card').forEach(card => {
-            const nominal = parseFloat(card.querySelector('.item-nominal').value) || 0;
-            const tipe = card.querySelector('.item-tipe').value;
-            const subtotalEl = card.querySelector('.item-subtotal');
-            if (subtotalEl) subtotalEl.textContent = formatRupiah(nominal);
-            total += nominal;
-            if (tipe === 'BBM') bbm += nominal;
-            else if (tipe === 'Tol') tol += nominal;
-            else if (tipe === 'Parkir') parkir += nominal;
-            else if (tipe === 'Tambahan') { tambahanCount++; /* no nominal */ }
-            else lain += nominal;
-        });
-        document.getElementById('totalPengeluaranSpd').textContent = formatRupiah(total);
-        document.getElementById('summaryPengeluaranSpd').textContent = formatRupiah(total);
-        document.getElementById('summaryBBMSpd').textContent = formatRupiah(bbm);
-        document.getElementById('summaryTolSpd').textContent = formatRupiah(tol);
-        document.getElementById('summaryParkirSpd').textContent = formatRupiah(parkir);
-        document.getElementById('summaryLainSpd').textContent = formatRupiah(lain);
-        document.getElementById('summaryTambahanSpd').textContent = tambahanCount + ' foto';
-
-        const over = total > totalBudgetSpd;
-        document.getElementById('alertOverBudgetSpd').style.display = over ? 'block' : 'none';
-
-        const diberikan = parseFloat(document.getElementById('jumlahDiberikanSpd').value) || 0;
-        const selisih = diberikan - total;
-        document.getElementById('pengembalianSpd').textContent = formatRupiah(selisih >= 0 ? selisih : 0);
-        document.getElementById('kekuranganSpd').textContent = formatRupiah(selisih < 0 ? Math.abs(selisih) : 0);
-    }
-
-    // Surat info SPD
-    const selectSuratSpd = document.getElementById('selectSuratSpd');
-    if (selectSuratSpd) {
-        selectSuratSpd.addEventListener('change', function() {
-            const opt = this.options[this.selectedIndex];
-            const info = document.getElementById('infoSuratSpd');
-            if (!opt.value) { info.style.display = 'none'; totalBudgetSpd = 0; document.getElementById('summaryBudgetSpd').textContent = '-'; return; }
-            info.innerHTML = `
-                <div class="row">
-                    <div class="col-md-6"><small class="text-muted">Tujuan:</small><br><strong>${opt.dataset.tujuan || '-'}</strong></div>
-                    <div class="col-md-6"><small class="text-muted">Kendaraan:</small><br><strong>${opt.dataset.vehicle || '-'}</strong></div>
-                </div>
-                <hr class="my-2">
-                <div class="row">
-                    <div class="col-md-4"><small class="text-muted">Jadwal:</small><br><span>${opt.dataset.berangkat || '-'} s/d ${opt.dataset.kembali || '-'}</span></div>
-                    <div class="col-md-4"><small class="text-muted">Budget/Hari:</small><br><span>${formatRupiah(opt.dataset.budget)}</span></div>
-                    <div class="col-md-4"><small class="text-muted">Total Budget:</small><br><strong class="text-success">${formatRupiah(opt.dataset.totalBudget)}</strong></div>
-                </div>`;
-            info.style.display = 'block';
-            totalBudgetSpd = parseFloat(opt.dataset.totalBudget) || 0;
-            document.getElementById('summaryBudgetSpd').textContent = formatRupiah(totalBudgetSpd);
-            calculateSpd();
-        });
-    }
-
-    const btnAddItemSpd = document.getElementById('btnAddItemSpd');
-    if (btnAddItemSpd) btnAddItemSpd.addEventListener('click', () => addItemSpd());
 
     // ── Operasional: dropdown info ──
     const selectPermohonan = document.getElementById('selectPermohonan');
@@ -728,11 +452,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-
-    document.getElementById('jumlahDiberikanSpd')?.addEventListener('input', calculateSpd);
-
-    // Init: row pertama SPD jika ada
-    if (btnAddItemSpd) addItemSpd();
 });
 </script>
 @endsection

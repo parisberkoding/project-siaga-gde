@@ -121,6 +121,53 @@ it('menyimpan laporan BBM operasional ke transaction_proofs', function () {
     expect($proof->struk_bbm_path)->toContain('transaction_proofs/struk/');
 });
 
+it('menyimpan laporan BBM operasional via foto_files[] tanpa foto_struk (fix struk_bbm_path null)', function () {
+    $user = User::factory()->create(['role' => 'requester']);
+    $role = \App\Models\Role::where('code', 'requester')->first();
+    if ($role) {
+        $user->roles()->attach($role->id, ['is_primary' => true]);
+    }
+
+    $vehicle = VehicleAndToolsConsumers::factory()->create([
+        'consumerial_type' => 'KENDARAAN',
+        'is_approved'      => true,
+        'is_active'        => true,
+    ]);
+
+    $permohonan = Permohonan::factory()->create([
+        'requester_id' => $user->id,
+        'consumerial_tools_id' => $vehicle->id,
+        'status'       => 'approved',
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('pelaporan.operational.store'), [
+            'permohonan_id'   => $permohonan->id,
+            'purchase_date'   => now()->format('Y-m-d'),
+            'volume_bbm'      => 40.0,
+            'nominal'         => 400000,
+            'foto_files'      => [
+                UploadedFile::fake()->image('struk-bbm.jpg'),
+                UploadedFile::fake()->image('odometer.jpg'),
+            ],
+            'struk_kategoris' => [0 => 'BBM', 1 => 'Tambahan'],
+            'nominals'        => [0 => 400000, 1 => 0],
+            'keterangan_s'    => [0 => 'Struk BBM', 1 => 'Foto odometer'],
+            'metadata_s'      => [0 => json_encode(['kategori' => 'BBM', 'metadata' => ['nominal' => 400000], 'text' => 'OCR']), 1 => json_encode(['kategori' => 'Tambahan', 'metadata' => [], 'text' => ''])],
+        ])
+        ->assertSessionHas('success');
+
+    expect($permohonan->fresh()->status)->toBe('completed');
+
+    $proof = $permohonan->transactionProof;
+    expect($proof)->not->toBeNull();
+    expect($proof->struk_bbm_path)->not->toBeNull();
+    expect($proof->struk_bbm_path)->toContain('transaction_proofs/struk/');
+
+    // 2 file → 2 struk_items
+    expect(\App\Models\StrukItem::where('nomor_surat_spd', null)->count())->toBe(2);
+});
+
 it('mengembalikan kategorisasi AI pada /pelaporan/analyze-struk (fallback)', function () {
     $this->actingAs($this->admin)
         ->post(route('pelaporan.analyze-struk'), [

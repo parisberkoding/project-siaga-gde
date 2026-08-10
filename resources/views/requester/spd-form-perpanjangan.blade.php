@@ -29,7 +29,7 @@
                         Pastikan alasan perpanjangan jelas agar mudah disetujui.
                     </div>
 
-                    <form action="{{ route('requester.perpanjangan.store', $surat->id) }}" method="POST" id="formExtension" class="needs-validation" novalidate>
+                    <form action="{{ route('requester.perpanjangan.store') }}" method="POST" id="formExtension" class="needs-validation" novalidate>
                         @csrf
 
                         {{-- Info Surat Saat Ini --}}

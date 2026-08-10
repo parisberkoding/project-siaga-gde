@@ -133,12 +133,12 @@
                                     @endif
                                 </td>
                                 <td class="text-center">
-                                    <a href="{{ route('surat.superadmin.show', $surat->id) }}"
+                                    <a href="{{ route('surat.superadmin.show', $surat) }}"
                                        class="btn btn-sm btn-outline-primary" title="Detail">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     @if($surat->status == 'approved')
-                                        <a href="{{ route('surat.superadmin.print', $surat->id) }}"
+                                        <a href="{{ route('surat.superadmin.print', $surat) }}"
                                            class="btn btn-sm btn-outline-success" target="_blank" title="Cetak">
                                             <i class="bi bi-printer"></i>
                                         </a>

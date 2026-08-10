@@ -36,7 +36,7 @@
                     @if($surat->is_extension)
                         <div class="alert alert-info py-2 mb-3">
                             <i class="bi bi-info-circle"></i> Ini adalah <strong>Surat Perpanjangan</strong> dari:
-                            <a href="{{ route('requester.surat.show', $surat->parentSurat->id) }}">{{ $surat->parentSurat->nomor_surat }}</a>
+                            <a href="{{ route('requester.surat.show', $surat->parentSurat) }}">{{ $surat->parentSurat->nomor_surat }}</a>
                         </div>
                     @endif
 
@@ -187,7 +187,7 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                <a href="{{ route('requester.surat.show', $ext->id) }}" class="btn btn-sm btn-outline-primary">
+                                                <a href="{{ route('requester.surat.show', $ext) }}" class="btn btn-sm btn-outline-primary">
                                                     <i class="bi bi-eye"></i>
                                                 </a>
                                             </td>
@@ -242,7 +242,7 @@
                             @else
                                 <i class="bi bi-hourglass-split"></i> LPJ menunggu validasi
                             @endif
-                            <br><a href="{{ route('requester.lpj.show', $surat->lpjPenggantian->id) }}" class="small">Lihat LPJ →</a>
+                            <br><a href="{{ route('requester.lpj.show', $surat->lpjPenggantian) }}" class="small">Lihat LPJ →</a>
                         </div>
                     @else
                         <div class="alert {{ $surat->isLpjDeadlineOverdue() ? 'alert-danger' : 'alert-warning' }} py-2 mb-0">

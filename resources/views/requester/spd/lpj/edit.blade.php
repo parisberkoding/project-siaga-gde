@@ -42,7 +42,7 @@
         <br><small class="text-muted">Silakan perbaiki laporan di bawah lalu ajukan ulang.</small>
     </div>
 
-    <form action="{{ route('requester.lpj.update', $laporan->id) }}" method="POST" id="formLpj" enctype="multipart/form-data">
+    <form action="{{ route('requester.lpj.update', $laporan) }}" method="POST" id="formLpj" enctype="multipart/form-data">
         @csrf
         @method('PUT')
         <div class="row">
@@ -93,6 +93,36 @@
                             @error('uraian')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Informasi Tempuh Kendaraan --}}
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-speedometer2"></i> Informasi Tempuh Kendaraan</h5>
+                        <small class="text-muted d-block mb-3">Data odometer & kebutuhan BBM untuk dokumen cetak LPJ (opsional).</small>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Odometer sebelum SPD (km)</label>
+                                <input type="number" class="form-control" name="odo_before"
+                                       id="odoBefore" value="{{ old('odo_before', $laporan->odo_before) }}" min="0" step="0.01">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Odometer setelah SPD (km)</label>
+                                <input type="number" class="form-control" name="odo_after"
+                                       id="odoAfter" value="{{ old('odo_after', $laporan->odo_after) }}" min="0" step="0.01">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Kebutuhan BBM (liter)</label>
+                                <input type="number" class="form-control" name="kebutuhan_bbm_liter"
+                                       id="kebutuhanBbm" value="{{ old('kebutuhan_bbm_liter', $laporan->kebutuhan_bbm_liter) }}" min="0" step="0.01">
+                            </div>
+                        </div>
+
+                        <div class="alert alert-light border py-2 mb-0">
+                            <small class="text-muted">Jarak tempuh otomatis dihitung: <strong id="jarakTempuh">-</strong></small>
                         </div>
                     </div>
                 </div>
@@ -240,7 +270,7 @@
                             <i class="bi bi-send"></i> Ajukan Ulang LPJ
                         </button>
 
-                        <a href="{{ route('requester.lpj.show', $laporan->id) }}" class="btn btn-secondary w-100">
+                        <a href="{{ route('requester.lpj.show', $laporan) }}" class="btn btn-secondary w-100">
                             <i class="bi bi-arrow-left"></i> Batal
                         </a>
                     </div>
@@ -282,12 +312,15 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentBudgetMap = {};
 
     // Pre-populated items from existing LPJ
-    const existingItems = @json($laporan->details->map(fn($d) => [
-        'tanggal' => $d->tanggal ? $d->tanggal->format('Y-m-d') : '',
-        'tipe_penggunaan' => $d->tipe_penggunaan,
-        'nominal' => $d->nominal,
-        'keterangan' => $d->keterangan,
-    ]));
+    @php
+        $existingItems = $laporan->details->map(fn($d) => [
+            'tanggal' => $d->tanggal ? $d->tanggal->format('Y-m-d') : '',
+            'tipe_penggunaan' => $d->tipe_penggunaan,
+            'nominal' => $d->nominal,
+            'keterangan' => $d->keterangan,
+        ])->values();
+    @endphp
+    const existingItems = @json($existingItems);
 
     function formatRupiah(num) {
         return 'Rp ' + new Intl.NumberFormat('id-ID').format(num);
@@ -683,6 +716,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     jumlahDiberikan.addEventListener('input', calculateTotal);
     calculateTotal();
+
+    // Tempuh kendaraan: hitung jarak otomatis
+    const odoBefore = document.getElementById('odoBefore');
+    const odoAfter = document.getElementById('odoAfter');
+    const jarakTempuh = document.getElementById('jarakTempuh');
+
+    function hitungJarak() {
+        const sebelum = parseFloat(odoBefore?.value) || 0;
+        const sesudah = parseFloat(odoAfter?.value) || 0;
+        if (jarakTempuh) {
+            jarakTempuh.textContent = (sebelum > 0 && sesudah > 0)
+                ? new Intl.NumberFormat('id-ID').format(sesudah - sebelum) + ' km'
+                : '-';
+        }
+    }
+    odoBefore?.addEventListener('input', hitungJarak);
+    odoAfter?.addEventListener('input', hitungJarak);
+    hitungJarak();
 });
 </script>
 

@@ -1,6 +1,6 @@
 # Progress Pengembangan BBM Project
 
-> Terakhir diperbarui: 07 Agustus 2026
+> Terakhir diperbarui: 10 Agustus 2026
 
 ---
 
@@ -172,16 +172,131 @@
 
 ---
 
-## 9 Tests Passed (33 Assertions)
+## 15. Refactor Alur SPD — Budget Di-decouple
+
+| Aspek | Detail |
+|-------|--------|
+| **Fitur (Mengacu pada modul)** | Alur SPD tanpa wajib budget |
+| **Controller/View/Migration yang diubah** | `app/Http/Controllers/SpdController.php`, `app/Http/Controllers/ReportingController.php`, `resources/views/superadmin/spd/surat/create-shortcut.blade.php` |
+| **Pekerjaan yang dilakukan (todolist)** | (1) Validasi `totalBudget <= 0` untuk SPD tipe `biasa` di `storeSuratSuperadmin` dihapus — budget tidak lagi syarat membuat surat. (2) `printSurat`: `$needsBudget = false` — budget tidak lagi menjadi syarat cetak (modul budgeting terpisah). (3) Input budget nominal di `create-shortcut.blade.php` tidak lagi `required`. (4) `is_over_budget` di `storeLaporan`, `updateLaporanRequester` (SpdController) & `storeSpd` (ReportingController) hanya dihitung bila budget diisi (`$totalBudgetFromTable > 0`), supaya LPJ tanpa budget tidak salah ter-flag over budget. (5) Persist field baru `odo_before`, `odo_after`, `kebutuhan_bbm_liter` di ketiga method penyimpanan LPJ. |
+| **Status** | Selesai |
+| **Notes untuk next step** | Flow baru: Request → Review Admin → Cetak Surat → Laporan Driver → Review LPJ → Cetak LPJ → Selesai. Modul budgeting tetap ada tapi terpisah & tidak wajib. |
+
+---
+
+## 16. Cetak Dokumen Gabungan SPD + LPJ
+
+| Aspek | Detail |
+|-------|--------|
+| **Fitur (Mengacu pada modul)** | Ekspor/Cetak Gabungan SPD & LPJ |
+| **Controller/View/Migration yang diubah** | `app/Http/Controllers/SpdPrintController.php` (baru), `resources/views/templates/template-surat/template-spd-lpj.blade.php` (baru), `routes/web.php`, `resources/views/requester/spd/lpj/show.blade.php`, `resources/views/superadmin/spd/lpj/detail.blade.php` |
+| **Pekerjaan yang dilakukan (todolist)** | (1) Controller `SpdPrintController@exportLpj($id)` — render 1 dokumen A4 (margin 3 cm semua sisi) berisi 4 bagian: Page 1 Ringkasan Surat Tugas (kop surat, nomor surat, pengemudi, kendaraan, bidang dilayani, daftar nama), Page 2 Ringkasan Laporan (kebutuhan BBM liter, spending BBM/Parkir/Tol/Lainnya, odometer sebelum/sesudah, total jarak tempuh), Page 3 Rincian Penggunaan (tabel pivot Tanggal\|Tol\|BBM\|Parkir\|Lainnya + Total) + 3 kotak TTD (User / General Affairs / Manager), Page 4+ Lampiran foto-foto (masonry grid 2 kolom, 6 foto/halaman, wrapper `<div class="items">` berisi credential + gambar base64, pemisah per kategori Tol→BBM→Parkir→Lainnya→Tambahan). (2) Foto struk di-embed base64 (disk public) & logo & QR signature di-cache (`SpdBarcodeSignature`) supaya tampil saat cetak tanpa server jalan. (3) Route `GET spd/laporan/{id}/export` → name `spd.laporan.export`, middleware role `requester,admin,superadmin,manager,dispatcher` (siapa pun dengan hak lihat LPJ bisa cetak). (4) Tombol "Cetak SPD + LPJ" di `requester/spd/lpj/show` & `superadmin/spd/lpj/detail` (di superadmin link cetak lama tetap dipertahankan). |
+| **Status** | Selesai |
+| **Notes untuk next step** | Verifikasi visual print di browser: kop surat, tabel rincian, TTD & grid foto 6/halaman. Lebar konten layar 800–1340px. |
+
+---
+
+## 17. Field Odometer & Kebutuhan BBM (Migration + Model Helpers)
+
+| Aspek | Detail |
+|-------|--------|
+| **Fitur (Mengacu pada modul)** | Dokumentasi Tempuh SPD |
+| **Controller/View/Migration yang diubah** | `database/migrations/2026_08_10_000001_add_spd_lpj_trip_fields_to_lpj_penggantians.php` (baru), `app/Models/LpjPenggantian.php` |
+| **Pekerjaan yang dilakukan (todolist)** | (1) Migration menambah 3 kolom nullable decimal(15,2) di `lpj_penggantians`: `odo_before`, `odo_after`, `kebutuhan_bbm_liter`. (2) Model: kolom ditambah ke `$fillable` & casts `decimal:2`. (3) Helper baru: `getTotalJarakTempuh()` (selisih odo, null jika belum lengkap), `getKendaraanLabelAttribute()` (plat + merk/model dari relasi vehicle/detail), `getSpendingPerKategori()` (total nominal per Tol/BBM/Parkir/Lainnya dari `strukItems`), `getRincianPerTanggal()` (pivot per tanggal untuk tabel cetak, di-ksort), `getStrukItemsOrderedForPhotos()` (urut kategori Tol→BBM→Parkir→Lainnya→Tambahan untuk lampiran). Migration sudah jalan di MySQL asli (`php artisan migrate`). |
+| **Status** | Selesai |
+| **Notes untuk next step** | Kolom bersifat opsional; tidak wajib diisi di form. |
+
+---
+
+## 18. Form LPJ Odometer (Pelaporan & Requester)
+
+| Aspek | Detail |
+|-------|--------|
+| **Fitur (Mengacu pada modul)** | Input Odometer & Kebutuhan BBM di Form LPJ |
+| **Controller/View/Migration yang diubah** | `resources/views/pelaporan/index.blade.php`, `resources/views/requester/spd/lpj/create.blade.php`, `resources/views/requester/spd/lpj/edit.blade.php` |
+| **Pekerjaan yang dilakukan (todolist)** | (1) Form LPJ (mode SPD di pelaporan & halaman create/edit requester) ditambah input `odo_before`, `odo_after`, `kebutuhan_bbm_liter` (numeric, opsional). (2) JS hitung total jarak tempuh live (odo_after − odo_before) ditampilkan saat kedua field terisi. (3) Nilai dikirim & dipersist lewat `storeLaporan`, `updateLaporanRequester`, `storeSpd`. |
+| **Status** | Selesai |
+| **Notes untuk next step** | Verifikasi tampilan & hitungan live di browser. |
+
+---
+
+## 19. Fix Migration SQLite Compatibility (Test Suite)
+
+| Aspek | Detail |
+|-------|--------|
+| **Fitur (Mengacu pada modul)** | Test Suite Berjalan di SQLite |
+| **Controller/View/Migration yang diubah** | `database/migrations/2026_07_27_072221_add_completed_to_surat_spds_status.php` |
+| **Pekerjaan yang dilakukan (todolist)** | Migration lama pakai `DB::statement("ALTER TABLE ... MODIFY COLUMN ... ENUM")` yang MySQL-only → 7 test gagal di SQLite in-memory (pra-ada, terbukti dengan `git stash`). Fix: ganti ke schema builder `$table->enum('status', [...])->default('pending')->change()` (up: +`completed`, down: tanpa `completed`) — kompatibel MySQL & SQLite. Setelah fix, seluruh test suite lulus. |
+| **Status** | Selesai |
+| **Notes untuk next step** | Tidak ada aksi lanjutan. |
+
+---
+
+## 20. Bug BBM Operasional: struk_bbm_path null
+
+| Aspek | Detail |
+|-------|--------|
+| **Fitur (Mengacu pada modul)** | Pelaporan BBM Operasional |
+| **Controller/View/Migration yang diubah** | `app/Http/Controllers/ReportingController.php` (`storeOperational`) |
+| **Pekerjaan yang dilakukan (todolist)** | Form operasional kirim via `foto_files[]` tanpa `foto_struk` → `struk_bbm_path` null → MySQL error. Fix: semua file (foto_struk + foto_files[]) dikumpulkan, disimpan sekali ke `struk_items`, file pertama dijadikan `struk_bbm_path`. Tambah test regresi "menyimpan laporan BBM operasional via foto_files[] tanpa foto_struk". |
+| **Status** | Selesai |
+| **Notes untuk next step** | Tidak ada aksi lanjutan. |
+
+---
+
+## 21. Laporan Harian SPD (Pre-Fixed Report) → Validasi → LPJ Final
+
+| Aspek | Detail |
+|-------|--------|
+| **Fitur (Mengacu pada modul)** | Alur Laporan Harian SPD |
+| **Controller/View/Migration yang diubah** | `app/Http/Controllers/SpdDailyReportController.php` (baru), `app/Http/Controllers/ReportingController.php` (`index`), `app/Models/SpdDailyReport.php` (baru), `app/Models/StrukItem.php`, `app/Models/SuratSpd.php`, `app/Http/Controllers/SpdController.php` (`updateKeuanganLaporan`), `routes/web.php`, migration `2026_08_10_000002_create_spd_daily_reports_table.php`; view `pelaporan/index.blade.php` (panel SPD jadi list surat), `pelaporan/spd/daily-index.blade.php`, `daily-form.blade.php`, `validasi.blade.php`, `superadmin/spd/lpj/detail.blade.php` (form Data Keuangan) |
+| **Pekerjaan yang dilakukan (todolist)** | Tabel `spd_daily_reports` + kolom `spd_daily_report_id` di `struk_items`. Driver buat laporan harian: item auto-upload sebagai **draft server-side** (refresh aman, draft dibuat otomatis saat upload pertama), lalu submit per hari. Setelah `tanggal_kembali` lewat muncul tombol "Validasi Seluruh Laporan untuk Membuat LPJ": halaman validasi menampilkan SEMUA file yang dikirim (bisa hapus/ubah nominal/kategori inline, total live), + field odometer (odo_before, odo_after, kebutuhan_bbm_liter) → "Submit sebagai LPJ" → `LpjPenggantian` pending + `LpjPenggantianDetail` per item (kategori `Tambahan` hanya jadi lampiran). Info keuangan (uang_dari/jumlah_diberikan) disembunyikan dari driver; admin GA mengisi lewat form Data Keuangan di detail LPJ superadmin (route `PUT lpj/{id}/keuangan`). |
+| **Status** | Selesai |
+| **Notes untuk next step** | Uji manual di browser: `/pelaporan?mode=spd` → upload item → refresh (data tetap) → submit → validasi → submit LPJ → review GA + isi data keuangan. |
+
+---
+
+## 22. Fix Totalisasi Parkir vs Portir
+
+| Aspek | Detail |
+|-------|--------|
+| **Fitur (Mengacu pada modul)** | Total LPJ Penggantian |
+| **Controller/View/Migration yang diubah** | `app/Models/LpjPenggantian.php` (`calculateTotals`), `app/Models/LpjPenggantianDetail.php` (`getTipeBadgeClass`) |
+| **Pekerjaan yang dilakukan (todolist)** | Detail LPJ menyimpan enum `Parkir`, tapi totalisasi query `'Portir'` → nominal Parkir tidak terhitung (test finalize: 450.000 vs 470.000). Fix: `whereIn('tipe_penggunaan', ['Parkir','Portir'])` + badge mendukung kedua nilai. |
+| **Status** | Selesai |
+| **Notes untuk next step** | Tidak ada aksi lanjutan. |
+
+---
+
+## 16 Tests Passed (59 Assertions)
 
 | Test | Status |
 |------|--------|
 | `PelaporanTest::it melayani GET /pelaporan untuk user dengan permission` | Pass |
 | `PelaporanTest::it menyimpan LPJ SPD per item struk + struk_items` | Pass |
 | `PelaporanTest::it menyimpan laporan BBM operasional ke transaction_proofs` | Pass |
+| `PelaporanTest::it menyimpan laporan BBM operasional via foto_files[] tanpa foto_struk` | Pass |
 | `PelaporanTest::it mengembalikan kategorisasi AI pada /pelaporan/analyze-struk (fallback)` | Pass |
 | `PelaporanTest::it menggabungkan BBM SPD (struk_items LPJ approved) ke analisis trip` | Pass |
 | `LpjCreateViewTest::it merender LPJ create dengan item upload-sederhana + Simpan Lapora…` | Pass |
 | `LpjCreateViewTest::it menyembunyikan budgeting per hari di detail surat (approve tanpa…` | Pass |
+| `SpdDailyReportTest::it membuat draft server-side saat upload item (fix refresh hilang)` | Pass |
+| `SpdDailyReportTest::it mengirim laporan harian (status submitted)` | Pass |
+| `SpdDailyReportTest::it menampilkan halaman validasi dengan semua file yang dikirim driver` | Pass |
+| `SpdDailyReportTest::it membuat LPJ final dari laporan harian saat finalize` | Pass |
+| `SpdDailyReportTest::it memblokir finalize sebelum tanggal selesai SPD` | Pass |
+| `SpdDailyReportTest::it membutuhkan minimal 1 item pengeluaran saat finalize` | Pass |
 | `ExampleTest::the application returns a successful response` | Pass |
 | `Unit\ExampleTest::that true is true` | Pass |
+
+---
+
+## 23. Slug Refactor — Hapus ID Numerik dari Semua URL SPD
+
+| Aspek | Detail |
+|-------|--------|
+| **Fitur (Mengacu pada modul)** | URL aman tanpa ID (slug/kode surat tugas) |
+| **Controller/View/Migration yang diubah** | Migrations `2026_08_10_000003`–`000007` (`slug` di `surat_spds`, `lpj_penggantians`, `surat_spd_extensions`, `spd_daily_reports`, `struk_items`); Models `SuratSpd`, `LpjPenggantian`, `SuratSpdExtension`, `SpdDailyReport`, `StrukItem`; `routes/web.php`; `SpdController`, `SpdPrintController`, `SpdDailyReportController`; views `pelaporan/index`, `pelaporan/spd/daily-form|daily-index|validasi`, `requester/spd/surat/show`, `requester/spd/lpj/index|show|edit`, `requester/spd-form-perpanjangan`, `superadmin/spd/surat/index|detail|report`, `superadmin/spd/lpj/index|detail`, `superadmin/spd/perpanjangan/index|detail`, `templates/template-surat/template-spd`; tests `SpdDailyReportTest`, `LpjCreateViewTest`. |
+| **Pekerjaan yang dilakukan (todolist)** | Ganti semua route `{id}` → route model binding (`{surat}`, `{laporan}`, `{perpanjangan}`, `{daily}`, `{item}`). `nomor_surat`/`lpj_number` mengandung slash sehingga tidak aman di URL → tambah kolom `slug` unique di 5 tabel; backfill `str_replace('/', '-', kode)` untuk surat/lpj/extension, slug acak `LHP-*`/`ITM-*` untuk daily report & struk item. Models: `getRouteKeyName()` = `slug` + boot `creating` auto-generate. URL lama `/surat/14/print` → `/spd/surat/010.TGS-PTH1.30-GDE-VII-2026/print`. Fix bug blade `@json()` yang terpotong saat nested parens di `daily-form`, `validasi`, dan `edit` LPJ requester (pindah ekspresi kompleks ke blok `@php`). Perbaiki test route yang kurang param `$surat`. |
+| **Status** | Selesai |
+| **Notes untuk next step** | Full suite 16 passed (59 assertions). Konfirmasi manual di browser: buka detail surat, validasi, upload struk, cetak SPD/LPJ; pastikan slug `-` aman untuk segment URL dan tak ada 404 karena route cache lama (`php artisan route:clear` sudah dijalankan). |

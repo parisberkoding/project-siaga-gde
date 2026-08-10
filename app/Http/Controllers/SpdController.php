@@ -159,11 +159,11 @@ class SpdController extends Controller
      * @param int $id
      * @return \Illuminate\View\View
      */
-    public function showSuratRequester($id)
+    public function showSuratRequester(SuratSpd $surat)
     {
         $surat = SuratSpd::forUser(Auth::id())
             ->with(['details', 'vehicle', 'approver', 'rejector', 'lpjPenggantian', 'childExtensions', 'parentSurat'])
-            ->findOrFail($id);
+            ->findOrFail($surat->id);
 
         return view('requester.spd.surat.show', compact('surat'));
     }
@@ -215,7 +215,7 @@ class SpdController extends Controller
      * @param int $id
      * @return \Illuminate\View\View
      */
-    public function showSuratSuperadmin($id)
+    public function showSuratSuperadmin(SuratSpd $surat)
     {
         $surat = SuratSpd::with([
             'details',
@@ -226,7 +226,7 @@ class SpdController extends Controller
             'parentSurat',
             'childExtensions',
             'lpjPenggantian'
-        ])->findOrFail($id);
+        ])->findOrFail($surat->id);
 
         return view('superadmin.spd.surat.detail', compact('surat'));
     }
@@ -236,13 +236,11 @@ class SpdController extends Controller
      * Set status approved, budget per hari, dan calculate lpj_deadline
      *
      * @param Request $request
-     * @param int $id
+     * @param \App\Models\SuratSpd $surat
      * @return \Illuminate\Http\RedirectResponse
      */
-public function approveSurat(Request $request, $id)
+public function approveSurat(Request $request, SuratSpd $surat)
 {
-    $surat = SuratSpd::findOrFail($id);
-
     if ($surat->status !== 'pending') {
         return redirect()->back()
             ->with('error', 'Surat ini sudah diproses sebelumnya.');
@@ -281,16 +279,14 @@ public function approveSurat(Request $request, $id)
      * Reject surat SPD
      *
      * @param Request $request
-     * @param int $id
+     * @param \App\Models\SuratSpd $surat
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function rejectSurat(Request $request, $id)
+    public function rejectSurat(Request $request, SuratSpd $surat)
     {
         $request->validate([
             'rejection_reason' => 'required|string|min:10',
         ]);
-
-        $surat = SuratSpd::findOrFail($id);
 
         if ($surat->status !== 'pending') {
             return redirect()->back()
@@ -370,11 +366,6 @@ public function approveSurat(Request $request, $id)
         }
 
         $totalBudget = $request->budgets ? collect($request->budgets)->sum('nominal') : 0;
-        if ($request->type === 'biasa' && $totalBudget <= 0) {
-            return redirect()->back()
-                ->with('error', 'Total budget tidak boleh Rp 0 untuk SPD biasa!')
-                ->withInput();
-        }
 
         // Resolve employee_id (format: emp_X atau user_X)
         $userId = null;
@@ -449,7 +440,7 @@ public function approveSurat(Request $request, $id)
             DB::commit();
 
             return redirect()
-                ->route('surat.superadmin.show', $surat->id)
+                ->route('surat.superadmin.show', $surat)
                 ->with('success', 'Surat SPD langsung berhasil dibuat & disetujui! Nomor: ' . $surat->nomor_surat);
 
         } catch (\Exception $e) {
@@ -485,13 +476,13 @@ public function approveSurat(Request $request, $id)
         ));
     }
 
-    public function printSurat($id)
+    public function printSurat(SuratSpd $surat)
     {
         $surat = SuratSpd::with(['details', 'vehicle', 'user', 'approver', 'budgets'])
             ->where('status', 'approved')
-            ->findOrFail($id);
+            ->findOrFail($surat->id);
 
-        $needsBudget = $surat->type === 'mendadak' && $surat->budgets->isEmpty();
+        $needsBudget = false; // Budget kini modul terpisah — tidak lagi menjadi syarat cetak
 
         // Check if barcode already exists in DB
         $barcodeRecord = SpdBarcodeSignature::where('spd_id', $surat->id)->first();
@@ -510,9 +501,9 @@ public function approveSurat(Request $request, $id)
     /**
      * Save budget for mendadak SPD at print time
      */
-    public function saveMendadakBudget(Request $request, $id)
+    public function saveMendadakBudget(Request $request, SuratSpd $surat)
     {
-        $surat = SuratSpd::with('budgets')->findOrFail($id);
+        $surat = SuratSpd::with('budgets')->findOrFail($surat->id);
 
         if ($surat->type !== 'mendadak') {
             return redirect()->back()->with('error', 'Hanya SPD mendadak yang bisa input budget saat cetak.');
@@ -546,7 +537,7 @@ public function approveSurat(Request $request, $id)
 
             DB::commit();
 
-            return redirect()->route('surat.superadmin.print', $surat->id)
+            return redirect()->route('surat.superadmin.print', $surat)
                 ->with('print_now', true);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -714,7 +705,7 @@ public function approveSurat(Request $request, $id)
      * @param int $id
      * @return \Illuminate\View\View
      */
-    public function showPerpanjanganSuperadmin($id)
+    public function showPerpanjanganSuperadmin(SuratSpdExtension $perpanjangan)
     {
         $extension = SuratSpdExtension::with([
             'originalSurat.user',
@@ -724,7 +715,7 @@ public function approveSurat(Request $request, $id)
             'approver',
             'rejector',
             'acknowledger'
-        ])->findOrFail($id);
+        ])->findOrFail($perpanjangan->id);
 
         return view('superadmin.spd.perpanjangan.detail', compact('extension'));
     }
@@ -736,9 +727,9 @@ public function approveSurat(Request $request, $id)
      * @param int $id
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function approvePerpanjangan(Request $request, $id)
+    public function approvePerpanjangan(Request $request, SuratSpdExtension $perpanjangan)
     {
-        $extension = SuratSpdExtension::pending()->findOrFail($id);
+        $extension = SuratSpdExtension::pending()->findOrFail($perpanjangan->id);
 
         DB::beginTransaction();
         try {
@@ -770,13 +761,13 @@ public function approveSurat(Request $request, $id)
      * @param int $id
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function rejectPerpanjangan(Request $request, $id)
+    public function rejectPerpanjangan(Request $request, SuratSpdExtension $perpanjangan)
     {
         $request->validate([
             'alasan' => 'required|string|min:10',
         ]);
 
-        $extension = SuratSpdExtension::pending()->findOrFail($id);
+        $extension = SuratSpdExtension::pending()->findOrFail($perpanjangan->id);
 
         $extension->reject(Auth::id(), $request->alasan);
 
@@ -791,11 +782,11 @@ public function approveSurat(Request $request, $id)
      * @param int $id
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function acknowledgePerpanjangan(Request $request, $id)
+    public function acknowledgePerpanjangan(Request $request, SuratSpdExtension $perpanjangan)
     {
         $extension = SuratSpdExtension::approved()
             ->where('is_acknowledged', false)
-            ->findOrFail($id);
+            ->findOrFail($perpanjangan->id);
 
         $extension->acknowledge(Auth::id(), $request->catatan);
 
@@ -895,6 +886,9 @@ public function approveSurat(Request $request, $id)
             'uang_dari' => 'nullable|string|max:255',
             'jumlah_diberikan' => 'nullable|numeric|min:0',
             'catatan' => 'nullable|string',
+            'odo_before' => 'nullable|numeric|min:0',
+            'odo_after' => 'nullable|numeric|min:0',
+            'kebutuhan_bbm_liter' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
             'items.*.tanggal' => 'required|date',
             // Alur baru: setiap item = 1 gambar struk + kategori (AI/manual).
@@ -935,7 +929,8 @@ public function approveSurat(Request $request, $id)
         // ✅ Hitung total pengeluaran
         $totalPengeluaran = collect($request->items)->sum('nominal');
 
-        $isOverBudget = $totalPengeluaran > $totalBudgetFromTable;
+        // Budget kini opsional — over budget hanya dihitung bila budget diisi
+        $isOverBudget = $totalBudgetFromTable > 0 && $totalPengeluaran > $totalBudgetFromTable;
 
         DB::beginTransaction();
         try {
@@ -947,6 +942,9 @@ public function approveSurat(Request $request, $id)
                 'jabatan'          => $request->jabatan,
                 'vehicle_id'       => $surat->vehicle_id,
                 'nomor_polisi'     => $surat->vehicle->consumerial_code ?? $surat->vehicle->plat_nomor ?? '-',
+                'odo_before'       => $request->odo_before,
+                'odo_after'        => $request->odo_after,
+                'kebutuhan_bbm_liter' => $request->kebutuhan_bbm_liter,
                 'uraian'           => $request->uraian,
                 'uang_dari'        => $request->uang_dari ?? 'KAS',
                 'jumlah_diberikan' => $request->jumlah_diberikan ?? 0,
@@ -1034,12 +1032,12 @@ public function approveSurat(Request $request, $id)
     /**
      * Show edit form for rejected LPJ (revision by requester)
      */
-    public function editLaporanRequester($id)
+    public function editLaporanRequester(LpjPenggantian $laporan)
     {
         $laporan = LpjPenggantian::where('user_id', Auth::id())
             ->where('status', 'rejected')
             ->with(['suratSpd', 'suratSpd.vehicle', 'details.strukItem', 'suratSpd.budgets'])
-            ->findOrFail($id);
+            ->findOrFail($laporan->id);
 
         $surat = $laporan->suratSpd;
 
@@ -1061,12 +1059,12 @@ public function approveSurat(Request $request, $id)
     /**
      * Update rejected LPJ (resubmit by requester)
      */
-    public function updateLaporanRequester(Request $request, $id)
+    public function updateLaporanRequester(Request $request, LpjPenggantian $laporan)
     {
         $laporan = LpjPenggantian::where('user_id', Auth::id())
             ->where('status', 'rejected')
             ->with('suratSpd')
-            ->findOrFail($id);
+            ->findOrFail($laporan->id);
 
         $validator = Validator::make($request->all(), [
             'nama' => 'required|string|max:255',
@@ -1075,6 +1073,9 @@ public function approveSurat(Request $request, $id)
             'uang_dari' => 'nullable|string|max:255',
             'jumlah_diberikan' => 'nullable|numeric|min:0',
             'catatan' => 'nullable|string',
+            'odo_before' => 'nullable|numeric|min:0',
+            'odo_after' => 'nullable|numeric|min:0',
+            'kebutuhan_bbm_liter' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
             'items.*.tanggal' => 'required|date',
             'items.*.struk_kategori' => 'nullable|in:BBM,Tol,Parkir,Lainnya',
@@ -1103,7 +1104,7 @@ public function approveSurat(Request $request, $id)
             ->groupBy('tanggal')
             ->map(fn($items) => $items->sum('nominal'));
 
-        $isOverBudget = $totalPengeluaran > $totalBudgetFromTable;
+        $isOverBudget = $totalBudgetFromTable > 0 && $totalPengeluaran > $totalBudgetFromTable;
 
         DB::beginTransaction();
         try {
@@ -1113,6 +1114,9 @@ public function approveSurat(Request $request, $id)
                 'uraian' => $request->uraian,
                 'uang_dari' => $request->uang_dari ?? 'KAS',
                 'jumlah_diberikan' => $request->jumlah_diberikan ?? 0,
+                'odo_before' => $request->odo_before,
+                'odo_after' => $request->odo_after,
+                'kebutuhan_bbm_liter' => $request->kebutuhan_bbm_liter,
                 'total_pengeluaran' => $totalPengeluaran,
                 'catatan' => $request->catatan ?? '',
                 'status' => 'pending',
@@ -1198,7 +1202,7 @@ public function approveSurat(Request $request, $id)
 
             DB::commit();
 
-            return redirect()->route('requester.lpj.show', $laporan->id)
+            return redirect()->route('requester.lpj.show', $laporan)
                 ->with('success', 'LPJ berhasil diperbaiki dan diajukan ulang!');
         } catch (\Exception $e) {
             DB::rollBack();
@@ -1237,11 +1241,11 @@ public function approveSurat(Request $request, $id)
      * @param int $id
      * @return \Illuminate\View\View
      */
-    public function showLaporanRequester($id)
+    public function showLaporanRequester(LpjPenggantian $laporan)
     {
         $laporan = LpjPenggantian::where('user_id', Auth::id())
             ->with(['suratSpd', 'vehicle', 'details.strukItem', 'approverPengguna', 'approverDivisiGa', 'rejector'])
-            ->findOrFail($id);
+            ->findOrFail($laporan->id);
 
         return view('requester.spd.lpj.show', compact('laporan'));
     }
@@ -1306,7 +1310,7 @@ public function approveSurat(Request $request, $id)
      * @param int $id
      * @return \Illuminate\View\View
      */
-    public function showLaporanSuperadmin($id)
+    public function showLaporanSuperadmin(LpjPenggantian $laporan)
     {
         $laporan = LpjPenggantian::with([
             'details.strukItem',
@@ -1318,7 +1322,7 @@ public function approveSurat(Request $request, $id)
             'approverPengguna',
             'approverDivisiGa',
             'rejector'
-        ])->findOrFail($id);
+        ])->findOrFail($laporan->id);
 
         return view('superadmin.spd.lpj.detail', compact('laporan'));
     }
@@ -1329,9 +1333,9 @@ public function approveSurat(Request $request, $id)
      * @param int $id
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function approveLaporan($id)
+    public function approveLaporan(LpjPenggantian $laporan)
     {
-        $laporan = LpjPenggantian::pending()->findOrFail($id);
+        $laporan = LpjPenggantian::pending()->findOrFail($laporan->id);
 
         DB::beginTransaction();
         try {
@@ -1357,13 +1361,13 @@ public function approveSurat(Request $request, $id)
      * @param int $id
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function rejectLaporan(Request $request, $id)
+    public function rejectLaporan(Request $request, LpjPenggantian $laporan)
     {
         $request->validate([
             'rejection_reason' => 'required|string|min:10',
         ]);
 
-        $laporan = LpjPenggantian::pending()->findOrFail($id);
+        $laporan = LpjPenggantian::pending()->findOrFail($laporan->id);
 
         $laporan->reject(Auth::id(), $request->rejection_reason);
 
@@ -1372,12 +1376,39 @@ public function approveSurat(Request $request, $id)
     }
 
     /**
+     * Update data keuangan LPJ (diisi admin GA / orang keuangan).
+     * Driver tidak mengisi data ini saat membuat laporan harian.
+     *
+     * @param Request $request
+     * @param int $id
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function updateKeuanganLaporan(Request $request, LpjPenggantian $laporan)
+    {
+        $request->validate([
+            'uang_dari'        => 'nullable|string|max:255',
+            'jumlah_diberikan' => 'nullable|numeric|min:0',
+        ]);
+
+        DB::transaction(function () use ($laporan, $request) {
+            $laporan->update([
+                'uang_dari'        => $request->uang_dari ?? 'KAS',
+                'jumlah_diberikan' => $request->jumlah_diberikan ?? 0,
+            ]);
+            $laporan->calculateKeuangan();
+        });
+
+        return redirect()->back()
+            ->with('success', 'Data keuangan LPJ berhasil diperbarui.');
+    }
+
+    /**
      * Print LPJ
      *
      * @param int $id
      * @return \Illuminate\View\View
      */
-    public function printLaporan($id)
+    public function printLaporan(LpjPenggantian $laporan)
     {
         $laporan = LpjPenggantian::with([
             'details',
@@ -1386,7 +1417,7 @@ public function approveSurat(Request $request, $id)
             'vehicle',
             'user'
         ])->where('status', 'approved')
-          ->findOrFail($id);
+          ->findOrFail($laporan->id);
 
         return view('templates.template-surat.template-lpj', compact('laporan'));
     }
@@ -1403,11 +1434,11 @@ public function approveSurat(Request $request, $id)
      * @param int $id
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getSuratDetail($id)
+    public function getSuratDetail(SuratSpd $surat)
     {
         $surat = SuratSpd::forUser(Auth::id())
             ->with(['vehicle', 'details', 'parentSurat'])
-            ->findOrFail($id);
+            ->findOrFail($surat->id);
 
         return response()->json([
             'success' => true,

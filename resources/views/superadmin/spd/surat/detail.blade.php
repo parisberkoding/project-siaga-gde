@@ -60,7 +60,7 @@
                         <div class="alert alert-info py-2 mb-3">
                             <i class="bi bi-info-circle"></i>
                             Ini adalah <strong>Surat Perpanjangan</strong> dari:
-                            <a href="{{ route('surat.superadmin.show', $surat->parentSurat->id) }}">
+                            <a href="{{ route('surat.superadmin.show', $surat->parentSurat) }}">
                                 {{ $surat->parentSurat->nomor_surat }}
                             </a>
                         </div>
@@ -147,7 +147,7 @@
                     </div>
 
                     <hr>
-                     <form action="{{ route('surat.superadmin.approve', $surat->id) }}" method="POST" id="approveForm">
+                     <form action="{{ route('surat.superadmin.approve', $surat) }}" method="POST" id="approveForm">
                         @csrf
                         {{-- Alur sementara: budgeting per hari di-skip, cukup persetujuan --}}
                         <div class="alert alert-info py-2 mb-3">
@@ -268,7 +268,7 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                <a href="{{ route('surat.superadmin.show', $ext->id) }}" class="btn btn-sm btn-outline-primary">
+                                                <a href="{{ route('surat.superadmin.show', $ext) }}" class="btn btn-sm btn-outline-primary">
                                                     <i class="bi bi-eye"></i>
                                                 </a>
                                             </td>
@@ -318,7 +318,7 @@
                         <h6 class="mb-0"><i class="bi bi-printer"></i> Cetak Dokumen</h6>
                     </div>
                     <div class="card-body">
-                        <a href="{{ route('surat.superadmin.print', $surat->id) }}" target="_blank" class="btn btn-primary w-100">
+                        <a href="{{ route('surat.superadmin.print', $surat) }}" target="_blank" class="btn btn-primary w-100">
                             <i class="bi bi-printer"></i> Cetak Surat Tugas
                         </a>
                     </div>
@@ -394,7 +394,7 @@
                 <h5 class="modal-title"><i class="bi bi-x-circle"></i> Tolak Surat Tugas</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form action="{{ route('surat.superadmin.reject', $surat->id) }}" method="POST">
+            <form action="{{ route('surat.superadmin.reject', $surat) }}" method="POST">
                 @csrf
                 <div class="modal-body">
                     <p>Anda yakin ingin menolak surat tugas ini?</p>

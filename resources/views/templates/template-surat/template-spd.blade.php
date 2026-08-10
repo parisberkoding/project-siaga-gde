@@ -39,39 +39,39 @@
 
         /* HEADER - Compact */
         .header {
-    padding: 20px;
-}
+            padding: 20px;
+        }
 
-.header-content {
-    display: flex;
-    align-items: center;
-    gap: 30px;
-}
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
 
-.logo {
-    width: 80px;
-    height: auto;
-    flex-shrink: 0;
-}
+        .logo {
+            width: 80px;
+            height: auto;
+            flex-shrink: 0;
+        }
 
-.header-text {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
+        .header-text {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
 
-.company-name {
-    font-size: 18px;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 5px;
-}
+        .company-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
 
-.address {
-    font-size: 12px;
-    color: #666;
-    line-height: 1.4;
-}
+        .address {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
+        }
 
         /* Title - Compact */
         .title {
@@ -317,7 +317,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('surat.superadmin.save-mendadak-budget', $surat->id) }}">
+            <form method="POST" action="{{ route('surat.superadmin.save-mendadak-budget', $surat) }}">
                 @csrf
                 <table class="table table-bordered">
                     <thead>
@@ -355,7 +355,7 @@
 
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-primary">Simpan Budget & Cetak</button>
-                    <a href="{{ route('surat.superadmin.show', $surat->id) }}" class="btn btn-secondary">Kembali</a>
+                    <a href="{{ route('surat.superadmin.show', $surat) }}" class="btn btn-secondary">Kembali</a>
                 </div>
             </form>
         </div>
@@ -363,10 +363,10 @@
     {{-- Print Buttons --}}
     <div class="no-print">
         <button onclick="window.print()" class="btn-print">
-            🖨️ PRINT / SAVE AS PDF
+            PRINT / SAVE AS PDF
         </button>
         <button onclick="window.close()" class="btn-close">
-            ✖️ TUTUP
+            TUTUP
         </button>
     </div>
 
@@ -473,12 +473,12 @@
                 <tr>
                     <td class="label">Tanggal Berangkat</td>
                     <td class="colon">:</td>
-                    <td class="value">{{ \Carbon\Carbon::parse($surat->tanggal_berangkat)->translatedFormat('d F Y') }}</td>
+                    <td class="value">{{ \Carbon\Carbon::parse($surat->tanggal_berangkat)->locale('id')->translatedFormat('l, d F Y') }}</td>
                 </tr>
                 <tr>
                     <td class="label">Tanggal Kembali</td>
                     <td class="colon">:</td>
-                    <td class="value">{{ \Carbon\Carbon::parse($surat->tanggal_kembali)->translatedFormat('d F Y') }}</td>
+                    <td class="value">{{ \Carbon\Carbon::parse($surat->tanggal_kembali)->locale('id')->translatedFormat('l, d F Y') }}</td>
                 </tr>
                 <tr>
                     <td class="label">Kendaraan No. Pol.</td>
@@ -524,12 +524,12 @@
                     <tr>
                         <td class="label">Tanggal Kembali Semula</td>
                         <td class="colon">:</td>
-                        <td class="value">{{ \Carbon\Carbon::parse($extension->tanggal_kembali)->translatedFormat('d F Y') }}</td>
+                        <td class="value">{{ \Carbon\Carbon::parse($extension->tanggal_kembali)->locale('id')->translatedFormat('l, d F Y') }}</td>
                     </tr>
                     <tr>
                         <td class="label">Tanggal Kembali Baru</td>
                         <td class="colon">:</td>
-                        <td class="value">{{ \Carbon\Carbon::parse($extension->tanggal_kembali)->translatedFormat('d F Y') }}</td>
+                        <td class="value">{{ \Carbon\Carbon::parse($extension->tanggal_kembali)->locale('id')->translatedFormat('l, d F Y') }}</td>
                     </tr>
                     <tr>
                         <td class="label">Tambahan Hari</td>

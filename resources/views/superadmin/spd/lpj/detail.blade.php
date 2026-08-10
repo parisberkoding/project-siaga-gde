@@ -274,6 +274,33 @@
                 </div>
             </div>
 
+            {{-- Edit Data Keuangan (admin GA / keuangan) --}}
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-pencil-square"></i> Data Keuangan (untuk orang keuangan / GA)</h5>
+                    <form action="{{ route('lpj.superadmin.keuangan', $laporan) }}" method="POST" class="row g-2">
+                        @csrf
+                        @method('PUT')
+                        <div class="col-md-4">
+                            <label class="form-label small mb-1">Uang Dari</label>
+                            <input type="text" class="form-control form-control-sm" name="uang_dari" value="{{ $laporan->uang_dari ?? 'KAS' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small mb-1">Jumlah Diberikan (Rp)</label>
+                            <input type="number" class="form-control form-control-sm" name="jumlah_diberikan" value="{{ (float) $laporan->jumlah_diberikan }}" min="0" step="0.01">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+                                <i class="bi bi-check2"></i> Simpan Data Keuangan
+                            </button>
+                        </div>
+                        <div class="col-12">
+                            <small class="text-muted">Pengembalian/kekurangan dihitung otomatis dari jumlah yang diberikan dikurangi total pengeluaran.</small>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             {{-- Riwayat Validasi --}}
             @if($laporan->status != 'pending')
                 <div class="card">
@@ -342,8 +369,11 @@
                         <h6 class="mb-0"><i class="bi bi-printer"></i> Cetak Dokumen</h6>
                     </div>
                     <div class="card-body">
-                        <a href="{{ route('lpj.superadmin.print', $laporan->id) }}" target="_blank" class="btn btn-primary w-100">
-                            <i class="bi bi-printer"></i> Cetak LPJ
+                        <a href="{{ route('spd.laporan.export', $laporan) }}" target="_blank" class="btn btn-primary w-100">
+                            <i class="bi bi-file-earmark-pdf"></i> Cetak SPD + LPJ
+                        </a>
+                        <a href="{{ route('lpj.superadmin.print', $laporan) }}" target="_blank" class="btn btn-outline-secondary w-100 mt-2">
+                            <i class="bi bi-printer"></i> Cetak LPJ (Lama)
                         </a>
                     </div>
                 </div>
@@ -401,7 +431,7 @@
                 <h5 class="modal-title"><i class="bi bi-check-circle"></i> Setujui LPJ</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form action="{{ route('lpj.superadmin.approve', $laporan->id) }}" method="POST">
+            <form action="{{ route('lpj.superadmin.approve', $laporan) }}" method="POST">
                 @csrf
                 <div class="modal-body">
                     <p>Anda yakin ingin menyetujui LPJ ini?</p>
@@ -432,7 +462,7 @@
                 <h5 class="modal-title"><i class="bi bi-x-circle"></i> Tolak LPJ</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form action="{{ route('lpj.superadmin.reject', $laporan->id) }}" method="POST">
+            <form action="{{ route('lpj.superadmin.reject', $laporan) }}" method="POST">
                 @csrf
                 <div class="modal-body">
                     <p>Anda yakin ingin menolak LPJ ini?</p>

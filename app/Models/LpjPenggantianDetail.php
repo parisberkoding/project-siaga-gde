@@ -82,7 +82,7 @@ class LpjPenggantianDetail extends Model
         return match($this->tipe_penggunaan) {
             'BBM' => 'bg-danger',
             'Tol' => 'bg-primary',
-            'Portir' => 'bg-info',
+            'Parkir', 'Portir' => 'bg-info',
             'Lain-lain' => 'bg-secondary',
             default => 'bg-secondary',
         };

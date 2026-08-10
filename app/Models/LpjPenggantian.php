@@ -14,6 +14,7 @@ class LpjPenggantian extends Model
     protected $table = 'lpj_penggantians';
 
     protected $fillable = [
+        'slug',
         'lpj_number',
         'surat_spd_id',
         'user_id',
@@ -21,6 +22,9 @@ class LpjPenggantian extends Model
         'jabatan',
         'vehicle_id',
         'nomor_polisi',
+        'odo_before',
+        'odo_after',
+        'kebutuhan_bbm_liter',
         'uraian',
         'tanggal_lpj',
         'due_date',
@@ -59,6 +63,9 @@ class LpjPenggantian extends Model
         'total_biaya_lain' => 'decimal:2',
         'total_pengeluaran' => 'decimal:2',
         'jumlah_diberikan' => 'decimal:2',
+        'odo_before' => 'decimal:2',
+        'odo_after' => 'decimal:2',
+        'kebutuhan_bbm_liter' => 'decimal:2',
         'pengembalian' => 'decimal:2',
         'kekurangan' => 'decimal:2',
         'budget_per_hari' => 'decimal:2',
@@ -69,11 +76,12 @@ class LpjPenggantian extends Model
     ];
 
     /**
-     * Gunakan lpj_number sebagai route key agar ID tidak tampil di URL.
+     * Gunakan slug (nomor LPJ URL-safe) sebagai route key agar ID tidak
+     * tampil di URL. lpj_number berisi slash sehingga tidak aman untuk URL.
      */
     public function getRouteKeyName(): string
     {
-        return 'lpj_number';
+        return 'slug';
     }
 
     /**
@@ -88,6 +96,11 @@ class LpjPenggantian extends Model
             // ✅ Generate lpj_number otomatis
             if (empty($lpj->lpj_number)) {
                 $lpj->lpj_number = static::generateLpjNumber();
+            }
+
+            // Slug URL-safe dari nomor LPJ (slash diganti strip)
+            if (empty($lpj->slug)) {
+                $lpj->slug = str_replace('/', '-', $lpj->lpj_number);
             }
 
             if (empty($lpj->tanggal_lpj)) {
@@ -187,7 +200,7 @@ class LpjPenggantian extends Model
             ->sum('nominal');
 
         $this->total_biaya_portir = $this->details()
-            ->where('tipe_penggunaan', 'Portir')
+            ->whereIn('tipe_penggunaan', ['Parkir', 'Portir'])
             ->sum('nominal');
 
         $this->total_biaya_bbm = $this->details()
@@ -479,5 +492,101 @@ class LpjPenggantian extends Model
         }
 
         return $this->suratSpd->getOriginalSurat();
+    }
+
+    // ============================================================
+    // HELPER METHODS - EXPORT / CETAK GABUNGAN
+    // ============================================================
+
+    /**
+     * Total jarak tempuh SPD dari selisih odometer.
+     * Return null jika salah satu odometer belum diisi.
+     */
+    public function getTotalJarakTempuh(): ?float
+    {
+        if ($this->odo_before === null || $this->odo_after === null) {
+            return null;
+        }
+
+        return (float) $this->odo_after - (float) $this->odo_before;
+    }
+
+    /**
+     * Label kendaraan untuk dokumen cetak: "<plat>-<merk/model>".
+     * Contoh: "B 1234 XYZ - Toyota Avanza"
+     */
+    public function getKendaraanLabelAttribute(): string
+    {
+        $vehicle = $this->vehicle ?? $this->suratSpd?->vehicle;
+
+        if (! $vehicle) {
+            return $this->nomor_polisi ?? '-';
+        }
+
+        return $vehicle->dropdown_label ?? ($this->nomor_polisi ?? '-');
+    }
+
+    /**
+     * Total nominal per kategori dari struk_items (pengeluaran saja, tanpa Tambahan).
+     *
+     * @return array<string, float> ['Tol' => .., 'BBM' => .., 'Parkir' => .., 'Lainnya' => ..]
+     */
+    public function getSpendingPerKategori(): array
+    {
+        $spending = ['Tol' => 0.0, 'BBM' => 0.0, 'Parkir' => 0.0, 'Lainnya' => 0.0];
+
+        foreach ($this->strukItems as $item) {
+            $kategori = $item->struk_kategori;
+
+            if (array_key_exists($kategori, $spending)) {
+                $spending[$kategori] += (float) $item->nominal;
+            }
+        }
+
+        return $spending;
+    }
+
+    /**
+     * Pivot rincian penggunaan per tanggal untuk tabel cetak.
+     * Format: ['2026-08-01' => ['tanggal' => Carbon, 'Tol' => .., 'BBM' => .., 'Parkir' => .., 'Lainnya' => ..]]
+     */
+    public function getRincianPerTanggal(): array
+    {
+        $rows = [];
+
+        foreach ($this->strukItems as $item) {
+            $key = $item->tanggal ? $item->tanggal->format('Y-m-d') : 'tanpa-tanggal';
+
+            if (! isset($rows[$key])) {
+                $rows[$key] = [
+                    'tanggal'  => $item->tanggal,
+                    'Tol'      => 0.0,
+                    'BBM'      => 0.0,
+                    'Parkir'   => 0.0,
+                    'Lainnya'  => 0.0,
+                ];
+            }
+
+            if (array_key_exists($item->struk_kategori, $rows[$key])) {
+                $rows[$key][$item->struk_kategori] += (float) $item->nominal;
+            }
+        }
+
+        ksort($rows);
+
+        return $rows;
+    }
+
+    /**
+     * Struk items yang diurutkan sesuai urutan kategori untuk lampiran foto:
+     * Tol -> BBM -> Parkir -> Lainnya -> Tambahan.
+     */
+    public function getStrukItemsOrderedForPhotos()
+    {
+        $order = ['Tol', 'BBM', 'Parkir', 'Lainnya', 'Tambahan'];
+
+        return $this->strukItems
+            ->sortBy(fn ($item) => array_search($item->struk_kategori, $order, true) ?? 99)
+            ->values();
     }
 }

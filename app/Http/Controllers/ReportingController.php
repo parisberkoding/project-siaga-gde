@@ -52,46 +52,31 @@ class ReportingController extends Controller
         $suratList = SuratSpd::forUser($user->id)
             ->where('status', 'approved')
             ->whereDoesntHave('lpjPenggantian')
-            ->with(['vehicle', 'parentSurat', 'budgets'])
+            ->with([
+                'vehicle',
+                'parentSurat',
+                'budgets',
+                'dailyReports.strukItems',
+            ])
             ->orderBy('tanggal_kembali', 'desc')
             ->get();
 
         $spdMode = $suratList->isNotEmpty();
 
-        $budgetsPerSurat = [];
-        foreach ($suratList as $surat) {
-            $budgetsPerSurat[$surat->id] = SuratSpdBudget::where('surat_spd_id', $surat->id)
-                ->orderBy('tanggal')
-                ->get()
-                ->map(fn ($b) => [
-                    'tanggal' => $b->tanggal->format('Y-m-d'),
-                    'nominal' => $b->nominal,
-                    'catatan' => $b->catatan,
-                ]);
-        }
-
-        $suratForDropdown = $suratList->map(function ($surat) {
-            $label = $surat->nomor_surat;
-            $sublabel = $surat->tempat_tujuan . ' | ' .
-                $surat->tanggal_berangkat->format('d M') . ' - ' .
-                $surat->tanggal_kembali->format('d M Y');
-
-            if ($surat->is_extension) {
-                $label = '└── ' . $label . ' (Perpanjangan)';
-                $sublabel .= ' | Dari: ' . $surat->parentSurat?->nomor_surat;
-            }
-
-            return [
-                'id'           => $surat->id,
-                'nomor_surat'  => $surat->nomor_surat,
-                'label'        => $label,
-                'sublabel'     => $sublabel,
-                'is_extension' => $surat->is_extension,
-                'deadline'     => $surat->lpj_deadline?->format('d M Y'),
-                'is_overdue'   => $surat->isLpjDeadlineOverdue(),
-                'days_left'    => $surat->getDaysUntilLpjDeadline(),
-            ];
+        // Informasi laporan harian per surat untuk panel SPD
+        $suratList = $suratList->map(function ($surat) {
+            $submitted = $surat->dailyReports->where('status', 'submitted');
+            $surat->daily_submitted_count = $submitted->count();
+            $surat->daily_item_count = (int) $submitted->sum(fn ($r) => $r->strukItems->count());
+            $surat->has_draft_daily = $surat->dailyReports->contains('status', 'draft');
+            $surat->can_finalize = $surat->tanggal_kembali->isPast()
+                && $surat->daily_submitted_count > 0;
+            $surat->daily_reports_available = $surat->dailyReports->isNotEmpty();
+            return $surat;
         });
+
+        $budgetsPerSurat = [];
+        $suratForDropdown = [];
 
         // ── Mode Operasional: permohonan approved & belum ada laporan ──
         $activePermohonan = Permohonan::with(['vehicle.detail'])
@@ -101,20 +86,10 @@ class ReportingController extends Controller
             ->orderBy('request_date', 'desc')
             ->get();
 
-        $vehicles = VehicleAndToolsConsumers::with('detail')
-            ->where('is_approved', true)
-            ->where('is_active', true)
-            ->where('consumerial_type', 'KENDARAAN')
-            ->orderBy('consumerial_code')
-            ->get();
-
         return view('pelaporan.index', compact(
             'spdMode',
             'suratList',
-            'suratForDropdown',
-            'budgetsPerSurat',
-            'activePermohonan',
-            'vehicles'
+            'activePermohonan'
         ));
     }
 
@@ -235,6 +210,9 @@ class ReportingController extends Controller
             'uang_dari'    => 'nullable|string|max:255',
             'jumlah_diberikan' => 'nullable|numeric|min:0',
             'catatan'      => 'nullable|string',
+            'odo_before'   => 'nullable|numeric|min:0',
+            'odo_after'    => 'nullable|numeric|min:0',
+            'kebutuhan_bbm_liter' => 'nullable|numeric|min:0',
             'items'        => 'required|array|min:1',
             'items.*.tanggal'         => 'required|date',
             'items.*.struk_kategori'  => 'required|in:BBM,Tol,Parkir,Lainnya,Tambahan',
@@ -267,7 +245,8 @@ class ReportingController extends Controller
         $totalBudgetFromTable = $budgets->sum();
 
         $totalPengeluaran = collect($request->items)->sum('nominal');
-        $isOverBudget = $totalPengeluaran > $totalBudgetFromTable;
+        // Budget kini opsional — over budget hanya dihitung bila budget diisi
+        $isOverBudget = $totalBudgetFromTable > 0 && $totalPengeluaran > $totalBudgetFromTable;
         $isOverdue = $surat->isLpjDeadlineOverdue();
 
         DB::beginTransaction();
@@ -280,6 +259,9 @@ class ReportingController extends Controller
                 'jabatan'           => $request->jabatan,
                 'vehicle_id'        => $surat->vehicle_id,
                 'nomor_polisi'      => $surat->vehicle?->consumerial_code ?? '-',
+                'odo_before'        => $request->odo_before,
+                'odo_after'         => $request->odo_after,
+                'kebutuhan_bbm_liter' => $request->kebutuhan_bbm_liter,
                 'uraian'            => $request->uraian,
                 'uang_dari'         => $request->uang_dari ?? 'KAS',
                 'jumlah_diberikan'  => $request->jumlah_diberikan ?? 0,
@@ -333,10 +315,10 @@ class ReportingController extends Controller
 
             $message = 'Laporan Pertanggungjawaban berhasil diajukan!';
             if ($isOverdue) {
-                $message .= ' ⚠️ Pengajuan melewati deadline.';
+                $message .= ' Pengajuan melewati deadline.';
             }
             if ($isOverBudget) {
-                $message .= ' ⚠️ Over budget Rp ' . number_format($totalPengeluaran - $totalBudgetFromTable, 0, ',', '.') . '.';
+                $message .= ' Over budget Rp ' . number_format($totalPengeluaran - $totalBudgetFromTable, 0, ',', '.') . '.';
             }
 
             return redirect()->route('requester.lpj.index')
@@ -402,32 +384,8 @@ class ReportingController extends Controller
             $approvedRequest = $permohonan->approvedRequest;
             $purchaseDatetime = $validated['purchase_date'] . ' ' . now()->format('H:i:s');
 
-            // 1. Simpan struk utama → transaction_proofs
-            $strukPath = null;
-            $kmAkhir = $validated['km_akhir'] ?? 0;
-            if ($hasStruk) {
-                $strukPath = $this->storeStrukImage($request->file('foto_struk'), 'OPRS-' . $requestNumber);
-            }
-
-            $transactionId = 'TRX-' . now()->format('YmdHis') . '-' . strtoupper(substr(uniqid(), -6));
-            Transaction_Proofs::create([
-                'transaction_id'      => $transactionId,
-                'req_id'              => $permohonan->id,
-                'requester_id'        => Auth::id(),
-                'voucher_number'      => $approvedRequest?->voucher_code,
-                'purchase_datetime'   => $purchaseDatetime,
-                'fuel_volume'         => $validated['volume_bbm'],
-                'km_terakhir'         => $kmAkhir,
-                'struk_bbm_path'      => $strukPath,
-            ]);
-
-            // 2. Simpan semua foto (struk utama + tambahan) ke struk_items
+            // 1. Kumpulkan semua foto (struk utama + tambahan)
             $allFiles = [];
-            $allKategoris = $request->input('struk_kategoris', []);
-            $allNominals = $request->input('nominals', []);
-            $allKeterangan = $request->input('keterangan_s', []);
-            $allMetadata = $request->input('metadata_s', []);
-
             if ($hasStruk) {
                 $allFiles[] = $request->file('foto_struk');
             }
@@ -437,6 +395,13 @@ class ReportingController extends Controller
                 }
             }
 
+            // 2. Simpan tiap foto → struk_items; path file pertama dipakai sbg struk utama
+            $allKategoris = $request->input('struk_kategoris', []);
+            $allNominals = $request->input('nominals', []);
+            $allKeterangan = $request->input('keterangan_s', []);
+            $allMetadata = $request->input('metadata_s', []);
+            $paths = [];
+
             foreach ($allFiles as $idx => $file) {
                 $kategori = $allKategoris[$idx] ?? 'Lainnya';
                 $nominal = isset($allNominals[$idx]) ? (float) $allNominals[$idx] : 0;
@@ -445,6 +410,7 @@ class ReportingController extends Controller
                 $metadata = ! empty($metadataRaw) ? json_decode($metadataRaw, true) : null;
 
                 $path = $this->storeStrukImage($file, 'OPRS-' . $requestNumber);
+                $paths[] = $path;
                 $itemCode = StrukItem::generateItemCode($kategori, $requestNumber, $validated['purchase_date']);
 
                 StrukItem::create([
@@ -463,6 +429,19 @@ class ReportingController extends Controller
                     'urutan'           => $idx + 1,
                 ]);
             }
+
+            // 3. Simpan struk utama → transaction_proofs
+            $transactionId = 'TRX-' . now()->format('YmdHis') . '-' . strtoupper(substr(uniqid(), -6));
+            Transaction_Proofs::create([
+                'transaction_id'      => $transactionId,
+                'req_id'              => $permohonan->id,
+                'requester_id'        => Auth::id(),
+                'voucher_number'      => $approvedRequest?->voucher_code,
+                'purchase_datetime'   => $purchaseDatetime,
+                'fuel_volume'         => $validated['volume_bbm'],
+                'km_terakhir'         => $validated['km_akhir'] ?? 0,
+                'struk_bbm_path'      => $paths[0] ?? null,
+            ]);
 
             $permohonan->update(['status' => 'completed']);
             if ($approvedRequest) {
