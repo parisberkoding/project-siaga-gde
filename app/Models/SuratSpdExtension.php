@@ -13,6 +13,7 @@ class SuratSpdExtension extends Model
     protected $table = 'surat_spd_extensions';
 
     protected $fillable = [
+        'slug',
         'original_surat_id',
         'extension_surat_id',
         'nomor_surat_extension',
@@ -48,16 +49,31 @@ class SuratSpdExtension extends Model
         'acknowledged_at' => 'datetime',
     ];
 
+    /**
+     * Boot method untuk auto-generate slug URL-safe.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($extension) {
+            if (empty($extension->slug) && $extension->nomor_surat_extension) {
+                $extension->slug = str_replace('/', '-', $extension->nomor_surat_extension);
+            }
+        });
+    }
+
     // ============================================================
     // RELATIONSHIPS
     // ============================================================
 
     /**
-     * Gunakan nomor_surat_extension sebagai route key agar ID tidak tampil di URL.
+     * Gunakan slug (nomor surat extension URL-safe) sebagai route key agar
+     * ID tidak tampil di URL. nomor_surat_extension berisi slash.
      */
     public function getRouteKeyName(): string
     {
-        return 'nomor_surat_extension';
+        return 'slug';
     }
 
     /**

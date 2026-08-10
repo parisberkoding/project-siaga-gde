@@ -282,7 +282,7 @@
                             <i class="bi bi-x-circle"></i> Laporan ditolak
                             <br><small>{{ $laporan->rejection_reason }}</small>
                         </div>
-                        <a href="{{ route('requester.lpj.edit', $laporan->id) }}" class="btn btn-warning w-100 mt-2">
+                        <a href="{{ route('requester.lpj.edit', $laporan) }}" class="btn btn-warning w-100 mt-2">
                             <i class="bi bi-pencil"></i> Revisi LPJ
                         </a>
                     @endif
@@ -327,6 +327,20 @@
                     <div class="card-body">
                         <h6 class="card-title"><i class="bi bi-journal-text"></i> Catatan</h6>
                         <p class="mb-0">{{ $laporan->catatan }}</p>
+                    </div>
+                </div>
+            @endif
+
+            {{-- Cetak Dokumen --}}
+            @if($laporan->status == 'approved')
+                <div class="card border-success">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0"><i class="bi bi-printer"></i> Cetak Dokumen</h6>
+                    </div>
+                    <div class="card-body">
+                        <a href="{{ route('spd.laporan.export', $laporan) }}" target="_blank" class="btn btn-primary w-100">
+                            <i class="bi bi-file-earmark-pdf"></i> Cetak SPD + LPJ
+                        </a>
                     </div>
                 </div>
             @endif

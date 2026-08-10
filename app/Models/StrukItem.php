@@ -12,7 +12,9 @@ class StrukItem extends Model
     protected $table = 'struk_items';
 
     protected $fillable = [
+        'slug',
         'spd_id',
+        'spd_daily_report_id',
         'nomor_surat_spd',
         'lpj_id',
         'lpj_detail_id',
@@ -32,6 +34,29 @@ class StrukItem extends Model
         'tanggal' => 'date',
         'metadata_json' => 'array',
     ];
+
+    /**
+     * Boot method untuk auto-generate slug URL-safe.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($item) {
+            if (empty($item->slug)) {
+                $item->slug = 'ITM-' . strtoupper(bin2hex(random_bytes(5)));
+            }
+        });
+    }
+
+    /**
+     * Gunakan slug sebagai route key agar ID tidak tampil di URL.
+     * item_code berisi slash (nomor surat) sehingga tidak aman untuk URL.
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
 
     /**
      * Kategori yang diizinkan (self-label) — di luar itu = Lainnya
@@ -99,6 +124,11 @@ class StrukItem extends Model
     public function suratSpd()
     {
         return $this->belongsTo(SuratSpd::class, 'spd_id');
+    }
+
+    public function dailyReport()
+    {
+        return $this->belongsTo(SpdDailyReport::class, 'spd_daily_report_id');
     }
 
     public function lpj()

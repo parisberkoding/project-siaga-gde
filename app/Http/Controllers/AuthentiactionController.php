@@ -85,7 +85,7 @@ class AuthentiactionController extends Controller
 
         // Redirect ke halaman yang user mau akses sebelum login, fallback ke dashboard role
         return redirect()->intended($this->defaultRouteForRole($user))
-            ->with('success', "Login Berhasil, Selamat datang {$name}.");
+            ->with('success', "Login Berhasil, Selamat datang {$user->nama_lengkap}.");
     }
 
     /**

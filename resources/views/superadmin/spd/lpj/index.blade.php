@@ -183,7 +183,7 @@
                                             <td><span class="badge bg-warning text-dark">Menunggu</span></td>
                                             <td class="text-center">
                                                 <div class="btn-group">
-                                                    <a href="{{ route('lpj.superadmin.show', $lpj->id) }}"
+                                                    <a href="{{ route('lpj.superadmin.show', $lpj) }}"
                                                        class="btn btn-sm btn-primary" title="Detail & Validasi">
                                                         <i class="bi bi-eye"></i> Detail
                                                     </a>
@@ -236,11 +236,11 @@
                                             </td>
                                             <td class="text-center">
                                                 <div class="btn-group">
-                                                    <a href="{{ route('lpj.superadmin.show', $lpj->id) }}"
+                                                    <a href="{{ route('lpj.superadmin.show', $lpj) }}"
                                                        class="btn btn-sm btn-outline-primary" title="Detail">
                                                         <i class="bi bi-eye"></i>
                                                     </a>
-                                                    <a href="{{ route('lpj.superadmin.print', $lpj->id) }}"
+                                                    <a href="{{ route('lpj.superadmin.print', $lpj) }}"
                                                        class="btn btn-sm btn-outline-success" target="_blank" title="Cetak">
                                                         <i class="bi bi-printer"></i>
                                                     </a>
@@ -285,7 +285,7 @@
                                             </td>
                                             <td>{{ Str::limit($lpj->rejection_reason, 40) }}</td>
                                             <td class="text-center">
-                                                <a href="{{ route('lpj.superadmin.show', $lpj->id) }}"
+                                                <a href="{{ route('lpj.superadmin.show', $lpj) }}"
                                                    class="btn btn-sm btn-outline-primary" title="Detail">
                                                     <i class="bi bi-eye"></i>
                                                 </a>

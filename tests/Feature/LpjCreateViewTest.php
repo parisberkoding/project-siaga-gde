@@ -57,13 +57,13 @@ it('menyembunyikan budgeting per hari di detail surat (approve tanpa budget)', f
     ]);
 
     $this->actingAs($this->admin)
-        ->get(route('surat.superadmin.show', $surat->id))
+        ->get(route('surat.superadmin.show', $surat))
         ->assertStatus(200)
         ->assertDontSee('Informasi Budget Per Hari')
         ->assertSee('Menyetujui surat tugas akan mengunci', false);
 
     // Approve tanpa payload budgets → harus sukses
-    $this->post(route('surat.superadmin.approve', $surat->id))
+    $this->post(route('surat.superadmin.approve', $surat))
         ->assertSessionHas('success');
 
     expect($surat->fresh()->status)->toBe('approved');

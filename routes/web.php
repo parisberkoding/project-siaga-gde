@@ -9,6 +9,8 @@ use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\RbacController;
 use App\Http\Controllers\StorageFileController;
 use App\Http\Controllers\SpdController;
+use App\Http\Controllers\SpdPrintController;
+use App\Http\Controllers\SpdDailyReportController;
 use App\Http\Controllers\RoutineCheckingController;
 use App\Http\Controllers\DailyCheckingController;
 use App\Http\Controllers\WeeklyCheckingController;
@@ -55,8 +57,11 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware(['auth', 'role:requester,admin,superadmin,manager,dispatcher'])->prefix('spd')->name('spd.')->group(function () {
-    Route::get('/surat/{id}/print', [SpdController::class, 'printSurat'])->name('surat.print');
-    Route::get('/laporan/{id}/print', [SpdController::class, 'printLaporan'])->name('laporan.print');
+    Route::get('/surat/{surat}/print', [SpdController::class, 'printSurat'])->name('surat.print');
+    Route::get('/laporan/{laporan}/print', [SpdController::class, 'printLaporan'])->name('laporan.print');
+
+    // Cetak dokumen gabungan Surat SPD + LPJ (tersedia untuk semua role SPD)
+    Route::get('/laporan/{laporan}/export', [SpdPrintController::class, 'exportLpj'])->name('laporan.export');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -74,6 +79,24 @@ Route::middleware(['auth', 'permission:pelaporan.view,pelaporan.create'])->prefi
     Route::post('/vehicle-budget', [ReportingController::class, 'vehicleBudget'])->name('vehicle-budget');
     Route::post('/spd', [ReportingController::class, 'storeSpd'])->name('spd.store');
     Route::post('/operational', [ReportingController::class, 'storeOperational'])->name('operational.store');
+
+    // ── Laporan harian SPD (pre-fixed report) ──
+    // Semua rute pakai route model binding (slug/kode surat) — tanpa ID.
+    Route::get('/spd/{surat}/daily', [SpdDailyReportController::class, 'index'])->name('spd.daily.index');
+    Route::get('/spd/{surat}/daily/create', [SpdDailyReportController::class, 'create'])->name('spd.daily.create');
+    Route::get('/spd/{surat}/daily/{daily}/edit', [SpdDailyReportController::class, 'edit'])->name('spd.daily.edit');
+    Route::post('/spd/{surat}/daily', [SpdDailyReportController::class, 'store'])->name('spd.daily.store');
+    Route::put('/spd/{surat}/daily/{daily}', [SpdDailyReportController::class, 'update'])->name('spd.daily.update');
+    Route::delete('/spd/{surat}/daily/{daily}', [SpdDailyReportController::class, 'destroy'])->name('spd.daily.destroy');
+
+    // AJAX item laporan harian (draft server-side, tahan refresh)
+    Route::post('/spd/{surat}/daily/item', [SpdDailyReportController::class, 'uploadItem'])->name('spd.daily.upload-item');
+    Route::patch('/spd/{surat}/daily/item/{item}', [SpdDailyReportController::class, 'updateItem'])->name('spd.daily.update-item');
+    Route::delete('/spd/{surat}/daily/item/{item}', [SpdDailyReportController::class, 'deleteItem'])->name('spd.daily.delete-item');
+
+    // Validasi seluruh laporan harian → LPJ final
+    Route::get('/spd/{surat}/validasi', [SpdDailyReportController::class, 'validasi'])->name('spd.validasi');
+    Route::post('/spd/{surat}/finalize', [SpdDailyReportController::class, 'finalize'])->name('spd.finalize');
 });
 
 // Requester Routes
@@ -102,7 +125,7 @@ Route::middleware(['auth', 'permission:bbm.request,bbm.view,bbm.report'])->group
          Route::get('/main-surat', [SpdController::class, 'indexSuratRequester'])->name('index');
          Route::get('/create', [SpdController::class, 'createSurat'])->name('create');
          Route::post('/store', [SpdController::class, 'storeSurat'])->name('store');
-         Route::get('/{id}', [SpdController::class, 'showSuratRequester'])->name('show');
+         Route::get('/{surat}', [SpdController::class, 'showSuratRequester'])->name('show');
      });
 
      // ────────────────────────────────────────────────────────────────────────
@@ -121,16 +144,16 @@ Route::middleware(['auth', 'permission:bbm.request,bbm.view,bbm.report'])->group
          Route::get('/main-lpj', [SpdController::class, 'indexLaporanRequester'])->name('index');
          Route::get('/create', [SpdController::class, 'createLaporan'])->name('create');
          Route::post('/store', [SpdController::class, 'storeLaporan'])->name('store');
-         Route::get('/show/{id}', [SpdController::class, 'showLaporanRequester'])->name('show');
-         Route::get('/{id}/edit', [SpdController::class, 'editLaporanRequester'])->name('edit');
-         Route::put('/{id}', [SpdController::class, 'updateLaporanRequester'])->name('update');
+         Route::get('/show/{laporan}', [SpdController::class, 'showLaporanRequester'])->name('show');
+         Route::get('/{laporan}/edit', [SpdController::class, 'editLaporanRequester'])->name('edit');
+         Route::put('/{laporan}', [SpdController::class, 'updateLaporanRequester'])->name('update');
      });
 
      // ────────────────────────────────────────────────────────────────────────
      // AJAX / API Endpoints
      // ────────────────────────────────────────────────────────────────────────
      Route::prefix('ajax')->name('requester.ajax.')->middleware('permission:spd.view,bbm.view')->group(function () {
-         Route::get('/surat/{id}', [SpdController::class, 'getSuratDetail'])->name('surat.detail');
+         Route::get('/surat/{surat}', [SpdController::class, 'getSuratDetail'])->name('surat.detail');
          Route::get('/surat-list', [SpdController::class, 'getSuratListForDropdown'])->name('surat.list');
          Route::get('/dashboard-stats', [SpdController::class, 'getDashboardStats'])->name('dashboard.stats');
      });
@@ -312,11 +335,11 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
         Route::get('/', [SpdController::class, 'indexSuratSuperadmin'])->name('index');
         Route::get('/create-shortcut', [SpdController::class, 'createSuratSuperadmin'])->name('create-shortcut');
         Route::post('/store-shortcut', [SpdController::class, 'storeSuratSuperadmin'])->name('store-shortcut');
-        Route::get('/{id}', [SpdController::class, 'showSuratSuperadmin'])->name('show');
-        Route::post('/{id}/approve', [SpdController::class, 'approveSurat'])->name('approve');
-        Route::post('/{id}/reject', [SpdController::class, 'rejectSurat'])->name('reject');
-        Route::get('/{id}/print', [SpdController::class, 'printSurat'])->name('print');
-        Route::post('/{id}/save-mendadak-budget', [SpdController::class, 'saveMendadakBudget'])->name('save-mendadak-budget');
+        Route::get('/{surat}', [SpdController::class, 'showSuratSuperadmin'])->name('show');
+        Route::post('/{surat}/approve', [SpdController::class, 'approveSurat'])->name('approve');
+        Route::post('/{surat}/reject', [SpdController::class, 'rejectSurat'])->name('reject');
+        Route::get('/{surat}/print', [SpdController::class, 'printSurat'])->name('print');
+        Route::post('/{surat}/save-mendadak-budget', [SpdController::class, 'saveMendadakBudget'])->name('save-mendadak-budget');
         Route::get('/report/spending', [SpdController::class, 'reportSpending'])->name('report');
     });
 
@@ -325,10 +348,10 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
     // ────────────────────────────────────────────────────────────────────────
     Route::prefix('perpanjangan')->name('perpanjangan.superadmin.')->group(function () {
         Route::get('/', [SpdController::class, 'indexPerpanjanganSuperadmin'])->name('index');
-        Route::get('/validate/{id}', [SpdController::class, 'showPerpanjanganSuperadmin'])->name('show');
-        Route::post('/{id}/approve', [SpdController::class, 'approvePerpanjangan'])->name('approve');
-        Route::post('/{id}/reject', [SpdController::class, 'rejectPerpanjangan'])->name('reject');
-        Route::post('/{id}/acknowledge', [SpdController::class, 'acknowledgePerpanjangan'])->name('acknowledge');
+        Route::get('/validate/{perpanjangan}', [SpdController::class, 'showPerpanjanganSuperadmin'])->name('show');
+        Route::post('/{perpanjangan}/approve', [SpdController::class, 'approvePerpanjangan'])->name('approve');
+        Route::post('/{perpanjangan}/reject', [SpdController::class, 'rejectPerpanjangan'])->name('reject');
+        Route::post('/{perpanjangan}/acknowledge', [SpdController::class, 'acknowledgePerpanjangan'])->name('acknowledge');
     });
 
     // ────────────────────────────────────────────────────────────────────────
@@ -336,10 +359,11 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
     // ────────────────────────────────────────────────────────────────────────
     Route::prefix('lpj')->name('lpj.superadmin.')->group(function () {
         Route::get('/', [SpdController::class, 'indexLaporanSuperadmin'])->name('index');
-        Route::get('/{id}', [SpdController::class, 'showLaporanSuperadmin'])->name('show');
-        Route::post('/{id}/approve', [SpdController::class, 'approveLaporan'])->name('approve');
-        Route::post('/{id}/reject', [SpdController::class, 'rejectLaporan'])->name('reject');
-        Route::get('/{id}/print', [SpdController::class, 'printLaporan'])->name('print');
+        Route::get('/{laporan}', [SpdController::class, 'showLaporanSuperadmin'])->name('show');
+        Route::post('/{laporan}/approve', [SpdController::class, 'approveLaporan'])->name('approve');
+        Route::post('/{laporan}/reject', [SpdController::class, 'rejectLaporan'])->name('reject');
+        Route::get('/{laporan}/print', [SpdController::class, 'printLaporan'])->name('print');
+        Route::put('/{laporan}/keuangan', [SpdController::class, 'updateKeuanganLaporan'])->name('keuangan');
     });
 
     // ────────────────────────────────────────────────────────────────────────

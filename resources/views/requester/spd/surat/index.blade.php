@@ -187,7 +187,7 @@
                                     </td>
                                     <td class="text-center">
                                         <div class="btn-group">
-                                            {{-- <a href="{{ route('requester.surat.show', $surat->id) }}"
+                                            {{-- <a href="{{ route('requester.surat.show', $surat) }}"
                                                class="btn btn-sm btn-outline-primary" title="Detail">
                                                 <i class="bi bi-eye"></i>
                                             </a> --}}
