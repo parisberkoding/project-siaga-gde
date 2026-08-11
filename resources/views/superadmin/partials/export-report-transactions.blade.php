@@ -347,7 +347,7 @@
         <div class="header-title-wrap">
             <div class="header-title">Laporan Transaksi Bahan Bakar Minyak (BBM)</div>
             <div class="header-subtitle">
-                Periode: {{ $startDate->format('d F Y') }} s/d {{ $endDate->format('d F Y') }}
+                Periode: {{ $startDate->translatedFormat('d F Y') }} s/d {{ $endDate->translatedFormat('d F Y') }}
             </div>
         </div>
         <hr class="header-divider-thick">
@@ -537,7 +537,7 @@
             <div class="header-title-wrap">
                 <div class="header-title">Spreadsheet Laporan Penggunaan BBM</div>
                 <div class="header-subtitle">
-                    Periode: {{ $startDate->format('d F Y') }} s/d {{ $endDate->format('d F Y') }}
+                    Periode: {{ $startDate->translatedFormat('d F Y') }} s/d {{ $endDate->translatedFormat('d F Y') }}
                 </div>
             </div>
             <hr class="header-divider-thick">
@@ -623,7 +623,7 @@
             <div class="header-title-wrap">
                 <div class="header-title">Summary Keuangan</div>
                 <div class="header-subtitle">
-                    Periode: {{ $startDate->format('d F Y') }} s/d {{ $endDate->format('d F Y') }}
+                    Periode: {{ $startDate->translatedFormat('d F Y') }} s/d {{ $endDate->translatedFormat('d F Y') }}
                 </div>
             </div>
             <hr class="header-divider-thick">
@@ -716,7 +716,7 @@ $driverStats = $transactions->groupBy('requester_id')->map(function ($reqs) {
             <div class="header-title-wrap">
                 <div class="header-title">KPI Driver</div>
                 <div class="header-subtitle">
-                    Periode: {{ $startDate->format('d F Y') }} s/d {{ $endDate->format('d F Y') }}
+                    Periode: {{ $startDate->translatedFormat('d F Y') }} s/d {{ $endDate->translatedFormat('d F Y') }}
                 </div>
             </div>
             <hr class="header-divider-thick">
@@ -766,7 +766,7 @@ $driverStats = $transactions->groupBy('requester_id')->map(function ($reqs) {
         </table>
 
         <div class="footer-text">
-            Dokumen dibuat secara otomatis pada {{ now()->format('d F Y') }} pukul {{ now()->format('H:i') }} WIB<br>
+            Dokumen dibuat secara otomatis pada {{ now()->translatedFormat('d F Y') }} pukul {{ now()->format('H:i') }} WIB<br>
             Dicetak oleh: {{ Auth::user()->nama_lengkap ?? Auth::user()->username ?? 'System' }}<br>
             <em>* Dokumen ini sah tanpa tanda tangan dan stempel *</em><br>
             <em>* Disepakati secara internal oleh divisi HCGAF PT. Geo Dipa Energi (Persero) Unit Patuha *</em>

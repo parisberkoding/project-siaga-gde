@@ -190,8 +190,8 @@ class VoucherController extends Controller
 
             // 8. EXPIRED & APPROVAL
             $expiredDate = $request->expired_at
-                ? $request->expired_at->format('d M Y H:i')
-                : ($request->authorization_date ? $request->authorization_date->addDays(7)->format('d M Y H:i') : '-');
+                ? $request->expired_at->translatedFormat('d M Y H:i')
+                : ($request->authorization_date ? $request->authorization_date->addDays(7)->translatedFormat('d M Y H:i') : '-');
 
             $printData[] = [
                 'type' => 0,

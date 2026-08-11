@@ -64,9 +64,9 @@
                                     @foreach($suratList as $surat)
                                         <option value="{{ $surat->id }}"
                                                 data-tujuan="{{ $surat->tempat_tujuan }}"
-                                                data-berangkat="{{ $surat->tanggal_berangkat->format('d M Y') }}"
+                                                data-berangkat="{{ $surat->tanggal_berangkat->translatedFormat('d M Y') }}"
                                                 data-kembali="{{ $surat->tanggal_kembali->format('Y-m-d') }}"
-                                                data-kembali-formatted="{{ $surat->tanggal_kembali->format('d M Y') }}"
+                                                data-kembali-formatted="{{ $surat->tanggal_kembali->translatedFormat('d M Y') }}"
                                                 data-lama="{{ $surat->lama_perjalanan_hari }}"
                                                 data-budget="{{ $surat->budget_per_hari }}"
                                                 data-extension-count="{{ $surat->getExtensionCount() }}"

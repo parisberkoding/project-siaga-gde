@@ -137,10 +137,10 @@ class SpdDemoSeeder extends Seeder
 
             if ($data['status'] === 'approved') {
                 $data['tanggal_surat'] = $data['approved_at'] 
-                    ? 'Patuha, ' . Carbon::parse($data['approved_at'])->translatedFormat('d F Y')
-                    : 'Patuha, ' . $now->translatedFormat('d F Y');
+                    ? 'Patuha, ' . Carbon::parse($data['approved_at'])->locale('id')->translatedFormat('d F Y')
+                    : 'Patuha, ' . $now->locale('id')->translatedFormat('d F Y');
             } else {
-                $data['tanggal_surat'] = 'Patuha, ' . $now->translatedFormat('d F Y');
+                $data['tanggal_surat'] = 'Patuha, ' . $now->locale('id')->translatedFormat('d F Y');
             }
 
             // Generate nomor surat manual (format model)

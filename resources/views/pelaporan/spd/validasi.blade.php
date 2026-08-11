@@ -43,7 +43,7 @@
     <div class="card mb-3" id="reportCard-{{ $report->slug }}">
         <div class="card-header bg-light">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <strong><i class="bi bi-calendar3"></i> Laporan {{ $report->tanggal->translatedFormat('d M Y') }}</strong>
+                <strong><i class="bi bi-calendar3"></i> Laporan {{ $report->tanggal->translatedFormat('l, d F Y') }}</strong>
                 <span class="small text-muted">
                     {{ $report->item_count }} item · Total <strong id="totalReport-{{ $report->slug }}">Rp {{ number_format($report->total_nominal, 0, ',', '.') }}</strong>
                 </span>
@@ -103,6 +103,21 @@
                                     <i class="bi bi-check2"></i>
                                 </button>
                             </div>
+                            <div class="mt-1">
+                                <label class="small text-muted mb-0">Keterangan</label>
+                                <input type="text" class="form-control form-control-sm item-keterangan" value="{{ $item->keterangan }}" placeholder="cth: pengisian BBM di Patuha">
+                            </div>
+                            @php $vMeta = $item->metadata_json ?: []; @endphp
+                            @if(!empty($vMeta['volume']) || !empty($vMeta['harga_per_liter']))
+                                <div class="small text-muted mt-1">
+                                    @if(!empty($vMeta['volume']))
+                                        {{ number_format((float) $vMeta['volume'], 2, ',', '.') }} L
+                                    @endif
+                                    @if(!empty($vMeta['harga_per_liter']))
+                                        @ {{ number_format((float) $vMeta['harga_per_liter'], 0, ',', '.') }}/L
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -204,11 +219,12 @@
         const slug = card.dataset.slug;
         const nominal = card.querySelector('.item-nominal').value;
         const kategori = card.querySelector('.item-kategori').value;
+        const keterangan = card.querySelector('.item-keterangan').value;
         try {
             const res = await fetch(updateItemUrlBase + '/' + slug, {
                 method: 'PATCH',
                 headers: { 'X-CSRF-TOKEN': csrfToken, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify({ nominal: nominal, struk_kategori: kategori })
+                body: JSON.stringify({ nominal: nominal, struk_kategori: kategori, keterangan: keterangan })
             });
             const data = await res.json();
             if (!data.success) alert(data.message || 'Gagal menyimpan perubahan.');

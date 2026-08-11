@@ -29,7 +29,7 @@
         <h1>ROUTINE CHECK REPORT</h1>
         <p>Laporan Pengecekan Rutin (Harian / Mingguan / Bulanan)</p>
         <p>Periode: {{ $periodLabel }}</p>
-        <p>Dicetak: {{ now()->format('d M Y H:i') }} | Dispatcher: {{ auth()->user()->nama_lengkap }}</p>
+        <p>Dicetak: {{ now()->translatedFormat('d M Y H:i') }} | Dispatcher: {{ auth()->user()->nama_lengkap }}</p>
     </div>
 
     {{-- Summary --}}

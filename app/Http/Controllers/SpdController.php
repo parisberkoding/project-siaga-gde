@@ -265,7 +265,7 @@ public function approveSurat(Request $request, SuratSpd $surat)
 
         return redirect()->route('surat.superadmin.index')
             ->with('success', 'Surat Tugas berhasil disetujui! Deadline LPJ: ' .
-                $surat->lpj_deadline->format('d M Y'));
+                $surat->lpj_deadline->translatedFormat('d M Y'));
 
     } catch (\Exception $e) {
         DB::rollBack();
@@ -598,7 +598,7 @@ public function approveSurat(Request $request, SuratSpd $surat)
         if ($tanggalKembaliBaru->lessThanOrEqualTo($surat->tanggal_kembali)) {
             return redirect()->back()
                 ->with('error', 'Tanggal kembali baru harus setelah tanggal kembali sebelumnya (' .
-                    $surat->tanggal_kembali->format('d M Y') . ')')
+                    $surat->tanggal_kembali->translatedFormat('d M Y') . ')')
                 ->withInput();
         }
 
@@ -1440,9 +1440,9 @@ public function approveSurat(Request $request, SuratSpd $surat)
                     ? '└── ' . $surat->nomor_surat . ' (Perpanjangan)'
                     : $surat->nomor_surat,
                 'tujuan' => $surat->tempat_tujuan,
-                'tanggal' => $surat->tanggal_berangkat->format('d M') . ' - ' . $surat->tanggal_kembali->format('d M Y'),
+                'tanggal' => $surat->tanggal_berangkat->translatedFormat('d M') . ' - ' . $surat->tanggal_kembali->translatedFormat('d M Y'),
                 'is_extension' => $surat->is_extension,
-                'deadline' => $surat->lpj_deadline ? $surat->lpj_deadline->format('d M Y') : '-',
+                'deadline' => $surat->lpj_deadline ? $surat->lpj_deadline->translatedFormat('d M Y') : '-',
                 'is_overdue' => $surat->isLpjDeadlineOverdue(),
             ];
         });

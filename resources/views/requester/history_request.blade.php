@@ -36,7 +36,7 @@
                                 @forelse($history as $item)
                                 <tr>
                                     <td><code>{{ $item->request_number }}</code></td>
-                                    <td>{{ $item->request_date->format('d M Y H:i') }}</td>
+                                    <td>{{ $item->request_date->translatedFormat('d M Y H:i') }}</td>
                                     <td>
                                         {{ $item->vehicle->consumerial_code ?? 'N/A' }}<br>
                                         <small class="text-muted">{{ $item->vehicle->consumerial_name ?? '' }} ({{ $item->vehicle->consumerial_type ?? '' }})</small>

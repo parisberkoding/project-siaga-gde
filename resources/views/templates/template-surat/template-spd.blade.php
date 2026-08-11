@@ -64,7 +64,14 @@
             font-size: 18px;
             font-weight: bold;
             color: #333;
-            margin-bottom: 5px;
+            margin-bottom: 2px;
+        }
+
+        .company-unit {
+            font-size: 15px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 4px;
         }
 
         .address {
@@ -466,7 +473,8 @@
                     class="logo">
 
                 <div class="header-text">
-                    <div class="company-name">PT. GEO DIPA ENERGI UNIT PATUHA</div>
+                    <div class="company-name">Geo Dipa Energi</div>
+                    <div class="company-unit">Unit {{ $surat->user?->defaultSite?->name ?: 'Patuha' }}</div>
                     <div class="address">
                         Jl. Raya Rancabolang KM. 14, Kp. Kendeng - Ds. Sugihmukti, Kec. Pasir Jambu - Kab. Bandung 40973
                     </div>
@@ -588,7 +596,8 @@
             {{-- Extension Header --}}
             <div class="header">
 
-                <div class="company-name">PT. GEO DIPA ENERGI UNIT PATUHA</div>
+                <div class="company-name">Geo Dipa Energi</div>
+                <div class="company-unit">Unit {{ $surat->user?->defaultSite?->name ?: 'Patuha' }}</div>
                 <div class="address">
                     Jl. Raya Rancabolang KM. 14, Kp. Kendeng - Ds. Sugihmukti, Kec. Pasir Jambu - Kab. Bandung 40973
                 </div>

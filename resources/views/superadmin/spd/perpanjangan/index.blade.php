@@ -176,8 +176,8 @@
                                             </td>
                                             <td>{{ Str::limit($ext->originalSurat->tempat_tujuan, 25) }}</td>
                                             <td>
-                                                <small class="text-muted">Dari:</small> {{ $ext->tanggal_kembali_original->format('d M Y') }}<br>
-                                                <small class="text-success">Ke:</small> <strong>{{ $ext->tanggal_kembali_baru->format('d M Y') }}</strong>
+                                                <small class="text-muted">Dari:</small> {{ $ext->tanggal_kembali_original->translatedFormat('d M Y') }}<br>
+                                                <small class="text-success">Ke:</small> <strong>{{ $ext->tanggal_kembali_baru->translatedFormat('d M Y') }}</strong>
                                             </td>
                                             <td>
                                                 <span class="badge bg-info">+{{ $ext->durasi_tambahan_hari }} hari</span>
@@ -238,11 +238,11 @@
                                             <td>{{ $ext->originalSurat->pengemudi_nama }}</td>
                                             <td>
                                                 <span class="badge bg-info">+{{ $ext->durasi_tambahan_hari }} hari</span>
-                                                <br><small>s/d {{ $ext->tanggal_kembali_baru->format('d M Y') }}</small>
+                                                <br><small>s/d {{ $ext->tanggal_kembali_baru->translatedFormat('d M Y') }}</small>
                                             </td>
                                             <td>
                                                 {{ $ext->approver->nama_lengkap ?? $ext->approver->name ?? '-' }}
-                                                <br><small class="text-muted">{{ $ext->approved_at->format('d M Y H:i') }}</small>
+                                                <br><small class="text-muted">{{ $ext->approved_at->translatedFormat('d M Y H:i') }}</small>
                                             </td>
                                             <td class="text-center">
                                                 <button type="button" class="btn btn-sm btn-info btn-ext-acknowledge"
@@ -291,7 +291,7 @@
                                             </td>
                                             <td>
                                                 {{ $ext->acknowledger->nama_lengkap ?? $ext->acknowledger->name ?? '-' }}
-                                                <br><small class="text-muted">{{ $ext->acknowledged_at->format('d M Y H:i') }}</small>
+                                                <br><small class="text-muted">{{ $ext->acknowledged_at->translatedFormat('d M Y H:i') }}</small>
                                             </td>
                                             <td class="text-center">
                                                 <a href="{{ route('surat.superadmin.show', $ext->extensionSurat) }}"
@@ -331,7 +331,7 @@
                                             <td>{{ $ext->originalSurat->pengemudi_nama }}</td>
                                             <td>
                                                 {{ $ext->rejector->nama_lengkap ?? $ext->rejector->name ?? '-' }}
-                                                <br><small class="text-muted">{{ $ext->rejected_at->format('d M Y H:i') }}</small>
+                                                <br><small class="text-muted">{{ $ext->rejected_at->translatedFormat('d M Y H:i') }}</small>
                                             </td>
                                             <td>{{ Str::limit($ext->rejection_reason, 50) }}</td>
                                         </tr>

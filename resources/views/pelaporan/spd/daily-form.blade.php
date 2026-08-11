@@ -48,7 +48,7 @@
                     <div class="card-body py-2">
                         <small class="text-muted">
                             <strong>{{ $surat->nomor_surat }}</strong> — {{ $surat->tempat_tujuan }}
-                            · {{ $surat->tanggal_berangkat->format('d M') }} s/d {{ $surat->tanggal_kembali->format('d M Y') }}
+                            · {{ $surat->tanggal_berangkat->translatedFormat('l, d F Y') }} s/d {{ $surat->tanggal_kembali->translatedFormat('l, d F Y') }}
                         </small>
                     </div>
                 </div>
@@ -64,7 +64,7 @@
                                        value="{{ old('tanggal', $daily->tanggal ? $daily->tanggal->format('Y-m-d') : now()->format('Y-m-d')) }}"
                                        min="{{ $surat->tanggal_berangkat->format('Y-m-d') }}"
                                        max="{{ $surat->tanggal_kembali->format('Y-m-d') }}" required>
-                                <div class="form-text">Hari ini: {{ now()->format('d M Y') }}</div>
+                                <div class="form-text">Hari ini: {{ now()->translatedFormat('l, d F Y') }}</div>
                             </div>
                             <div class="col-md-8 mb-3">
                                 <label class="form-label">Uraian Kegiatan Hari Ini</label>

@@ -22,7 +22,7 @@
             </tr>
             <tr>
                 <td><strong>Tanggal Disetujui:</strong></td>
-                <td>{{ $request->authorization_date ? $request->authorization_date->format('d M Y H:i') : '-' }}</td>
+                <td>{{ $request->authorization_date ? $request->authorization_date->translatedFormat('d M Y H:i') : '-' }}</td>
             </tr>
             <tr>
                 <td><strong>Kendaraan/Alat:</strong></td>

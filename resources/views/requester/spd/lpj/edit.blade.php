@@ -54,7 +54,7 @@
                         <h5 class="card-title"><i class="bi bi-file-earmark-text"></i> Surat Tugas</h5>
                         <div class="alert alert-secondary">
                             <strong>{{ $surat->nomor_surat }}</strong><br>
-                            <small>{{ $surat->tempat_tujuan }} | {{ $surat->tanggal_berangkat->format('d M') }} - {{ $surat->tanggal_kembali->format('d M Y') }}</small>
+                            <small>{{ $surat->tempat_tujuan }} | {{ $surat->tanggal_berangkat->translatedFormat('d M') }} - {{ $surat->tanggal_kembali->translatedFormat('d M Y') }}</small>
                             <br><small>Kendaraan: {{ $surat->vehicle->consumerial_code ?? '' }}</small>
                         </div>
                     </div>

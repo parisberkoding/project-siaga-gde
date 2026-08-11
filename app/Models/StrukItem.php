@@ -26,13 +26,16 @@ class StrukItem extends Model
         'nominal',
         'tanggal',
         'keterangan',
+        'ocr_text',
         'urutan',
+        'edited_at',
     ];
 
     protected $casts = [
         'nominal' => 'decimal:2',
         'tanggal' => 'date',
         'metadata_json' => 'array',
+        'edited_at' => 'datetime',
     ];
 
     /**

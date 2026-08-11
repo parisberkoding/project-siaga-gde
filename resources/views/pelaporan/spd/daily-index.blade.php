@@ -93,11 +93,11 @@
                     <tbody>
                         @foreach($reports as $report)
                         <tr>
-                            <td><strong>{{ $report->tanggal->translatedFormat('d M Y') }}</strong></td>
+                            <td><strong>{{ $report->tanggal->translatedFormat('l, d F Y') }}</strong></td>
                             <td>
                                 <span class="badge {{ $report->status_badge_class }}">{{ $report->status_label }}</span>
                                 @if($report->submitted_at)
-                                    <small class="text-muted d-block">{{ $report->submitted_at->format('d M H:i') }}</small>
+                                    <small class="text-muted d-block">{{ $report->submitted_at->translatedFormat('l, d F Y · H:i') }}</small>
                                 @endif
                             </td>
                             <td>{{ $report->item_count }}</td>

@@ -67,8 +67,8 @@
                         <div class="col-4">Tanggal Perjalanan:</div>
                         <div class="col-8">
                             @if($laporan->suratSpd)
-                                {{ $laporan->suratSpd->tanggal_berangkat->format('d M Y') }} -
-                                {{ $laporan->suratSpd->tanggal_kembali->format('d M Y') }}
+                                {{ $laporan->suratSpd->tanggal_berangkat->translatedFormat('d M Y') }} -
+                                {{ $laporan->suratSpd->tanggal_kembali->translatedFormat('d M Y') }}
                                 <span class="badge bg-secondary">{{ $laporan->suratSpd->lama_perjalanan_hari }} hari</span>
                             @else
                                 -
@@ -125,7 +125,7 @@
                                  @forelse($laporan->details as $index => $detail)
                                      <tr>
                                          <td class="text-center">{{ $index + 1 }}</td>
-                                         <td>{{ $detail->tanggal ? $detail->tanggal->format('d M Y') : '-' }}</td>
+                                         <td>{{ $detail->tanggal ? $detail->tanggal->translatedFormat('d M Y') : '-' }}</td>
                                          <td>
                                              @php
                                                  $badgeClass = match($detail->tipe_penggunaan) {
@@ -296,13 +296,13 @@
 
                     <div class="mb-2">
                         <small class="text-muted">Tanggal LPJ:</small><br>
-                        <strong>{{ $laporan->tanggal_lpj ? $laporan->tanggal_lpj->format('d M Y') : '-' }}</strong>
+                        <strong>{{ $laporan->tanggal_lpj ? $laporan->tanggal_lpj->translatedFormat('d M Y') : '-' }}</strong>
                     </div>
 
                     <div class="mb-2">
                         <small class="text-muted">Deadline:</small><br>
                         <strong class="{{ $laporan->is_late ? 'text-danger' : '' }}">
-                            {{ $laporan->due_date ? $laporan->due_date->format('d M Y') : '-' }}
+                            {{ $laporan->due_date ? $laporan->due_date->translatedFormat('d M Y') : '-' }}
                         </strong>
                         @if($laporan->is_late)
                             <span class="badge bg-danger">Terlambat</span>

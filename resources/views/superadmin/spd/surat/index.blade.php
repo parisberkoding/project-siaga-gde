@@ -151,7 +151,7 @@
                                             </td>
                                             <td>{{ Str::limit($surat->tempat_tujuan, 30) }}</td>
                                             <td>
-                                                {{ $surat->tanggal_berangkat->format('d M Y') }} - {{ $surat->tanggal_kembali->format('d M Y') }}
+                                                {{ $surat->tanggal_berangkat->translatedFormat('d M Y') }} - {{ $surat->tanggal_kembali->translatedFormat('d M Y') }}
                                                 <br><span class="badge bg-secondary">{{ $surat->lama_perjalanan_hari }} hari</span>
                                             </td>
                                             <td>
@@ -222,16 +222,16 @@
                                             </td>
                                             <td>{{ $surat->pengemudi_nama }}</td>
                                             <td>{{ Str::limit($surat->tempat_tujuan, 25) }}</td>
-                                            <td>{{ $surat->tanggal_berangkat->format('d M') }} - {{ $surat->tanggal_kembali->format('d M Y') }}</td>
+                                            <td>{{ $surat->tanggal_berangkat->translatedFormat('d M') }} - {{ $surat->tanggal_kembali->translatedFormat('d M Y') }}</td>
                                             <td>
                                                 @if($surat->lpj_deadline)
                                                     @if($surat->isLpjDeadlineOverdue() && !$surat->hasLpj())
                                                         <span class="text-danger">
                                                             <i class="bi bi-exclamation-triangle"></i>
-                                                            {{ $surat->lpj_deadline->format('d M Y') }}
+                                                            {{ $surat->lpj_deadline->translatedFormat('d M Y') }}
                                                         </span>
                                                     @else
-                                                        {{ $surat->lpj_deadline->format('d M Y') }}
+                                                        {{ $surat->lpj_deadline->translatedFormat('d M Y') }}
                                                     @endif
                                                 @else
                                                     -
@@ -239,7 +239,7 @@
                                             </td>
                                             <td>
                                                 {{ $surat->approver->nama_lengkap ?? $surat->approver->name ?? '-' }}
-                                                <br><small class="text-muted">{{ $surat->approved_at->format('d M Y H:i') }}</small>
+                                                <br><small class="text-muted">{{ $surat->approved_at->translatedFormat('d M Y H:i') }}</small>
                                             </td>
                                             <td class="text-center">
                                                 <div class="btn-group">
@@ -288,7 +288,7 @@
                                             <td>{{ Str::limit($surat->tempat_tujuan, 25) }}</td>
                                             <td>
                                                 {{ $surat->rejector->nama_lengkap ?? $surat->rejector->name ?? '-' }}
-                                                <br><small class="text-muted">{{ optional($surat->rejected_at)->format('d M Y') ?? '-' }}</small>
+                                                <br><small class="text-muted">{{ optional($surat->rejected_at)->translatedFormat('d M Y') ?? '-' }}</small>
                                             </td>
                                             
                                             <td>{{ Str::limit($surat->rejection_reason, 40) }}</td>

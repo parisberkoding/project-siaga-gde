@@ -28,7 +28,7 @@
         </div>
         <div class="text-end">
             <div class="fw-semibold" style="font-size:13px; color:#012970;">
-                {{ $detail->checked_at ? $detail->checked_at->format('d M Y, H:i') : '—' }}
+                {{ $detail->checked_at ? $detail->checked_at->translatedFormat('d M Y, H:i') : '—' }}
             </div>
             @if($detail->checked_at)
                 <div class="text-muted" style="font-size:11px;">{{ $detail->checked_at->diffForHumans() }}</div>

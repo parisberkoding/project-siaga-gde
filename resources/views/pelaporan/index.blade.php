@@ -125,8 +125,8 @@
                                 </td>
                                 <td>
                                     <small>
-                                        {{ $surat->tanggal_berangkat->format('d M Y') }} s/d<br>
-                                        {{ $surat->tanggal_kembali->format('d M Y') }}
+                                        {{ $surat->tanggal_berangkat->translatedFormat('l, d F Y') }} s/d<br>
+                                        {{ $surat->tanggal_kembali->translatedFormat('l, d F Y') }}
                                     </small>
                                 </td>
                                 <td><small>{{ $surat->vehicle?->consumerial_code ?? '-' }}</small></td>
@@ -347,7 +347,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div class="file-ai-detail text-muted" style="font-size:0.75rem;"></div>
                                 <details class="mt-1">
                                     <summary class="text-muted" style="font-size:0.7rem;">OCR</summary>
-                                    <pre class="file-ai-text small mt-1 mb-0" style="white-space:pre-wrap; max-height:80px; overflow-y:auto; background:#f8f9fa; padding:4px; border-radius:3px; font-size:0.7rem;"></pre>
+                                    <pre class="file-ai-text small mt-1 mb-0" style="white-space:pre-wrap; overflow-wrap:break-word; word-break:break-word; max-height:80px; overflow-y:auto; background:#f8f9fa; padding:4px; border-radius:3px; font-size:0.7rem;"></pre>
                                 </details>
                             </div>
                         </div>

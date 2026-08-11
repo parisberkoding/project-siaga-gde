@@ -25,7 +25,7 @@
     <div class="header">
         <h1>VEHICLE CHECKLIST REPORT</h1>
         <p>Periode: {{ $periodLabel }}</p>
-        <p>Dicetak: {{ now()->format('d M Y H:i') }} | Dispatcher: {{ auth()->user()->nama_lengkap }}</p>
+        <p>Dicetak: {{ now()->translatedFormat('d M Y H:i') }} | Dispatcher: {{ auth()->user()->nama_lengkap }}</p>
     </div>
 
     {{-- Summary --}}

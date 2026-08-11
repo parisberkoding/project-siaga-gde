@@ -189,7 +189,7 @@ private function getExpenseOverTime($period = 'month')
                 ->orderBy('month', 'asc')
                 ->get()
                 ->mapWithKeys(function($item) {
-                    return [Carbon::create()->month($item->month)->format('M') => $item->total];
+                    return [Carbon::create()->month($item->month)->translatedFormat('M') => $item->total];
                 })
                 ->toArray();
             break;
@@ -401,7 +401,7 @@ private function getFilteredExpenseOverTime($transactions, $period)
         case 'year':
             // Monthly
             return $filtered->groupBy(function($item) {
-                return $item->request_date->format('M');
+                return $item->request_date->translatedFormat('M');
             })->map(function($group) {
                 return $group->sum('bill_amounts');
             })->toArray();

@@ -169,7 +169,7 @@
                                             </td>
                                             <td>{{ Str::limit($lpj->suratSpd->tempat_tujuan ?? '-', 25) }}</td>
                                             <td>
-                                                {{ $lpj->tanggal_lpj ? $lpj->tanggal_lpj->format('d M Y') : '-' }}
+                                                {{ $lpj->tanggal_lpj ? $lpj->tanggal_lpj->translatedFormat('d M Y') : '-' }}
                                                 @if($lpj->is_late)
                                                     <br><span class="badge bg-danger">Terlambat {{ $lpj->days_late }} hari</span>
                                                 @endif
@@ -236,7 +236,7 @@
                                             </td>
                                             <td>
                                                 {{ $lpj->approverPengguna->nama_lengkap ?? $lpj->approverPengguna->name ?? '-' }}
-                                                <br><small class="text-muted">{{ $lpj->approved_pengguna_at ? $lpj->approved_pengguna_at->format('d M Y H:i') : '-' }}</small>
+                                                <br><small class="text-muted">{{ $lpj->approved_pengguna_at ? $lpj->approved_pengguna_at->translatedFormat('d M Y H:i') : '-' }}</small>
                                             </td>
                                             <td class="text-center">
                                                 <div class="btn-group">
@@ -289,7 +289,7 @@
                                             <td class="text-end">Rp {{ number_format($lpj->total_pengeluaran, 0, ',', '.') }}</td>
                                             <td>
                                                 {{ $lpj->rejector->nama_lengkap ?? $lpj->rejector->name ?? '-' }}
-                                                <br><small class="text-muted">{{ $lpj->rejected_at ? $lpj->rejected_at->format('d M Y H:i') : '-' }}</small>
+                                                <br><small class="text-muted">{{ $lpj->rejected_at ? $lpj->rejected_at->translatedFormat('d M Y H:i') : '-' }}</small>
                                             </td>
                                             <td>{{ Str::limit($lpj->rejection_reason, 40) }}</td>
                                             <td class="text-center">

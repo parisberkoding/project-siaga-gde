@@ -167,7 +167,7 @@
                                 <strong>{{ $surat->approver->nama_lengkap ?? $surat->approver->name ?? '-' }}</strong><br>
                                 <small>{{ $surat->approved_at->translatedFormat('d F Y H:i') }}</small>
                                 @if($surat->lpj_deadline)
-                                    <br><small class="text-muted">Deadline LPJ: {{ $surat->lpj_deadline->format('d M Y') }}</small>
+                                    <br><small class="text-muted">Deadline LPJ: {{ $surat->lpj_deadline->translatedFormat('d M Y') }}</small>
                                 @endif
                             @else
                                 <strong><i class="bi bi-x-circle"></i> Ditolak</strong> oleh
@@ -199,7 +199,7 @@
                                     @foreach($surat->childExtensions as $ext)
                                         <tr>
                                             <td>{{ $ext->nomor_surat }}</td>
-                                            <td>{{ $ext->tanggal_kembali->format('d M Y') }}</td>
+                                            <td>{{ $ext->tanggal_kembali->translatedFormat('d M Y') }}</td>
                                             <td>
                                                 @if($ext->status == 'pending')
                                                     <span class="badge bg-warning text-dark">Pending</span>
@@ -339,7 +339,7 @@
                                     <i class="bi bi-clock"></i> LPJ belum disubmit
                                 @endif
                                 @if($surat->lpj_deadline)
-                                    <br><small>Deadline: {{ $surat->lpj_deadline->format('d M Y') }}</small>
+                                    <br><small>Deadline: {{ $surat->lpj_deadline->translatedFormat('d M Y') }}</small>
                                 @endif
                             </div>
                         @endif

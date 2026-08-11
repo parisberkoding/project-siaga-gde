@@ -165,7 +165,7 @@
                                     @endif
                                 </td>
                                 <td>
-                                    {{ $lpj->created_at->format('d M Y') }}
+                                    {{ $lpj->created_at->translatedFormat('d M Y') }}
                                     <br><small class="text-muted">{{ $lpj->created_at->format('H:i') }}</small>
                                 </td>
                                 <td class="text-center">

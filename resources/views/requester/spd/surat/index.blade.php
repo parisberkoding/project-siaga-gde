@@ -142,7 +142,7 @@
                                     </td>
                                     <td>{{ Str::limit($surat->tempat_tujuan, 30) }}</td>
                                     <td>
-                                        {{ $surat->tanggal_berangkat->format('d M') }} - {{ $surat->tanggal_kembali->format('d M Y') }}
+                                        {{ $surat->tanggal_berangkat->translatedFormat('d M') }} - {{ $surat->tanggal_kembali->translatedFormat('d M Y') }}
                                         <br><span class="badge bg-secondary">{{ $surat->lama_perjalanan_hari }} hari</span>
                                     </td>
                                     <td>
@@ -177,7 +177,7 @@
                                                 @else
                                                     <span class="badge bg-warning text-dark">Belum LPJ</span>
                                                     @if($surat->lpj_deadline)
-                                                        <br><small class="text-muted">Deadline: {{ $surat->lpj_deadline->format('d M') }}</small>
+                                                        <br><small class="text-muted">Deadline: {{ $surat->lpj_deadline->translatedFormat('d M') }}</small>
                                                     @endif
                                                 @endif
                                             @endif

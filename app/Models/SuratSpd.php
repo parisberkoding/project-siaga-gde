@@ -78,9 +78,10 @@ class SuratSpd extends Model
             // Calculate total budget
             $surat->calculateTotalBudget();
 
-            // Set tanggal surat jika belum ada
+            // Set tanggal surat jika belum ada (format Indonesia, mengikuti site user)
             if (empty($surat->tanggal_surat)) {
-                $surat->tanggal_surat = 'Patuha, ' . Carbon::now()->translatedFormat('d F Y');
+                $siteName = optional($surat->user?->defaultSite)->name ?: 'Patuha';
+                $surat->tanggal_surat = $siteName . ', ' . Carbon::now()->locale('id')->translatedFormat('d F Y');
             }
         });
 

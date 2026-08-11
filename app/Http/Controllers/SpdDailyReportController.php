@@ -238,7 +238,8 @@ class SpdDailyReportController extends Controller
             'metadata_json'       => ! empty($metadata) ? $metadata : null,
             'nominal'             => $nominal,
             'tanggal'             => $itemDate,
-            'keterangan'          => $text ? mb_substr($text, 0, 200) : '',
+            'keterangan'          => self::defaultKeterangan($kategori),
+            'ocr_text'            => $text ?: null,
             'urutan'              => $daily->strukItems()->count() + 1,
         ]);
 
@@ -269,16 +270,24 @@ class SpdDailyReportController extends Controller
         $validator = Validator::make($request->all(), [
             'nominal'        => 'required|numeric|min:0',
             'struk_kategori' => 'required|in:BBM,Tol,Parkir,Lainnya,Tambahan',
+            'keterangan'     => 'nullable|string|max:500',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
         }
 
+        $oldKeterangan = $request->has('keterangan') ? (string) $item->keterangan : null;
+        $changed = (float) $item->nominal !== (float) $request->nominal
+            || $item->struk_kategori !== $request->struk_kategori
+            || ($request->has('keterangan') && $oldKeterangan !== trim((string) $request->keterangan));
+
         $item->update([
             'nominal'        => $request->nominal,
             'struk_kategori' => $request->struk_kategori,
             'kategori_source' => 'manual',
+            'keterangan'     => $request->has('keterangan') ? trim((string) $request->keterangan) : $item->keterangan,
+            'edited_at'      => $changed ? now() : $item->edited_at,
         ]);
 
         return response()->json(['success' => true]);
@@ -440,6 +449,21 @@ class SpdDailyReportController extends Controller
 
         return redirect()->route('requester.lpj.show', $lpj)
             ->with('success', 'LPJ berhasil dibuat dari ' . $submitted->count() . ' laporan harian.');
+    }
+
+    /**
+     * Keterangan ringkas default per kategori (bisa diedit driver di validasi).
+     * Teks OCR mentah disimpan terpisah di kolom ocr_text, bukan di keterangan.
+     */
+    protected static function defaultKeterangan(string $kategori): string
+    {
+        return match ($kategori) {
+            'BBM'      => 'Pengisian BBM',
+            'Tol'      => 'Pembayaran Tol',
+            'Parkir'   => 'Biaya Parkir',
+            'Tambahan' => 'Dokumentasi Tambahan',
+            default    => 'Pengeluaran Lainnya',
+        };
     }
 
     /**

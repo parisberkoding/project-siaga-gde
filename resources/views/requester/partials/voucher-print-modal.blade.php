@@ -52,7 +52,7 @@
                     </tr>
                     <tr>
                         <th>Tanggal Disetujui</th>
-                        <td>{{ $request->authorization_date ? $request->authorization_date->format('d M Y H:i') : '-' }}</td>
+                        <td>{{ $request->authorization_date ? $request->authorization_date->translatedFormat('d M Y H:i') : '-' }}</td>
                     </tr>
                 </table>
 
@@ -112,7 +112,7 @@ window.voucherData{{ $slotNum }} = {
     vehicleType: "{{ $request->vehicle->consumerial_type ?? '' }}",
     gasolineType: "{{ $request->gasoline_type }}",
     billAmount: {{ $request->bill_amounts }},
-    approvalDate: "{{ $request->authorization_date ? $request->authorization_date->format('d M Y H:i') : '-' }}"
+    approvalDate: "{{ $request->authorization_date ? $request->authorization_date->translatedFormat('d M Y H:i') : '-' }}"
 };
 
 // ✅ Handler untuk Thermer print link
@@ -257,7 +257,7 @@ function stringToBytes(str) {
 //     vehicleType: "{{ $request->vehicle->consumerial_type ?? '' }}",
 //     gasolineType: "{{ $request->gasoline_type }}",
 //     billAmount: {{ $request->bill_amounts }},
-//     approvalDate: "{{ $request->authorization_date ? $request->authorization_date->format('d M Y H:i') : '-' }}"
+//     approvalDate: "{{ $request->authorization_date ? $request->authorization_date->translatedFormat('d M Y H:i') : '-' }}"
 // };
 
 // // Fungsi untuk print ke Thermal Printer via USB

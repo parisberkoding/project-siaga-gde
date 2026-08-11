@@ -66,9 +66,9 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <small class="text-muted">{{ $ext->tanggal_kembali_original->format('d M') }}</small>
+                                        <small class="text-muted">{{ $ext->tanggal_kembali_original->translatedFormat('d M') }}</small>
                                         <i class="bi bi-arrow-right text-muted"></i>
-                                        <strong>{{ $ext->tanggal_kembali_baru->format('d M Y') }}</strong>
+                                        <strong>{{ $ext->tanggal_kembali_baru->translatedFormat('d M Y') }}</strong>
                                         <br><span class="badge bg-info">+{{ $ext->durasi_tambahan_hari }} hari</span>
                                     </td>
                                     <td>Rp {{ number_format($ext->budget_tambahan, 0, ',', '.') }}</td>
@@ -88,7 +88,7 @@
                                         @endif
                                     </td>
                                     <td>
-                                        {{ $ext->created_at->format('d M Y') }}
+                                        {{ $ext->created_at->translatedFormat('d M Y') }}
                                         <br><small class="text-muted">{{ $ext->created_at->format('H:i') }}</small>
                                     </td>
                                 </tr>

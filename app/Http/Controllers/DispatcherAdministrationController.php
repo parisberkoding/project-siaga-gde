@@ -595,7 +595,7 @@ class DispatcherAdministrationController extends Controller
             return $c->vehicleChecking->vehicle_id ?? 0;
         });
 
-        $periodLabel = $dateFrom->format('d M Y') . ' - ' . $dateTo->format('d M Y');
+        $periodLabel = $dateFrom->translatedFormat('d M Y') . ' - ' . $dateTo->translatedFormat('d M Y');
 
         $pdf = Pdf::loadView('dispatcher.export-templates.vehicle-checklist', compact(
             'vehicles', 'checkings', 'groupedByVehicle', 'periodLabel', 'dateFrom', 'dateTo'
@@ -629,7 +629,7 @@ class DispatcherAdministrationController extends Controller
         ->orderBy('checked_at', 'desc')
         ->get();
 
-        $periodLabel = $dateFrom->format('d M Y') . ' - ' . $dateTo->format('d M Y');
+        $periodLabel = $dateFrom->translatedFormat('d M Y') . ' - ' . $dateTo->translatedFormat('d M Y');
 
         $pdf = Pdf::loadView('dispatcher.export-templates.routine-check-report', compact(
             'checkings', 'periodLabel', 'dateFrom', 'dateTo'
@@ -664,7 +664,7 @@ class DispatcherAdministrationController extends Controller
         ->orderBy('checked_at', 'desc')
         ->get();
 
-        $periodLabel = $dateFrom->format('d M Y') . ' - ' . $dateTo->format('d M Y');
+        $periodLabel = $dateFrom->translatedFormat('d M Y') . ' - ' . $dateTo->translatedFormat('d M Y');
 
         $pdf = Pdf::loadView('dispatcher.export-templates.body-check-report', compact(
             'checkings', 'periodLabel', 'dateFrom', 'dateTo'

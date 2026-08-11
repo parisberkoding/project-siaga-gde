@@ -46,7 +46,7 @@
                         Sumber: <a href="https://github.com/nasgunawann/bensin-api" target="_blank" rel="noopener">bensin-api</a>
                         (update harian otomatis pukul 06.00).
                         @if($lastSync)
-                        Sinkronisasi terakhir: <strong>{{ \Carbon\Carbon::parse($lastSync)->format('d M Y H:i') }}</strong>.
+                        Sinkronisasi terakhir: <strong>{{ \Carbon\Carbon::parse($lastSync)->translatedFormat('d M Y H:i') }}</strong>.
                         @endif
                     </p>
 
@@ -79,7 +79,7 @@
                                         <td>{{ $price->fuel_type }}</td>
                                         <td class="text-end fw-bold">Rp {{ number_format($price->price_per_liter, 0, ',', '.') }}</td>
                                         <td>{{ $price->availability ?? '-' }}</td>
-                                        <td>{{ $price->price_date ? \Carbon\Carbon::parse($price->price_date)->format('d M Y') : '-' }}</td>
+                                        <td>{{ $price->price_date ? \Carbon\Carbon::parse($price->price_date)->translatedFormat('d M Y') : '-' }}</td>
                                         @if($i < $group->count() - 1)</tr>@endif
                                     @endforeach
                                 </tr>

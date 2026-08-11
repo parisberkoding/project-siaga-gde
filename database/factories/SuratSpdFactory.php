@@ -35,7 +35,7 @@ class SuratSpdFactory extends Factory
             'is_extension' => false,
             'lpj_deadline' => (clone $kembali)->modify('+3 days'),
             'catatan' => null,
-            'tanggal_surat' => 'Patuha, ' . now()->format('d F Y'),
+            'tanggal_surat' => 'Patuha, ' . now()->locale('id')->translatedFormat('d F Y'),
             'type' => 'biasa',
             'status' => 'approved',
             'approved_by' => null,

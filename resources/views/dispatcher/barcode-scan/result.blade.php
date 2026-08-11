@@ -194,7 +194,7 @@
                     $lastCheck = $allCheckings->sortByDesc('checked_at')->first();
                 @endphp
                 <div style="font-size:14px; font-weight:700; color:#012970;">
-                    {{ $lastCheck ? $lastCheck->checked_at->format('d M Y') : '—' }}
+                    {{ $lastCheck ? $lastCheck->checked_at->translatedFormat('d M Y') : '—' }}
                 </div>
                 <div class="text-muted" style="font-size:12px;">Terakhir Diperiksa</div>
             </div>

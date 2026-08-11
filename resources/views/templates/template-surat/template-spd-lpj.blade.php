@@ -16,12 +16,12 @@
         }
 
         body {
-            font-family: 'Times New Roman', Times, serif;
+            font-family: 'Arial', sans-serif;
             font-size: 11pt;
             line-height: 1.3;
             color: #000;
         }
-
+        
         /* Lebar konten: readable di layar (800-1340px), pas di halaman saat cetak */
         .sheet {
             width: 100%;
@@ -83,6 +83,12 @@
             font-size: 16pt;
             font-weight: bold;
             letter-spacing: 0.5px;
+        }
+
+        .kop-text .unit {
+            font-size: 13pt;
+            font-weight: bold;
+            color: #333;
         }
 
         .kop-text .address {
@@ -259,6 +265,20 @@
         .photo-page-header .desc {
             font-size: 10pt;
             margin-top: 2px;
+        }
+
+        .photo-page-header .pjum-date {
+            font-size: 10.5pt;
+            margin-top: 4px;
+        }
+
+        .items .credential .edit-note {
+            margin: 3px 0 2px;
+            padding: 4px 6px;
+            border: 1px dashed #c00;
+            border-radius: 3px;
+            background: #fff5f5;
+            font-size: 8.5pt;
         }
 
         .photo-grid {
@@ -493,8 +513,9 @@
             @endif
         </div>
         <div class="kop-text">
-            <div class="company">PT. GEO DIPA ENERGI UNIT PATUHA</div>
-            <div class="address">Jl. Raya Rancabolang KM. 14, Kp. Kendeng - Ds. Sugihmukti, Kec. Pasir Jambu - Kab. Bandung 40973</div>
+            <div class="company">GEO DIPA ENERGI</div>
+            <div class="unit">UNIT {{ strtoupper($surat->user?->defaultSite?->name ?: 'PATUHA') }}</div>
+            <div class="address"></div>
         </div>
     </div>
 
@@ -502,7 +523,7 @@
     <div class="page-subtitle">Nomor: <strong>{{ $surat->nomor_surat }}</strong></div>
 
     <p class="intro">Yang bertanda tangan dibawah ini,</p>
-
+x
     <table class="info">
         <tr>
             <td class="label">Nama</td>
@@ -589,12 +610,8 @@
     <div style="margin-top: 20px; text-align: right; page-break-inside: avoid;">
         <div>{{ $surat->tanggal_surat }}</div>
         <div style="font-weight: bold; margin-top: 8px;">Yang Memberi Perintah,</div>
-        @if(!empty($qrSvgContent))
-        <div class="signature-barcode" style="width: 64px; height: 64px; margin: 8px 0 0 auto;">
-            {!! $qrSvgContent !!}
-        </div>
-        @endif
-        <div style="margin: 14mm 0 2px; font-weight: bold; text-decoration: underline;">{{ $surat->pemberi_tugas_nama }}</div>
+        
+        <div style="margin: 14mm 0 2px; font-weight: bold; text-decoration: underline; margin-top: 100px;">{{ $surat->pemberi_tugas_nama }}</div>
         <div>{{ $surat->pemberi_tugas_jabatan }}</div>
     </div>
     </div>
@@ -754,6 +771,9 @@
             <div class="desc">
                 {{ $surat->nomor_surat }} — Halaman {{ $pageIndex + 1 }} dari {{ $photoGrid->count() }}
             </div>
+            <div class="pjum-date">
+                Tanggal PJUM: <strong>{{ \Carbon\Carbon::parse($laporan->tanggal_lpj)->locale('id')->translatedFormat('l, d F Y') }}</strong>
+            </div>
         </div>
 
         <div class="photo-grid">
@@ -764,17 +784,30 @@
                 @endif
                 <div class="items">
                     <div class="credential">
-                        <span class="cat">{{ $entry['item']->struk_kategori }}</span>
-                        &nbsp;|&nbsp;
-                        <span>
-                            {{ $entry['item']->tanggal ? $entry['item']->tanggal->translatedFormat('d M Y') : '-' }}
-                        </span>
-                        &nbsp;|&nbsp;
-                        <span>Rp {{ number_format((float) $entry['item']->nominal, 0, ',', '.') }}</span>
-                        <div class="code">{{ $entry['item']->item_code }}</div>
-                        @if($entry['item']->keterangan)
-                            <div>{{ $entry['item']->keterangan }}</div>
+                        @php
+                            $meta = $entry['item']->metadata_json ?: [];
+                            $volume = isset($meta['volume']) && $meta['volume'] !== '' && $meta['volume'] !== null
+                                ? (float) $meta['volume'] : null;
+                            $harga = isset($meta['harga_per_liter']) && $meta['harga_per_liter'] !== '' && $meta['harga_per_liter'] !== null
+                                ? (float) $meta['harga_per_liter'] : null;
+                        @endphp
+                        <div><span class="cat">Jenis :</span> {{ $entry['item']->struk_kategori }}
+                            @if($volume !== null)<span class="vol"> · {{ number_format($volume, 2, ',', '.') }} L</span>@endif
+                        </div>
+                        <div><span class="cat">Keterangan :</span> {{ $entry['item']->keterangan ?: '-' }}
+                            @if($harga !== null)<span class="vol"> ({{ number_format($harga, 0, ',', '.') }}/L)</span>@endif
+                        </div>
+                        <div><span class="cat">Nominal :</span> Rp {{ number_format((float) $entry['item']->nominal, 0, ',', '.') }}</div>
+                        <div><span class="cat">Tanggal Laporan :</span>
+                            {{ $entry['item']->tanggal ? $entry['item']->tanggal->locale('id')->translatedFormat('l, d F Y') : '-' }}
+                        </div>
+                        @if($entry['item']->edited_at)
+                            <div class="edit-note">
+                                <div><span class="cat">1. Awal :</span> {{ optional($entry['item']->created_at)->locale('id')->translatedFormat('l, d F Y') }}</div>
+                                <div><span class="cat">2. Diedit :</span> {{ $entry['item']->edited_at->locale('id')->translatedFormat('l, d F Y') }}</div>
+                            </div>
                         @endif
+                        <div class="code">{{ $entry['item']->item_code }}</div>
                     </div>
                     <div class="photo-wrap">
                         @if($entry['image_base64'])

@@ -21,9 +21,26 @@
         flex-shrink: 0;
         flex-grow: 0;
     }
-    .sales-card .card-icon    { color: #4154f1; background: #f6f6fe; }
-    .revenue-card .card-icon  { color: #2eca6a; background: #e0f8e9; }
-    .customers-card .card-icon { color: #ff771d; background: #ffecdf; }
+    .sales-card .card-icon        { color: #4154f1; background: #f6f6fe; }
+    .revenue-card .card-icon      { color: #2eca6a; background: #e0f8e9; }
+    .customers-card .card-icon    { color: #ff771d; background: #ffecdf; }
+    .transactions-card .card-icon { color: #9747ff; background: #f3e8ff; }
+
+    /* ===== KPI CARD HOVER ===== */
+    .info-card { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+    .info-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 24px rgba(13, 44, 114, 0.12) !important;
+    }
+
+    /* ===== RANKING SEGMENTED CONTROL ===== */
+    .ranking-toggle .btn {
+        border-radius: 0.375rem;
+        font-weight: 500;
+    }
+    .ranking-toggle .btn.active {
+        box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    }
 
     /* ===== DROPDOWN FILTER (3-dot) ===== */
     .filter {
@@ -147,22 +164,29 @@
 </div><!-- End Page Title -->
 
 {{-- ============================================================
-     TAB NAVIGATION
+     TAB NAVIGATION + ACTION PRINT
      ============================================================ --}}
-<ul class="nav nav-tabs dashboard-tabs mb-3" id="dashboardMainTabs" role="tablist">
-    <li class="nav-item" role="presentation">
-        <button class="nav-link {{ $tab != 'tabel' ? 'active' : '' }}" id="tab-grafik" data-bs-toggle="tab"
-                data-bs-target="#pane-grafik" type="button" role="tab">
-            <i class="bi bi-bar-chart-line-fill me-2"></i>Grafik & Ringkasan
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link {{ $tab == 'tabel' ? 'active' : '' }}" id="tab-tabel" data-bs-toggle="tab"
-                data-bs-target="#pane-tabel" type="button" role="tab">
-            <i class="bi bi-table me-2"></i>Tabel Detail
-        </button>
-    </li>
-</ul>
+<div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
+    <ul class="nav nav-tabs dashboard-tabs border-0" id="dashboardMainTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {{ $tab != 'tabel' ? 'active' : '' }}" id="tab-grafik" data-bs-toggle="tab"
+                    data-bs-target="#pane-grafik" type="button" role="tab">
+                <i class="bi bi-bar-chart-line-fill me-2"></i>Grafik & Ringkasan
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {{ $tab == 'tabel' ? 'active' : '' }}" id="tab-tabel" data-bs-toggle="tab"
+                    data-bs-target="#pane-tabel" type="button" role="tab">
+                <i class="bi bi-table me-2"></i>Tabel Detail
+            </button>
+        </li>
+    </ul>
+    @if(Auth::user()->role === 'superadmin')
+    <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#printReportModal">
+        <i class="bi bi-printer-fill me-2"></i>Cetak Laporan Transaksi BBM
+    </button>
+    @endif
+</div>
 
 <div class="tab-content" id="dashboardMainTabContent">
 
@@ -301,70 +325,23 @@
             </div>
         </div><!-- End Filter Panel -->
 
-        {{-- Tombol Cetak (superadmin only) --}}
-        @if(Auth::user()->role === 'superadmin')
-        <div class="text-center mb-4">
-            <button class="btn btn-primary btn-lg px-5" data-bs-toggle="modal" data-bs-target="#printReportModal">
-                <i class="bi bi-printer-fill me-2"></i>Cetak Laporan Transaksi BBM
-            </button>
-        </div>
-        @endif
-
         {{-- ---- STAT CARDS ---- --}}
         <div class="row g-3 mb-4">
 
-            {{-- Rata-rata Frekuensi --}}
-            <div class="col-lg-3 col-md-6">
-                <div class="card info-card sales-card h-100">
-                    <div class="filter">
-                        <a class="icon" href="#" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></a>
-                        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-                            <li class="dropdown-header text-start"><h6>Filter</h6></li>
-                            <li><a class="dropdown-item" href="#" onclick="updatePeriod('day',   'freq')">Hari Ini</a></li>
-                            <li><a class="dropdown-item" href="#" onclick="updatePeriod('month', 'freq')">Bulan Ini</a></li>
-                            <li><a class="dropdown-item" href="#" onclick="updatePeriod('year',  'freq')">Tahun Ini</a></li>
-                        </ul>
-                    </div>
-                    <div class="card-body">
-                        <h5 class="card-title">Rata-rata Frekuensi
-                            <span id="freqPeriodLabel">| {{ $stats['periodLabel'] }}</span>
-                        </h5>
-                        <div class="d-flex align-items-center">
-                            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                                <i class="bi bi-graph-up"></i>
-                            </div>
-                            <div class="ps-3">
-                                <h6 id="avgFrequencyValue">{{ $stats['avgRequestFrequency']['value'] }}</h6>
-                                <span class="text-muted small pt-2 ps-1" id="avgFrequencyLabel">{{ $stats['avgRequestFrequency']['label'] }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Rata-rata Nilai Permohonan --}}
+            {{-- Total Transaksi --}}
             <div class="col-lg-3 col-md-6">
                 <div class="card info-card revenue-card h-100">
-                    <div class="filter">
-                        <a class="icon" href="#" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></a>
-                        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-                            <li class="dropdown-header text-start"><h6>Filter</h6></li>
-                            <li><a class="dropdown-item" href="#" onclick="updatePeriod('day',   'avg')">Hari Ini</a></li>
-                            <li><a class="dropdown-item" href="#" onclick="updatePeriod('month', 'avg')">Bulan Ini</a></li>
-                            <li><a class="dropdown-item" href="#" onclick="updatePeriod('year',  'avg')">Tahun Ini</a></li>
-                        </ul>
-                    </div>
                     <div class="card-body">
-                        <h5 class="card-title">Rata-rata Nilai Permohonan
-                            <span id="avgPeriodLabel">| {{ $stats['periodLabel'] }}</span>
+                        <h5 class="card-title">Total Transaksi
+                            <span>| {{ $stats['periodLabel'] }}</span>
                         </h5>
                         <div class="d-flex align-items-center">
                             <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                                <i class="bi bi-currency-dollar"></i>
+                                <i class="bi bi-receipt"></i>
                             </div>
                             <div class="ps-3">
-                                <h6 id="avgValueAmount">Rp {{ number_format($stats['avgRequestValue'] ?? 0, 0, ',', '.') }}</h6>
-                                <span class="text-success small pt-1 fw-bold">Per Permohonan</span>
+                                <h6>{{ $stats['totalTransactions'] ?? $stats['total'] ?? 0 }}</h6>
+                                <span class="text-muted small pt-2 ps-1">Semua Status</span>
                             </div>
                         </div>
                     </div>
@@ -373,7 +350,7 @@
 
             {{-- Total Pengeluaran --}}
             <div class="col-lg-3 col-md-6">
-                <div class="card info-card customers-card h-100">
+                <div class="card info-card sales-card h-100">
                     <div class="filter">
                         <a class="icon" href="#" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></a>
                         <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
@@ -400,20 +377,58 @@
                 </div>
             </div>
 
-            {{-- Total Transaksi --}}
+            {{-- Rata-rata Nilai Permohonan --}}
             <div class="col-lg-3 col-md-6">
-                <div class="card info-card warning-card h-100">
+                <div class="card info-card customers-card h-100">
+                    <div class="filter">
+                        <a class="icon" href="#" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></a>
+                        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+                            <li class="dropdown-header text-start"><h6>Filter</h6></li>
+                            <li><a class="dropdown-item" href="#" onclick="updatePeriod('day',   'avg')">Hari Ini</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="updatePeriod('month', 'avg')">Bulan Ini</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="updatePeriod('year',  'avg')">Tahun Ini</a></li>
+                        </ul>
+                    </div>
                     <div class="card-body">
-                        <h5 class="card-title">Total Transaksi
-                            <span>| {{ $stats['periodLabel'] }}</span>
+                        <h5 class="card-title">Rata-rata Nilai Permohonan
+                            <span id="avgPeriodLabel">| {{ $stats['periodLabel'] }}</span>
                         </h5>
                         <div class="d-flex align-items-center">
                             <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                                <i class="bi bi-receipt"></i>
+                                <i class="bi bi-currency-dollar"></i>
                             </div>
                             <div class="ps-3">
-                                <h6>{{ $stats['totalTransactions'] ?? $stats['total'] ?? 0 }}</h6>
-                                <span class="text-muted small pt-2 ps-1">Semua Status</span>
+                                <h6 id="avgValueAmount">Rp {{ number_format($stats['avgRequestValue'] ?? 0, 0, ',', '.') }}</h6>
+                                <span class="text-success small pt-1 fw-bold">Per Permohonan</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Rata-rata Frekuensi --}}
+            <div class="col-lg-3 col-md-6">
+                <div class="card info-card transactions-card h-100">
+                    <div class="filter">
+                        <a class="icon" href="#" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></a>
+                        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+                            <li class="dropdown-header text-start"><h6>Filter</h6></li>
+                            <li><a class="dropdown-item" href="#" onclick="updatePeriod('day',   'freq')">Hari Ini</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="updatePeriod('month', 'freq')">Bulan Ini</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="updatePeriod('year',  'freq')">Tahun Ini</a></li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">Rata-rata Frekuensi
+                            <span id="freqPeriodLabel">| {{ $stats['periodLabel'] }}</span>
+                        </h5>
+                        <div class="d-flex align-items-center">
+                            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                                <i class="bi bi-graph-up"></i>
+                            </div>
+                            <div class="ps-3">
+                                <h6 id="avgFrequencyValue">{{ $stats['avgRequestFrequency']['value'] }}</h6>
+                                <span class="text-muted small pt-2 ps-1" id="avgFrequencyLabel">{{ $stats['avgRequestFrequency']['label'] }}</span>
                             </div>
                         </div>
                     </div>
@@ -483,31 +498,28 @@
 
         </div><!-- /.row chart 1 -->
 
-        {{-- ---- CHART ROW 2: Top 10 Kendaraan + Top 10 Driver ---- --}}
+        {{-- ---- CHART ROW 2: Top 10 Konsumsi (Kendaraan / Driver) ---- --}}
         <div class="row g-3 mb-4">
-
-            <div class="col-md-6">
-                <div class="card chart-card h-100">
-                    <div class="card-header bg-light">
-                        <strong><i class="bi bi-truck me-2 text-warning"></i>Top 10 Konsumsi BBM per Kendaraan</strong>
+            <div class="col-12">
+                <div class="card chart-card h-100 shadow-sm">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <strong><i class="bi bi-trophy-fill me-2 text-warning"></i>Top 10 Konsumsi BBM</strong>
+                        <div class="btn-group btn-group-sm ranking-toggle" role="group" aria-label="Mode ranking">
+                            <button type="button" class="btn btn-outline-primary active" id="rankingVehicleBtn"
+                                    onclick="switchRanking('vehicle')">
+                                <i class="bi bi-truck me-1"></i>Per Kendaraan
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="rankingDriverBtn"
+                                    onclick="switchRanking('driver')">
+                                <i class="bi bi-person-badge me-1"></i>Per Driver
+                            </button>
+                        </div>
                     </div>
-                    <div class="card-body" style="min-height: 300px; position: relative;">
-                        <canvas id="vehicleExpenseChart"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6">
-                <div class="card chart-card h-100">
-                    <div class="card-header bg-light">
-                        <strong><i class="bi bi-person-badge me-2 text-info"></i>Top 10 Pengajuan Driver</strong>
-                    </div>
-                    <div class="card-body" style="min-height: 300px; position: relative;">
-                        <canvas id="driverExpenseChart"></canvas>
+                    <div class="card-body" style="min-height: 320px; position: relative;">
+                        <canvas id="rankingChart"></canvas>
                     </div>
                 </div>
             </div>
-
         </div><!-- /.row chart 2 -->
 
     </div><!-- /#pane-grafik -->
@@ -517,6 +529,69 @@
          TAB 2 — TABEL DETAIL
          ============================================================ --}}
     <div class="tab-pane fade {{ $tab == 'tabel' ? 'show active' : '' }}" id="pane-tabel" role="tabpanel">
+
+        {{-- Tabel Pivot: Data Lengkap --}}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <strong><i class="bi bi-table me-2"></i>Tabel Pivot: Data Lengkap</strong>
+                <div class="d-flex gap-2 align-items-center">
+                    <input type="text" class="form-control form-control-sm" id="pivotSearch"
+                           placeholder="🔍 Cari..." style="width: 200px;">
+                    <button class="btn btn-success btn-sm" onclick="exportTableToCSV('pivotTable', 'pivot_data.csv')">
+                        <i class="bi bi-file-excel me-1"></i>Export CSV
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0" id="pivotTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Request #</th>
+                                <th>Driver</th>
+                                <th>Kendaraan</th>
+                                <th>Tgl Pengajuan</th>
+                                <th class="text-end">Nominal</th>
+                                <th class="text-center">Status</th>
+                                <th>Tgl Pengisian</th>
+                                <th class="text-center">Volume</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pivotTableBody">
+                            @foreach($pivotData as $row)
+                            <tr>
+                                <td><small class="text-primary">{{ $row['requestNumber'] }}</small></td>
+                                <td>{{ $row['driverName'] }}</td>
+                                <td><small>{{ $row['vehicleDisplay'] }}</small></td>
+                                <td><small>{{ $row['requestAt']->format('d/m/Y') }}</small></td>
+                                <td class="text-end"><strong>Rp {{ number_format($row['nominal'], 0, ',', '.') }}</strong></td>
+                                <td class="text-center">
+                                    @if($row['status'] == 'completed')
+                                        <span class="badge bg-primary">{{ $row['status'] }}</span>
+                                    @elseif($row['status'] == 'approved')
+                                        <span class="badge bg-success">{{ $row['status'] }}</span>
+                                    @elseif($row['status'] == 'rejected')
+                                        <span class="badge bg-danger">{{ $row['status'] }}</span>
+                                    @else
+                                        <span class="badge bg-warning text-dark">{{ $row['status'] }}</span>
+                                    @endif
+                                </td>
+                                <td><small>{{ $row['tanggalPengisian'] ? $row['tanggalPengisian']->format('d/m/Y') : '-' }}</small></td>
+                                <td class="text-center">{{ $row['volumePengisian'] > 0 ? $row['volumePengisian'] . ' L' : '-' }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center px-3 py-2">
+                    <span class="text-muted small">
+                        Menampilkan {{ $pivotData->firstItem() ?? 0 }} – {{ $pivotData->lastItem() ?? 0 }}
+                        dari {{ $pivotData->total() }} transaksi
+                    </span>
+                    <div>{{ $pivotData->links() }}</div>
+                </div>
+            </div>
+        </div>
 
         {{-- Statistik Detail per Driver --}}
         <div class="card shadow-sm mb-4">
@@ -612,69 +687,6 @@
                         dari {{ $kmPerformance->total() }} kendaraan
                     </span>
                     <div>{{ $kmPerformance->links() }}</div>
-                </div>
-            </div>
-        </div>
-
-        {{-- Tabel Pivot: Data Lengkap --}}
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <strong><i class="bi bi-table me-2"></i>Tabel Pivot: Data Lengkap</strong>
-                <div class="d-flex gap-2 align-items-center">
-                    <input type="text" class="form-control form-control-sm" id="pivotSearch"
-                           placeholder="🔍 Cari..." style="width: 200px;">
-                    <button class="btn btn-success btn-sm" onclick="exportTableToCSV('pivotTable', 'pivot_data.csv')">
-                        <i class="bi bi-file-excel me-1"></i>Export CSV
-                    </button>
-                </div>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover table-sm mb-0" id="pivotTable">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Request #</th>
-                                <th>Driver</th>
-                                <th>Kendaraan</th>
-                                <th>Tgl Pengajuan</th>
-                                <th class="text-end">Nominal</th>
-                                <th class="text-center">Status</th>
-                                <th>Tgl Pengisian</th>
-                                <th class="text-center">Volume</th>
-                            </tr>
-                        </thead>
-                        <tbody id="pivotTableBody">
-                            @foreach($pivotData as $row)
-                            <tr>
-                                <td><small class="text-primary">{{ $row['requestNumber'] }}</small></td>
-                                <td>{{ $row['driverName'] }}</td>
-                                <td><small>{{ $row['vehicleDisplay'] }}</small></td>
-                                <td><small>{{ $row['requestAt']->format('d/m/Y') }}</small></td>
-                                <td class="text-end"><strong>Rp {{ number_format($row['nominal'], 0, ',', '.') }}</strong></td>
-                                <td class="text-center">
-                                    @if($row['status'] == 'completed')
-                                        <span class="badge bg-primary">{{ $row['status'] }}</span>
-                                    @elseif($row['status'] == 'approved')
-                                        <span class="badge bg-success">{{ $row['status'] }}</span>
-                                    @elseif($row['status'] == 'rejected')
-                                        <span class="badge bg-danger">{{ $row['status'] }}</span>
-                                    @else
-                                        <span class="badge bg-warning text-dark">{{ $row['status'] }}</span>
-                                    @endif
-                                </td>
-                                <td><small>{{ $row['tanggalPengisian'] ? $row['tanggalPengisian']->format('d/m/Y') : '-' }}</small></td>
-                                <td class="text-center">{{ $row['volumePengisian'] > 0 ? $row['volumePengisian'] . ' L' : '-' }}</td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-                <div class="d-flex justify-content-between align-items-center px-3 py-2">
-                    <span class="text-muted small">
-                        Menampilkan {{ $pivotData->firstItem() ?? 0 }} – {{ $pivotData->lastItem() ?? 0 }}
-                        dari {{ $pivotData->total() }} transaksi
-                    </span>
-                    <div>{{ $pivotData->links() }}</div>
                 </div>
             </div>
         </div>
@@ -954,8 +966,8 @@
     // ── Chart instances ──
     let expenseLineChart   = null;
     let gasolinePieChart   = null;
-    let vehicleExpenseChart = null;
-    let driverExpenseChart  = null;
+    let rankingChart       = null;
+    let rankingMode        = 'vehicle';
 
     // ================================================================
     // INIT
@@ -963,8 +975,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         renderExpenseLineChart();
         renderGasolinePieChart();
-        renderVehicleExpenseChart();
-        renderDriverExpenseChart();
+        renderRankingChart('vehicle');
         initializeSearch();
         updateFilterBadge();
         initToggleFilterChevron();
@@ -980,7 +991,7 @@
         const hiddenInput = document.getElementById('activeTabInput');
         if (!tabs || !hiddenInput) return;
 
-        const charts = () => [expenseLineChart, gasolinePieChart, vehicleExpenseChart, driverExpenseChart].filter(Boolean);
+        const charts = () => [expenseLineChart, gasolinePieChart, rankingChart].filter(Boolean);
 
         tabs.addEventListener('shown.bs.tab', function (event) {
             // Simpan tab aktif ke hidden input (ikut saat filter disubmit)
@@ -1093,7 +1104,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'bottom' },
+                    legend: { display: false },
                     tooltip: {
                         callbacks: {
                             label: function (context) {
@@ -1110,32 +1121,47 @@
     }
 
     // ================================================================
-    // BAR CHART: TOP 10 KENDARAAN
+    // BAR CHART: TOP 10 KONSUMSI (Kendaraan / Driver)
     // ================================================================
-    function renderVehicleExpenseChart() {
-        const ctx = document.getElementById('vehicleExpenseChart');
+    function renderRankingChart(mode) {
+        rankingMode = mode;
+
+        const vehicleBtn = document.getElementById('rankingVehicleBtn');
+        const driverBtn  = document.getElementById('rankingDriverBtn');
+        if (vehicleBtn) vehicleBtn.classList.toggle('active', mode === 'vehicle');
+        if (driverBtn)  driverBtn.classList.toggle('active', mode === 'driver');
+
+        const ctx = document.getElementById('rankingChart');
         if (!ctx) return;
 
-        const data = statsData.vehicleExpense || {};
-        if (Object.keys(data).length === 0) {
+        const raw = mode === 'vehicle'
+            ? (statsData.vehicleExpense || {})
+            : (statsData.driverExpense || {});
+
+        if (Object.keys(raw).length === 0) {
+            if (rankingChart) { rankingChart.destroy(); rankingChart = null; }
             ctx.parentElement.innerHTML = '<p class="text-center text-muted py-5"><i class="bi bi-inbox fs-1 d-block mb-2"></i>Tidak ada data</p>';
             return;
         }
 
-        const sorted = Object.entries(data).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        const sorted = Object.entries(raw).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        const color  = mode === 'vehicle'
+            ? { bg: 'rgba(255, 159, 64, 0.8)',  border: 'rgba(255, 159, 64, 1)' }
+            : { bg: 'rgba(153, 102, 255, 0.8)', border: 'rgba(153, 102, 255, 1)' };
 
-        if (vehicleExpenseChart) vehicleExpenseChart.destroy();
+        if (rankingChart) rankingChart.destroy();
 
-        vehicleExpenseChart = new Chart(ctx, {
+        rankingChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: sorted.map(i => i[0]),
                 datasets: [{
                     label: 'Pengeluaran (Rp)',
                     data: sorted.map(i => i[1]),
-                    backgroundColor: 'rgba(255, 159, 64, 0.8)',
-                    borderColor: 'rgba(255, 159, 64, 1)',
-                    borderWidth: 1
+                    backgroundColor: color.bg,
+                    borderColor: color.border,
+                    borderWidth: 1,
+                    borderRadius: 4
                 }]
             },
             options: {
@@ -1148,52 +1174,6 @@
                 },
                 scales: {
                     x: {
-                        beginAtZero: true,
-                        ticks: { callback: val => 'Rp ' + (val / 1000000).toFixed(1) + 'Jt' }
-                    }
-                }
-            }
-        });
-    }
-
-    // ================================================================
-    // BAR CHART: TOP 10 DRIVER
-    // ================================================================
-    function renderDriverExpenseChart() {
-        const ctx = document.getElementById('driverExpenseChart');
-        if (!ctx) return;
-
-        const data = statsData.driverExpense || {};
-        if (Object.keys(data).length === 0) {
-            ctx.parentElement.innerHTML = '<p class="text-center text-muted py-5"><i class="bi bi-inbox fs-1 d-block mb-2"></i>Tidak ada data</p>';
-            return;
-        }
-
-        const sorted = Object.entries(data).sort((a, b) => b[1] - a[1]).slice(0, 10);
-
-        if (driverExpenseChart) driverExpenseChart.destroy();
-
-        driverExpenseChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: sorted.map(i => i[0]),
-                datasets: [{
-                    label: 'Total Pengajuan (Rp)',
-                    data: sorted.map(i => i[1]),
-                    backgroundColor: 'rgba(153, 102, 255, 0.8)',
-                    borderColor: 'rgba(153, 102, 255, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { callbacks: { label: ctx => 'Rp ' + ctx.parsed.y.toLocaleString('id-ID') } }
-                },
-                scales: {
-                    y: {
                         beginAtZero: true,
                         ticks: { callback: val => 'Rp ' + (val / 1000000).toFixed(1) + 'Jt' }
                     }
@@ -1379,6 +1359,7 @@
         const input = document.getElementById('activeTabInput');
         return input ? input.value : 'grafik';
     };
+    window.switchRanking = mode => renderRankingChart(mode);
     window.updatePeriod      = period => window.location.href = `{{ route('superadmin.dashboard.bisnis') }}?period=${period}&tab=${window.currentTab()}`;
     window.updateChartPeriod = period => window.location.href = `{{ route('superadmin.dashboard.bisnis') }}?period=${period}&tab=${window.currentTab()}`;
     window.resetFilters      = () => { document.getElementById('filterForm').reset(); window.location.href = '{{ route("superadmin.dashboard.bisnis") }}?tab=' + window.currentTab(); };
@@ -1398,88 +1379,6 @@
         link.href     = URL.createObjectURL(blob);
         link.download = filename;
         link.click();
-    };
-
-    window.showValidationModal = function (validationId, driver, vehicle, distance) {
-        const modal = new bootstrap.Modal(document.getElementById('validateTripModal'));
-        document.getElementById('formValidateTrip').action = `/trip-validations/${validationId}/validate`;
-        document.getElementById('modalTripInfo').textContent = `${driver} - ${vehicle}: ${distance.toLocaleString('id-ID')} KM`;
-        modal.show();
-    };
-
-    window.filterTripTable = function () {
-        const validation = document.getElementById('filterValidation')?.value || '';
-        const distance   = document.getElementById('filterDistance')?.value   || '';
-        const efficiency = document.getElementById('filterEfficiency')?.value || '';
-        const search     = document.getElementById('searchTrip')?.value.toLowerCase() || '';
-
-        document.querySelectorAll('#allTripsBody tr').forEach(row => {
-            if (row.cells.length === 1) return;
-            const needsValidation = row.getAttribute('data-needs-validation') === 'true';
-            const isValidated     = row.getAttribute('data-validated') === 'validated';
-            const rowDistance     = parseInt(row.getAttribute('data-distance'))    || 0;
-            const rowEfficiency   = parseFloat(row.getAttribute('data-efficiency')) || 0;
-            const rowText         = row.textContent.toLowerCase();
-            let show = true;
-
-            if (validation === 'not_required'    && needsValidation)              show = false;
-            if (validation === 'needs_validation' && (!needsValidation || isValidated)) show = false;
-            if (validation === 'validated'        && !isValidated)                show = false;
-            if (distance === '0-100'   && (rowDistance < 0   || rowDistance > 100)) show = false;
-            if (distance === '100-300' && (rowDistance < 100 || rowDistance > 300)) show = false;
-            if (distance === '300-500' && (rowDistance < 300 || rowDistance > 500)) show = false;
-            if (distance === '500+'    && rowDistance < 500)                        show = false;
-            if (efficiency === 'good'  && (rowEfficiency < 8 || rowEfficiency > 15)) show = false;
-            if (efficiency === 'low'   && rowEfficiency >= 8)                      show = false;
-            if (efficiency === 'high'  && rowEfficiency <= 15)                     show = false;
-            if (search && !rowText.includes(search))                               show = false;
-
-            row.style.display = show ? '' : 'none';
-        });
-    };
-
-    window.toggleCheckAll = function () {
-        const checkAll = document.getElementById('checkAll');
-        document.querySelectorAll('.trip-checkbox').forEach(cb => {
-            if (cb.closest('tr').style.display !== 'none') cb.checked = checkAll.checked;
-        });
-        window.updateBulkActions();
-    };
-
-    window.updateBulkActions = function () {
-        const checked   = document.querySelectorAll('.trip-checkbox:checked');
-        const container = document.getElementById('bulkActionsContainer');
-        const countEl   = document.getElementById('selectedCount');
-        if (countEl) countEl.textContent = checked.length;
-        if (container) container.style.display = checked.length > 0 ? 'block' : 'none';
-    };
-
-    window.bulkValidate = function (isLongTrip) {
-        const checked = Array.from(document.querySelectorAll('.trip-checkbox:checked')).map(cb => cb.value);
-        if (checked.length === 0) { alert('Pilih trip yang ingin divalidasi'); return; }
-        const msg = isLongTrip ? 'Konfirmasi sebagai Perjalanan Dinas Jarak Jauh?' : 'Konfirmasi sebagai Perjalanan Normal?';
-        if (!confirm(`${msg}\n\n${checked.length} trip akan divalidasi.`)) return;
-
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '{{ route("superadmin.trip-validations.bulk-validate") }}';
-
-        const csrf = document.createElement('input');
-        csrf.type = 'hidden'; csrf.name = '_token'; csrf.value = '{{ csrf_token() }}';
-        form.appendChild(csrf);
-
-        checked.forEach(id => {
-            const inp = document.createElement('input');
-            inp.type = 'hidden'; inp.name = 'validation_ids[]'; inp.value = id;
-            form.appendChild(inp);
-        });
-
-        const ltInp = document.createElement('input');
-        ltInp.type = 'hidden'; ltInp.name = 'is_long_trip'; ltInp.value = isLongTrip ? '1' : '0';
-        form.appendChild(ltInp);
-
-        document.body.appendChild(form);
-        form.submit();
     };
 
 })();

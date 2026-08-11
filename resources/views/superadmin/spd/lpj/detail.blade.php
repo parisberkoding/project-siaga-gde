@@ -84,8 +84,8 @@
                         <div class="col-md-4">Tanggal Perjalanan:</div>
                         <div class="col-md-8">
                             @if($laporan->suratSpd)
-                                {{ $laporan->suratSpd->tanggal_berangkat->format('d M Y') }} -
-                                {{ $laporan->suratSpd->tanggal_kembali->format('d M Y') }}
+                                {{ $laporan->suratSpd->tanggal_berangkat->translatedFormat('d M Y') }} -
+                                {{ $laporan->suratSpd->tanggal_kembali->translatedFormat('d M Y') }}
                                 <span class="badge bg-secondary">{{ $laporan->suratSpd->lama_perjalanan_hari }} hari</span>
                             @else
                                 -
@@ -125,14 +125,14 @@
                     <h6 class="text-warning mb-3"><i class="bi bi-calendar"></i> Tanggal Pengajuan</h6>
                     <div class="row mb-2">
                         <div class="col-md-4">Tanggal LPJ:</div>
-                        <div class="col-md-8">{{ $laporan->tanggal_lpj ? $laporan->tanggal_lpj->format('d M Y') : '-' }}</div>
+                        <div class="col-md-8">{{ $laporan->tanggal_lpj ? $laporan->tanggal_lpj->translatedFormat('d M Y') : '-' }}</div>
                     </div>
                     <div class="row mb-2">
                         <div class="col-md-4">Deadline:</div>
                         <div class="col-md-8">
                             @if($laporan->due_date)
                                 <span class="{{ $laporan->is_late ? 'text-danger' : '' }}">
-                                    {{ $laporan->due_date->format('d M Y') }}
+                                    {{ $laporan->due_date->translatedFormat('d M Y') }}
                                 </span>
                                 @if($laporan->is_late)
                                     <span class="badge bg-danger">Terlambat {{ $laporan->days_late }} hari</span>
@@ -166,7 +166,7 @@
                                 @forelse($laporan->details as $index => $detail)
                                     <tr>
                                         <td class="text-center">{{ $index + 1 }}</td>
-                                        <td>{{ $detail->tanggal ? $detail->tanggal->format('d M Y') : '-' }}</td>
+                                        <td>{{ $detail->tanggal ? $detail->tanggal->translatedFormat('d M Y') : '-' }}</td>
                                         <td>
                                             <span class="badge {{ $detail->getTipeBadgeClass() }}">
                                                 {{ $detail->tipe_penggunaan }}
@@ -310,11 +310,11 @@
                             @if($laporan->status == 'approved')
                                 <strong><i class="bi bi-check-circle"></i> Disetujui</strong> oleh
                                 <strong>{{ $laporan->approverPengguna->nama_lengkap ?? $laporan->approverPengguna->name ?? '-' }}</strong><br>
-                                <small>{{ $laporan->approved_pengguna_at ? $laporan->approved_pengguna_at->format('d F Y H:i') : '-' }}</small>
+                                <small>{{ $laporan->approved_pengguna_at ? $laporan->approved_pengguna_at->translatedFormat('d F Y H:i') : '-' }}</small>
                             @else
                                 <strong><i class="bi bi-x-circle"></i> Ditolak</strong> oleh
                                 <strong>{{ $laporan->rejector->nama_lengkap ?? $laporan->rejector->name ?? '-' }}</strong><br>
-                                <small>{{ $laporan->rejected_at ? $laporan->rejected_at->format('d F Y H:i') : '-' }}</small><br>
+                                <small>{{ $laporan->rejected_at ? $laporan->rejected_at->translatedFormat('d F Y H:i') : '-' }}</small><br>
                                 <strong>Alasan:</strong> {{ $laporan->rejection_reason }}
                             @endif
                         </div>
@@ -391,12 +391,12 @@
 
                     <div class="mb-2">
                         <small class="text-muted">Tanggal Pengajuan:</small><br>
-                        <strong>{{ $laporan->created_at->format('d F Y H:i') }}</strong>
+                        <strong>{{ $laporan->created_at->translatedFormat('d F Y H:i') }}</strong>
                     </div>
 
                     <div class="mb-0">
                         <small class="text-muted">Terakhir Update:</small><br>
-                        <strong>{{ $laporan->updated_at->format('d F Y H:i') }}</strong>
+                        <strong>{{ $laporan->updated_at->translatedFormat('d F Y H:i') }}</strong>
                     </div>
                 </div>
             </div>

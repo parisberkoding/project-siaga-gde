@@ -89,7 +89,7 @@
                     <div class="col-sm-9 text-secondary">
                         <span class="badge bg-info">Completed</span>
                         <div class="mt-1 small">
-                            <div>Tanggal Beli: {{ $request->transactionProof->purchase_datetime->format('d M Y H:i') }}</div>
+                            <div>Tanggal Beli: {{ $request->transactionProof->purchase_datetime->translatedFormat('d M Y H:i') }}</div>
                             <div>Volume BBM: {{ number_format((float) $request->transactionProof->fuel_volume, 2, ',', '.') }} liter</div>
                             @if($request->transactionProof->km_terakhir)
                                 <div>KM Akhir: {{ number_format((float) $request->transactionProof->km_terakhir, 0, ',', '.') }} km</div>

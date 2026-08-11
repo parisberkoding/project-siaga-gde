@@ -60,6 +60,6 @@ class SuratSpdBudget extends Model
      */
     public function getShortTanggalAttribute(): string
     {
-        return $this->tanggal->format('d M Y');
+        return $this->tanggal->translatedFormat('d M Y');
     }
 }

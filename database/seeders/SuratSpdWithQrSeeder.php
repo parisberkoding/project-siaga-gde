@@ -80,7 +80,7 @@ class SuratSpdWithQrSeeder extends Seeder
                 $surat->total_budget          = 0;
                 $surat->is_extension          = false;
                 $surat->catatan               = 'Surat dummy untuk testing QR signature.';
-                $surat->tanggal_surat         = 'Patuha, ' . Carbon::now()->translatedFormat('d F Y');
+                $surat->tanggal_surat         = 'Patuha, ' . Carbon::now()->locale('id')->translatedFormat('d F Y');
                 $surat->status                = 'approved';
                 $surat->approved_by           = $approver->id;
                 $surat->approved_at           = now();
