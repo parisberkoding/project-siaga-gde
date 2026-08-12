@@ -82,7 +82,7 @@
 
         .hero-bg {
             position: absolute; inset: 0;
-            background-image: url('https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=1600&q=80&fit=crop&crop=center');
+            background-image: url('/img/landing_page_backdrop.jpeg');
             background-size: cover; background-position: center;
         }
 
