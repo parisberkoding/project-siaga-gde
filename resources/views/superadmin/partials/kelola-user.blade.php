@@ -70,10 +70,10 @@
         @if($tab == 'list')
         <div id="userListTab">
             <!-- Filter Form -->
-            <form method="GET" action="{{ route('users') }}" class="mb-3">
+            <form method="GET" action="{{ route('users') }}" class="mb-3" data-autofilter>
                 <input type="hidden" name="tab" value="list">
                 <div class="row g-2">
-                    <div class="col-md-6">
+                    <div class="col-md-9">
                         <input type="text" class="form-control" name="search"
                                value="{{ $search }}"
                                placeholder="🔍 Cari berdasarkan nama, username, atau email...">
@@ -88,11 +88,6 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="bi bi-funnel me-1"></i>Terapkan Filter
-                        </button>
-                    </div>
                 </div>
             </form>
 
@@ -106,6 +101,9 @@
                             <th>Email</th>
                             <th>Jabatan</th>
                             <th width="120">Role</th>
+                            <th>Site</th>
+                            <th>Unit Bisnis</th>
+                            <th width="110">Master Pekerja</th>
                             <th>Tanggal Dibuat</th>
                             <th width="180">Aksi</th>
                         </tr>
@@ -114,7 +112,7 @@
                         @forelse($users as $user)
                         <tr>
                             <td><small class="text-muted">{{ $user->id }}</small></td>
-                            <td><strong>{{ $user->username }}</strong></td>
+                            <td><strong>{{ $user->username }}</strong><div class="small text-muted">{{ $user->user_code }}</div></td>
                             <td>{{ $user->nama_lengkap }}</td>
                             <td><small>{{ $user->email }}</small></td>
                             <td><small class="text-muted">{{ $user->jabatan ?? '-' }}</small></td>
@@ -140,10 +138,25 @@
                                     </span>
                                 @endif
                             </td>
+                            <td><small>{{ $user->defaultSite?->code ?? '-' }}</small></td>
+                            <td>
+                                @if($user->unit)
+                                    <span class="badge bg-primary">{{ $user->unit->code }}</span>
+                                @else
+                                    <span class="badge bg-light text-muted">Global</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($user->employeeDefault)
+                                    <span class="badge bg-success" title="Terhubung ke Master Pekerja"><i class="bi bi-link"></i> Aktif</span>
+                                @else
+                                    <span class="badge bg-light text-muted" title="Tidak terdaftar di Master Pekerja">-</span>
+                                @endif
+                            </td>
                             <td><small>{{ $user->created_at->format('d/m/Y H:i') }}</small></td>
                             <td>
                                 <button class="btn btn-warning btn-sm btn-action"
-                                        onclick="openEditModal({{ $user->id }}, '{{ $user->username }}', '{{ $user->nama_lengkap }}', '{{ $user->email }}', '{{ $user->jabatan }}', '{{ $user->roles->first()->code ?? $user->role }}')"
+                                        onclick="openEditModal({{ $user->id }}, '{{ $user->username }}', '{{ e($user->nama_lengkap) }}', '{{ $user->email }}', '{{ e($user->jabatan ?? '') }}', '{{ $user->roles->first()->code ?? $user->role }}', '{{ $user->default_site_id ?? '' }}', '{{ $user->unit_id ?? '' }}')"
                                         title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </button>
@@ -165,7 +178,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8">
+                            <td colspan="11">
                                 <div class="empty-state">
                                     <i class="bi bi-inbox"></i>
                                     <p>Belum ada data user</p>
@@ -302,6 +315,25 @@
                             @endforeach
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Site / Unit</label>
+                        <select class="form-select" name="default_site_id" id="editSiteId">
+                            <option value="">— Tidak ditentukan —</option>
+                            @foreach($sites as $site)
+                            <option value="{{ $site->id }}">{{ $site->code }} — {{ $site->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Unit Bisnis</label>
+                        <select class="form-select" name="unit_id" id="editUnitId">
+                            <option value="">— Global / Pusat (tanpa scope) —</option>
+                            @foreach($units as $unit)
+                            <option value="{{ $unit->id }}">{{ $unit->code }} — {{ $unit->name }}</option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">Kosongkan untuk akses global (pusat).</small>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -398,7 +430,7 @@
     };
 
     // ✅ Open Edit User Modal
-    window.openEditModal = function(id, username, namaLengkap, email, jabatan, role) {
+    window.openEditModal = function(id, username, namaLengkap, email, jabatan, role, siteId, unitId) {
         if (window.isModalOpening) {
             console.log('Modal already opening, blocked');
             return;
@@ -439,7 +471,9 @@
             editNamaLengkap: document.getElementById('editNamaLengkap'),
             editEmail: document.getElementById('editEmail'),
             editJabatan: document.getElementById('editJabatan'),
-            editRoleCode: document.getElementById('editRoleCode')
+            editRoleCode: document.getElementById('editRoleCode'),
+            editSiteId: document.getElementById('editSiteId'),
+            editUnitId: document.getElementById('editUnitId'),
         };
 
         if (elements.editUsername) elements.editUsername.value = username;
@@ -447,6 +481,8 @@
         if (elements.editEmail) elements.editEmail.value = email;
         if (elements.editJabatan) elements.editJabatan.value = jabatan || '';
         if (elements.editRoleCode) elements.editRoleCode.value = role;
+        if (elements.editSiteId) elements.editSiteId.value = siteId || '';
+        if (elements.editUnitId) elements.editUnitId.value = unitId || '';
 
         // Create new modal instance
         const modal = new bootstrap.Modal(modalElement, {
@@ -498,7 +534,7 @@
         // Set form action
         const form = document.getElementById('resetPasswordForm');
         if (form) {
-            form.action = `/superadmin/users/${id}/reset-password`;
+            form.action = `/users/${id}/reset-password`;
         }
 
         // Set username display
@@ -551,11 +587,30 @@
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
             cleanupModals();
+            initAutoFilter();
             console.log('User page initialized');
         });
     } else {
         cleanupModals();
+        initAutoFilter();
         console.log('User page initialized (immediate)');
+    }
+
+    // ✅ Realtime filter: submit otomatis tanpa tombol Terapkan Filter
+    function initAutoFilter() {
+        document.querySelectorAll('form[data-autofilter]').forEach(function(form) {
+            const search = form.querySelector('input[name="search"]');
+            if (search) {
+                let timer;
+                search.addEventListener('input', function() {
+                    clearTimeout(timer);
+                    timer = setTimeout(function() { form.submit(); }, 400);
+                });
+            }
+            form.querySelectorAll('select').forEach(function(sel) {
+                sel.addEventListener('change', function() { form.submit(); });
+            });
+        });
     }
 
     // ✅ Cleanup on unload

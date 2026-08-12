@@ -51,4 +51,17 @@ class LunchDistribution extends Model
     {
         return $query->where('is_locked', true);
     }
+
+    /**
+     * Scope unit bisnis: distribusi makan siang di salah satu site dalam unit.
+     * Null = tanpa scope (global / pusat).
+     */
+    public function scopeInUnit($query, ?array $siteIds)
+    {
+        if ($siteIds === null) {
+            return;
+        }
+
+        $query->whereIn('site_id', $siteIds);
+    }
 }

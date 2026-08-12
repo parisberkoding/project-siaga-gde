@@ -106,4 +106,17 @@ class Permohonan extends Model
     {
         return $query->where('status', 'pending_vehicle_approval');
     }
+
+    /**
+     * Scope unit bisnis: hanya permohonan yang kendaraannya berada di site dalam unit.
+     * Null = tanpa scope (global / pusat).
+     */
+    public function scopeInUnit($query, ?array $siteIds)
+    {
+        if ($siteIds === null) {
+            return;
+        }
+
+        $query->whereHas('vehicle.detail', fn ($q) => $q->whereIn('site_id', $siteIds));
+    }
 }

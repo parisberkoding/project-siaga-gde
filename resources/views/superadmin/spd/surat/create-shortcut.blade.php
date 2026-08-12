@@ -43,38 +43,77 @@
         <div class="row">
             {{-- Form Utama (Left Column) --}}
             <div class="col-lg-8">
-                {{-- Pemberi Tugas (otomatis Bu Weni) --}}
-                <input type="hidden" name="pemberi_tugas_nama" value="Genny Muteni Yudawinata">
-                <input type="hidden" name="pemberi_tugas_jabatan" value="HC, GA, & Finance Manager">
-                <!-- <div class="alert alert-info py-2 d-flex align-items-center gap-2">
-                    <i class="bi bi-person-badge fs-5"></i>
-                    <div>
-                        <strong>Pemberi Tugas:</strong> Genny Muteni Yudawinata
-                        <span class="text-muted">&middot; HC, GA, & Finance Manager</span>
-                    </div>
-                </div> -->
-
-                {{-- Pegawai & Pengemudi --}}
+                {{-- Pemberi Tugas (Hibrid: dari Master Pekerja / manual, level AM/Manager) --}}
                 <div class="card">
                     <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-people"></i> Pegawai & Pengemudi</h5>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Pegawai yang Bertugas <span class="text-danger">*</span></label>
-                                <select class="form-select @error('employee_id') is-invalid @enderror" name="employee_id" required>
-                                    <option value="">-- Pilih Pegawai --</option>
-                                    @foreach($employees as $emp)
-                                        <option value="{{ $emp->id }}" {{ old('employee_id') == $emp->id ? 'selected' : '' }}>
-                                            {{ $emp->nama_lengkap }} ({{ $emp->jabatan }})
+                        <h5 class="card-title"><i class="bi bi-person-badge"></i> Pemberi Tugas</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Level Pemberi Tugas <span class="text-danger">*</span></label>
+                                <select class="form-select @error('pemberi_tugas_level') is-invalid @enderror" name="pemberi_tugas_level" id="pemberiLevel" required>
+                                    <option value="">-- Pilih Level --</option>
+                                    <option value="manager" {{ old('pemberi_tugas_level') == 'manager' ? 'selected' : '' }}>Manager</option>
+                                    <option value="assistant_manager" {{ old('pemberi_tugas_level') == 'assistant_manager' ? 'selected' : '' }}>Assistant Manager</option>
+                                </select>
+                                @error('pemberi_tugas_level')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Ambil dari Master Pekerja <small class="text-muted fw-normal">(opsional)</small></label>
+                                <select class="form-select" name="pemberi_employee_id" id="pemberiEmployee">
+                                    <option value="">— Input manual —</option>
+                                    @foreach($pejabatOptions as $pejabat)
+                                        <option value="{{ $pejabat->id }}"
+                                                data-nama="{{ $pejabat->employee_name }}"
+                                                data-jabatan="{{ $pejabat->position ?? '' }}"
+                                                {{ old('pemberi_employee_id') == $pejabat->id ? 'selected' : '' }}>
+                                            {{ $pejabat->employee_name }} · {{ $pejabat->position ?? 'Tanpa jabatan' }}
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('employee_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                <small class="text-muted">Pilih pejabat dari Master Pekerja atau biarkan untuk input manual.</small>
                             </div>
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nama Pemberi Tugas <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control @error('pemberi_tugas_nama') is-invalid @enderror"
+                                       name="pemberi_tugas_nama" id="pemberiNama"
+                                       value="{{ old('pemberi_tugas_nama') }}" required placeholder="Nama lengkap pemberi tugas">
+                                @error('pemberi_tugas_nama')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Jabatan <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control @error('pemberi_tugas_jabatan') is-invalid @enderror"
+                                       name="pemberi_tugas_jabatan" id="pemberiJabatan"
+                                       value="{{ old('pemberi_tugas_jabatan') }}" required placeholder="Contoh: HC, GA, & Finance Manager">
+                                @error('pemberi_tugas_jabatan')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Pengemudi (Hibrid: dari Master Pekerja / manual) --}}
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-person"></i> Pengemudi</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Ambil dari Master Pekerja <small class="text-muted fw-normal">(opsional)</small></label>
+                                <select class="form-select" name="pengemudi_employee_id" id="pengemudiEmployee">
+                                    <option value="">— Input manual —</option>
+                                    @foreach($pengemudiOptions as $peng)
+                                        <option value="{{ $peng->id }}"
+                                                data-nama="{{ $peng->employee_name }}"
+                                                {{ old('pengemudi_employee_id') == $peng->id ? 'selected' : '' }}>
+                                            {{ $peng->employee_name }} · {{ $peng->position ?? 'Tanpa jabatan' }} ({{ $peng->defaultSite?->name ?? '-' }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">Pilih dari Master Pekerja atau biarkan untuk input manual.</small>
+                            </div>
+                            <div class="col-md-6">
                                 <label class="form-label">Nama Pengemudi <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control @error('pengemudi_nama') is-invalid @enderror"
-                                       name="pengemudi_nama" value="{{ old('pengemudi_nama') }}" required>
+                                       name="pengemudi_nama" id="pengemudiNama"
+                                       value="{{ old('pengemudi_nama') }}" required placeholder="Nama lengkap pengemudi">
                                 @error('pengemudi_nama')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div>
@@ -372,6 +411,31 @@ document.addEventListener('DOMContentLoaded', function() {
     updateNamaRows();
     calculate();
     toggleBudgetByType();
+
+    // ── Autofill Pemberi Tugas & Pengemudi dari Master Pekerja ──
+    const pemberiEmployee = document.getElementById('pemberiEmployee');
+    const pemberiNama = document.getElementById('pemberiNama');
+    const pemberiJabatan = document.getElementById('pemberiJabatan');
+    if (pemberiEmployee) {
+        pemberiEmployee.addEventListener('change', function () {
+            const opt = this.options[this.selectedIndex];
+            if (this.value && opt.dataset.nama) {
+                if (pemberiNama) pemberiNama.value = opt.dataset.nama;
+                if (pemberiJabatan) pemberiJabatan.value = opt.dataset.jabatan || '';
+            }
+        });
+    }
+
+    const pengemudiEmployee = document.getElementById('pengemudiEmployee');
+    const pengemudiNama = document.getElementById('pengemudiNama');
+    if (pengemudiEmployee) {
+        pengemudiEmployee.addEventListener('change', function () {
+            const opt = this.options[this.selectedIndex];
+            if (this.value && opt.dataset.nama && pengemudiNama) {
+                pengemudiNama.value = opt.dataset.nama;
+            }
+        });
+    }
 });
 </script>
 @endsection

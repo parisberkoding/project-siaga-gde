@@ -31,6 +31,200 @@ Catatan progres pengembangan. Update terakhir: 12 Agustus 2026.
 
 ---
 
+## 12. Fix Dashboard Bisnis — tab & pagination reset
+
+**Masalah:** Klik tab "Tabel Detail" lalu pagination → URL tidak bawa `&tab=` → controller default ke tab Grafik.
+**Perbaikan:**
+- `resources/views/superadmin/partials/dashboard-bisnis.blade.php` — `initTabPersistence()` kini `history.replaceState` saat `shown.bs.tab` + delegated capture-phase click handler yang inject `tab=` ke `href` link `.pagination` di dalam tab content.
+- `SuperadminController::dashboardBisnis` — `->appends($request->except([pivot_page,driver_page,vehicle_page,trip_page,page]))` agar param pagination tidak saling kontaminasi.
+
+---
+
+## 13. Export Voucher Kemarin + Tracking Approval (bulk)
+
+**Fitur:** Tab "Kode Voucher Kemarin" kini default filter tanggal **kemarin** (realtime, tanpa tombol), tampil tracking approval (approver, tanggal approval, valid until, status permohonan, catatan), dan export bulk (Terpilih/Semua) ke `.xlsx`.
+
+- `RequestManagementController`:
+  - `admin_index`/`admin_approval` — query voucher di-filter `whereDate('approval_date', yesterday)` default + status mencakup `active,approved,cancelled,completed` (fix gap voucher `active` dari approve tunggal yang sebelumnya hilang).
+  - `voucherList(Request)` — endpoint AJAX JSON (filter `date` + `status` realtime).
+  - `voucherExport(Request)` — export `.xlsx` via `App\Exports\VoucherExport` (PhpSpreadsheet). Menerima `ids[]` (terpilih) atau `date` (semua).
+- `app/Exports/VoucherExport.php` — baru, 14 kolom termasuk tracking approval.
+- `resources/views/admin/voucher-on-publish.blade.php` — ditulis ulang: datepicker + status select (onChange AJAX), checkbox per baris + select-all, tombol Export Terpilih/Semua, kolom Tracking Approval. Diperbaiki juga duplikat ID `#prognosis-pane`/`#prognosisTable` (konflik dengan `requester_reports`) → di-rename `#voucher-prognosis-pane`/`#voucherTable`/`#voucherBody`; photo modal duplikat dihapus.
+- Routes: `GET /admin/vouchers/list` (`admin.vouchers.list`), `POST /admin/vouchers/export` (`admin.vouchers.export`).
+- Test: `tests/Feature/VoucherExportTest.php` (5 test).
+
+---
+
+## 14. User Management 2 Mode (Manual + Aktivasi Master Pekerja)
+
+**Fitur:** Form tambah user punya 2 mode:
+- **Input Sendiri** — isi biodata + akun login; opsional "Daftarkan juga ke Master Pekerja".
+- **Aktivasi Pekerja** — pilih dari Master Pekerja (`employee_defaults` aktif yang belum punya akun) → buat akun + pilih role; nama/jabatan/site menurut pekerja; `employee_defaults.user_id` di-link. Guard anti double-activation.
+
+- `SuperadminController`: `createUser` (load `$sites`, `$employees`), `storeUser` (branch `mode=manual|activate`), `updateUser` (kini simpan `default_site_id`), `indexUsers` (eager-load `employeeDefault`, `defaultSite`; kirim `$sites`).
+- `resources/views/superadmin/users/create.blade.php` — ditulis ulang dengan toggle mode + picker Master Pekerja.
+- `resources/views/superadmin/partials/kelola-user.blade.php` — kolom Site & status Master Pekerja; field Site di edit modal; **fix bug route reset-password** (JS memakai `/users/{id}/reset-password`, sebelumnya `/superadmin/users/...` → 404).
+- Test: `tests/Feature/UserCreateTwoModeTest.php` (5 test).
+
+---
+
+## 15. SPD — Pemberi Tugas Hibrid + Pengemudi dari Master Pekerja + Shortcut fix
+
+**Fitur:**
+- **Pemberi Tugas** hibrid: select level (Manager / Assistant Manager) + ambil dari Master Pekerja atau input manual nama & jabatan. Hardcode "Genny ..." dihapus dari controller & form.
+- **Pengemudi** hibrid: pilih dari Master Pekerja atau input manual; pekerja tanpa akun tetap bisa jadi pengemudi.
+- **Shortcut superadmin** — dropdown "Pegawai yang Bertugas" dihapus; cukup "Nama Pengemudi" (hibrid).
+
+- Migration `2026_08_12_000001_make_user_id_nullable_on_surat_spds`: `surat_spds.user_id` → nullable (onDelete set null) + tambah `employee_default_id` nullable FK.
+- `app/Models/SuratSpd.php` — `employee_default_id` fillable + relasi `employeeDefault()`.
+- `SpdController`: `createSuratSuperadmin` (load `$pengemudiOptions`, `$pejabatOptions` dari EmployeeDefault), `storeSuratSuperadmin` (resolve pengemudi hibrid, pemberi tugas dari form, user_id boleh null), `createSurat` (load `$pejabatOptions`).
+- Views: `superadmin/spd/surat/create-shortcut.blade.php` (Pemberi Tugas + Pengemudi hibrid), `requester/spd/surat/create.blade.php` (Pemberi Tugas hibrid, hapus hidden hardcode).
+- Test: `tests/Feature/SpdShortcutTest.php` (4 test).
+
+---
+
+## 16. Lunch — Alur step-by-step + Section dashboard superadmin + Role Vendor
+
+**Fitur:**
+- **Section Lunch di Dashboard Bisnis** superadmin: tabel per-site (Forecast, Hadir QR, Distribusi, status lock) + total hadir + link "Detail Kehadiran" & "Dashboard Lunch". `SuperadminController::getLunchSummary()` + injeksi ke `dashboardBisnis`; render di `dashboard-bisnis.blade.php`.
+- **Panel Alur Lunch** di `lunch/dashboard.blade.php`: status 4 langkah (Master Pekerja → Forecast besok → Distribusi hari ini → Kehadiran & Export) dengan tombol aksi langsung (Generate Forecast, Kelola, dll). Data dari `LunchDashboardController` (`$stepStatus`).
+- **Role Vendor** (disiapkan, menu sidebar disembunyikan): `RbacSeeder` menambah permission group `lunch` + `lunch.view`/`lunch.export`, role `vendor` (dashboard.view + lunch.view), `lunch.view` ke `general_affairs` & `view_only`.
+- `app/Http/Controllers/Lunch/VendorLunchController::today()` + `resources/views/lunch/vendor/today.blade.php` — halaman "Siapa Makan Hari Ini" per site (akses `role:vendor,superadmin`).
+- Route: `GET /vendor/lunch/today` (`vendor.lunch.today`).
+- Test: `tests/Feature/VendorLunchTest.php` (4 test).
+
+---
+
+## 17. Konsistensi Tampilan Superadmin (sebagian)
+
+- `superadmin/rbac/index.blade.php` — ditambah `pagetitle` + `card-header bg-dark` (pol modern).
+- `superadmin/partials/kelola-permohonan.blade.php` — ditambah `pagetitle`; header `bg-warning` → `bg-primary`; **fix opsi Pertamax ganda** (sebelumnya render Pertamax dua kali per gasolineType).
+- `SuperadminController::index()` — stub "halloww" dihapus; route `superadmin-dashboard` kini redirect ke `superadmin.dashboard.bisnis`.
+- Cetak Laporan BBM (sidebar) diverifikasi: route `/print-report` fallback ke form saat tanpa params; guard GA (`role:superadmin,admin`) lolos via mapping `admin`→`general_affairs`.
+
+---
+
+## 18. Fase 0 (bagian 1) — Unit Bisnis CRUD + Assignment Unit ke User + Dashboard Realtime
+
+**Data model unit/site/user sudah diaktifkan.** Unit sekarang CRUD-able oleh superadmin:
+
+- **Migration** `2026_08_12_000100_create_units_table` — tabel `units` (code unique, name, description, is_active) + `sites.unit_id` + `users.unit_id` (nullable, FK nullOnDelete).
+- **`app/Models/Unit.php`** — `sites()`, `users()`, scope `active`. `Site` & `User` punya relasi `unit()` + fillable `unit_id`.
+- **`UnitController`** (superadmin) — index/create/store/edit/update/delete. Store/update: pemetaan site→unit (unassign site lama, pindah site antar unit). Delete ditolak bila unit masih dipakai user; site dilepas dulu saat hapus.
+- **Views** `superadmin/units/index.blade.php` + `form.blade.php` (checkbox pemetaan site, info sidebar).
+- **Routes** `superadmin.units.*` di group superadmin + **menu sidebar** "Unit Bisnis" (Master Data, superadmin only).
+- **Seeder** `UnitSeeder` — unit PUSAT/PATUHA/DIENG + pemetaan site→unit memakai **kode site aktual**: `Pusat→PUSAT`, `PMU→PUSAT`, `PTH→PATUHA`, `PTH-BC→PATUHA`, `Dieng→DIENG`. Sudah di-wire ke `DatabaseSeeder`.
+- **Assignment unit ke user** (`SuperadminController`): dropdown Unit Bisnis di form Tambah User (mode manual) + modal Edit User (kelola-user), kolom Unit Bisnis di tabel daftar user. Mode Aktivasi mengisi unit mengikuti site pekerja (`defaultSite.unit_id`).
+- **Dashboard Bisnis — filter realtime**: tombol "Terapkan Filter" dihapus; seluruh kontrol (tanggal + 7 select) auto-submit 350ms setelah berubah (`dashboardFilter.submit()`), ada indikator loading "Memuat data...", badge aktif-filter tidak lagi menghitung `tab`.
+- Config `province_slug` sudah ada di `Site` model (dipakai fitur harga BBM per region).
+- Test: `tests/Feature/UnitCrudTest.php` (8 test).
+
+---
+
+## 19. Dashboard Bisnis — Refactor Single Page (tanpa tab, tanpa lunch)
+
+**Permintaan user:** URL `dashboard-bisnis?tab=grafik` (bukan "tab-tab gitu"), filter dirapikan, tabel makan siang jangan tiba-tiba muncul di dashboard BBM, dan dirombak proper.
+
+**Perubahan:**
+- **View `dashboard-bisnis.blade.php` ditulis ulang total** — struktur 2 tab (`Grafik & Ringkasan` / `Tabel Detail`) dihapus jadi **satu halaman berurutan**: Header → Filter → Stat Cards → Analisis (Line+Pie) → Top 10 → Tabel Pivot → Statistik per Driver → Performa KM.
+- **Section "Lunch Hari Ini" dihapus dari dashboard** — akses lunch tetap lewat menu sidebar "Lunch Management" (`lunch.dashboard`, `vendor.lunch.today`).
+- **Filter tetap realtime** (auto-submit 350ms saat berubah, tanpa tombol Terapkan) — tapi markup di-loop bersih (status/jenis BBM lewat `@foreach`), ada indikator loading, badge "N filter aktif", tombol "Sembunyikan/Tampilkan Filter".
+- **Period selector konsisten** — dropdown `day/month/year` dipakai di semua kartu + section chart (sebelumnya dropdown 3-dot per kartu + tombol chart terpisah). `updatePeriod()` & `resetFilters()` kini tidak lagi menyelipkan `&tab=`.
+- **JS dibersihkan** — hapus `initTabPersistence`, `activeTabInput`, `window.currentTab()`, capture-phase handler pagination, `updateChartPeriod`; dead HTML `validateTripModal` & var `allTrips` (tak dipakai) dihapus.
+- **`SuperadminController::dashboardBisnis` disatukan** — dua cabang (ada/tanpa filter) di-merge jadi satu query filter; `getLunchSummary()` (dead code) dihapus; import `LunchDistribution/LunchForecast/LunchTransaction` dicabut.
+- **Bug DB-agnostic diperbaiki**: `getExpenseOverTime()` & `calculateAvgRequestFrequency()` memakai `HOUR()/MONTH()/DAY()` (MySQL-only) → **500 di SQLite**. Ditulis ulang pakai `whereYear/whereMonth/whereDate` + grouping PHP (tetap jalan di MySQL).
+- **Routes dibersihkan**: route duplikat `barcode.download` (didefinisikan 2×) dihapus.
+- URL dashboard kini bersih: `/dashboard-bisnis` (tanpa `?tab=`).
+- Test: `tests/Feature/DashboardBisnisTest.php` (5 test: akses superadmin/manager, blokir selain manager/superadmin, periode day/month/year, filter status+nominal).
+
+---
+
+## 20. Fase 0 (bagian 2) — Scope Unit pada Query Modul
+
+**Tujuan:** GA yang diberi `unit_id` (mis. PATUHA) hanya melihat data site dalam unit-nya; user tanpa `unit_id` (global/pusat) melihat semua. Selesai penuh + diuji.
+
+**Perubahan:**
+- **Helper di `app/Models/User.php`** (sudah ada §18, kini dipakai): `unit()`, `unitSiteIds(): ?array` (null = global), `unitSiteCodes()`, `hasUnitScope()`.
+- **Scope `inUnit(?array $siteIds)` ditambahkan ke model** (null = no-op, sehingga query tanpa scope otomatis aman):
+  - `VehicleAndToolsConsumers` → `detail.site_id`; `Permohonan` → `vehicle.detail.site_id`; `Transaction_Proofs` → `permohonan.vehicle.detail.site_id`; `Approved_Request` → `permohonan.inUnit`.
+  - `SuratSpd` → `user.default_site_id` **atau** `employeeDefault.default_site_id`; `SuratSpdExtension` → delegasi `extensionSurat.inUnit`; `LpjPenggantian` → delegasi `suratSpd.inUnit`.
+  - `LunchTransaction` → `site_id`; `LunchForecast` → `predicted_site_id` **atau** `actual_site_id`; `EmployeeDefault` → `default_site_id`; `LunchDistribution` → `site_id`; `LunchGuestReservation` → `site_id`.
+- **Controller yang di-scope** (dipanggil `$request->user()?->unitSiteIds()` / `Auth::user()`):
+  - `SuperadminController::indexVehicles` (list + trashed + dropdown site unit-only) & `indexPermohonan` (permohonan + laporan + dropdown kendaraan).
+  - `RequestManagementController::admin_index`, `admin_approval`, `voucherList` — termasuk statistik card & approved vouchers (dashboard GA unit).
+  - `SpdController::indexSuratSuperadmin`, `reportSpending`, `indexPerpanjanganSuperadmin`, `indexLaporanSuperadmin`.
+  - Lunch: `LunchDashboardController::index`, `VendorLunchController::today`, `LunchTransactionController::index`+`feed`, `EmployeeDefaultController::index`, `LunchForecastController::index`, `LunchDistributionController::index`, `LunchAnalyticsController::index` (termasuk `$sites` dibatasi ke site unit).
+- **Test:** `tests/Feature/UnitScopeTest.php` (12 test: helper, scope 9 model, HTTP end-to-end GA dashboard & transaksi lunch — GA PATUHA tak melihat data DIENG, GA global melihat semua).
+- `php artisan test` → **139 passed (496 assertions)**.
+
+---
+
+## 21. Sidebar Ditulis Ulang (Satu Modul per Konteks) + Filter Realtime Tanpa Tombol
+
+**Tujuan:** (1) rapi kan sidebar jadi satu modul per konteks tanpa heading/tumpang tindih — "Lunch Management" satu collapsible; (2) hilangkan view jumping saat akses menu aktif; (3) hapus semua tombol "Terapkan Filter", filter jadi realtime (auto-submit).
+
+**Perubahan sidebar (`resources/views/partials/sidebar.blade.php`):**
+- Ditulis ulang total: struktur data-driven `$menuDef` — **satu item = satu modul**. Item ber-anak = collapsible (chevron, dibuka otomatis bila route aktif), item tunggal = link langsung tanpa nav-heading dobel sehingga tidak ada tumpang tindih.
+- "Lunch Management" jadi **satu** collapsible berisi 10 child (Dashboard Lunch, Employee Default, Guest Reservation, Lunch Forecast, Lunch Distribution, Lunch Transactions, Analytics, QR Lokasi, Export Vendor, Booking Mandiri). File `sidebar-lunch.blade.php` **dihapus** (0 referensi).
+- Submenu aktif dibuka server-side (`class="show"` + `aria-expanded=true`, tanpa `collapsed`); JS fallback di bagian akhir hanya menambahkan `show` bila route pattern aktif tidak terdeteksi — tanpa animasi ulang → tidak ada layout jump.
+- Link polos memakai `nav-link collapsed` (non-aktif) / tanpa `collapsed` (aktif) sesuai CSS NiceAdmin; badge/perms/roles dedup anak via `array_filter($showItem)`.
+
+**Filter realtime (tombol "Terapkan Filter" dihapus di 5 view, auto-submit 400ms):**
+- `kelola-consumerialtools.blade.php` — search auto-submit 400ms + `select type` onchange, retain `tab` hidden.
+- `kelola-user.blade.php` — search auto-submit 400ms + `select role` onchange, hidden `tab=list`.
+- `kelola-permohonan.blade.php` — dua form (tab permohonan & laporan), search auto-submit 400ms + `select status` onchange.
+- `trip-analysis.blade.php` — tombol submit & duplikat "Reset Filter" dirapikan; search auto-submit 400ms + semua select onchange; Reset Filter dipindah ke baris filter.
+- `baseline-management.blade.php` — search auto-submit 400ms + select onchange; Reset Filter di baris filter, "Tambah Baseline Baru" tetap.
+- Semua form memakai atribut `data-autofilter` + satu helper JS `initAutoFilter()` per view; pagination tetap `->appends([...])`.
+- Verifikasi: `php artisan test` → **139 passed (496 assertions)** + `view:cache` OK.
+
+---
+
+## 23. Filter Realtime (sisa tombol) + CRUD Unit & Site (Fase 0 bagian 3)
+
+**Filter realtime — tombol "Filter/Terapkan" terakhir dibasmi:**
+- `superadmin/partials/vehicle-activation.blade.php` — tombol "Filter" dihapus → form `data-autofilter` (search 400ms + select type/status onchange); tombol diganti link "Reset" (route `superadmin.vehicle-activation`); helper `initAutoFilter()` ditambah ke IIFE script.
+- `lunch/dashboard.blade.php`, `lunch/forecasts/index.blade.php`, `lunch/distributions/index.blade.php` — tombol "Filter" dihapus → input date `onchange="this.form.submit()"`.
+- `lunch/analytics/index.blade.php` — tombol "Terapkan" dihapus → select hari `onchange="this.form.submit()"`.
+
+**Proses bisnis unit/site (klarifikasi):** Unit = level wilayah bisnis (Unit Patuha, Unit Pusat, Unit Dieng). Site = lokasi operasional di bawah unit (Site Basecamp, Site Sumur, PTH-BC, dll) — **setiap site wajib milik satu unit** (PTH-BC → Unit Patuha). CRUD terpisah: CRUD Unit + CRUD Site.
+
+**CRUD Site baru (`/sa/sites`):**
+- `app/Http/Controllers/SiteController.php` — index (filter realtime search+unit_id, withCount vehicleDetails/users/employeeDefaults, pagination 20), create, store, edit, update, destroy.
+- Validasi: `code` required|alpha_dash|unique:sites,code|max:20 (di-uppercase), `name` required|max:100, `unit_id` **required|exists:units,id**, `province_slug` nullable, `is_active` boolean; destroy menolak bila ada dependents (vehicleDetail/user/employeeDefault/lunchTransaction).
+- Routes `routes/web.php`: `Route::prefix('sa/sites')->name('superadmin.sites.'){6}` di sebelah group `sa/units`.
+- View: `superadmin/sites/index.blade.php` (option + daftar + badge unit + jumlah kendaraan/user), `superadmin/sites/form.blade.php` (pilih unit wajib, info "Unit vs Site", preselect unit saat edit).
+
+**CRUD Unit dirapikan (komplain `/sa/units/create` UI lama):**
+- `UnitController` — hapus logika assign site via checkbox; form unit kini murni CRUD (code saat create saja, name, description, is_active). `destroy` menolak bila unit masih punya user **atau** site.
+- `superadmin/units/form.blade.php` ditulis ulang ala NiceAdmin (pagetitle/breadcrumb, section dashboard, kiri form / kanan info "Unit vs Site"); tombol "Lihat N site" bila `$unit->sites_count > 0` (loadCount di edit).
+- `superadmin/units/index.blade.php` — tetap tampilkan badge site terkait + jumlah site (via `withCount(['sites','users'])`).
+
+**Seeder & sidebar:**
+- `UnitSeeder` — site di-`updateOrCreate` dengan `unit_id` (Pusat→PUSAT, PMU→PUSAT, PTH→PATUHA, PTH-BC→PATUHA, SUMUR-1→PATUHA, Dieng→DIENG).
+- `sidebar.blade.php` — item "Site / Lokasi" ditambahkan di bawah "Unit Bisnis" (subscript: `superadmin.sites.*`, roles superadmin).
+
+**Test:**
+- `tests/Feature/SiteCrudTest.php` (9 test) — daftar, form, buat site wajib unit_id, tolak tanpa unit, duplikat, update+pindah unit, tolak hapus bila dipakai kendaraan (factory), hapus bersih.
+- `UnitCrudTest` disesuaikan — buat unit tanpa pemetaan site, update nama, tolak hapus bila ada site, hapus unit kosong.
+- Verifikasi: `php artisan test` → **148 passed (520 assertions)**.
+
+---
+
+## 22. TODO / Belum Dikerjakan
+
+### Fase 0 — Sisa (minor)
+- PMU sudah dipetakan ke PUSAT; site "Power Plant" belum ditambah di seed (kalau perlu, tambah site + unit).
+- Halaman superadmin (kendaraan/permohonan/SPD) tetap `role:superadmin` — scope sudah terpasang (defense-in-depth saat superadmin diberi `unit_id`), namun belum dibuka ke GA.
+
+### Fase 5 — Hak Akses & Anti-Bocor view & Sidebar RBAC
+- Matriks role×fitur; tambah `permission:` middleware ke route yang hanya `role:`; audit view bocor; lengkapi `perms` item sidebar. Bergantung pada Fase 0.
+
+### Redesign tampilan lanjutan (opsional)
+- `kelola-user.blade.php` & `kelola-permohonan.blade.php` masih bawa JS modal besar & `.sub-tabs` custom — belum direfaktor penuh (hanya quick-fix di atas).
+
+---
+
 ## 1. Fix Error Delete/Update Item Laporan Harian SPD (double-slash URL)
 
 **Masalah:** Route `pelaporan/spd/{surat}/daily/item//ITM-...` tidak ditemukan → delete/update item di laporan harian SPD gagal.

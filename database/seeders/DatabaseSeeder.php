@@ -32,6 +32,7 @@ class DatabaseSeeder extends Seeder
             VehicleBarcodeSeeder::class,
             SuratSpdWithQrSeeder::class,
             RbacSeeder::class,
+            UnitSeeder::class,
             LunchDemoSeeder::class,
             SpdDemoSeeder::class,
             VehicleDemoSeeder::class,

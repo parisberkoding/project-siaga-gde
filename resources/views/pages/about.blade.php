@@ -76,7 +76,7 @@
         .testi-name { font-weight: 600; font-size: .84rem; }
         .testi-role { font-size: .75rem; color: var(--ink-40); }
 
-        .team-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .team-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
         .team-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 28px 20px; text-align: center; }
         .team-avatar { width: 56px; height: 56px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 700; margin: 0 auto 14px; }
         .team-name { font-weight: 700; font-size: .88rem; }
@@ -179,18 +179,18 @@
                     <div class="timeline mt-4">
                         <div class="tl-item">
                             <div class="tl-year">2024</div>
-                            <div class="tl-title">Inisiasi Pengembangan</div>
+                            <div class="tl-title">Project Planning</div>
                             <div class="tl-desc">Identifikasi kebutuhan digitalisasi proses administrasi GA di Unit Patuha.</div>
                         </div>
                         <div class="tl-item">
                             <div class="tl-year">2025</div>
-                            <div class="tl-title">Peluncuran SIAGA</div>
-                            <div class="tl-desc">Rilis perdana dengan modul BBM, SPD, Dispatcher, dan Booking Makan Siang.</div>
+                            <div class="tl-title">Sistem Permohonan BBM Unit Patuha</div>
+                            <div class="tl-desc">Rilis perdana dengan single module single purpose app berbasis google appscript.</div>
                         </div>
                         <div class="tl-item">
                             <div class="tl-year">2026</div>
-                            <div class="tl-title">Pengembangan Lanjutan</div>
-                            <div class="tl-desc">Penambahan modul Self-Booking, Lunch Management, dan optimalisasi berkelanjutan.</div>
+                            <div class="tl-title">Pengembangan Lanjutan sebagai <b>SIAGA</b></div>
+                            <div class="tl-desc">One-Stop Solution untuk Proses Operasional yang berjalan di unit patuha dan masih terus dikembangkan untuk administrasi yang lebih transparan dan akuntabel.</div>
                         </div>
                     </div>
                 </div>
@@ -198,7 +198,7 @@
         </div>
     </section>
 
-    <section style="background:#fff;">
+    <!-- <section style="background:#fff;">
         <div class="container">
             <div class="text-center mb-5 reveal">
                 <div class="section-tag">Testimoni</div>
@@ -240,7 +240,7 @@
                 </div>
             </div>
         </div>
-    </section>
+    </section> -->
 
     <section>
         <div class="container">
@@ -252,23 +252,18 @@
             <div class="team-grid">
                 <div class="team-card reveal">
                     <div class="team-avatar"><i class="bi bi-person"></i></div>
-                    <div class="team-name">Faris Iftikhar</div>
-                    <div class="team-role">Fullstack Developer</div>
+                    <div class="team-name">Faris Iftikhar Alfarisi</div>
+                    <div class="team-role">Developer</div>
                 </div>
                 <div class="team-card reveal">
                     <div class="team-avatar"><i class="bi bi-person"></i></div>
-                    <div class="team-name">Tim GA</div>
-                    <div class="team-role">Subject Matter Expert</div>
+                    <div class="team-name">Ridwan Pratama Cahya Gustian</div>
+                    <div class="team-role">Developer</div>
                 </div>
                 <div class="team-card reveal">
                     <div class="team-avatar"><i class="bi bi-person"></i></div>
-                    <div class="team-name">Manajemen</div>
-                    <div class="team-role">Supervisor & Approver</div>
-                </div>
-                <div class="team-card reveal">
-                    <div class="team-avatar"><i class="bi bi-person"></i></div>
-                    <div class="team-name">User SIAGA</div>
-                    <div class="team-role">Pengguna & Reviewer</div>
+                    <div class="team-name">R. Maulana Suhadharatan</div>
+                    <div class="team-role">Project Leader</div>
                 </div>
             </div>
         </div>

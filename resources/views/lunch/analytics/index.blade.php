@@ -16,12 +16,11 @@
     <div class="row mb-3">
         <div class="col-md-4">
             <form method="GET" action="{{ route('lunch.analytics.index') }}" class="d-flex gap-2">
-                <select name="days" class="form-select">
+                <select name="days" class="form-select" onchange="this.form.submit()">
                     @foreach([7, 14, 30, 60] as $option)
                         <option value="{{ $option }}" @selected($days == $option)>{{ $option }} hari terakhir</option>
                     @endforeach
                 </select>
-                <button class="btn btn-primary">Terapkan</button>
             </form>
         </div>
     </div>

@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Carbon\Carbon;
 
 class SuratSpd extends Model
 {
@@ -20,6 +20,7 @@ class SuratSpd extends Model
         'pemberi_tugas_nama',
         'pemberi_tugas_jabatan',
         'user_id',
+        'employee_default_id',
         'pengemudi_nama',
         'tempat_tujuan',
         'melayani_bidang',
@@ -81,7 +82,7 @@ class SuratSpd extends Model
             // Set tanggal surat jika belum ada (format Indonesia, mengikuti site user)
             if (empty($surat->tanggal_surat)) {
                 $siteName = optional($surat->user?->defaultSite)->name ?: 'Patuha';
-                $surat->tanggal_surat = $siteName . ', ' . Carbon::now()->locale('id')->translatedFormat('d F Y');
+                $surat->tanggal_surat = $siteName.', '.Carbon::now()->locale('id')->translatedFormat('d F Y');
             }
         });
 
@@ -135,6 +136,7 @@ class SuratSpd extends Model
     private function getRomanMonth($month)
     {
         $romans = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+
         return $romans[$month - 1];
     }
 
@@ -163,7 +165,7 @@ class SuratSpd extends Model
      */
     public function getLamaPerjalananAttribute()
     {
-        return $this->lama_perjalanan_hari . ' hari';
+        return $this->lama_perjalanan_hari.' hari';
     }
 
     // ============================================================
@@ -173,6 +175,15 @@ class SuratSpd extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Master Pekerja yang menjadi pengemudi (opsional — pengemudi bisa
+     * pekerja tanpa akun login, sehingga relasi ini melengkapi user()).
+     */
+    public function employeeDefault()
+    {
+        return $this->belongsTo(EmployeeDefault::class, 'employee_default_id');
     }
 
     public function vehicle()
@@ -322,6 +333,22 @@ class SuratSpd extends Model
         return $query->where('user_id', $userId);
     }
 
+    /**
+     * Scope unit bisnis: surat SPD milik user/pengemudi yang default site-nya
+     * berada di salah satu site dalam unit. Null = tanpa scope (global / pusat).
+     */
+    public function scopeInUnit($query, ?array $siteIds)
+    {
+        if ($siteIds === null) {
+            return;
+        }
+
+        $query->where(function ($q) use ($siteIds) {
+            $q->whereHas('user', fn ($uq) => $uq->whereIn('default_site_id', $siteIds))
+              ->orWhereHas('employeeDefault', fn ($eq) => $eq->whereIn('default_site_id', $siteIds));
+        });
+    }
+
     // ============================================================
     // HELPER METHODS - EXTENSION
     // ============================================================
@@ -379,7 +406,7 @@ class SuratSpd extends Model
      */
     public function getOriginalSurat()
     {
-        if (!$this->is_extension) {
+        if (! $this->is_extension) {
             return $this;
         }
 
@@ -408,7 +435,7 @@ class SuratSpd extends Model
      */
     public function isLpjDeadlineOverdue(): bool
     {
-        if (!$this->lpj_deadline) {
+        if (! $this->lpj_deadline) {
             return false;
         }
 
@@ -428,7 +455,7 @@ class SuratSpd extends Model
      */
     public function getDaysUntilLpjDeadline(): int
     {
-        if (!$this->lpj_deadline) {
+        if (! $this->lpj_deadline) {
             return 0;
         }
 
@@ -504,9 +531,9 @@ class SuratSpd extends Model
     /**
      * Create extension (perpanjangan)
      *
-     * @param Carbon|string $tanggalKembaliBaru Tanggal kembali baru
-     * @param string|null $alasanPerpanjangan Alasan perpanjangan
-     * @param bool $autoApprove Jika true, langsung approved (untuk superadmin)
+     * @param  Carbon|string  $tanggalKembaliBaru  Tanggal kembali baru
+     * @param  string|null  $alasanPerpanjangan  Alasan perpanjangan
+     * @param  bool  $autoApprove  Jika true, langsung approved (untuk superadmin)
      * @return SuratSpd Surat extension yang baru dibuat
      */
     public function createExtension($tanggalKembaliBaru, $alasanPerpanjangan = null, $autoApprove = false)
@@ -530,7 +557,7 @@ class SuratSpd extends Model
             'budget_per_hari' => $this->budget_per_hari,
             'parent_surat_id' => $this->is_extension ? $this->parent_surat_id : $this->id,
             'is_extension' => true,
-            'catatan' => 'Perpanjangan dari surat: ' . $this->nomor_surat,
+            'catatan' => 'Perpanjangan dari surat: '.$this->nomor_surat,
             'status' => $autoApprove ? 'approved' : 'pending',
         ]);
 
@@ -571,6 +598,4 @@ class SuratSpd extends Model
     {
         return $this->hasOne(SpdBarcodeSignature::class, 'spd_id');
     }
-
-
 }

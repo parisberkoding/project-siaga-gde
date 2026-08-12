@@ -12,12 +12,19 @@ class Site extends Model
     protected $fillable = [
         'code',
         'name',
+        'unit_id',
+        'province_slug',
         'is_active',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    public function unit()
+    {
+        return $this->belongsTo(Unit::class);
+    }
 
     public function users()
     {

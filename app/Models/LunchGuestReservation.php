@@ -49,6 +49,19 @@ class LunchGuestReservation extends Model
     }
 
     /**
+     * Scope unit bisnis: reservasi tamu di salah satu site dalam unit.
+     * Null = tanpa scope (global / pusat).
+     */
+    public function scopeInUnit($query, ?array $siteIds)
+    {
+        if ($siteIds === null) {
+            return;
+        }
+
+        $query->whereIn('site_id', $siteIds);
+    }
+
+    /**
      * Apakah tamu ini perlu dikonfirmasi H-2 (status masih pending & 2 hari lagi).
      */
     public function needsH2Confirmation(): bool

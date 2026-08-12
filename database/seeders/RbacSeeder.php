@@ -2,12 +2,11 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
-use App\Models\PermissionGroup;
 use App\Models\Permission;
+use App\Models\PermissionGroup;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Database\Seeder;
 
 /**
  * Phase 2 - RBAC Seeder
@@ -20,14 +19,14 @@ class RbacSeeder extends Seeder
 {
     // Mapping role lama (kolom User.role) -> code role RBAC
     private const ROLE_MAP = [
-        'superadmin'     => 'superadmin',
-        'admin'          => 'general_affairs',
-        'admin_bbm'      => 'general_affairs',
-        'requester'      => 'requester',
-        'manager'        => 'manager',
-        'dispatcher'     => 'dispatcher',
-        'non_ga_staff'   => 'view_only',
-        'developer'      => 'superadmin',
+        'superadmin' => 'superadmin',
+        'admin' => 'general_affairs',
+        'admin_bbm' => 'general_affairs',
+        'requester' => 'requester',
+        'manager' => 'manager',
+        'dispatcher' => 'dispatcher',
+        'non_ga_staff' => 'view_only',
+        'developer' => 'superadmin',
     ];
 
     public function run(): void
@@ -49,6 +48,7 @@ class RbacSeeder extends Seeder
             ['code' => 'vehicle',   'name' => 'Kendaraan & Alat', 'icon' => 'bi bi-truck',        'order' => 6],
             ['code' => 'users',     'name' => 'Manajemen User',   'icon' => 'bi bi-people',       'order' => 8],
             ['code' => 'rbac',      'name' => 'RBAC & Hak Akses', 'icon' => 'bi bi-shield-lock',  'order' => 9],
+            ['code' => 'lunch',     'name' => 'Lunch Management', 'icon' => 'bi bi-egg-fried',    'order' => 11],
             ['code' => 'settings',  'name' => 'Pengaturan',       'icon' => 'bi bi-gear',         'order' => 10],
         ];
 
@@ -85,13 +85,13 @@ class RbacSeeder extends Seeder
             ['lpj', 'create',  'lpj', 'Membuat LPJ'],
             ['lpj', 'update',  'lpj', 'Mengubah LPJ'],
             ['lpj', 'delete',  'lpj', 'Menghapus LPJ'],
-            ['lpj', 'validate','lpj', 'Memvalidasi LPJ'],
+            ['lpj', 'validate', 'lpj', 'Memvalidasi LPJ'],
             ['lpj', 'export',  'lpj', 'Export LPJ'],
 
             // Pelaporan (single page pelaporan BBM operasional & SPD + AI/OCR struk)
             ['pelaporan', 'view',   'pelaporan', 'Melihat halaman pelaporan'],
             ['pelaporan', 'create', 'pelaporan', 'Membuat pelaporan (SPD & operasional)'],
-            ['pelaporan', 'analyze','pelaporan', 'Analisis struk dengan AI/OCR'],
+            ['pelaporan', 'analyze', 'pelaporan', 'Analisis struk dengan AI/OCR'],
 
             // Vehicle
             ['vehicle', 'view',      'vehicle', 'Melihat kendaraan & alat'],
@@ -113,6 +113,10 @@ class RbacSeeder extends Seeder
             ['rbac', 'roles',       'rbac', 'Kelola role'],
             ['rbac', 'permissions', 'rbac', 'Kelola permission'],
 
+            // Lunch Management
+            ['lunch', 'view',   'lunch', 'Melihat data lunch (kehadiran, forecast, distribusi)'],
+            ['lunch', 'export', 'lunch', 'Export data lunch'],
+
             // Settings
             ['settings', 'view',   'settings', 'Melihat pengaturan'],
             ['settings', 'manage', 'settings', 'Mengelola pengaturan'],
@@ -124,9 +128,9 @@ class RbacSeeder extends Seeder
                 ['code' => "{$module}.{$action}"],
                 [
                     'permission_group_id' => $group?->id,
-                    'module'              => $module,
-                    'action'              => $action,
-                    'description'         => $desc,
+                    'module' => $module,
+                    'action' => $action,
+                    'description' => $desc,
                 ]
             );
         }
@@ -136,15 +140,15 @@ class RbacSeeder extends Seeder
     {
         $roles = [
             'superadmin' => [
-                'name'        => 'Super Admin',
+                'name' => 'Super Admin',
                 'description' => 'Akses penuh ke seluruh modul & RBAC.',
-                'is_system'   => true,
+                'is_system' => true,
                 'permissions' => Permission::pluck('code')->toArray(), // full access
             ],
             'general_affairs' => [
-                'name'        => 'General Affairs',
+                'name' => 'General Affairs',
                 'description' => 'Kelola BBM, SPD, LPJ, Vehicle, & transaksi. Tanpa user management.',
-                'is_system'   => true,
+                'is_system' => true,
                 'permissions' => [
                     'dashboard.view',
                     'bbm.view', 'bbm.request', 'bbm.report', 'bbm.approve', 'bbm.export',
@@ -153,13 +157,14 @@ class RbacSeeder extends Seeder
                     'pelaporan.view', 'pelaporan.create', 'pelaporan.analyze',
                     'vehicle.view', 'vehicle.create', 'vehicle.update', 'vehicle.delete',
                     'vehicle.approve', 'vehicle.checking', 'vehicle.master',
+                    'lunch.view', 'lunch.export',
                     'settings.view',
                 ],
             ],
             'dispatcher' => [
-                'name'        => 'Dispatcher',
+                'name' => 'Dispatcher',
                 'description' => 'Fokus operasional: SPD, vehicle checking, approval harian.',
-                'is_system'   => true,
+                'is_system' => true,
                 'permissions' => [
                     'dashboard.view',
                     'spd.view', 'spd.create', 'spd.update', 'spd.approve', 'spd.assign',
@@ -169,9 +174,9 @@ class RbacSeeder extends Seeder
                 ],
             ],
             'requester' => [
-                'name'        => 'Requester / Driver',
+                'name' => 'Requester / Driver',
                 'description' => 'Driver: request BBM, lapor bukti, buat & laporkan LPJ SPD.',
-                'is_system'   => true,
+                'is_system' => true,
                 'permissions' => [
                     'dashboard.view',
                     'bbm.view', 'bbm.request', 'bbm.report',
@@ -182,9 +187,9 @@ class RbacSeeder extends Seeder
                 ],
             ],
             'manager' => [
-                'name'        => 'Manager',
+                'name' => 'Manager',
                 'description' => 'Approval & review, tanpa CRUD master.',
-                'is_system'   => true,
+                'is_system' => true,
                 'permissions' => [
                     'dashboard.view',
                     'bbm.view', 'bbm.approve', 'bbm.export',
@@ -194,12 +199,22 @@ class RbacSeeder extends Seeder
                 ],
             ],
             'view_only' => [
-                'name'        => 'View Only',
+                'name' => 'View Only',
                 'description' => 'Read-only ke seluruh dashboard & data.',
-                'is_system'   => true,
+                'is_system' => true,
                 'permissions' => [
                     'dashboard.view',
                     'bbm.view', 'spd.view', 'lpj.view', 'vehicle.view', 'pelaporan.view',
+                    'lunch.view',
+                ],
+            ],
+            'vendor' => [
+                'name' => 'Vendor Catering',
+                'description' => 'Akses terbatas: melihat daftar kehadiran lunch harian.',
+                'is_system' => true,
+                'permissions' => [
+                    'dashboard.view',
+                    'lunch.view',
                 ],
             ],
         ];
@@ -208,10 +223,10 @@ class RbacSeeder extends Seeder
             $role = Role::updateOrCreate(
                 ['code' => $code],
                 [
-                    'name'        => $data['name'],
+                    'name' => $data['name'],
                     'description' => $data['description'],
-                    'is_active'   => true,
-                    'is_system'   => $data['is_system'],
+                    'is_active' => true,
+                    'is_system' => $data['is_system'],
                 ]
             );
             $role->syncPermissionsByCode($data['permissions']);
@@ -231,11 +246,11 @@ class RbacSeeder extends Seeder
             $rbacCode = self::ROLE_MAP[$legacy] ?? 'view_only';
 
             $role = Role::where('code', $rbacCode)->first();
-            if (!$role) {
+            if (! $role) {
                 $role = Role::where('code', 'view_only')->first();
             }
 
-            if ($role && !$user->roles()->where('role_id', $role->id)->exists()) {
+            if ($role && ! $user->roles()->where('role_id', $role->id)->exists()) {
                 $user->roles()->attach($role->id, ['is_primary' => true]);
             }
         }
