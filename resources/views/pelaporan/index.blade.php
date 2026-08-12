@@ -309,6 +309,22 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // ── Pre-select permohonan & paksa mode operasional dari ?permohonan_id= ──
+    const permohonanId = new URLSearchParams(window.location.search).get('permohonan_id');
+    if (permohonanId) {
+        activateMode('operational', false);
+        if (selectPermohonan) {
+            const presetOpt = selectPermohonan.querySelector(`option[value="${permohonanId}"]`);
+            if (presetOpt) {
+                selectPermohonan.value = permohonanId;
+                selectPermohonan.dispatchEvent(new Event('change'));
+            } else {
+                const info = document.getElementById('infoPermohonan');
+                if (info) info.innerHTML = '<span class="text-warning">Permohonan ini sudah dilaporkan atau belum disetujui. Pilih permohonan lain di bawah.</span>';
+            }
+        }
+    }
+
     // ── Operasional: multi-file upload + batch AI analysis ──
     const fotoFilesOp = document.getElementById('fotoFilesOp');
     if (fotoFilesOp) {
