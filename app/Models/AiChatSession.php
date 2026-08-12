@@ -25,4 +25,9 @@ class AiChatSession extends Model
     {
         return $this->hasMany(AiChatMessage::class, 'chat_session_id');
     }
+
+    public function latestMessage()
+    {
+        return $this->hasOne(AiChatMessage::class, 'chat_session_id')->latestOfMany();
+    }
 }

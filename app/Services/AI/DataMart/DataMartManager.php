@@ -5,8 +5,13 @@ namespace App\Services\AI\DataMart;
 use App\Services\AI\DataMart\Contracts\DataMartContract;
 use App\Services\AI\DataMart\Modules\DriverDataMart;
 use App\Services\AI\DataMart\Modules\GasolineDataMart;
+use App\Services\AI\DataMart\Modules\LpjDataMart;
+use App\Services\AI\DataMart\Modules\LunchDataMart;
 use App\Services\AI\DataMart\Modules\PermohonanDataMart;
+use App\Services\AI\DataMart\Modules\SpdDataMart;
 use App\Services\AI\DataMart\Modules\VehicleDataMart;
+use App\Services\AI\DataMart\Modules\VehicleCheckDataMart;
+use App\Services\AI\DataMart\Modules\VehiclePartsDataMart;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -24,6 +29,11 @@ class DataMartManager
         'vehicle' => VehicleDataMart::class,
         'driver' => DriverDataMart::class,
         'gasoline' => GasolineDataMart::class,
+        'spd' => SpdDataMart::class,
+        'lpj' => LpjDataMart::class,
+        'lunch' => LunchDataMart::class,
+        'vehicle_parts' => VehiclePartsDataMart::class,
+        'vehicle_check' => VehicleCheckDataMart::class,
     ];
 
     /** @var array<string, DataMartContract> */

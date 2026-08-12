@@ -15,6 +15,7 @@ class AiAssistantController extends Controller
 
         $sessions = AiChatSession::where('user_id', auth()->id())
             ->withCount('messages')
+            ->with('latestMessage')
             ->orderByDesc('updated_at')
             ->get();
 
@@ -44,7 +45,9 @@ class AiAssistantController extends Controller
             return response()->json([
                 'ok'         => true,
                 'session_id' => $result['session']->id,
+                'title'      => $result['session']->title,
                 'reply'      => $result['reply'],
+                'reply_html' => \App\Support\AiMarkdown::render($result['reply']),
             ]);
         } catch (Throwable $e) {
             return response()->json([

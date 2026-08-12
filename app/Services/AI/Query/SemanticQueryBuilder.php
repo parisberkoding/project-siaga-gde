@@ -2,8 +2,10 @@
 
 namespace App\Services\AI\Query;
 
+use App\Models\LpjPenggantian;
 use App\Models\Permohonan;
 use App\Models\Site;
+use App\Models\SuratSpd;
 use App\Models\User;
 use App\Models\VehicleAndToolsConsumers;
 use App\Services\AI\DataMart\DataMartManager;
@@ -77,6 +79,11 @@ class SemanticQueryBuilder
         $sortBy = match ($module) {
             'gasoline' => 'price_per_liter',
             'vehicle' => 'vehicle_code',
+            'spd' => 'tanggal_berangkat',
+            'lpj' => 'tanggal_lpj',
+            'lunch' => 'distribution_date',
+            'vehicle_parts' => 'scheduled_date',
+            'vehicle_check' => 'next_due_date',
             default => 'request_date',
         };
 
@@ -128,6 +135,15 @@ class SemanticQueryBuilder
             $filters['status'] = $status;
         }
 
+        // Status khusus per modul: telat / melebihi anggaran.
+        if (in_array('is_late', $this->dimensionsOf($module), true) && preg_match('/telat|terlambat|late|lewat batas|overdue/i', $question)) {
+            $filters['is_late'] = true;
+        }
+
+        if (in_array('is_over_budget', $this->dimensionsOf($module), true) && preg_match('/over budget|melebihi anggaran|kelebihan budget|overbudget/i', $question)) {
+            $filters['is_over_budget'] = true;
+        }
+
         $site = $this->keywords->site($question, $this->knownSites());
         if ($site !== null && in_array('site', $this->dimensionsOf($module), true)) {
             $filters['site'] = $site;
@@ -176,6 +192,11 @@ class SemanticQueryBuilder
             'gasoline' => 'price_per_liter',
             'vehicle' => 'nominal_full_tank',
             'driver' => 'total_requests',
+            'spd' => 'total_budget',
+            'lpj' => 'total_pengeluaran',
+            'lunch' => 'total_count',
+            'vehicle_parts' => 'total_amount',
+            'vehicle_check' => 'transaction_count',
             default => 'bill_amounts',
         };
     }
@@ -292,7 +313,11 @@ class SemanticQueryBuilder
     {
         return Cache::remember('ai.datamart.driver-names', 300, function () {
             return User::query()
-                ->whereIn('id', Permohonan::query()->distinct()->pluck('requester_id'))
+                ->whereIn('id', collect([
+                    Permohonan::query()->distinct()->pluck('requester_id'),
+                    SuratSpd::query()->distinct()->pluck('user_id'),
+                    LpjPenggantian::query()->distinct()->pluck('user_id'),
+                ])->flatten()->unique()->filter())
                 ->orderBy('nama_lengkap')
                 ->pluck('nama_lengkap')
                 ->all();

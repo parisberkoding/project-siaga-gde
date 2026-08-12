@@ -48,4 +48,17 @@ return [
         'url'     => env('GEMINI_API_URL', 'https://generativelanguage.googleapis.com/v1beta'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Groq (AI Assistant — inference aktif)
+    |--------------------------------------------------------------------------
+    | OpenAI-compatible endpoint. API key dari https://console.groq.com.
+    | Simpan di .env sebagai GROQ_API_KEY. Model default: llama-3.3-70b-versatile.
+    */
+    'groq' => [
+        'api_key'  => env('GROQ_API_KEY'),
+        'base_url' => env('GROQ_API_URL', 'https://api.groq.com/openai/v1'),
+        'model'    => env('GROQ_CHAT_MODEL', 'llama-3.3-70b-versatile'),
+    ],
+
 ];
