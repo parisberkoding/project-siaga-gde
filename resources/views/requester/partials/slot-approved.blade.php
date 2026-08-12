@@ -53,9 +53,27 @@
 
         <hr>
 
-        <h6 class="mb-3"><i class="bi bi-cloud-upload"></i> Laporan Pembelian</h6>
+        {{-- 🚀 Laporan BBM → fitur pelaporan (upload struk + AI) --}}
+        <div>
+            <div class="d-flex align-items-center mb-1">
+                <h6 class="mb-0"><i class="bi bi-journal-text"></i> Laporan Pembelian </h6>
+            </div>
+            <!-- <small class="text-muted d-block mb-2">
+                Gunakan fitur pelaporan BBM untuk mengupload struk & foto pendukung.
+                Data permohonan <code>{{ $request->request_number }}</code> otomatis terisi.
+            </small> -->
+            <a href="{{ route('pelaporan.index', ['mode' => 'operational', 'permohonan_id' => $request->id]) }}"
+               class="btn btn-primary w-100">
+                <i class="bi bi-send"></i> Lapor Pembelian 
+            </a>
+        </div>
 
-        @php
+        {{-- ════════════════════════════════════════════════════════════════
+             FORM LAMA (di-hide sementara) — aktifkan kembali jika diperlukan
+             dengan menghapus komentar di bawah. Ini form manual lama yang
+             kirim ke route requester.submit-report (tanpa fitur AI/OCR).
+        ══════════════════════════════════════════════════════════════════ --}}
+        {{-- @php
             $isVehicle = $request->vehicle && $request->vehicle->consumerial_type === 'Kendaraan';
         @endphp
 
@@ -176,6 +194,7 @@
                 <i class="bi bi-send"></i> Kirim Laporan
             </button>
         </form>
+        --}}
     </div>
 </div>
 
