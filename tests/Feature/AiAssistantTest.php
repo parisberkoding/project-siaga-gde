@@ -21,11 +21,11 @@ it('menyajikan halaman AI assistant untuk superadmin', function () {
         ->get(route('ai-assistant.index'))
         ->assertStatus(200)
         ->assertSee('AI Assistant', false)
-        ->assertSee('Gemini', false);
+        ->assertSee('Groq', false);
 });
 
 it('membuat sesi dan pesan di database saat pertanyaan dikirim tanpa API key', function () {
-    config(['services.gemini.api_key' => null]);
+    config(['services.groq.api_key' => null]);
 
     $response = $this->actingAs($this->admin)
         ->postJson(route('ai-assistant.send'), [
@@ -44,7 +44,7 @@ it('membuat sesi dan pesan di database saat pertanyaan dikirim tanpa API key', f
 });
 
 it('menjawab tanpa menyentuh API eksternal ketika tidak dikonfigurasi', function () {
-    config(['services.gemini.api_key' => null]);
+    config(['services.groq.api_key' => null]);
 
     Http::fake();
 
@@ -55,7 +55,7 @@ it('menjawab tanpa menyentuh API eksternal ketika tidak dikonfigurasi', function
 });
 
 it('menggunakan sesi yang sama untuk pertanyaan lanjutan', function () {
-    config(['services.gemini.api_key' => null]);
+    config(['services.groq.api_key' => null]);
 
     $first = $this->actingAs($this->admin)
         ->postJson(route('ai-assistant.send'), ['message' => 'Pertanyaan pertama'])

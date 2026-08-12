@@ -33,6 +33,30 @@ class ModuleResolver
             'harga', 'harga bbm', 'harga pertamax', 'harga dex', 'pertamax',
             'pertamina dex', 'per liter', 'master gasoline', 'spbu', 'liter',
         ],
+        'spd' => [
+            'spd', 'surat perjalanan dinas', 'surat tugas', 'perjalanan dinas',
+            'dinas', 'surat keputusan', 'surat tgs', 'spd keluar', 'surat spd',
+        ],
+        'lpj' => [
+            'lpj', 'laporan pertanggungjawaban', 'laporan keuangan',
+            'reimbursement', 'penggantian', 'ganti rugi', 'lpj spd', 'buyback',
+        ],
+        'lunch' => [
+            'makan siang', 'lunch', 'porsi makan', 'makanan', 'katering',
+            'makan', 'sarapan', 'snack',
+        ],
+        'vehicle_parts' => [
+            'suku cadang', 'sparepart', 'spare part', 'service kendaraan',
+            'perbaikan', 'pergantian', 'penggantian suku cadang', 'vpr',
+            'servis', 'montir',
+        ],
+        'vehicle_check' => [
+            'pemeriksaan', 'pemeriksaan mobil', 'periksa mobil', 'checking',
+            'inspection', 'jadwal periksa', 'jadwal pemeriksaan', 'pengecekan',
+            'cek kendaraan', 'due date kendaraan', 'masa periksa',
+            'telat diperiksa', 'telat periksa', 'belum diperiksa',
+            'kendaraan diperiksa',
+        ],
     ];
 
     /**
@@ -56,6 +80,30 @@ class ModuleResolver
         'gasoline' => [
             'harga', 'harga bbm', 'harga pertamax', 'harga dex', 'per liter',
             'spbu', 'master gasoline',
+        ],
+        'spd' => [
+            'spd', 'surat perjalanan dinas', 'surat tugas', 'perjalanan dinas',
+            'dinas', 'surat keputusan', 'surat tgs', 'spd keluar', 'surat spd',
+        ],
+        'lpj' => [
+            'lpj', 'laporan pertanggungjawaban', 'laporan keuangan',
+            'reimbursement', 'penggantian', 'ganti rugi', 'lpj spd',
+        ],
+        'lunch' => [
+            'makan siang', 'lunch', 'porsi makan', 'makanan', 'katering',
+            'makan', 'sarapan',
+        ],
+        'vehicle_parts' => [
+            'suku cadang', 'sparepart', 'spare part', 'service kendaraan',
+            'perbaikan', 'pergantian', 'penggantian suku cadang', 'vpr',
+            'servis', 'montir',
+        ],
+        'vehicle_check' => [
+            'pemeriksaan', 'pemeriksaan mobil', 'periksa mobil', 'checking',
+            'jadwal periksa', 'jadwal pemeriksaan', 'pengecekan',
+            'cek kendaraan', 'due date kendaraan', 'masa periksa',
+            'telat diperiksa', 'telat periksa', 'belum diperiksa',
+            'jadwal periksaan', 'kendaraan diperiksa',
         ],
     ];
 
@@ -85,7 +133,7 @@ class ModuleResolver
 
             foreach ($terms as $term) {
                 if (str_contains($normalized, $this->normalize($term))) {
-                    $weight += mb_strlen($term);
+                    $weight += mb_strlen($term) * $this->termBoost($term);
                     $maxPhrase = max($maxPhrase, mb_strlen($term));
                 }
             }
@@ -155,6 +203,21 @@ class ModuleResolver
         }
 
         return false;
+    }
+
+    /**
+     * Boost untuk istilah singkat/akronim khas domain (lpj, spd, vpr, bbm)
+     * agar query pendek tetap melewati ambang confidence.
+     */
+    protected function termBoost(string $term): float
+    {
+        $clean = preg_replace('/[\s\-]/u', '', $term);
+
+        if ($clean !== null && mb_strlen($clean) <= 4 && preg_match('/^[a-z]{2,4}$/u', $clean)) {
+            return 3.0;
+        }
+
+        return 1.0;
     }
 
     /**

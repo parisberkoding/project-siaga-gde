@@ -3,9 +3,31 @@
 Catatan progres pengembangan. Update terakhir: 12 Agustus 2026.
 
 ## Status Umum
-- `php artisan test` → **139 passed (496 assertions)** setelah batch perubahan 12 Agustus 2026.
+- Semua perubahan sudah diverifikasi `php artisan test` → **99 passed (373 assertions)** (branch `llm-assistant`).
 - Model AI OCR aktif: `gemini-3.1-flash-lite` (diverifikasi HTTP 200 untuk request teks & gambar).
-- AI Assistant chat (Beta) memakai model dari env `GEMINI_CHAT_MODEL`.
+- AI Assistant chat (Beta) kini memakai **Groq** (inference aktif, `GROQ_CHAT_MODEL`), model default `llama-3.3-70b-versatile`. Kode Gemini disimpan sebagai cadangan (blok `[BACKUP GEMINI]`).
+
+---
+
+## 24. AI Assistant — Inference Pindah ke Groq (OpenAI-compatible), Gemini Disimpan
+
+**Tujuan:** ganti inference AI Assistant dari API Gemini-native ke Groq (OpenAI-compatible `chat/completions`) dengan konsep seperti OpenAI client (`apiKey` + `baseURL`). Kode Gemini dipertahankan sebagai cadangan di file yang sama.
+
+**Perubahan:**
+- `config/services.php` — blok `groq`: `api_key` = `GROQ_API_KEY`, `base_url` = `GROQ_API_URL` (default `https://api.groq.com/openai/v1`), `model` = `GROQ_CHAT_MODEL` (default `llama-3.3-70b-versatile`). Blok `gemini` tetap ada.
+- `.env` — tambah `GROQ_API_KEY` (kosong, isi key dari console.groq.com), `GROQ_API_URL`, `GROQ_CHAT_MODEL`.
+- `app/Services/GeminiAssistantService.php` — transport ditulis ulang:
+  - `generateContent()` → POST `{base_url}/chat/completions`, header `Authorization: Bearer`, payload `messages` (system + history), `tools` format `[{type:'function',function:{name,description,parameters}}]`, `tool_choice:'auto'`. Parse `choices[0].message`. Kode lama Gemini (`contents`/`parts`/`functionDeclarations`/`x-goog-api-key`) disimpan sebagai komentar `[BACKUP GEMINI]`.
+  - `runLoop()` → baca `message.tool_calls` (id, function.name, function.arguments), kirim balik `{role:'tool', tool_call_id, content: json}`. Tidak ada isu `thoughtSignature` seperti Gemini.
+  - `functionsToTools()` — konversi `functions()` ke format OpenAI tools. **Bug fix (13.08):** Groq menolak `properties`/`required` kosong yang berbentuk array (`[]`) → harus object (`{}`). Normalisasi: empty `properties` di-cast ke `(object) []`. Tanpa ini HTTP 400 `invalid JSON schema ... expected object, but got array`.
+  - `buildHistoryContents()` / `generateVerifiedReply()` — format `parts[][text]` → `content` string; jalur Data Mart (primary) tetap.
+  - Pesan error/not-configured mengacu ke `GROQ_API_KEY` / "AI Assistant (Groq)".
+- `resources/views/superadmin/ai-assistant/index.blade.php` — label model "Gemini 3 Flash Live" → "Llama 3.3 70B (Groq)".
+- `phpunit.xml` — env `GROQ_API_KEY=test-groq-key` (agar test "gagal koneksi" tetap menguji jalur HTTP, seperti sebelumnya Gemini punya key dari .env).
+- Test: `AiAssistantTest` (assert `Groq`, config `services.groq.api_key`), `AiAssistantDataMartTest` (fake LLM `fakeLlmText` dengan shape `choices[0].message.content`, pesan error baru).
+- Verifikasi: `php artisan test` → **96 passed (361 assertions)** (branch `llm-assistant`).
+
+**Catatan:** kerjaan CRUD Site & Unit (Fase 0 bagian 3) yang dikerjakan sebelumnya di-commit oleh user ke branch `bug-hunting-v1` (commit `4a7d5a9`, 148 passed) — tidak ada di branch `llm-assistant` ini.
 
 ---
 
@@ -417,4 +439,77 @@ A tests/Feature/AdminDashboardTest.php
 A tests/Feature/AiAssistantTest.php
 A tests/Feature/MasterGasolineTest.php
 A tests/Feature/VehicleEditTest.php
+
+---
+
+## 25. AI Assistant — Rebranding "Gaga", Greeting Personal, Judul Sesi Otomatis
+
+**Tujuan:** AI Assistant tidak lagi identik sebagai "asistant BBM". Namanya menjadi **Gaga** ("General Affairs Geodipa Assistant"), tampilan awal chat kosong menyapa user secara personal, dan penamaan sesi di sidebar ringkas & bukan potongan mentah pesan pertama (seperti AI session pada umumnya).
+
+**Perubahan:**
+- `app/Services/GeminiAssistantService.php`:
+  - `systemPrompt()` & `verifiedSystemPrompt()` — persona baru Gaga, cakupan data diperluas: BBM, kendaraan, SPD, LPJ & laporan penggantian, makan siang (lunch), perawatan/suku cadang kendaraan.
+  - `ask()` — sesi BARU dibuat **tanpa langsung mengisi judul** (title kosong → frontend tampil "Sesi baru"). Setelah balasan pertama berhasil (jalur Data Mart maupun fallback function calling), `generateSessionTitle($session)` memanggil LLM dengan instruksi "judul singkat maks 6 kata" untuk mengganti judul sesi sekali saja. Belum ada `title` → diberi judul otomatis; gagal → tetap kosong (fallback "Sesi baru").
+- `app/Http/Controllers/AiAssistantController.php` — respons `send()` kini menyertakan `title` sesi agar JS bisa memperbarui label sesi tanpa reload.
+- `resources/views/superadmin/ai-assistant/index.blade.php`:
+  - Header: "AI BBM Assistant" → **Gaga** (badge model tetap llama-3.3-70b).
+  - Empty state (chat kosong): hero ikon bintang + sapaan statis **"Hai {NamaDepan}, ada yang bisa Gaga bantu?"** + "Mau Gaga bantu apa hari ini?" + saran contoh lintas-modul (BBM, SPD, makan siang). Nama depan diambil dari `auth()->user()->nama_lengkap`.
+  - Suggestions chip diperluas cakupan GA (termasuk "Siapa yang paling sering SPD?", "Berapa porsi makan siang besok?") — siap untuk Data Mart SPD/LPJ/Lunch yang akan dibangun berikutnya.
+  - Sidebar riwayat: judul sesi dibatasi `Str::limit(..., 40)`, preview bersih (tanpa prefix role).
+  - JS `send()`: setelah sukses set `sessionLabel` = `data.title` (atau "Sesi baru"); `btnNewChat` reset label → "Sesi baru".
+  - Tetap memuat string "AI Assistant" (judul halaman/breadcrumb) & "Groq" (alert + hint) agar test `AiAssistantTest` (assert `AI Assistant` & `Groq`) tetap hijau.
+- Verifikasi: `php artisan test` → **96 passed (361 assertions)**.
+
+**Catatan:** Data Mart untuk modul SPD/LPJ (dan opsional Lunch, Suku Cadang) belum dibangun — masih di tahap baca kode/rencana dari pesan sebelumnya (lihat Next Move §22). Setelah dibangun, contoh "Siapa yang paling sering SPD?" akan dijawab via jalur Data Mart terverifikasi.
+
+---
+
+## 26. AI Assistant — Respons Terformat (Markdown: heading, bold, bullet, tabel)
+
+**Tujuan:** respons Gaga tidak lagi plaintext polos; kini dirender sebagai Markdown HTML yang aman — teks besar/kecil (heading), bold, bullet point, dan tabel.
+
+**Perubahan:**
+- `app/Support/AiMarkdown.php` (baru) — render Markdown → HTML aman memakai `GithubFlavoredMarkdownConverter` (`html_input: strip`, `allow_unsafe_links: false`) supaya tag HTML mentah & URL `javascript:` dari respons LLM tidak lolos (anti-XSS). `league/commonmark` sudah tersedia (2.8.0).
+- `app/Services/GeminiAssistantService.php` — kedua system prompt ditambah blok **FORMAT JAWABAN**: dorong Gaga memakai heading (## Rekap), bullet point, tabel, bold untuk nominal, larang HTML mentah.
+- `app/Http/Controllers/AiAssistantController.php` — respons `send()` kini menyertakan `reply_html` (hasil `AiMarkdown::render`) selain `reply` mentah.
+- `resources/views/superadmin/ai-assistant/index.blade.php`:
+  - `.ai-bubble.assistant` → `white-space: normal` + kelas `ai-md`.
+  - CSS baru `.ai-md`: styling heading, list, tabel (thead hijau, zebra), code/pre, blockquote, link.
+  - JS `addMessage(role, content, contentHtml)`: pesan asisten baru memakai `data.reply_html`; fallback teks biasa.
+  - Sidebar preview kini `strip_tags(AiMarkdown::render(...))` agar riwayat tampil bersih tanpa sintaks Markdown.
+- `resources/views/superadmin/ai-assistant/partials/message.blade.php` — pesan asisten (riwayat dari DB) dirender via `AiMarkdown::render()` + `ai-md`; pesan user tetap escape.
+- Verifikasi: `php artisan test` → **96 passed (361 assertions)**.
+
+**Catatan:** "embedding elemen" (gambar/kartu) di respons belum dikerjakan — sengaja fokus ke pemformatan dulu sesuai permintaan. Judul sesi otomatis (LLM singkat) sudah aktif dari §25.
+
+---
+
+## 27. AI Assistant — Data Mart Multi-Modul: SPD, LPJ, Lunch, Suku Cadang, Pemeriksaan Kendaraan
+
+**Tujuan:** sebelumnya jawaban Gaga "ke-capture" BBM semua; sekarang modul Data Mart diperluas ke domain GA lain sehingga pertanyaan non-BBM (SPD, LPJ, makan siang, suku cadang, pemeriksaan mobil) dijawab lewat jalur data terverifikasi, bukan no-data/fallback.
+
+**Data Mart baru** (`app/Services/AI/DataMart/Modules/`):
+- `SpdDataMart` (module `spd`) — faktur `SuratSpd`: nomor_surat, driver (user nama_lengkap), tempat_tujuan, melayani_bidang, vehicle, tanggal_berangkat/kembali, lama_perjalanan_hari, total_budget, is_extension, type, status. `dateDimension` = `tanggal_berangkat`.
+- `LpjDataMart` (module `lpj`) — faktur `LpjPenggantian`: lpj_number, driver, jabatan, vehicle/nomor_polisi, melayani_bidang (via suratSpd), is_late/days_late, total_pengeluaran + breakdown (tol/bbm/portir/lain), jumlah_diberikan, pengembalian/kekurangan, is_over_budget, status. `dateDimension` = `tanggal_lpj`.
+- `LunchDataMart` (module `lunch`) — faktur `LunchDistribution`: porsi employee/guest/total per tanggal & site. `dateDimension` = `distribution_date`.
+- `VehiclePartsDataMart` (module `vehicle_parts`) — faktur `VehiclePartsReplacement` + transaction: vpr_code, vehicle/nopol, status, scheduled_date/service_date, total_amount, is_overdue. `dateDimension` = `scheduled_date`.
+- `VehicleCheckDataMart` (module `vehicle_check`) — faktur `VehicleCheckingSchedule`: schedule_code, vehicle, check_frequency, dispatcher, last_checked_at, next_due_date, status (overdue/due/completed). `dateDimension` = `next_due_date`.
+
+**Resolver/pipeline:**
+- `DataMartManager::$registry` — 4 → **9 modul** (permohonan_bbm, vehicle, driver, gasoline, spd, lpj, lunch, vehicle_parts, vehicle_check).
+- `ModuleResolver` — aliases + strongTerms baru untuk 5 modul; tambah **`termBoost()`**: istilah akronim singkat (lpj, spd, vpr, bbm → ≤4 huruf) x3 sehingga query pendek "berapa LPJ…?" lolos threshold 0.70.
+- `SemanticQueryBuilder`:
+  - `defaultMeasure()` & `sortBy` baru per modul (spd → total_budget, lpj → total_pengeluaran, lunch → total_count, vehicle_parts → total_amount, vehicle_check → transaction_count).
+  - Filter tambahan: `is_late` (telat/terlambat/lewat batas/overdue) & `is_over_budget` (over budget/melebihi anggaran) otomatis saat dimensi modul mendukung.
+  - `cachedUserNames()` kini menggabungkan user dari `Permohonan`, `SuratSpd`, & `LpjPenggantian` agar nama driver dikenal lintas modul.
+- `KeywordMapper` — agregasi COUNT diperluas (jumlah surat/berapa surat/jumlah spd/berapa lpj/jumlah porsi/berapa porsi/dll); measure patterns per modul baru.
+
+**Format respons — kurang kaku:**
+- Instruksi FORMAT di kedua system prompt (system & verified) diubah: heading tidak lagi wajib diawali "Rekap" — variasi (`## Total`, `## Rincian`, `## Peringkat`, dst), boleh dibuka kalimat ringkas biasa. Poin "JANGAN selalu membuka dengan kata Rekap".
+
+**Test:** `AiAssistantDataMartTest` +3 kasus (jumlah SPD keluar → module spd + COUNT + records_matched=2; LPJ telat → module lpj + filter is_late + records_matched=1; porsi makan siang → module lunch + COUNT + records_matched=1).
+
+**Verifikasi:** `php artisan test` → **99 passed (373 assertions)**; `view:cache` OK; lint bersih.
+
+**Catatan:** kueri "SPD aku udah di approve belum?" (personal ownership, inject `auth()->id()`) belum diproses — bisa jadi Next Move lanjutan.
 ```

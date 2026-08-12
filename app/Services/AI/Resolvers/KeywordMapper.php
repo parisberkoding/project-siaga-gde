@@ -19,6 +19,10 @@ class KeywordMapper
             'berapa banyak transaksi', 'berapa banyak', 'jumlah transaksi',
             'jumlah permohonan', 'banyak transaksi', 'banyak permohonan',
             'berapa transaksi', 'berapa kali', 'jumlah request',
+            'jumlah surat', 'berapa surat', 'surat keluar', 'jumlah spd',
+            'jumlah lpj', 'berapa lpj', 'banyak surat', 'banyak spd',
+            'jumlah porsi', 'berapa porsi', 'jumlah makan', 'banyak porsi',
+            'berapa penggantian', 'jumlah penggantian', 'berapa perbaikan',
         ],
         'AVG' => [
             'rata-rata pengeluaran', 'rata-rata nominal', 'rata rata pengeluaran',
@@ -46,6 +50,20 @@ class KeywordMapper
             'total_requests' => ['jumlah permohonan', 'banyak permohonan', 'jumlah pengajuan', 'total request', 'transaksi terbanyak'],
             'avg_nominal' => ['rata-rata nominal', 'rata rata nominal', 'avg nominal'],
             'report_rate' => ['persentase pelaporan', 'persentase laporan', 'report rate', 'tingkat pelaporan'],
+        ],
+        'spd' => [
+            'total_budget' => ['budget', 'anggaran', 'biaya', 'nominal', 'rupiah', 'dana', 'benefit', 'total budget'],
+        ],
+        'lpj' => [
+            'total_pengeluaran' => ['pengeluaran', 'total pengeluaran', 'biaya', 'nominal', 'rupiah', 'direct', 'uang'],
+            'total_biaya_bbm' => ['bbm'],
+        ],
+        'lunch' => [
+            'total_count' => ['porsi', 'orang', 'jumlah makan', 'total'],
+            'guest_count' => ['guest', 'tamu'],
+        ],
+        'vehicle_parts' => [
+            'total_amount' => ['biaya', 'total', 'nominal', 'rupiah', 'uang', 'pengeluaran'],
         ],
     ];
 
