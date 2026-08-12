@@ -80,6 +80,30 @@ class RequestManagementController extends Controller
         // ✅ Calculate max slots & on-time rate
         $maxSlots = $this->calculateUserMaxSlots($user->id);
 
+    // Label kendaraan terpilih (untuk isi ulang input pencarian setelah validasi error)
+    $selectedVehicleLabel = null;
+    if (old('vehicle_id')) {
+        $selectedVehicle = $vehicles->firstWhere('id', (int) old('vehicle_id'));
+        $selectedVehicleLabel = $selectedVehicle ? $selectedVehicle->dropdown_label : null;
+    }
+
+    // Data kendaraan untuk autocomplete combobox (dipetakan di controller agar aman untuk @json)
+    $vehicleOptions = $vehicles
+        ->where('is_approved', true)
+        ->map(fn ($v) => [
+            'id'        => $v->id,
+            'label'     => $v->dropdown_label . ' (' . $v->consumerial_type . ')',
+            'code'      => $v->consumerial_code,
+            'name'      => $v->consumerial_name,
+            'type'      => $v->consumerial_type,
+            'benchmark' => $v->fuel_benchmark,
+            'range'     => $v->fuel_benchmark_range,
+            'fuel'      => $v->detail?->jenis_bahan_bakar,
+            'tank'      => $v->detail?->volume_tangki,
+        ])
+        ->values()
+        ->all();
+
         // Calculate on-time rate untuk dashboard
         $completedRequests = Permohonan::where('requester_id', $user->id)
             ->where('status', 'completed')
@@ -117,7 +141,9 @@ class RequestManagementController extends Controller
             'onTimeRate',
             'onTimeCount',
             'totalWithProof',
-            'fallbackOptions'
+            'fallbackOptions',
+            'selectedVehicleLabel',
+            'vehicleOptions'
         ));
     }
 

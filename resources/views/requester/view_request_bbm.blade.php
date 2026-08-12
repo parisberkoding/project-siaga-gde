@@ -179,22 +179,17 @@
 
                         {{-- Section: Pilih Kendaraan Siap Guna --}}
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="vehicle_id" class="form-label">Kendaraan / Alat <span class="text-danger">*</span></label>
-                                <select class="form-select @error('vehicle_id') is-invalid @enderror"
-                                        id="vehicle_id" name="vehicle_id">
-                                    <option value="">Pilih Kendaraan/Alat</option>
-                                    @foreach($vehicles->where('is_approved', true) as $vehicle)
-                                    <option value="{{ $vehicle->id }}"
-                                            data-benchmark="{{ $vehicle->fuel_benchmark ?? '' }}"
-                                            data-range="{{ json_encode($vehicle->fuel_benchmark_range) }}"
-                                            data-fuel="{{ $vehicle->detail?->jenis_bahan_bakar ?? '' }}"
-                                            data-tank="{{ $vehicle->detail?->volume_tangki ?? '' }}"
-                                            {{ old('vehicle_id') == $vehicle->id ? 'selected' : '' }}>
-                                        {{ $vehicle->dropdown_label }} ({{ $vehicle->consumerial_type }})
-                                    </option>
-                                    @endforeach
-                                </select>
+                            <div class="col-md-6 mb-3 position-relative">
+                                <label for="vehicle_search" class="form-label">Kendaraan / Alat <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control @error('vehicle_id') is-invalid @enderror"
+                                       id="vehicle_search" name="vehicle_search"
+                                       placeholder="Ketik kode / plat / nama kendaraan…"
+                                       autocomplete="off"
+                                       value="{{ $selectedVehicleLabel ?? '' }}">
+                                <input type="hidden" id="vehicle_id" name="vehicle_id"
+                                       value="{{ old('vehicle_id') }}">
+                                <div id="vehicleSuggestions" class="list-group position-absolute w-100 shadow-sm d-none"
+                                     style="z-index: 1050; max-height: 260px; overflow-y: auto;"></div>
                                 <div class="form-text" id="vehicleBudgetInfo"></div>
                                 @error('vehicle_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -336,10 +331,15 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const vehicleSelect = document.getElementById('vehicle_id');
-    const billPayment = document.getElementById('bill_payment');
+    const vehicleSearch = document.getElementById('vehicle_search');
+    const vehicleId     = document.getElementById('vehicle_id');
+    const suggestions   = document.getElementById('vehicleSuggestions');
+    const billPayment   = document.getElementById('bill_payment');
 
     const fallbackOptions = @json($fallbackOptions);
+
+    // Data kendaraan siap guna untuk pencarian & isi ulang
+    const vehicles = @json($vehicleOptions);
 
     const rupiah = (value) => 'Rp ' + new Intl.NumberFormat('id-ID').format(value);
 
@@ -365,27 +365,53 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function updateVehicleInfo() {
+    function renderSuggestions(items) {
+        suggestions.innerHTML = '';
+        if (!items.length) {
+            suggestions.classList.add('d-none');
+            return;
+        }
+
+        items.forEach((item) => {
+            const a = document.createElement('a');
+            a.href = '#';
+            a.className = 'list-group-item list-group-item-action py-2';
+            a.innerHTML = `<strong>${escapeHtml(item.code)}</strong>` +
+                `<br><small class="text-muted">${escapeHtml(item.name)} (${escapeHtml(item.type)})</small>`;
+            a.addEventListener('click', (e) => {
+                e.preventDefault();
+                vehicleSearch.value = item.label;
+                vehicleId.value = item.id;
+                suggestions.classList.add('d-none');
+                updateVehicleInfo(item);
+            });
+            suggestions.appendChild(a);
+        });
+
+        suggestions.classList.remove('d-none');
+    }
+
+    function updateVehicleInfo(vehicle) {
         const infoEl = document.getElementById('vehicleBudgetInfo');
         const fuelSelect = document.getElementById('gasoline_type');
         if (!infoEl || !fuelSelect) return;
 
-        const opt = vehicleSelect.options[vehicleSelect.selectedIndex];
-        if (!opt || !opt.value) {
-            infoEl.textContent = 'Pilih kendaraan untuk melihat benchmark BBM.';
+        if (!vehicle) {
+            vehicleId.value = '';
+            infoEl.textContent = 'Ketik untuk memilih kendaraan / alat.';
             populateBillPayment(fallbackOptions[0], fallbackOptions[fallbackOptions.length - 1]);
             fuelSelect.value = '';
             return;
         }
 
-        const benchmark = opt.dataset.benchmark ? parseInt(opt.dataset.benchmark) : null;
-        let range = null;
-        try { range = opt.dataset.range ? JSON.parse(opt.dataset.range) : null; } catch (e) { range = null; }
+        const benchmark = vehicle.benchmark ? parseInt(vehicle.benchmark) : null;
+        const range = vehicle.range && vehicle.range.min && vehicle.range.max
+            ? vehicle.range
+            : null;
+        const fuel = vehicle.fuel || '';
+        const tank = vehicle.tank ? parseFloat(vehicle.tank) : null;
 
-        const fuel = opt.dataset.fuel || '';
-        const tank = opt.dataset.tank ? parseFloat(opt.dataset.tank) : null;
-
-        if (range && range.min && range.max) {
+        if (range) {
             populateBillPayment(range.min, range.max);
         } else {
             populateBillPayment(fallbackOptions[0], fallbackOptions[fallbackOptions.length - 1]);
@@ -422,8 +448,43 @@ document.addEventListener('DOMContentLoaded', function() {
         infoEl.innerHTML = html;
     }
 
-    vehicleSelect.addEventListener('change', updateVehicleInfo);
-    updateVehicleInfo();
+    // ─── Autocomplete pencarian kendaraan ──────────────────────
+    vehicleSearch.addEventListener('input', () => {
+        if (!vehicleSearch.value || vehicleSearch.value.trim() === '') {
+            vehicleId.value = '';
+            suggestions.classList.add('d-none');
+            updateVehicleInfo(null);
+            return;
+        }
+
+        const q = vehicleSearch.value.trim().toLowerCase();
+        const matches = vehicles.filter((v) =>
+            (v.label + ' ' + v.code + ' ' + v.name).toLowerCase().includes(q)
+        ).slice(0, 8);
+
+        renderSuggestions(matches);
+    });
+
+    // Tutup saran saat klik di luar
+    document.addEventListener('click', (e) => {
+        if (!suggestions.contains(e.target) && e.target !== vehicleSearch) {
+            suggestions.classList.add('d-none');
+        }
+    });
+
+    // Isi ulang dari old('vehicle_id') setelah error validasi
+    const preselected = vehicles.find((v) => v.id === vehicleId.value);
+    if (preselected) {
+        vehicleSearch.value = preselected.label;
+        updateVehicleInfo(preselected);
+    } else {
+        updateVehicleInfo(null);
+    }
+
+    // ─── Helpers ───────────────────────────────────────────────
+    function escapeHtml(str) {
+        return String(str ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+    }
 });
 </script>
 @endsection
