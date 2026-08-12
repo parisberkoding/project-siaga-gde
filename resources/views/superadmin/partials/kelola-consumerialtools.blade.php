@@ -60,10 +60,10 @@
     </div>
     <div class="card-body">
         <!-- Filter Form -->
-        <form method="GET" action="{{ route('vehicles') }}" class="mb-3">
+        <form method="GET" action="{{ route('vehicles') }}" class="mb-3" data-autofilter>
             <input type="hidden" name="tab" value="list">
             <div class="row g-2">
-                <div class="col-md-6">
+                <div class="col-md-9">
                     <input type="text" class="form-control" name="search"
                            value="{{ $search }}"
                            placeholder="🔍 Cari berdasarkan kode, nama, atau catatan...">
@@ -74,11 +74,6 @@
                         <option value="KENDARAAN" {{ $type == 'KENDARAAN' ? 'selected' : '' }}>Kendaraan</option>
                         <option value="ALAT" {{ $type == 'ALAT' ? 'selected' : '' }}>Alat</option>
                     </select>
-                </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-funnel me-1"></i>Terapkan Filter
-                    </button>
                 </div>
             </div>
         </form>
@@ -288,6 +283,23 @@ document.addEventListener('DOMContentLoaded', function() {
             bsAlert.close();
         }, 5000);
     });
+
+    function initAutoFilter() {
+        document.querySelectorAll('form[data-autofilter]').forEach(function(form) {
+            const search = form.querySelector('input[name="search"]');
+            if (search) {
+                let timer;
+                search.addEventListener('input', function() {
+                    clearTimeout(timer);
+                    timer = setTimeout(function() { form.submit(); }, 400);
+                });
+            }
+            form.querySelectorAll('select').forEach(function(sel) {
+                sel.addEventListener('change', function() { form.submit(); });
+            });
+        });
+    }
+    initAutoFilter();
 });
 </script>
 @endsection

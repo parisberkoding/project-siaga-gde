@@ -21,10 +21,15 @@ class LunchAnalyticsController extends Controller
         $start = now()->subDays($days - 1)->toDateString();
         $end   = now()->toDateString();
 
-        $sites = Site::active()->get();
+        $siteIds = $request->user()?->unitSiteIds();
+
+        $sites = Site::active()
+            ->when($siteIds !== null, fn ($q) => $q->whereIn('id', $siteIds))
+            ->get();
 
         // ── Akurasi harian ────────────────────────────────────────────
         $accuracyRows = LunchForecast::whereBetween('lunch_date', [$start, $end])
+            ->inUnit($siteIds)
             ->whereNotNull('is_prediction_correct')
             ->selectRaw('lunch_date, count(*) as evaluated, sum(is_prediction_correct) as correct')
             ->groupBy('lunch_date')
@@ -47,12 +52,14 @@ class LunchAnalyticsController extends Controller
 
         // ── Variance forecast vs aktual per site ─────────────────────
         $forecastBySite = LunchForecast::whereBetween('lunch_date', [$start, $end])
+            ->inUnit($siteIds)
             ->whereNotNull('predicted_site_id')
             ->selectRaw('predicted_site_id as site_id, count(*) as total')
             ->groupBy('predicted_site_id')
             ->pluck('total', 'site_id');
 
         $actualBySite = LunchTransaction::whereBetween('transaction_date', [$start, $end])
+            ->inUnit($siteIds)
             ->selectRaw('site_id, count(*) as total')
             ->groupBy('site_id')
             ->pluck('total', 'site_id');
@@ -66,6 +73,7 @@ class LunchAnalyticsController extends Controller
 
         // ── Top manual override ───────────────────────────────────────
         $topOverrides = LunchForecast::whereBetween('lunch_date', [$start, $end])
+            ->inUnit($siteIds)
             ->where('prediction_source', 'manual')
             ->whereNotNull('employee_default_id')
             ->selectRaw('employee_default_id, count(*) as total')
@@ -77,11 +85,12 @@ class LunchAnalyticsController extends Controller
 
         // ── Learning progress ─────────────────────────────────────────
         $learning = [
-            'resolved'      => LunchTransaction::whereBetween('transaction_date', [$start, $end])->resolved()->count(),
-            'unresolved'    => LunchTransaction::whereBetween('transaction_date', [$start, $end])->unresolved()->count(),
+            'resolved'      => LunchTransaction::whereBetween('transaction_date', [$start, $end])->inUnit($siteIds)->resolved()->count(),
+            'unresolved'    => LunchTransaction::whereBetween('transaction_date', [$start, $end])->inUnit($siteIds)->unresolved()->count(),
             'avgConfidence' => round((float) LunchTransaction::whereBetween('transaction_date', [$start, $end])
-                ->resolved()->avg('confidence_score'), 1),
+                ->inUnit($siteIds)->resolved()->avg('confidence_score'), 1),
             'byMethod'      => LunchTransaction::whereBetween('transaction_date', [$start, $end])
+                ->inUnit($siteIds)
                 ->selectRaw('resolution_method, count(*) as total')
                 ->groupBy('resolution_method')
                 ->pluck('total', 'resolution_method'),
@@ -89,6 +98,7 @@ class LunchAnalyticsController extends Controller
 
         // ── Site trend (transaksi aktual per site per hari) ───────────
         $trendRows = LunchTransaction::whereBetween('transaction_date', [$start, $end])
+            ->inUnit($siteIds)
             ->selectRaw('transaction_date, site_id, count(*) as total')
             ->groupBy('transaction_date', 'site_id')
             ->get();

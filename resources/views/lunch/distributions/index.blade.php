@@ -22,8 +22,7 @@
     <div class="row mb-3 g-2 align-items-center">
         <div class="col-md-4">
             <form method="GET" action="{{ route('lunch.distributions.index') }}" class="d-flex gap-2">
-                <input type="date" name="date" value="{{ $date }}" class="form-control">
-                <button class="btn btn-primary">Filter</button>
+                <input type="date" name="date" value="{{ $date }}" class="form-control" onchange="this.form.submit()">
             </form>
         </div>
         <div class="col-md-8 text-md-end">

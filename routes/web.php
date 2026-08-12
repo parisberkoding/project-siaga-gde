@@ -1,28 +1,11 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AiAssistantController;
 use App\Http\Controllers\AuthentiactionController;
-use App\Http\Controllers\RequestManagementController;
-use App\Http\Controllers\SuperadminController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\VoucherController;
-use App\Http\Controllers\RbacController;
-use App\Http\Controllers\StorageFileController;
-use App\Http\Controllers\SpdController;
-use App\Http\Controllers\SpdPrintController;
-use App\Http\Controllers\SpdDailyReportController;
-use App\Http\Controllers\RoutineCheckingController;
-use App\Http\Controllers\DailyCheckingController;
-use App\Http\Controllers\WeeklyCheckingController;
-use App\Http\Controllers\MonthlyCheckingController;
 use App\Http\Controllers\BodyCheckingController;
-use App\Http\Controllers\DispatcherAdministrationController;
-use App\Http\Controllers\VehicleRepairmentDriverController;
-use App\Http\Controllers\VehicleSparepartRequestRepairController;
-use App\Http\Controllers\VehicleCheckingSuperadminController;
 use App\Http\Controllers\CateringGuestController;
-use App\Http\Controllers\VehicleHealthHistoryController;
-use App\Http\Controllers\MasterGasolineController;
+use App\Http\Controllers\DailyCheckingController;
+use App\Http\Controllers\DispatcherAdministrationController;
 use App\Http\Controllers\Lunch\EmployeeDefaultController;
 use App\Http\Controllers\Lunch\LunchAnalyticsController;
 use App\Http\Controllers\Lunch\LunchDashboardController;
@@ -31,8 +14,27 @@ use App\Http\Controllers\Lunch\LunchForecastController;
 use App\Http\Controllers\Lunch\LunchTransactionController;
 use App\Http\Controllers\Lunch\PublicAttendanceController;
 use App\Http\Controllers\Lunch\SelfBookingController;
+use App\Http\Controllers\Lunch\VendorLunchController;
+use App\Http\Controllers\MasterGasolineController;
+use App\Http\Controllers\MonthlyCheckingController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RbacController;
 use App\Http\Controllers\ReportingController;
-use App\Http\Controllers\AiAssistantController;
+use App\Http\Controllers\RequestManagementController;
+use App\Http\Controllers\SiteController;
+use App\Http\Controllers\SpdController;
+use App\Http\Controllers\UnitController;
+use App\Http\Controllers\SpdDailyReportController;
+use App\Http\Controllers\SpdPrintController;
+use App\Http\Controllers\StorageFileController;
+use App\Http\Controllers\SuperadminController;
+use App\Http\Controllers\VehicleCheckingSuperadminController;
+use App\Http\Controllers\VehicleHealthHistoryController;
+use App\Http\Controllers\VehicleRepairmentDriverController;
+use App\Http\Controllers\VehicleSparepartRequestRepairController;
+use App\Http\Controllers\VoucherController;
+use App\Http\Controllers\WeeklyCheckingController;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/files/storage/{path}', [StorageFileController::class, 'serve'])
     ->where('path', '.*')
@@ -118,47 +120,47 @@ Route::middleware(['auth', 'permission:bbm.request,bbm.view,bbm.report'])->group
 
     // Thermer Print Routes
     Route::get('voucher/{id}/thermer/response', [VoucherController::class, 'thermerJsonResponse'])
-    ->name('voucher.thermer.response');
+        ->name('voucher.thermer.response');
 
-     // ────────────────────────────────────────────────────────────────────────
-     // SURAT SPD
-     // ────────────────────────────────────────────────────────────────────────
-     Route::prefix('surat_requester')->name('requester.surat.')->middleware('permission:spd.view')->group(function () {
-         Route::get('/main-surat', [SpdController::class, 'indexSuratRequester'])->name('index');
-         Route::get('/create', [SpdController::class, 'createSurat'])->name('create');
-         Route::post('/store', [SpdController::class, 'storeSurat'])->name('store');
-         Route::get('/{surat}', [SpdController::class, 'showSuratRequester'])->name('show');
-     });
+    // ────────────────────────────────────────────────────────────────────────
+    // SURAT SPD
+    // ────────────────────────────────────────────────────────────────────────
+    Route::prefix('surat_requester')->name('requester.surat.')->middleware('permission:spd.view')->group(function () {
+        Route::get('/main-surat', [SpdController::class, 'indexSuratRequester'])->name('index');
+        Route::get('/create', [SpdController::class, 'createSurat'])->name('create');
+        Route::post('/store', [SpdController::class, 'storeSurat'])->name('store');
+        Route::get('/{surat}', [SpdController::class, 'showSuratRequester'])->name('show');
+    });
 
-     // ────────────────────────────────────────────────────────────────────────
-     // PERPANJANGAN
-     // ────────────────────────────────────────────────────────────────────────
-     Route::prefix('perpanjangan')->name('requester.perpanjangan.')->middleware('permission:spd.view')->group(function () {
-         Route::get('/main-perpanjangan', [SpdController::class, 'indexPerpanjanganRequester'])->name('index');
-         Route::get('/create', [SpdController::class, 'createPerpanjangan'])->name('create');
-         Route::post('/store', [SpdController::class, 'storePerpanjangan'])->name('store');
-     });
+    // ────────────────────────────────────────────────────────────────────────
+    // PERPANJANGAN
+    // ────────────────────────────────────────────────────────────────────────
+    Route::prefix('perpanjangan')->name('requester.perpanjangan.')->middleware('permission:spd.view')->group(function () {
+        Route::get('/main-perpanjangan', [SpdController::class, 'indexPerpanjanganRequester'])->name('index');
+        Route::get('/create', [SpdController::class, 'createPerpanjangan'])->name('create');
+        Route::post('/store', [SpdController::class, 'storePerpanjangan'])->name('store');
+    });
 
-     // ────────────────────────────────────────────────────────────────────────
-     // LPJ (Laporan Pertanggungjawaban)
-     // ────────────────────────────────────────────────────────────────────────
-     Route::prefix('lpj')->name('requester.lpj.')->middleware('permission:lpj.create,lpj.view')->group(function () {
-         Route::get('/main-lpj', [SpdController::class, 'indexLaporanRequester'])->name('index');
-         Route::get('/create/{surat}', [SpdController::class, 'createLaporan'])->name('create');
-         Route::post('/store', [SpdController::class, 'storeLaporan'])->name('store');
-         Route::get('/show/{laporan}', [SpdController::class, 'showLaporanRequester'])->name('show');
-         Route::get('/{laporan}/edit', [SpdController::class, 'editLaporanRequester'])->name('edit');
-         Route::put('/{laporan}', [SpdController::class, 'updateLaporanRequester'])->name('update');
-     });
+    // ────────────────────────────────────────────────────────────────────────
+    // LPJ (Laporan Pertanggungjawaban)
+    // ────────────────────────────────────────────────────────────────────────
+    Route::prefix('lpj')->name('requester.lpj.')->middleware('permission:lpj.create,lpj.view')->group(function () {
+        Route::get('/main-lpj', [SpdController::class, 'indexLaporanRequester'])->name('index');
+        Route::get('/create/{surat}', [SpdController::class, 'createLaporan'])->name('create');
+        Route::post('/store', [SpdController::class, 'storeLaporan'])->name('store');
+        Route::get('/show/{laporan}', [SpdController::class, 'showLaporanRequester'])->name('show');
+        Route::get('/{laporan}/edit', [SpdController::class, 'editLaporanRequester'])->name('edit');
+        Route::put('/{laporan}', [SpdController::class, 'updateLaporanRequester'])->name('update');
+    });
 
-     // ────────────────────────────────────────────────────────────────────────
-     // AJAX / API Endpoints
-     // ────────────────────────────────────────────────────────────────────────
-     Route::prefix('ajax')->name('requester.ajax.')->middleware('permission:spd.view,bbm.view')->group(function () {
-         Route::get('/surat/{surat}', [SpdController::class, 'getSuratDetail'])->name('surat.detail');
-         Route::get('/surat-list', [SpdController::class, 'getSuratListForDropdown'])->name('surat.list');
-         Route::get('/dashboard-stats', [SpdController::class, 'getDashboardStats'])->name('dashboard.stats');
-     });
+    // ────────────────────────────────────────────────────────────────────────
+    // AJAX / API Endpoints
+    // ────────────────────────────────────────────────────────────────────────
+    Route::prefix('ajax')->name('requester.ajax.')->middleware('permission:spd.view,bbm.view')->group(function () {
+        Route::get('/surat/{surat}', [SpdController::class, 'getSuratDetail'])->name('surat.detail');
+        Route::get('/surat-list', [SpdController::class, 'getSuratListForDropdown'])->name('surat.list');
+        Route::get('/dashboard-stats', [SpdController::class, 'getDashboardStats'])->name('dashboard.stats');
+    });
 
     // ────────────────────────────────────────────────────────────────────────
     // VEHICLE CHECKING - Driver Acknowledgement & Service Transaction
@@ -197,6 +199,12 @@ Route::middleware(['auth', 'role:admin,superadmin'])->group(function () {
         ->name('transaction.getPhoto');
 
     // ────────────────────────────────────────────────────────────────────────
+    // VOUCHER — list realtime (AJAX) + bulk export Excel
+    // ────────────────────────────────────────────────────────────────────────
+    Route::get('/vouchers/list', [RequestManagementController::class, 'voucherList'])->name('admin.vouchers.list');
+    Route::post('/vouchers/export', [RequestManagementController::class, 'voucherExport'])->name('admin.vouchers.export');
+
+    // ────────────────────────────────────────────────────────────────────────
     // SPAREPART REQUEST REPAIR - Approve, Schedule, Monitor
     // ────────────────────────────────────────────────────────────────────────
     Route::prefix('admin/sparepart-request')->name('admin.sparepart-request.')->group(function () {
@@ -217,7 +225,7 @@ Route::middleware(['auth', 'role:admin,superadmin'])->group(function () {
     Route::get('/admin/service-scheduling', [VehicleSparepartRequestRepairController::class, 'schedulingIndex'])
         ->name('admin.service-scheduling.index');
 
-     Route::prefix('admin/replacement-approval')->name('admin.replacement-approval.')->group(function () {
+    Route::prefix('admin/replacement-approval')->name('admin.replacement-approval.')->group(function () {
         Route::get('/', [VehicleSparepartRequestRepairController::class, 'index'])
             ->name('index');
         Route::get('/{vprCode}', [VehicleSparepartRequestRepairController::class, 'show'])
@@ -243,7 +251,7 @@ Route::middleware(['auth', 'role:admin,superadmin'])->group(function () {
 });
 
 // export laporan transaksi bbm
-Route::middleware(['auth','role:superadmin,admin'])->group(function () {
+Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
     // ==================== REPORTS & EXPORTS ====================
     Route::get('/print-report', [SuperadminController::class, 'printReport'])->name('superadmin.print-report');
     Route::get('/print-report/form', [SuperadminController::class, 'printReportPage'])->name('superadmin.print-report.form');
@@ -310,7 +318,7 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
         // Trip Analysis Dashboard (Main View)
         Route::get('/', [SuperadminController::class, 'indexTripAnalysis'])->name('index');
 
-       Route::post('/recalculate-all', [SuperadminController::class, 'recalculateAllTripMetrics'])->name('superadmin.trip-validations.recalculate-all');
+        Route::post('/recalculate-all', [SuperadminController::class, 'recalculateAllTripMetrics'])->name('superadmin.trip-validations.recalculate-all');
 
     });
 
@@ -320,8 +328,6 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
 
     Route::post('/trip-validations/bulk-validate', [SuperadminController::class, 'bulkValidateTrips'])
         ->name('superadmin.trip-validations.bulk-validate');
-
-
 
     // ==================== API ENDPOINTS ====================
     Route::prefix('api')->name('superadmin.')->group(function () {
@@ -399,6 +405,25 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
         Route::post('/{id}/delete', [RbacController::class, 'destroy'])->name('delete');
     });
 
+    // ==================== UNIT BISNIS & SITE MANAGEMENT ====================
+    Route::prefix('sa/units')->name('superadmin.units.')->group(function () {
+        Route::get('/', [UnitController::class, 'index'])->name('index');
+        Route::get('/create', [UnitController::class, 'create'])->name('create');
+        Route::post('/', [UnitController::class, 'store'])->name('store');
+        Route::get('/{unit}/edit', [UnitController::class, 'edit'])->name('edit');
+        Route::put('/{unit}', [UnitController::class, 'update'])->name('update');
+        Route::post('/{unit}/delete', [UnitController::class, 'destroy'])->name('delete');
+    });
+
+    Route::prefix('sa/sites')->name('superadmin.sites.')->group(function () {
+        Route::get('/', [SiteController::class, 'index'])->name('index');
+        Route::get('/create', [SiteController::class, 'create'])->name('create');
+        Route::post('/', [SiteController::class, 'store'])->name('store');
+        Route::get('/{site}/edit', [SiteController::class, 'edit'])->name('edit');
+        Route::put('/{site}', [SiteController::class, 'update'])->name('update');
+        Route::post('/{site}/delete', [SiteController::class, 'destroy'])->name('delete');
+    });
+
     // ==================== ACTIVITY LOG ====================
     Route::get('/activity-log', [SuperadminController::class, 'getActivityLog'])->name('activity-log');
 
@@ -422,22 +447,18 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
         Route::get('/transaction-report', [VehicleCheckingSuperadminController::class, 'transactionReportIndex'])
             ->name('transaction-report.index');
 
-
         // Download barcode satu kendaraan (superadmin)
         Route::get('/barcode/download/{vehicleId}', [VehicleHealthHistoryController::class, 'downloadBarcode'])
             ->name('barcode.download');
         // Download semua barcode sebagai ZIP (superadmin only)
         Route::get('/barcode/download-all-zip', [VehicleHealthHistoryController::class, 'downloadAllBarcodesZip'])
             ->name('barcode.download-zip');
-
-         Route::get('/barcode/download/{vehicleId}', [VehicleHealthHistoryController::class, 'downloadBarcode'])
-            ->name('barcode.download');
     });
 });
 
 Route::middleware(['auth', 'role:manager,superadmin'])->group(function () {
     Route::get('/dashboard-bisnis', [SuperadminController::class, 'dashboardBisnis'])
-    ->name('superadmin.dashboard.bisnis');
+        ->name('superadmin.dashboard.bisnis');
 
 });
 
@@ -462,12 +483,12 @@ Route::middleware(['auth', 'role:dispatcher,superadmin,admin'])->prefix('dispatc
     // ────────────────────────────────────────────────────────────────────────
     // Download barcode satu kendaraan (superadmin + dispatcher — dicek di controller)
     Route::get('/barcode/download/{vehicleId}', [VehicleHealthHistoryController::class, 'downloadBarcode'])
-            ->name('barcode.download');
+        ->name('barcode.download');
 });
 
 // Role Baru, Dispatcher Routes
 Route::middleware(['auth', 'role:dispatcher,superadmin'])->prefix('dispatcher')->name('dispatcher.')->group(function () {
- // ────────────────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────────────────
     // ASSIGN DISPATCHER - Assign PIC ke kendaraan
     // ────────────────────────────────────────────────────────────────────────
     Route::prefix('assign')->name('assign.')->group(function () {
@@ -650,4 +671,13 @@ Route::middleware(['auth', 'role:admin,superadmin'])->prefix('lunch')->name('lun
 Route::prefix('my')->name('my.')->group(function () {
     Route::get('/lunch-plan', [SelfBookingController::class, 'index'])->name('lunch-plan');
     Route::post('/lunch-plan/store', [SelfBookingController::class, 'store'])->name('lunch-plan.store');
+});
+
+// ────────────────────────────────────────────────────────────────────────
+// VENDOR CATERING — akses terbatas: daftar kehadiran lunch harian.
+// Role vendor disiapkan; superadmin juga bisa mengakses. Menu sidebar
+// disembunyikan sementara hingga siap diaktifkan.
+// ────────────────────────────────────────────────────────────────────────
+Route::middleware(['auth', 'role:vendor,superadmin'])->prefix('vendor/lunch')->name('vendor.lunch.')->group(function () {
+    Route::get('/today', [VendorLunchController::class, 'today'])->name('today');
 });

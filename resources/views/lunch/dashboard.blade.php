@@ -22,11 +22,96 @@
     <div class="row mb-3">
         <div class="col-md-4">
             <form method="GET" action="{{ route('lunch.dashboard') }}" class="d-flex gap-2">
-                <input type="date" name="date" value="{{ $date }}" class="form-control">
-                <button class="btn btn-primary">Filter</button>
+                <input type="date" name="date" value="{{ $date }}" class="form-control" onchange="this.form.submit()">
             </form>
         </div>
     </div>
+
+    {{-- ── Panduan Alur Lunch (step by step, seamless) ── --}}
+    @if(!empty($stepStatus))
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-light">
+            <strong><i class="bi bi-list-ol me-2 text-primary"></i>Alur Lunch Management — Status Langkah</strong>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                {{-- Step 1: Master Pekerja --}}
+                <div class="col-md-3">
+                    <div class="border rounded p-3 h-100">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <span class="badge bg-secondary">1</span>
+                            @if($stepStatus['employee_count'] > 0)
+                                <i class="bi bi-check-circle-fill text-success"></i>
+                            @else
+                                <i class="bi bi-exclamation-circle-fill text-danger"></i>
+                            @endif
+                        </div>
+                        <h6 class="mt-2 mb-1">Master Pekerja</h6>
+                        <small class="text-muted d-block mb-2">{{ $stepStatus['employee_count'] }} pekerja terdaftar</small>
+                        <a href="{{ route('lunch.employee-defaults.index') }}" class="btn btn-sm btn-outline-primary w-100">Kelola Pekerja</a>
+                    </div>
+                </div>
+                {{-- Step 2: Forecast H+1 --}}
+                <div class="col-md-3">
+                    <div class="border rounded p-3 h-100">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <span class="badge bg-secondary">2</span>
+                            @if($stepStatus['forecast_tomorrow'])
+                                <i class="bi bi-check-circle-fill text-success"></i>
+                            @else
+                                <i class="bi bi-clock text-warning"></i>
+                            @endif
+                        </div>
+                        <h6 class="mt-2 mb-1">Forecast Besok</h6>
+                        <small class="text-muted d-block mb-2">
+                            {{ $stepStatus['forecast_tomorrow'] ? 'Sudah digenerate' : 'Belum digenerate' }}
+                        </small>
+                        <form method="POST" action="{{ route('lunch.forecasts.generate') }}" class="d-inline w-100">
+                            @csrf
+                            <button class="btn btn-sm btn-outline-success w-100" onclick="return confirm('Generate forecast untuk besok?')">
+                                <i class="bi bi-magic"></i> Generate
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {{-- Step 3: Distribusi --}}
+                <div class="col-md-3">
+                    <div class="border rounded p-3 h-100">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <span class="badge bg-secondary">3</span>
+                            @if($stepStatus['distribution_today_locked'])
+                                <i class="bi bi-lock-fill text-success"></i>
+                            @else
+                                <i class="bi bi-pencil text-warning"></i>
+                            @endif
+                        </div>
+                        <h6 class="mt-2 mb-1">Distribusi Hari Ini</h6>
+                        <small class="text-muted d-block mb-2">
+                            {{ $stepStatus['distribution_today']->count() }} site ·
+                            {{ $stepStatus['distribution_today_locked'] ? 'terkunci' : 'draft' }}
+                        </small>
+                        <a href="{{ route('lunch.distributions.index') }}" class="btn btn-sm btn-outline-primary w-100">Kelola Distribusi</a>
+                    </div>
+                </div>
+                {{-- Step 4: Kehadiran & Export --}}
+                <div class="col-md-3">
+                    <div class="border rounded p-3 h-100">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <span class="badge bg-secondary">4</span>
+                            <i class="bi bi-qr-code-scan text-primary"></i>
+                        </div>
+                        <h6 class="mt-2 mb-1">Kehadiran & Export</h6>
+                        <small class="text-muted d-block mb-2">{{ $stepStatus['attendance_today'] }} sudah scan hari ini</small>
+                        <div class="d-grid gap-1">
+                            <a href="{{ route('vendor.lunch.today') }}" class="btn btn-sm btn-outline-info">Siapa Makan</a>
+                            <a href="{{ route('lunch.export-form') }}" class="btn btn-sm btn-outline-success">Export Vendor</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 
     {{-- Summary Cards per site --}}
     <div class="row g-3 mb-3">

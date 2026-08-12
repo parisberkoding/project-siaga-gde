@@ -25,26 +25,31 @@
 </div>
 @endif
 
-<div class="d-flex align-items-center justify-content-between mb-4">
-    <div class="d-flex align-items-center">
-        <div class="bg-dark rounded-3 p-3 me-3 shadow-sm">
-            <i class="bi bi-shield-lock text-white fs-4"></i>
-        </div>
-        <div>
-            <h4 class="mb-0 fw-bold text-dark">Role & Hak Akses (RBAC)</h4>
-            <small class="text-muted">Kelola role dan permission pengguna secara dinamis</small>
-        </div>
-    </div>
+<div class="pagetitle">
+    <h1>Role & Hak Akses (RBAC)</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ route('admin-dashboard') }}">Home</a></li>
+            <li class="breadcrumb-item">RBAC & Hak Akses</li>
+            <li class="breadcrumb-item active">Role</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="d-flex justify-content-end mb-3">
     <a href="{{ route('superadmin.rbac.create') }}" class="btn btn-dark">
         <i class="bi bi-plus-lg me-1"></i> Tambah Role Baru
     </a>
 </div>
 
-<div class="card">
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-dark text-white rounded-top">
+        <h5 class="mb-0 fw-semibold"><i class="bi bi-shield-lock me-2"></i>Daftar Role</h5>
+    </div>
     <div class="card-body p-3">
         <div class="table-responsive">
             <table class="table table-hover align-middle">
-                <thead>
+                <thead class="table-light">
                     <tr>
                         <th>Role</th>
                         <th>Deskripsi</th>

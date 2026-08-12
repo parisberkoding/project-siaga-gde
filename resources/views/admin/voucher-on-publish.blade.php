@@ -1,324 +1,255 @@
+@php
+    $voucherDate = $voucherDate ?? now()->subDay()->toDateString();
+@endphp
+
 <div class="tab-content">
-  {{-- Sub-Tab 3: Prognosa Transaksi (Voucher yang Terbit) --}}
-  <div class="tab-pane fade" id="prognosis-pane">
-    {{-- Header dengan tombol export --}}
-    <div class="d-flex justify-content-between align-items-center mb-3">
+  {{-- Sub-Tab: Voucher Terbit + Tracking Approval --}}
+  <div class="tab-pane fade show active" id="voucher-prognosis-pane">
+    {{-- Header + filter realtime (tanpa tombol) --}}
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
       <div>
-        <h6 class="mb-0">Daftar Voucher yang Sudah Terbit</h6>
-        <small class="text-muted">Voucher dengan status Approved dan Expired untuk validasi</small>
+        <h6 class="mb-0">Daftar Voucher Terbit & Tracking Approval</h6>
+        <small class="text-muted">Filter tanggal & status otomatis · default: kemarin</small>
       </div>
-      <button type="button" class="btn btn-success btn-sm" onclick="exportPrognosisToCSV()">
-        <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV
-      </button>
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <label class="form-label mb-0 small text-muted me-1">Tanggal:</label>
+        <input type="date" id="voucherDate" class="form-control form-control-sm" value="{{ $voucherDate }}" style="width:auto">
+        <select id="voucherStatus" class="form-select form-select-sm" style="width:auto">
+          <option value="all">Semua Status</option>
+          <option value="active">Aktif</option>
+          <option value="expired">Expired</option>
+        </select>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="exportVouchers('selected')">
+          <i class="bi bi-file-earmark-spreadsheet"></i> Export Terpilih
+        </button>
+        <button type="button" class="btn btn-success btn-sm" onclick="exportVouchers('all')">
+          <i class="bi bi-file-earmark-spreadsheet-fill"></i> Export Semua
+        </button>
+      </div>
     </div>
 
-    {{-- Filter Status --}}
-    <div class="mb-3">
-      <div class="btn-group btn-group-sm" role="group">
-        <button type="button" class="btn btn-outline-primary active" onclick="filterPrognosis('all')">
-          <i class="bi bi-list"></i> Semua
-        </button>
-        <button type="button" class="btn btn-outline-success" onclick="filterPrognosis('approved')">
-          <i class="bi bi-check-circle"></i> Aktif
-        </button>
-        <button type="button" class="btn btn-outline-danger" onclick="filterPrognosis('cancelled')">
-          <i class="bi bi-x-circle"></i> Expired
-        </button>
-      </div>
-    </div>
+    {{-- Hidden form untuk export (POST → download xlsx) --}}
+    <form id="voucherExportForm" method="POST" action="{{ route('admin.vouchers.export') }}" class="d-none">
+      @csrf
+      <input type="hidden" name="date" id="exportDate">
+      <input type="hidden" name="status" id="exportStatus">
+      <div id="exportIdsContainer"></div>
+    </form>
 
     <div class="table-responsive">
-      <table class="table table-hover table-bordered" id="prognosisTable">
+      <table class="table table-hover table-bordered align-middle" id="voucherTable">
         <thead class="table-light">
           <tr>
-            <th style="width: 20%;">Pemohon</th>
-            <th style="width: 25%;">Kendaraan / Alat</th>
-            <th style="width: 15%;">Nominal</th>
-            <th style="width: 20%;">Kode Voucher</th>
-            <th style="width: 10%;">Status</th>
-            <th style="width: 10%; text-align: center;">Checklist</th>
+            <th style="width:3%; text-align:center;">
+              <input type="checkbox" id="voucherSelectAll" title="Pilih semua">
+            </th>
+            <th style="width:18%;">Pemohon</th>
+            <th style="width:22%;">Kendaraan / Alat</th>
+            <th style="width:12%;">Nominal</th>
+            <th style="width:15%;">Kode Voucher</th>
+            <th style="width:10%;">Status</th>
+            <th style="width:20%;">Tracking Approval</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="voucherBody">
           @forelse($approvedVouchers as $voucher)
             @php
-              // Tentukan apakah expired
-              $isExpired = \Carbon\Carbon::parse($voucher->valid_until)->isPast();
+              $perm = $voucher->permohonan;
+              $veh = $perm?->vehicle;
+              $isExpired = $voucher->valid_until && \Carbon\Carbon::parse($voucher->valid_until)->isPast();
               $statusBadge = $isExpired ? 'bg-danger' : 'bg-success';
-              $statusText = $isExpired ? 'EXPIRED' : 'AKTIF';
+              $statusText = $isExpired ? 'EXPIRED' : strtoupper($voucher->status);
               $statusIcon = $isExpired ? 'bi-x-circle' : 'bi-check-circle';
-              $rowClass = $isExpired ? 'table-danger' : '';
             @endphp
-            <tr class="{{ $rowClass }}" data-status="{{ $isExpired ? 'cancelled' : 'approved' }}">
-              {{-- Pemohon --}}
+            <tr data-id="{{ $voucher->id }}" data-status="{{ $isExpired ? 'expired' : 'active' }}">
+              <td class="text-center"><input type="checkbox" class="voucher-check" value="{{ $voucher->id }}"></td>
               <td>
-                @if($voucher->permohonan && $voucher->permohonan->requester)
-                  <strong>{{ $voucher->permohonan->requester->nama_lengkap }}</strong>
+                @if($perm && $perm->requester)
+                  <strong>{{ $perm->requester->nama_lengkap }}</strong>
+                  <div class="small text-muted">{{ $perm->request_number }}</div>
                 @else
                   <span class="text-muted">Unknown</span>
                 @endif
               </td>
-
-              {{-- Kendaraan / Alat --}}
               <td>
-                @if($voucher->permohonan && $voucher->permohonan->vehicle)
-                  <div>
-                    <strong class="text-primary">{{ $voucher->permohonan->vehicle->consumerial_code }}</strong>
-                  </div>
-                  <div class="text-muted small">{{ $voucher->permohonan->vehicle->consumerial_name }}</div>
-                  <span class="badge bg-secondary badge-sm">{{ $voucher->permohonan->vehicle->consumerial_type }}</span>
+                @if($veh)
+                  <div><strong class="text-primary">{{ $veh->consumerial_code }}</strong></div>
+                  <div class="text-muted small">{{ $veh->consumerial_name }}</div>
+                  <span class="badge bg-secondary">{{ $veh->consumerial_type }}</span>
                 @else
                   <span class="badge bg-secondary">Kendaraan Dihapus</span>
                 @endif
               </td>
-
-              {{-- Nominal --}}
+              <td><strong class="text-dark">Rp {{ number_format($voucher->approved_amount, 0, ',', '.') }}</strong></td>
               <td>
-                <strong class="text-dark">Rp {{ number_format($voucher->approved_amount, 0, ',', '.') }}</strong>
-              </td>
-
-              {{-- Kode Voucher (Bold) --}}
-              <td>
-                <strong style="font-family: 'Courier New', monospace; font-size: 0.95rem; letter-spacing: 0.5px;">
+                <strong style="font-family:'Courier New',monospace; font-size:0.95rem; letter-spacing:0.5px;">
                   {{ $voucher->voucher_code }}
                 </strong>
-                <div class="small text-muted mt-1">
-                  <i class="bi bi-calendar3"></i>
-                  Valid: {{ \Carbon\Carbon::parse($voucher->valid_until)->format('d/m/Y H:i') }}
+                <div class="small text-muted mt-1"><i class="bi bi-calendar3"></i>
+                  Valid: {{ $voucher->valid_until ? \Carbon\Carbon::parse($voucher->valid_until)->format('d/m/Y H:i') : '-' }}
                 </div>
               </td>
-
-              {{-- Status --}}
               <td>
-                <span class="badge {{ $statusBadge }}">
-                  <i class="bi {{ $statusIcon }}"></i> {{ $statusText }}
-                </span>
+                <span class="badge {{ $statusBadge }}"><i class="bi {{ $statusIcon }}"></i> {{ $statusText }}</span>
               </td>
-
-              {{-- Checklist (kosong untuk diisi manual) --}}
-              <td style="text-align: center; vertical-align: middle;">
-                <div style="width: 30px; height: 30px; border: 2px solid #6c757d; border-radius: 4px; margin: 0 auto;"></div>
+              <td class="small">
+                <div><i class="bi bi-person-check text-primary"></i>
+                  Approver: <strong>{{ $voucher->authorizer?->nama_lengkap ?? '-' }}</strong>
+                </div>
+                <div><i class="bi bi-clock text-muted"></i>
+                  Approval: {{ $voucher->approval_date ? \Carbon\Carbon::parse($voucher->approval_date)->format('d/m/Y H:i') : '-' }}
+                </div>
+                <div><i class="bi bi-flag text-muted"></i>
+                  Permohonan: <span class="badge bg-light text-dark">{{ strtoupper($perm?->status ?? '-') }}</span>
+                </div>
+                @if($voucher->approval_notes || $perm?->authorizer_notes)
+                  <div class="text-muted"><i class="bi bi-sticky"></i>
+                    {{ $voucher->approval_notes ?? $perm?->authorizer_notes }}
+                  </div>
+                @endif
               </td>
             </tr>
           @empty
-            <tr>
-              <td colspan="6">
-                <div class="text-center py-4 text-muted">
-                  <i class="bi bi-journal-x" style="font-size: 2rem; opacity: 0.5;"></i>
-                  <div class="mt-2">Belum ada voucher yang terbit</div>
-                </div>
-              </td>
-            </tr>
+            <tr><td colspan="7">
+              <div class="text-center py-4 text-muted">
+                <i class="bi bi-journal-x" style="font-size:2rem; opacity:0.5;"></i>
+                <div class="mt-2">Tidak ada voucher terbit pada tanggal ini</div>
+              </div>
+            </td></tr>
           @endforelse
         </tbody>
       </table>
     </div>
-  </div>
-</div>
 
-{{-- Modal Preview Foto --}}
-<div class="modal fade" id="photoModal" tabindex="-1">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="photoModalTitle">Preview Foto</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body text-center">
-        <img id="photoModalImage" src="" alt="Preview" style="max-width: 100%; height: auto; border-radius: 8px;">
-      </div>
-      <div class="modal-footer">
-        <a id="photoModalLink" href="" target="_blank" class="btn btn-primary">
-          <i class="bi bi-box-arrow-up-right"></i> Buka di Tab Baru
-        </a>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-      </div>
+    <div class="d-flex justify-content-between align-items-center px-1 py-2">
+      <small class="text-muted"><span id="voucherCount">{{ $approvedVouchers->count() }}</span> voucher</small>
+      <small class="text-muted"><span id="voucherSelectedCount">0</span> dipilih</small>
     </div>
   </div>
 </div>
 
 <script>
-  // Show photo in modal
-  function showPhoto(photoUrl, title) {
-    if (!photoUrl || photoUrl === '') {
-      alert('Foto tidak tersedia');
-      return;
-    }
+(function () {
+  const dateInput = document.getElementById('voucherDate');
+  const statusSelect = document.getElementById('voucherStatus');
+  const tbody = document.getElementById('voucherBody');
+  const selectAll = document.getElementById('voucherSelectAll');
+  const countLabel = document.getElementById('voucherCount');
+  const selectedLabel = document.getElementById('voucherSelectedCount');
+  const exportForm = document.getElementById('voucherExportForm');
+  const exportDate = document.getElementById('exportDate');
+  const exportStatus = document.getElementById('exportStatus');
+  const idsContainer = document.getElementById('exportIdsContainer');
 
-    document.getElementById('photoModalTitle').textContent = title;
-    document.getElementById('photoModalImage').src = photoUrl;
-    document.getElementById('photoModalLink').href = photoUrl;
-
-    const modal = new bootstrap.Modal(document.getElementById('photoModal'));
-    modal.show();
+  function csrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
   }
 
-  // Filter prognosis table by status
-  function filterPrognosis(status) {
-    const table = document.getElementById('prognosisTable');
-    const rows = table.querySelectorAll('tbody tr:not([colspan])');
-
-    // Update button active state
-    document.querySelectorAll('[onclick^="filterPrognosis"]').forEach(btn => {
-      btn.classList.remove('active');
-    });
-    event.target.closest('button').classList.add('active');
-
-    rows.forEach(row => {
-      if (status === 'all') {
-        row.style.display = '';
-      } else {
-        const rowStatus = row.getAttribute('data-status');
-        row.style.display = rowStatus === status ? '' : 'none';
-      }
-    });
+  function statusBadge(isExpired, rawStatus) {
+    if (isExpired) return '<span class="badge bg-danger"><i class="bi bi-x-circle"></i> EXPIRED</span>';
+    return '<span class="badge bg-success"><i class="bi bi-check-circle"></i> ' + (rawStatus || 'AKTIF') + '</span>';
   }
 
-  // Export prognosis to CSV
-  function exportPrognosisToCSV() {
-    const table = document.getElementById('prognosisTable');
-    const rows = table.querySelectorAll('tbody tr:not([colspan])');
-
-    if (rows.length === 0) {
-      alert('Tidak ada data untuk diexport');
-      return;
-    }
-
-    let csv = 'Pemohon,Kendaraan/Alat,Kode Kendaraan,Tipe,Nominal,Kode Voucher,Status,Valid Sampai,Checklist\n';
-
-    rows.forEach(row => {
-      // Skip if row is hidden by filter
-      if (row.style.display === 'none') return;
-
-      const cells = row.querySelectorAll('td');
-
-      // Pemohon
-      const pemohon = cells[0].querySelector('strong')?.textContent.trim() || 'Unknown';
-
-      // Kendaraan data
-      const vehicleCell = cells[1];
-      const kodeKendaraan = vehicleCell.querySelector('.text-primary')?.textContent.trim() || '-';
-      const namaKendaraan = vehicleCell.querySelector('.text-muted')?.textContent.trim() || '-';
-      const tipeKendaraan = vehicleCell.querySelector('.badge')?.textContent.trim() || '-';
-
-      // Nominal
-      const nominal = cells[2].querySelector('strong')?.textContent.trim().replace('Rp ', '').replace(/\./g, '') || '0';
-
-      // Voucher
-      const voucherCode = cells[3].querySelector('strong')?.textContent.trim() || '';
-      const validUntil = cells[3].querySelector('.text-muted')?.textContent.trim().replace('Valid: ', '') || '';
-
-      // Status
-      const status = cells[4].querySelector('.badge')?.textContent.trim() || '';
-
-      // Format untuk CSV (escape koma dan quotes)
-      const formatCell = (text) => {
-        text = text.replace(/"/g, '""'); // Escape double quotes
-        if (text.includes(',') || text.includes('"') || text.includes('\n')) {
-          return `"${text}"`;
-        }
-        return text;
-      };
-
-      csv += [
-        formatCell(pemohon),
-        formatCell(namaKendaraan),
-        formatCell(kodeKendaraan),
-        formatCell(tipeKendaraan),
-        nominal,
-        formatCell(voucherCode),
-        formatCell(status),
-        formatCell(validUntil),
-        '' // Checklist column (kosong)
-      ].join(',') + '\n';
-    });
-
-    // Download CSV
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }); // Add BOM for Excel
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    const timestamp = new Date().toISOString().slice(0, 10);
-
-    link.setAttribute('href', url);
-    link.setAttribute('download', `prognosa-voucher-${timestamp}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  function rowHtml(r) {
+    const checked = '';
+    return '<tr data-id="' + r.id + '" data-status="' + r.status + '">' +
+      '<td class="text-center"><input type="checkbox" class="voucher-check" value="' + r.id + '"></td>' +
+      '<td><strong>' + escapeHtml(r.pemohon) + '</strong>' +
+        '<div class="small text-muted">' + escapeHtml(r.request_number) + '</div></td>' +
+      '<td><div><strong class="text-primary">' + escapeHtml(r.vehicle_code) + '</strong></div>' +
+        '<div class="text-muted small">' + escapeHtml(r.vehicle_name) + '</div>' +
+        '<span class="badge bg-secondary">' + escapeHtml(r.vehicle_type) + '</span></td>' +
+      '<td><strong class="text-dark">Rp ' + formatNumber(r.approved_amount) + '</strong></td>' +
+      '<td><strong style="font-family:\'Courier New\',monospace; font-size:0.95rem; letter-spacing:0.5px;">' + escapeHtml(r.voucher_code) + '</strong>' +
+        '<div class="small text-muted mt-1"><i class="bi bi-calendar3"></i> Valid: ' + escapeHtml(r.valid_until) + '</div></td>' +
+      '<td>' + statusBadge(r.status === 'expired', r.status_label) + '</td>' +
+      '<td class="small">' +
+        '<div><i class="bi bi-person-check text-primary"></i> Approver: <strong>' + escapeHtml(r.approver) + '</strong></div>' +
+        '<div><i class="bi bi-clock text-muted"></i> Approval: ' + escapeHtml(r.approval_date) + '</div>' +
+        '<div><i class="bi bi-flag text-muted"></i> Permohonan: <span class="badge bg-light text-dark">' + escapeHtml(r.permohonan_status) + '</span></div>' +
+        (r.approval_notes ? '<div class="text-muted"><i class="bi bi-sticky"></i> ' + escapeHtml(r.approval_notes) + '</div>' : '') +
+      '</td>' +
+    '</tr>';
   }
 
-  document.addEventListener('DOMContentLoaded', function() {
-    // Initialize DataTable for All Requests when history tab is shown
-    document.getElementById('history-tab').addEventListener('shown.bs.tab', function () {
-      const allRequestsTable = document.getElementById('allRequestsTable');
-      if (allRequestsTable && allRequestsTable.querySelector('tbody tr td:not([colspan])')) {
-        if (!window.allRequestsDataTable) {
-          window.allRequestsDataTable = new simpleDatatables.DataTable(allRequestsTable, {
-            searchable: true,
-            fixedHeight: false,
-            perPage: 10,
-            perPageSelect: [5, 10, 25, 50, 100],
-            labels: {
-              placeholder: "Cari permohonan...",
-              perPage: "Per halaman:",
-              noRows: "Tidak ada data",
-              info: "Menampilkan {start} sampai {end} dari {rows} data"
-            },
-            columns: [
-              { select: 2, sort: "desc" } // Sort by date
-            ]
-          });
-        }
-      }
-    });
+  function emptyHtml() {
+    return '<tr><td colspan="7"><div class="text-center py-4 text-muted">' +
+      '<i class="bi bi-journal-x" style="font-size:2rem; opacity:0.5;"></i>' +
+      '<div class="mt-2">Tidak ada voucher terbit pada tanggal ini</div></div></td></tr>';
+  }
 
-    // Initialize DataTable for Reports when reports sub-tab is shown
-    document.getElementById('reports-subtab').addEventListener('shown.bs.tab', function () {
-      const reportsTable = document.getElementById('reportsTable');
-      if (reportsTable && reportsTable.querySelector('tbody tr td:not([colspan])')) {
-        if (!window.reportsDataTable) {
-          window.reportsDataTable = new simpleDatatables.DataTable(reportsTable, {
-            searchable: true,
-            fixedHeight: false,
-            perPage: 10,
-            perPageSelect: [5, 10, 25, 50, 100],
-            labels: {
-              placeholder: "Cari laporan...",
-              perPage: "Per halaman:",
-              noRows: "Tidak ada data",
-              info: "Menampilkan {start} sampai {end} dari {rows} data"
-            },
-            columns: [
-              { select: 9, sort: "desc" }, // Sort by report date
-              { select: 8, sortable: false } // Disable sort on photo column
-            ]
-          });
-        }
-      }
-    });
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
 
-    // Initialize DataTable for Prognosis when prognosis sub-tab is shown
-    document.getElementById('prognosis-subtab').addEventListener('shown.bs.tab', function () {
-      const prognosisTable = document.getElementById('prognosisTable');
-      if (prognosisTable && prognosisTable.querySelector('tbody tr td:not([colspan])')) {
-        if (!window.prognosisDataTable) {
-          window.prognosisDataTable = new simpleDatatables.DataTable(prognosisTable, {
-            searchable: true,
-            fixedHeight: false,
-            perPage: 15,
-            perPageSelect: [10, 15, 25, 50, 100],
-            labels: {
-              placeholder: "Cari voucher...",
-              perPage: "Per halaman:",
-              noRows: "Tidak ada data",
-              info: "Menampilkan {start} sampai {end} dari {rows} data"
-            },
-            columns: [
-              { select: 5, sortable: false } // Disable sort on checklist column
-            ]
-          });
+  function formatNumber(n) {
+    return Number(n || 0).toLocaleString('id-ID');
+  }
+
+  function loadVouchers() {
+    const date = dateInput.value;
+    const status = statusSelect.value;
+    const url = '{{ route("admin.vouchers.list") }}?date=' + encodeURIComponent(date) + '&status=' + encodeURIComponent(status);
+
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(r => r.json())
+      .then(res => {
+        if (!res.data || res.data.length === 0) {
+          tbody.innerHTML = emptyHtml();
+        } else {
+          tbody.innerHTML = res.data.map(rowHtml).join('');
         }
-      }
-    });
+        countLabel.textContent = res.count ?? 0;
+        updateSelectedCount();
+        selectAll.checked = false;
+      })
+      .catch(() => { tbody.innerHTML = emptyHtml(); countLabel.textContent = 0; });
+  }
+
+  function updateSelectedCount() {
+    const checked = tbody.querySelectorAll('.voucher-check:checked').length;
+    selectedLabel.textContent = checked;
+  }
+
+  // Realtime filter — tanpa tombol
+  dateInput.addEventListener('change', loadVouchers);
+  statusSelect.addEventListener('change', loadVouchers);
+
+  // Select all
+  selectAll.addEventListener('change', function () {
+    tbody.querySelectorAll('.voucher-check').forEach(cb => { cb.checked = this.checked; });
+    updateSelectedCount();
   });
+
+  // Row checkbox (delegated)
+  tbody.addEventListener('change', function (e) {
+    if (e.target.classList.contains('voucher-check')) updateSelectedCount();
+  });
+
+  // Export
+  window.exportVouchers = function (mode) {
+    exportDate.value = dateInput.value;
+    exportStatus.value = statusSelect.value;
+    idsContainer.innerHTML = '';
+
+    if (mode === 'selected') {
+      const ids = Array.from(tbody.querySelectorAll('.voucher-check:checked')).map(cb => cb.value);
+      if (ids.length === 0) { alert('Pilih minimal satu voucher untuk diexport.'); return; }
+      ids.forEach(id => {
+        const inp = document.createElement('input');
+        inp.type = 'hidden';
+        inp.name = 'ids[]';
+        inp.value = id;
+        idsContainer.appendChild(inp);
+      });
+    }
+    exportForm.submit();
+  };
+
+  // Inisialisasi hitung terpilih
+  updateSelectedCount();
+})();
 </script>

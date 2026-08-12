@@ -49,4 +49,17 @@ class Transaction_Proofs extends Model
     {
         return $this->belongsTo(User::class, 'requester_id');
     }
+
+    /**
+     * Scope unit bisnis: bukti transaksi dari permohonan kendaraan di site dalam unit.
+     * Null = tanpa scope (global / pusat).
+     */
+    public function scopeInUnit($query, ?array $siteIds)
+    {
+        if ($siteIds === null) {
+            return;
+        }
+
+        $query->whereHas('permohonan.vehicle.detail', fn ($q) => $q->whereIn('site_id', $siteIds));
+    }
 }

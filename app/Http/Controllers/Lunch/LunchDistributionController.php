@@ -27,11 +27,15 @@ class LunchDistributionController extends Controller
     {
         $date = $request->get('date', now()->addDay()->toDateString());
 
+        $siteIds = $request->user()?->unitSiteIds();
+
         $distributions = LunchDistribution::forDate($date)
+            ->inUnit($siteIds)
             ->with(['site', 'lockedBy'])
             ->get();
 
         $guests = LunchGuestReservation::whereDate('reservation_date', $date)
+            ->inUnit($siteIds)
             ->with('site')
             ->orderBy('site_id')
             ->get();

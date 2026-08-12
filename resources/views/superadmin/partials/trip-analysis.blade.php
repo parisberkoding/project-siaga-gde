@@ -272,7 +272,7 @@
 
                 <div class="collapse show" id="filterCollapse">
                     <div class="card-body">
-                        <form method="GET" action="{{ route('superadmin.trip-analysis.index') }}" id="filterForm">
+                        <form method="GET" action="{{ route('superadmin.trip-analysis.index') }}" id="filterForm" data-autofilter>
                             <div class="row g-3">
 
                                 {{-- Alert Level --}}
@@ -352,22 +352,17 @@
                                            placeholder="Cari kendaraan, driver...">
                                 </div>
 
-                                {{-- Action Buttons --}}
                                 <div class="col-md-3">
                                     <label class="form-label fw-semibold d-block">&nbsp;</label>
-                                    <button type="submit" class="btn btn-primary w-100">
-                                        <i class="bi bi-search"></i> Terapkan Filter
-                                    </button>
+                                    <a href="{{ route('superadmin.trip-analysis.index') }}" class="btn btn-outline-secondary w-100">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Reset Filter
+                                    </a>
                                 </div>
                             </div>
 
                             {{-- Quick Actions --}}
                             <div class="row mt-3">
                                 <div class="col-12 d-flex justify-content-between align-items-center">
-                                    <a href="{{ route('superadmin.trip-analysis.index') }}" class="btn btn-outline-secondary">
-                                        <i class="bi bi-arrow-counterclockwise"></i> Reset Filter
-                                    </a>
-
                                     <div>
                                         <form action="{{ route('superadmin.trip-analysis.superadmin.trip-validations.recalculate-all') }}"
                                               method="POST"
@@ -1077,6 +1072,21 @@ document.addEventListener('DOMContentLoaded', function() {
             bsAlert.close();
         });
     }, 5000);
+
+    // Realtime filter: submit otomatis tanpa tombol Terapkan Filter
+    document.querySelectorAll('form[data-autofilter]').forEach(function(form) {
+        const search = form.querySelector('input[name="search"]');
+        if (search) {
+            let timer;
+            search.addEventListener('input', function() {
+                clearTimeout(timer);
+                timer = setTimeout(function() { form.submit(); }, 400);
+            });
+        }
+        form.querySelectorAll('select').forEach(function(sel) {
+            sel.addEventListener('change', function() { form.submit(); });
+        });
+    });
 });
 
 // ==================== TRIP DETAIL MODAL onclick Dates ===================
