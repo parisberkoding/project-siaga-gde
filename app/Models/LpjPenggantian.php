@@ -357,6 +357,19 @@ class LpjPenggantian extends Model
         return $query->where('is_late', false);
     }
 
+    /**
+     * Scope unit bisnis: LPJ dari surat SPD yang berada di site dalam unit.
+     * Null = tanpa scope (global / pusat).
+     */
+    public function scopeInUnit($query, ?array $siteIds)
+    {
+        if ($siteIds === null) {
+            return;
+        }
+
+        $query->whereHas('suratSpd', fn ($q) => $q->inUnit($siteIds));
+    }
+
     // ============================================================
     // APPROVAL METHODS
     // ============================================================

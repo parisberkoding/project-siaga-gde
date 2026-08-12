@@ -17,7 +17,10 @@ class LunchTransactionController extends Controller
     {
         $date = $request->get('date', now()->toDateString());
 
+        $siteIds = $request->user()?->unitSiteIds();
+
         $query = LunchTransaction::forDate($date)
+            ->inUnit($siteIds)
             ->with(['site', 'employee', 'tomorrowSite']);
 
         if ($siteId = $request->get('site_id')) {
@@ -40,13 +43,16 @@ class LunchTransactionController extends Controller
         $transactions = $query->orderByDesc('scanned_at')->paginate(50)->withQueryString();
 
         $totalsBySite = LunchTransaction::forDate($date)
+            ->inUnit($siteIds)
             ->selectRaw('site_id, count(*) as total')
             ->groupBy('site_id')
             ->pluck('total', 'site_id');
 
-        $unresolvedCount = LunchTransaction::forDate($date)->unresolved()->count();
+        $unresolvedCount = LunchTransaction::forDate($date)->inUnit($siteIds)->unresolved()->count();
 
-        $sites = Site::active()->get();
+        $sites = Site::active()
+            ->when($siteIds !== null, fn ($q) => $q->whereIn('id', $siteIds))
+            ->get();
 
         return view('lunch.transactions.index', compact(
             'date', 'transactions', 'totalsBySite', 'unresolvedCount', 'sites'
@@ -60,14 +66,18 @@ class LunchTransactionController extends Controller
     {
         $date = $request->get('date', now()->toDateString());
 
+        $siteIds = $request->user()?->unitSiteIds();
+
         return response()->json([
-            'total'      => LunchTransaction::forDate($date)->count(),
-            'unresolved' => LunchTransaction::forDate($date)->unresolved()->count(),
+            'total'      => LunchTransaction::forDate($date)->inUnit($siteIds)->count(),
+            'unresolved' => LunchTransaction::forDate($date)->inUnit($siteIds)->unresolved()->count(),
             'by_site'    => LunchTransaction::forDate($date)
+                ->inUnit($siteIds)
                 ->selectRaw('site_id, count(*) as total')
                 ->groupBy('site_id')
                 ->pluck('total', 'site_id'),
             'latest'     => LunchTransaction::forDate($date)
+                ->inUnit($siteIds)
                 ->with('site:id,code')
                 ->orderByDesc('scanned_at')
                 ->limit(10)

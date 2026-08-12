@@ -66,6 +66,19 @@ class LunchTransaction extends Model
         return $query->whereNull('employee_default_id');
     }
 
+    /**
+     * Scope unit bisnis: transaksi makan siang di salah satu site dalam unit.
+     * Null = tanpa scope (global / pusat).
+     */
+    public function scopeInUnit($query, ?array $siteIds)
+    {
+        if ($siteIds === null) {
+            return;
+        }
+
+        $query->whereIn('site_id', $siteIds);
+    }
+
     public function isResolved(): bool
     {
         return $this->employee_default_id !== null;

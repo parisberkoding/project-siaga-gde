@@ -3,6 +3,17 @@
 @section('title', 'Kelola Permohonan & Pelaporan')
 
 @section('content')
+<div class="pagetitle">
+    <h1>Kelola Permohonan & Pelaporan</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ route('admin-dashboard') }}">Home</a></li>
+            <li class="breadcrumb-item">BBM / Permohonan</li>
+            <li class="breadcrumb-item active">Kelola Permohonan</li>
+        </ol>
+    </nav>
+</div>
+
 <!-- Alert Messages -->
 @if(session('success'))
 <div class="alert alert-success alert-dismissible fade show">
@@ -31,9 +42,9 @@
 </div>
 @endif
 
-<div class="card">
-    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Kelola Permohonan & Pelaporan</h5>
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-primary text-white rounded-top d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-semibold"><i class="bi bi-gear me-2"></i>Kelola Permohonan & Pelaporan</h5>
     </div>
     <div class="card-body">
         <!-- Sub Tabs -->
@@ -56,10 +67,10 @@
         @if($tab == 'permohonan')
         <div id="permohonanTab">
             <!-- Filter -->
-            <form method="GET" action="{{ route('superadmin.permohonan') }}" class="mb-3">
+            <form method="GET" action="{{ route('superadmin.permohonan') }}" class="mb-3" data-autofilter>
                 <input type="hidden" name="tab" value="permohonan">
                 <div class="row g-2">
-                    <div class="col-md-6">
+                    <div class="col-md-9">
                         <input type="text" class="form-control" name="search"
                                value="{{ $search }}"
                                placeholder="🔍 Cari nomor permohonan, pemohon, kendaraan...">
@@ -74,11 +85,6 @@
                             <option value="rejected" {{ $status == 'rejected' ? 'selected' : '' }}>Rejected</option>
                             <option value="cancelled_by_driver" {{ $status == 'cancelled_by_driver' ? 'selected' : '' }}>Cancelled</option>
                         </select>
-                    </div>
-                    <div class="col-md-3">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="bi bi-funnel me-1"></i>Terapkan Filter
-                        </button>
                     </div>
                 </div>
             </form>
@@ -199,18 +205,13 @@
         @if($tab == 'laporan')
         <div id="laporanTab">
             <!-- Filter -->
-            <form method="GET" action="{{ route('superadmin.permohonan') }}" class="mb-3">
+            <form method="GET" action="{{ route('superadmin.permohonan') }}" class="mb-3" data-autofilter>
                 <input type="hidden" name="tab" value="laporan">
                 <div class="row g-2">
-                    <div class="col-md-9">
+                    <div class="col-md-12">
                         <input type="text" class="form-control" name="search"
                                value="{{ $search }}"
                                placeholder="🔍 Cari ID transaksi, nomor permohonan...">
-                    </div>
-                    <div class="col-md-3">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="bi bi-funnel me-1"></i>Terapkan Filter
-                        </button>
                     </div>
                 </div>
             </form>
@@ -336,12 +337,13 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Jenis BBM *</label>
                             <select class="form-select" name="gasoline_type" id="editGasolineType" required>
-                                @foreach($gasolineTypes as $gas)
-                                {{-- <option value="{{ $gas->gasoline_name }}">{{ $gas->gasoline_name }}</option> --}}
-                                <option value="Pertamax">Pertamax</option>
+                                @forelse($gasolineTypes as $gas)
+                                <option value="{{ $gas->gasoline_name }}">{{ $gas->gasoline_name }}</option>
+                                @empty
                                 <option value="Pertamax">Pertamax</option>
                                 <option value="Pertamina Dex">Pertamina Dex</option>
-                                @endforeach
+                                <option value="Pertalite">Pertalite</option>
+                                @endforelse
                             </select>
                         </div>
 
@@ -802,12 +804,31 @@
         document.addEventListener('DOMContentLoaded', function() {
             cleanupModals();
             initEventHandlers();
+            initAutoFilter();
             console.log('Event handlers initialized');
         });
     } else {
         cleanupModals();
         initEventHandlers();
+        initAutoFilter();
         console.log('Event handlers initialized (immediate)');
+    }
+
+    // ✅ Realtime filter: submit otomatis tanpa tombol Terapkan Filter
+    function initAutoFilter() {
+        document.querySelectorAll('form[data-autofilter]').forEach(function(form) {
+            const search = form.querySelector('input[name="search"]');
+            if (search) {
+                let timer;
+                search.addEventListener('input', function() {
+                    clearTimeout(timer);
+                    timer = setTimeout(function() { form.submit(); }, 400);
+                });
+            }
+            form.querySelectorAll('select').forEach(function(sel) {
+                sel.addEventListener('change', function() { form.submit(); });
+            });
+        });
     }
 
     // ✅ Cleanup on unload

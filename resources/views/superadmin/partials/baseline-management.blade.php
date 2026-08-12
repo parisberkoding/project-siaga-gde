@@ -200,7 +200,7 @@
 
                 <div class="collapse show" id="filterCollapse">
                     <div class="card-body">
-                        <form method="GET" action="{{ route('superadmin.baseline.index') }}" id="filterForm">
+                        <form method="GET" action="{{ route('superadmin.baseline.index') }}" id="filterForm" data-autofilter>
                             <div class="row g-3">
 
                                 {{-- Jenis BBM --}}
@@ -234,22 +234,18 @@
                                            placeholder="Cari kode atau nama kendaraan...">
                                 </div>
 
-                                {{-- Action Buttons --}}
+                                {{-- Reset --}}
                                 <div class="col-md-3">
                                     <label class="form-label fw-semibold d-block">&nbsp;</label>
-                                    <button type="submit" class="btn btn-primary w-100">
-                                        <i class="bi bi-search"></i> Terapkan Filter
-                                    </button>
+                                    <a href="{{ route('superadmin.baseline.index') }}" class="btn btn-outline-secondary w-100">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Reset Filter
+                                    </a>
                                 </div>
                             </div>
 
                             {{-- Quick Actions --}}
                             <div class="row mt-3">
                                 <div class="col-12 d-flex justify-content-between align-items-center">
-                                    <a href="{{ route('superadmin.baseline.index') }}" class="btn btn-outline-secondary">
-                                        <i class="bi bi-arrow-counterclockwise"></i> Reset Filter
-                                    </a>
-
                                     <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addBaselineModal">
                                         <i class="bi bi-plus-circle"></i> Tambah Baseline Baru
                                     </button>
@@ -566,6 +562,21 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }, 5000);
+
+    // Realtime filter: submit otomatis tanpa tombol Terapkan Filter
+    document.querySelectorAll('form[data-autofilter]').forEach(function(form) {
+        const search = form.querySelector('input[name="search"]');
+        if (search) {
+            let timer;
+            search.addEventListener('input', function() {
+                clearTimeout(timer);
+                timer = setTimeout(function() { form.submit(); }, 400);
+            });
+        }
+        form.querySelectorAll('select').forEach(function(sel) {
+            sel.addEventListener('change', function() { form.submit(); });
+        });
+    });
 });
 </script>
 

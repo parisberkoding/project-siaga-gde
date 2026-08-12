@@ -27,6 +27,7 @@ class User extends Authenticatable
         'role',
         'jabatan',
         'default_site_id',
+        'unit_id',
         'email',
         'added_at',
     ];
@@ -105,6 +106,48 @@ class User extends Authenticatable
     public function defaultSite()
     {
         return $this->belongsTo(Site::class, 'default_site_id');
+    }
+
+    /**
+     * Unit bisnis (mis. Patuha, Dieng, Pusat). Null = global/tanpa scope.
+     * Dipakai untuk membatasi data yang terlihat oleh GA unit.
+     */
+    public function unit()
+    {
+        return $this->belongsTo(Unit::class);
+    }
+
+    /**
+     * ID site milik unit user, atau null bila user global (unit_id null).
+     * Dipakai sebagai scope: data yang "terlihat" = hanya site dalam unit ini.
+     */
+    public function unitSiteIds(): ?array
+    {
+        if (! $this->unit_id) {
+            return null;
+        }
+
+        return $this->unit->sites()->pluck('sites.id')->all() ?: [];
+    }
+
+    /**
+     * Kode site milik unit user, atau null bila user global.
+     */
+    public function unitSiteCodes(): ?array
+    {
+        if (! $this->unit_id) {
+            return null;
+        }
+
+        return $this->unit->sites()->pluck('sites.code')->all() ?: [];
+    }
+
+    /**
+     * True bila user dibatasi ke unit tertentu (unit_id terisi).
+     */
+    public function hasUnitScope(): bool
+    {
+        return ! is_null($this->unit_id);
     }
 
     /**

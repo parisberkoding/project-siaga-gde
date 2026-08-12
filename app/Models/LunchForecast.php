@@ -87,6 +87,22 @@ class LunchForecast extends Model
     }
 
     /**
+     * Scope unit bisnis: forecast yang site final (predicted/actual) ada di unit.
+     * Null = tanpa scope (global / pusat).
+     */
+    public function scopeInUnit($query, ?array $siteIds)
+    {
+        if ($siteIds === null) {
+            return;
+        }
+
+        $query->where(function ($q) use ($siteIds) {
+            $q->whereIn('predicted_site_id', $siteIds)
+              ->orWhereIn('actual_site_id', $siteIds);
+        });
+    }
+
+    /**
      * Site hasil final: actual (dari transaksi QR) jika sudah ada,
      * jika belum pakai predicted (forecast H-1 yang berlaku).
      */

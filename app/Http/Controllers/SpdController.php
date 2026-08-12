@@ -1,31 +1,28 @@
 <?php
 
-
 namespace App\Http\Controllers;
 
-use App\Models\SuratSpd;
-use App\Models\SuratSpdDetail;
-use App\Models\SuratSpdExtension;
-use App\Models\SuratSpdBudget;
+use App\Models\EmployeeDefault;
 use App\Models\LpjPenggantian;
 use App\Models\LpjPenggantianDetail;
-use App\Models\VehicleAndToolsConsumers;
+use App\Models\SpdBarcodeSignature;
+use App\Models\SuratSpd;
+use App\Models\SuratSpdBudget;
+use App\Models\SuratSpdDetail;
+use App\Models\SuratSpdExtension;
 use App\Models\User;
-use App\Models\EmployeeDefault;
+use App\Models\VehicleAndToolsConsumers;
+use App\Services\ImageCompressor;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
-use Carbon\Carbon;
-
-use App\Models\SpdBarcodeSignature;
-use App\Services\ImageCompressor;
 use Illuminate\Support\Facades\Storage;
-
-use BaconQrCode\Renderer\ImageRenderer;
-use BaconQrCode\Renderer\Image\SvgImageBackEnd;
-use BaconQrCode\Renderer\RendererStyle\RendererStyle;
-use BaconQrCode\Writer;
+use Illuminate\Support\Facades\Validator;
 
 class SpdController extends Controller
 {
@@ -47,16 +44,25 @@ class SpdController extends Controller
             ->orderBy('consumerial_name')
             ->get();
 
-        $pejabat = User::whereIn('role', ['admin', 'superadmin'])->get();
+        // Pejabat pemberi tugas (level Assistant Manager / Manager) dari Master Pekerja.
+        // Hibrid: boleh dipilih dari daftar atau diisi manual di form.
+        $pejabatOptions = EmployeeDefault::active()
+            ->where(function ($q) {
+                $q->where('position', 'like', '%manager%')
+                    ->orWhere('position', 'like', '%Manager%')
+                    ->orWhere('position', 'like', '%assistant%')
+                    ->orWhere('position', 'like', '%Assistant%');
+            })
+            ->orderBy('employee_name')
+            ->get();
 
-        return view('requester.spd.surat.create', compact('vehicles', 'pejabat'));
+        return view('requester.spd.surat.create', compact('vehicles', 'pejabatOptions'));
     }
 
     /**
      * Store surat SPD dari requester
      * TANPA budget - budget ditentukan superadmin saat approve
      *
-     * @param Request $request
      * @return \Illuminate\Http\RedirectResponse
      */
     public function storeSurat(Request $request)
@@ -107,7 +113,7 @@ class SpdController extends Controller
             $urutan = 1;
             for ($i = 1; $i <= 7; $i++) {
                 $namaLengkap = $request->input("nama_lengkap_{$i}");
-                if (!empty($namaLengkap)) {
+                if (! empty($namaLengkap)) {
                     SuratSpdDetail::create([
                         'surat_spd_id' => $surat->id,
                         'nama_lengkap' => $namaLengkap,
@@ -119,12 +125,13 @@ class SpdController extends Controller
             DB::commit();
 
             return redirect()->route('requester.surat.index')
-                ->with('success', 'Surat Tugas berhasil diajukan! Nomor: ' . $surat->nomor_surat);
+                ->with('success', 'Surat Tugas berhasil diajukan! Nomor: '.$surat->nomor_surat);
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
+                ->with('error', 'Terjadi kesalahan: '.$e->getMessage())
                 ->withInput();
         }
     }
@@ -156,7 +163,7 @@ class SpdController extends Controller
     /**
      * Show detail surat SPD untuk requester
      *
-     * @param int $id
+     * @param  int  $id
      * @return \Illuminate\View\View
      */
     public function showSuratRequester(SuratSpd $surat)
@@ -181,18 +188,23 @@ class SpdController extends Controller
      */
     public function indexSuratSuperadmin()
     {
+        $siteIds = Auth::user()?->unitSiteIds();
+
         $pending_list = SuratSpd::pending()
+            ->inUnit($siteIds)
             ->with(['user', 'vehicle'])
             ->orderBy('created_at', 'desc')
             ->get();
 
         $approved_list = SuratSpd::approved()
+            ->inUnit($siteIds)
             ->with(['user', 'vehicle', 'approver', 'lpjPenggantian'])
             ->orderBy('approved_at', 'desc')
             ->limit(50)
             ->get();
 
         $rejected_list = SuratSpd::rejected()
+            ->inUnit($siteIds)
             ->with(['user', 'vehicle', 'rejector'])
             ->orderBy('rejected_at', 'desc')
             ->limit(50)
@@ -204,15 +216,15 @@ class SpdController extends Controller
             'rejected_list'
         ))->with([
             'pending_count' => $pending_list->count(),
-            'approved_count' => SuratSpd::approved()->count(),
-            'rejected_count' => SuratSpd::rejected()->count(),
+            'approved_count' => SuratSpd::approved()->inUnit($siteIds)->count(),
+            'rejected_count' => SuratSpd::rejected()->inUnit($siteIds)->count(),
         ]);
     }
 
     /**
      * Show detail surat SPD untuk validasi superadmin
      *
-     * @param int $id
+     * @param  int  $id
      * @return \Illuminate\View\View
      */
     public function showSuratSuperadmin(SuratSpd $surat)
@@ -225,7 +237,7 @@ class SpdController extends Controller
             'rejector',
             'parentSurat',
             'childExtensions',
-            'lpjPenggantian'
+            'lpjPenggantian',
         ])->findOrFail($surat->id);
 
         return view('superadmin.spd.surat.detail', compact('surat'));
@@ -235,51 +247,48 @@ class SpdController extends Controller
      * Approve surat SPD
      * Set status approved, budget per hari, dan calculate lpj_deadline
      *
-     * @param Request $request
-     * @param \App\Models\SuratSpd $surat
      * @return \Illuminate\Http\RedirectResponse
      */
-public function approveSurat(Request $request, SuratSpd $surat)
-{
-    if ($surat->status !== 'pending') {
-        return redirect()->back()
-            ->with('error', 'Surat ini sudah diproses sebelumnya.');
+    public function approveSurat(Request $request, SuratSpd $surat)
+    {
+        if ($surat->status !== 'pending') {
+            return redirect()->back()
+                ->with('error', 'Surat ini sudah diproses sebelumnya.');
+        }
+
+        DB::beginTransaction();
+        try {
+            // Alur sementara: budgeting per hari di-skip, cukup persetujuan.
+            // total_budget dibiarkan 0 (tidak diisi dari input budget).
+
+            // Set approval fields
+            $surat->status = 'approved';
+            $surat->approved_by = Auth::id();
+            $surat->approved_at = Carbon::now();
+
+            // Set LPJ deadline (3 hari setelah tanggal kembali)
+            $surat->lpj_deadline = Carbon::parse($surat->tanggal_kembali)->addDays(3);
+
+            $surat->save();
+
+            DB::commit();
+
+            return redirect()->route('surat.superadmin.index')
+                ->with('success', 'Surat Tugas berhasil disetujui! Deadline LPJ: '.
+                    $surat->lpj_deadline->translatedFormat('d M Y'));
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            // ✅ Tampilkan error untuk debugging
+            return redirect()->back()
+                ->with('error', 'Terjadi kesalahan: '.$e->getMessage());
+        }
     }
-
-    DB::beginTransaction();
-    try {
-        // Alur sementara: budgeting per hari di-skip, cukup persetujuan.
-        // total_budget dibiarkan 0 (tidak diisi dari input budget).
-
-        // Set approval fields
-        $surat->status = 'approved';
-        $surat->approved_by = Auth::id();
-        $surat->approved_at = Carbon::now();
-
-        // Set LPJ deadline (3 hari setelah tanggal kembali)
-        $surat->lpj_deadline = Carbon::parse($surat->tanggal_kembali)->addDays(3);
-
-        $surat->save();
-
-        DB::commit();
-
-        return redirect()->route('surat.superadmin.index')
-            ->with('success', 'Surat Tugas berhasil disetujui! Deadline LPJ: ' .
-                $surat->lpj_deadline->translatedFormat('d M Y'));
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        // ✅ Tampilkan error untuk debugging
-        return redirect()->back()
-            ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
-    }
-}
 
     /**
      * Reject surat SPD
      *
-     * @param Request $request
-     * @param \App\Models\SuratSpd $surat
      * @return \Illuminate\Http\RedirectResponse
      */
     public function rejectSurat(Request $request, SuratSpd $surat)
@@ -310,26 +319,25 @@ public function approveSurat(Request $request, SuratSpd $surat)
             ->orderBy('consumerial_name')
             ->get();
 
-        $employees = User::whereNull('deleted_at')
-            ->where(function ($q) {
-                $q->where('role', 'requester')
-                  ->orWhere('jabatan', 'like', '%driver%')
-                  ->orWhere('jabatan', 'like', '%Driver%')
-                  ->orWhere('jabatan', 'like', '%DRIVER%')
-                  ->orWhere('jabatan', 'like', '%pengemudi%')
-                  ->orWhere('jabatan', 'like', '%Pengemudi%');
-            })
-            ->orderBy('nama_lengkap')
-            ->get()
-            ->map(fn ($u) => (object) [
-                'id'          => 'user_' . $u->id,
-                'nama_lengkap' => $u->nama_lengkap,
-                'jabatan'     => $u->jabatan ?? 'Karyawan',
-            ])
-            ->sortBy('nama_lengkap')
-            ->values();
+        // Pengemudi: dari Master Pekerja (boleh tanpa akun login)
+        $pengemudiOptions = EmployeeDefault::active()
+            ->with('defaultSite')
+            ->orderBy('employee_name')
+            ->get();
 
-        return view('superadmin.spd.surat.create-shortcut', compact('vehicles', 'employees'));
+        // Pejabat pemberi tugas (level Assistant Manager / Manager) dari Master Pekerja.
+        // Bisa juga diisi manual di form (mode hibrid).
+        $pejabatOptions = EmployeeDefault::active()
+            ->where(function ($q) {
+                $q->where('position', 'like', '%manager%')
+                    ->orWhere('position', 'like', '%Manager%')
+                    ->orWhere('position', 'like', '%assistant%')
+                    ->orWhere('position', 'like', '%Assistant%');
+            })
+            ->orderBy('employee_name')
+            ->get();
+
+        return view('superadmin.spd.surat.create-shortcut', compact('vehicles', 'pengemudiOptions', 'pejabatOptions'));
     }
 
     /**
@@ -339,24 +347,36 @@ public function approveSurat(Request $request, SuratSpd $surat)
     public function storeSuratSuperadmin(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'employee_id'           => 'required|string',
-            'tempat_tujuan'         => 'required|string',
-            'melayani_bidang'       => 'required|string|max:255',
-            'jumlah_pemakai'        => 'required|integer|min:1|max:7',
-            'vehicle_id'            => 'required|exists:vehicle_and_tools_consumers,id',
-            'tanggal_berangkat'     => 'required|date',
-            'tanggal_kembali'       => 'required|date|after_or_equal:tanggal_berangkat',
-            'catatan'               => 'nullable|string',
-            'type'                  => 'required|in:biasa,mendadak',
+            // Pengemudi: hibrid — pilih dari Master Pekerja atau input manual
+            'pengemudi_nama' => 'required|string|max:255',
+            'pengemudi_employee_id' => 'nullable|exists:employee_defaults,id',
+            // Pemberi Tugas: hibrid — pilih dari Master Pekerja atau input manual
+            'pemberi_tugas_level' => 'required|in:manager,assistant_manager',
+            'pemberi_tugas_nama' => 'required|string|max:255',
+            'pemberi_tugas_jabatan' => 'required|string|max:255',
+            'pemberi_employee_id' => 'nullable|exists:employee_defaults,id',
+            // Perjalanan
+            'tempat_tujuan' => 'required|string',
+            'melayani_bidang' => 'required|string|max:255',
+            'jumlah_pemakai' => 'required|integer|min:1|max:7',
+            'vehicle_id' => 'required|exists:vehicle_and_tools_consumers,id',
+            'tanggal_berangkat' => 'required|date',
+            'tanggal_kembali' => 'required|date|after_or_equal:tanggal_berangkat',
+            'catatan' => 'nullable|string',
+            'type' => 'required|in:biasa,mendadak',
             // Budget per hari
-            'budgets'               => 'nullable|array',
-            'budgets.*.tanggal'     => 'required_with:budgets|date',
-            'budgets.*.nominal'     => 'required_with:budgets|numeric|min:0',
-            'budgets.*.catatan'     => 'nullable|string|max:255',
+            'budgets' => 'nullable|array',
+            'budgets.*.tanggal' => 'required_with:budgets|date',
+            'budgets.*.nominal' => 'required_with:budgets|numeric|min:0',
+            'budgets.*.catatan' => 'nullable|string|max:255',
         ], [
-            'employee_id.required'      => 'Pilih pengemudi yang bertugas.',
-            'type.required'             => 'Pilih tipe SPD.',
-            'type.in'                   => 'Tipe SPD tidak valid.',
+            'pengemudi_nama.required' => 'Nama pengemudi harus diisi.',
+            'pemberi_tugas_nama.required' => 'Nama pemberi tugas harus diisi.',
+            'pemberi_tugas_jabatan.required' => 'Jabatan pemberi tugas harus diisi.',
+            'pemberi_tugas_level.required' => 'Pilih level pemberi tugas.',
+            'pemberi_tugas_level.in' => 'Level pemberi tugas tidak valid.',
+            'type.required' => 'Pilih tipe SPD.',
+            'type.in' => 'Tipe SPD tidak valid.',
         ]);
 
         if ($validator->fails()) {
@@ -367,60 +387,53 @@ public function approveSurat(Request $request, SuratSpd $surat)
 
         $totalBudget = $request->budgets ? collect($request->budgets)->sum('nominal') : 0;
 
-        // Resolve employee_id (format: emp_X atau user_X)
+        // Resolve pengemudi: prioritas Master Pekerja (boleh tanpa akun)
+        $pengemudiNama = $request->pengemudi_nama;
+        $employeeId = null;
         $userId = null;
-        $pegawaiNama = '';
-        if (str_starts_with($request->employee_id, 'emp_')) {
-            $empId = (int) str_replace('emp_', '', $request->employee_id);
-            $emp = EmployeeDefault::with('user')->find($empId);
-            $pegawaiNama = $emp?->employee_name ?? 'Unknown';
-            $userId = $emp?->user_id;
-        } elseif (str_starts_with($request->employee_id, 'user_')) {
-            $uid = (int) str_replace('user_', '', $request->employee_id);
-            $user = User::find($uid);
-            $pegawaiNama = $user?->nama_lengkap ?? 'Unknown';
-            $userId = $user?->id;
-        }
-
-        if (!$userId) {
-            return redirect()->back()
-                ->with('error', 'Pegawai tidak ditemukan.')
-                ->withInput();
+        if ($request->filled('pengemudi_employee_id')) {
+            $emp = EmployeeDefault::with('user')->find($request->pengemudi_employee_id);
+            if ($emp) {
+                $employeeId = $emp->id;
+                $userId = $emp->user_id; // boleh null
+                $pengemudiNama = $emp->employee_name;
+            }
         }
 
         DB::beginTransaction();
         try {
             $surat = SuratSpd::create([
-                'pemberi_tugas_nama'    => 'Genny Kusumaningrum',
-                'pemberi_tugas_jabatan' => 'HC, GA, & Finance Manager',
-                'user_id'               => $userId,
-                'pengemudi_nama'        => $pegawaiNama,
-                'tempat_tujuan'         => $request->tempat_tujuan,
-                'melayani_bidang'       => $request->melayani_bidang,
-                'jumlah_pemakai'        => $request->jumlah_pemakai,
-                'vehicle_id'            => $request->vehicle_id,
-                'tanggal_berangkat'     => $request->tanggal_berangkat,
-                'tanggal_kembali'       => $request->tanggal_kembali,
-                'catatan'               => $request->catatan,
-                'type'                  => $request->type,
-                'is_extension'          => false,
+                'pemberi_tugas_nama' => $request->pemberi_tugas_nama,
+                'pemberi_tugas_jabatan' => $request->pemberi_tugas_jabatan,
+                'user_id' => $userId,
+                'employee_default_id' => $employeeId,
+                'pengemudi_nama' => $pengemudiNama,
+                'tempat_tujuan' => $request->tempat_tujuan,
+                'melayani_bidang' => $request->melayani_bidang,
+                'jumlah_pemakai' => $request->jumlah_pemakai,
+                'vehicle_id' => $request->vehicle_id,
+                'tanggal_berangkat' => $request->tanggal_berangkat,
+                'tanggal_kembali' => $request->tanggal_kembali,
+                'catatan' => $request->catatan,
+                'type' => $request->type,
+                'is_extension' => false,
                 // Langsung approve
-                'status'                => 'approved',
-                'approved_by'           => Auth::id(),
-                'approved_at'           => Carbon::now(),
-                'total_budget'          => $totalBudget,
-                'lpj_deadline'          => Carbon::parse($request->tanggal_kembali)->addDays(3),
+                'status' => 'approved',
+                'approved_by' => Auth::id(),
+                'approved_at' => Carbon::now(),
+                'total_budget' => $totalBudget,
+                'lpj_deadline' => Carbon::parse($request->tanggal_kembali)->addDays(3),
             ]);
 
             // Simpan nama penumpang
             $urutan = 1;
             for ($i = 1; $i <= 7; $i++) {
                 $namaLengkap = $request->input("nama_lengkap_{$i}");
-                if (!empty($namaLengkap)) {
+                if (! empty($namaLengkap)) {
                     SuratSpdDetail::create([
                         'surat_spd_id' => $surat->id,
                         'nama_lengkap' => $namaLengkap,
-                        'urutan'       => $urutan++,
+                        'urutan' => $urutan++,
                     ]);
                 }
             }
@@ -430,9 +443,9 @@ public function approveSurat(Request $request, SuratSpd $surat)
                 foreach ($request->budgets as $budgetData) {
                     SuratSpdBudget::create([
                         'surat_spd_id' => $surat->id,
-                        'tanggal'      => $budgetData['tanggal'],
-                        'nominal'      => $budgetData['nominal'],
-                        'catatan'      => $budgetData['catatan'] ?? null,
+                        'tanggal' => $budgetData['tanggal'],
+                        'nominal' => $budgetData['nominal'],
+                        'catatan' => $budgetData['catatan'] ?? null,
                     ]);
                 }
             }
@@ -441,12 +454,13 @@ public function approveSurat(Request $request, SuratSpd $surat)
 
             return redirect()
                 ->route('surat.superadmin.show', $surat)
-                ->with('success', 'Surat SPD langsung berhasil dibuat & disetujui! Nomor: ' . $surat->nomor_surat);
+                ->with('success', 'Surat SPD langsung berhasil dibuat & disetujui! Nomor: '.$surat->nomor_surat);
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()->back()
-                ->with('error', 'Gagal membuat surat: ' . $e->getMessage())
+                ->with('error', 'Gagal membuat surat: '.$e->getMessage())
                 ->withInput();
         }
     }
@@ -454,7 +468,7 @@ public function approveSurat(Request $request, SuratSpd $surat)
     /**
      * Print surat SPD (untuk cetak)
      *
-     * @param int $id
+     * @param  int  $id
      * @return \Illuminate\View\View
      */
     /**
@@ -462,14 +476,17 @@ public function approveSurat(Request $request, SuratSpd $surat)
      */
     public function reportSpending()
     {
+        $siteIds = Auth::user()?->unitSiteIds();
+
         $suratList = SuratSpd::with(['vehicle', 'user', 'lpjPenggantian', 'budgets'])
+            ->inUnit($siteIds)
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
-        $totalBudget = SuratSpd::sum('total_budget');
-        $totalApproved = SuratSpd::approved()->count();
-        $totalLpj = LpjPenggantian::approved()->count();
-        $totalSpending = LpjPenggantian::approved()->sum('total_pengeluaran');
+        $totalBudget = SuratSpd::inUnit($siteIds)->sum('total_budget');
+        $totalApproved = SuratSpd::approved()->inUnit($siteIds)->count();
+        $totalLpj = LpjPenggantian::approved()->inUnit($siteIds)->count();
+        $totalSpending = LpjPenggantian::approved()->inUnit($siteIds)->sum('total_pengeluaran');
 
         return view('superadmin.spd.surat.report', compact(
             'suratList', 'totalBudget', 'totalApproved', 'totalLpj', 'totalSpending'
@@ -487,9 +504,9 @@ public function approveSurat(Request $request, SuratSpd $surat)
         // Check if barcode already exists in DB
         $barcodeRecord = SpdBarcodeSignature::where('spd_id', $surat->id)->first();
 
-        if ($barcodeRecord && file_exists(storage_path('app/public/' . $barcodeRecord->signature_path))) {
+        if ($barcodeRecord && file_exists(storage_path('app/public/'.$barcodeRecord->signature_path))) {
             // Barcode sudah ada di DB dan file masih ada
-            $qrSvgContent = file_get_contents(storage_path('app/public/' . $barcodeRecord->signature_path));
+            $qrSvgContent = file_get_contents(storage_path('app/public/'.$barcodeRecord->signature_path));
         } else {
             // Generate QR baru, simpan file, dan simpan ke DB
             $qrSvgContent = $this->generateAndStoreQr($surat);
@@ -510,10 +527,10 @@ public function approveSurat(Request $request, SuratSpd $surat)
         }
 
         $validator = Validator::make($request->all(), [
-            'budgets'               => 'required|array|min:1',
-            'budgets.*.tanggal'     => 'required|date',
-            'budgets.*.nominal'     => 'required|numeric|min:0',
-            'budgets.*.catatan'     => 'nullable|string|max:255',
+            'budgets' => 'required|array|min:1',
+            'budgets.*.tanggal' => 'required|date',
+            'budgets.*.nominal' => 'required|numeric|min:0',
+            'budgets.*.catatan' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -526,9 +543,9 @@ public function approveSurat(Request $request, SuratSpd $surat)
             foreach ($request->budgets as $budgetData) {
                 SuratSpdBudget::create([
                     'surat_spd_id' => $surat->id,
-                    'tanggal'      => $budgetData['tanggal'],
-                    'nominal'      => $budgetData['nominal'],
-                    'catatan'      => $budgetData['catatan'] ?? null,
+                    'tanggal' => $budgetData['tanggal'],
+                    'nominal' => $budgetData['nominal'],
+                    'catatan' => $budgetData['catatan'] ?? null,
                 ]);
                 $totalBudget += (float) $budgetData['nominal'];
             }
@@ -541,7 +558,8 @@ public function approveSurat(Request $request, SuratSpd $surat)
                 ->with('print_now', true);
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Gagal menyimpan budget: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Gagal menyimpan budget: '.$e->getMessage());
         }
     }
 
@@ -571,7 +589,6 @@ public function approveSurat(Request $request, SuratSpd $surat)
     /**
      * Store pengajuan perpanjangan dari requester
      *
-     * @param Request $request
      * @return \Illuminate\Http\RedirectResponse
      */
     public function storePerpanjangan(Request $request)
@@ -597,8 +614,8 @@ public function approveSurat(Request $request, SuratSpd $surat)
         $tanggalKembaliBaru = Carbon::parse($request->tanggal_kembali_baru);
         if ($tanggalKembaliBaru->lessThanOrEqualTo($surat->tanggal_kembali)) {
             return redirect()->back()
-                ->with('error', 'Tanggal kembali baru harus setelah tanggal kembali sebelumnya (' .
-                    $surat->tanggal_kembali->translatedFormat('d M Y') . ')')
+                ->with('error', 'Tanggal kembali baru harus setelah tanggal kembali sebelumnya ('.
+                    $surat->tanggal_kembali->translatedFormat('d M Y').')')
                 ->withInput();
         }
 
@@ -614,13 +631,14 @@ public function approveSurat(Request $request, SuratSpd $surat)
             DB::commit();
 
             return redirect()->route('requester.perpanjangan.index')
-                ->with('success', 'Pengajuan perpanjangan berhasil! Nomor surat baru: ' .
-                    $extensionSurat->nomor_surat . '. Menunggu persetujuan superadmin.');
+                ->with('success', 'Pengajuan perpanjangan berhasil! Nomor surat baru: '.
+                    $extensionSurat->nomor_surat.'. Menunggu persetujuan superadmin.');
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
+                ->with('error', 'Terjadi kesalahan: '.$e->getMessage())
                 ->withInput();
         }
     }
@@ -634,8 +652,8 @@ public function approveSurat(Request $request, SuratSpd $surat)
     {
         // Get semua extension milik user
         $extensionList = SuratSpdExtension::whereHas('originalSurat', function ($q) {
-                $q->where('user_id', Auth::id());
-            })
+            $q->where('user_id', Auth::id());
+        })
             ->with(['originalSurat', 'extensionSurat', 'approver'])
             ->orderBy('created_at', 'desc')
             ->get();
@@ -656,20 +674,25 @@ public function approveSurat(Request $request, SuratSpd $surat)
      */
     public function indexPerpanjanganSuperadmin()
     {
+        $siteIds = Auth::user()?->unitSiteIds();
+
         // Pending approval
         $ext_pending = SuratSpdExtension::pending()
+            ->inUnit($siteIds)
             ->with(['originalSurat.user', 'extensionSurat'])
             ->orderBy('created_at', 'desc')
             ->get();
 
         // Approved tapi belum acknowledged
         $ext_need_acknowledge = SuratSpdExtension::needAcknowledge()
+            ->inUnit($siteIds)
             ->with(['originalSurat.user', 'extensionSurat', 'approver'])
             ->orderBy('approved_at', 'desc')
             ->get();
 
         // Sudah acknowledged (selesai)
         $ext_acknowledged = SuratSpdExtension::acknowledged()
+            ->inUnit($siteIds)
             ->with(['originalSurat.user', 'extensionSurat', 'approver', 'acknowledger'])
             ->orderBy('acknowledged_at', 'desc')
             ->limit(50)
@@ -677,6 +700,7 @@ public function approveSurat(Request $request, SuratSpd $surat)
 
         // Rejected
         $ext_rejected = SuratSpdExtension::rejected()
+            ->inUnit($siteIds)
             ->with(['originalSurat.user', 'extensionSurat', 'rejector'])
             ->limit(50)
             ->get();
@@ -685,9 +709,9 @@ public function approveSurat(Request $request, SuratSpd $surat)
         $stats = [
             'pending' => $ext_pending->count(),
             'need_acknowledge' => $ext_need_acknowledge->count(),
-            'acknowledged' => SuratSpdExtension::acknowledged()->count(),
-            'rejected' => SuratSpdExtension::rejected()->count(),
-            'done' => SuratSpdExtension::acknowledged()->count(),
+            'acknowledged' => SuratSpdExtension::acknowledged()->inUnit($siteIds)->count(),
+            'rejected' => SuratSpdExtension::rejected()->inUnit($siteIds)->count(),
+            'done' => SuratSpdExtension::acknowledged()->inUnit($siteIds)->count(),
         ];
 
         return view('superadmin.spd.perpanjangan.index', compact(
@@ -702,7 +726,7 @@ public function approveSurat(Request $request, SuratSpd $surat)
     /**
      * Show detail perpanjangan untuk superadmin
      *
-     * @param int $id
+     * @param  int  $id
      * @return \Illuminate\View\View
      */
     public function showPerpanjanganSuperadmin(SuratSpdExtension $perpanjangan)
@@ -714,7 +738,7 @@ public function approveSurat(Request $request, SuratSpd $surat)
             'extensionSurat',
             'approver',
             'rejector',
-            'acknowledger'
+            'acknowledger',
         ])->findOrFail($perpanjangan->id);
 
         return view('superadmin.spd.perpanjangan.detail', compact('extension'));
@@ -723,8 +747,7 @@ public function approveSurat(Request $request, SuratSpd $surat)
     /**
      * Approve perpanjangan
      *
-     * @param Request $request
-     * @param int $id
+     * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse
      */
     public function approvePerpanjangan(Request $request, SuratSpdExtension $perpanjangan)
@@ -744,21 +767,21 @@ public function approveSurat(Request $request, SuratSpd $surat)
             DB::commit();
 
             return redirect()->route('perpanjangan.superadmin.index')
-                ->with('success', 'Perpanjangan berhasil disetujui! Surat baru: ' .
+                ->with('success', 'Perpanjangan berhasil disetujui! Surat baru: '.
                     $extension->nomor_surat_extension);
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+                ->with('error', 'Terjadi kesalahan: '.$e->getMessage());
         }
     }
 
     /**
      * Reject perpanjangan
      *
-     * @param Request $request
-     * @param int $id
+     * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse
      */
     public function rejectPerpanjangan(Request $request, SuratSpdExtension $perpanjangan)
@@ -778,8 +801,7 @@ public function approveSurat(Request $request, SuratSpd $surat)
     /**
      * Acknowledge perpanjangan (checklist sudah diproses)
      *
-     * @param Request $request
-     * @param int $id
+     * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse
      */
     public function acknowledgePerpanjangan(Request $request, SuratSpdExtension $perpanjangan)
@@ -804,7 +826,6 @@ public function approveSurat(Request $request, SuratSpd $surat)
      * Halaman validasi semua laporan harian SPD lalu generate LPJ (requester).
      * Reuses pelaporan.spd.validasi; route di-key dengan slug nomor surat.
      *
-     * @param \App\Models\SuratSpd $surat
      * @return \Illuminate\View\View
      */
     public function createLaporan(SuratSpd $surat)
@@ -815,14 +836,12 @@ public function approveSurat(Request $request, SuratSpd $surat)
     /**
      * Store LPJ dari requester
      *
-     * @param Request $request
      * @return \Illuminate\Http\RedirectResponse
      */
     /**
      * Store LPJ dari requester
      * Budget diambil dari surat_spd_budgets, BUKAN dari budget_per_hari
      *
-     * @param Request $request
      * @return \Illuminate\Http\RedirectResponse
      */
     public function storeLaporan(Request $request)
@@ -885,26 +904,26 @@ public function approveSurat(Request $request, SuratSpd $surat)
         try {
             // ✅ Create LPJ
             $lpj = LpjPenggantian::create([
-                'surat_spd_id'     => $surat->id,
-                'user_id'          => Auth::id(),
-                'nama'             => $request->nama,
-                'jabatan'          => $request->jabatan,
-                'vehicle_id'       => $surat->vehicle_id,
-                'nomor_polisi'     => $surat->vehicle->consumerial_code ?? $surat->vehicle->plat_nomor ?? '-',
-                'odo_before'       => $request->odo_before,
-                'odo_after'        => $request->odo_after,
+                'surat_spd_id' => $surat->id,
+                'user_id' => Auth::id(),
+                'nama' => $request->nama,
+                'jabatan' => $request->jabatan,
+                'vehicle_id' => $surat->vehicle_id,
+                'nomor_polisi' => $surat->vehicle->consumerial_code ?? $surat->vehicle->plat_nomor ?? '-',
+                'odo_before' => $request->odo_before,
+                'odo_after' => $request->odo_after,
                 'kebutuhan_bbm_liter' => $request->kebutuhan_bbm_liter,
-                'uraian'           => $request->uraian,
-                'uang_dari'        => $request->uang_dari ?? 'KAS',
+                'uraian' => $request->uraian,
+                'uang_dari' => $request->uang_dari ?? 'KAS',
                 'jumlah_diberikan' => $request->jumlah_diberikan ?? 0,
-                'total_pengeluaran'=> $totalPengeluaran,
-                'budget_per_hari'  => $totalBudgetFromTable > 0
+                'total_pengeluaran' => $totalPengeluaran,
+                'budget_per_hari' => $totalBudgetFromTable > 0
                     ? round($totalBudgetFromTable / max($budgets->count(), 1))
                     : 0,
-                'catatan'          => $request->catatan ?? '',
-                'status'           => 'pending',
-                'is_late'          => $isOverdue,
-                'is_over_budget'   => $isOverBudget,
+                'catatan' => $request->catatan ?? '',
+                'status' => 'pending',
+                'is_late' => $isOverdue,
+                'is_over_budget' => $isOverBudget,
             ]);
 
             // Create LPJ details (+ struk_items untuk alur baru)
@@ -921,11 +940,11 @@ public function approveSurat(Request $request, SuratSpd $surat)
 
                 $detail = LpjPenggantianDetail::create([
                     'lpj_penggantian_id' => $lpj->id,
-                    'tanggal'            => $item['tanggal'],
-                    'tipe_penggunaan'    => $tipePenggunaan,
-                    'nominal'            => $item['nominal'],
-                    'keterangan'         => $item['keterangan'] ?? '',
-                    'urutan'             => $index + 1,
+                    'tanggal' => $item['tanggal'],
+                    'tipe_penggunaan' => $tipePenggunaan,
+                    'nominal' => $item['nominal'],
+                    'keterangan' => $item['keterangan'] ?? '',
+                    'urutan' => $index + 1,
                 ]);
 
                 // Alur baru: item membawa gambar struk → simpan (kompres 50%, tanpa resize)
@@ -939,19 +958,19 @@ public function approveSurat(Request $request, SuratSpd $surat)
                     );
 
                     \App\Models\StrukItem::create([
-                        'spd_id'          => $surat->id,
+                        'spd_id' => $surat->id,
                         'nomor_surat_spd' => $surat->nomor_surat,
-                        'lpj_id'          => $lpj->id,
-                        'lpj_detail_id'   => $detail->id,
-                        'item_code'       => $itemCode,
-                        'path_image'      => $path,
-                        'struk_kategori'  => $kategori ?: ($tipePenggunaan === 'Lain-lain' ? 'Lainnya' : $tipePenggunaan),
+                        'lpj_id' => $lpj->id,
+                        'lpj_detail_id' => $detail->id,
+                        'item_code' => $itemCode,
+                        'path_image' => $path,
+                        'struk_kategori' => $kategori ?: ($tipePenggunaan === 'Lain-lain' ? 'Lainnya' : $tipePenggunaan),
                         'kategori_source' => $item['kategori_source'] ?? 'manual',
-                        'metadata_json'   => ! empty($item['metadata_json']) ? $item['metadata_json'] : null,
-                        'nominal'         => $item['nominal'],
-                        'tanggal'         => $item['tanggal'],
-                        'keterangan'      => $item['keterangan'] ?? '',
-                        'urutan'          => $index + 1,
+                        'metadata_json' => ! empty($item['metadata_json']) ? $item['metadata_json'] : null,
+                        'nominal' => $item['nominal'],
+                        'tanggal' => $item['tanggal'],
+                        'keterangan' => $item['keterangan'] ?? '',
+                        'urutan' => $index + 1,
                     ]);
                 }
             }
@@ -964,8 +983,8 @@ public function approveSurat(Request $request, SuratSpd $surat)
                 $message .= ' ⚠️ Pengajuan melewati deadline.';
             }
             if ($isOverBudget) {
-                $message .= ' ⚠️ Over budget Rp ' .
-                    number_format($totalPengeluaran - $totalBudgetFromTable, 0, ',', '.') . '.';
+                $message .= ' ⚠️ Over budget Rp '.
+                    number_format($totalPengeluaran - $totalBudgetFromTable, 0, ',', '.').'.';
             }
 
             return redirect()->route('requester.lpj.index')
@@ -973,11 +992,13 @@ public function approveSurat(Request $request, SuratSpd $surat)
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
+                ->with('error', 'Terjadi kesalahan: '.$e->getMessage())
                 ->withInput();
         }
     }
+
     /**
      * Show edit form for rejected LPJ (revision by requester)
      */
@@ -1051,7 +1072,7 @@ public function approveSurat(Request $request, SuratSpd $surat)
 
         $pengeluaranPerTanggal = collect($request->items)
             ->groupBy('tanggal')
-            ->map(fn($items) => $items->sum('nominal'));
+            ->map(fn ($items) => $items->sum('nominal'));
 
         $isOverBudget = $totalBudgetFromTable > 0 && $totalPengeluaran > $totalBudgetFromTable;
 
@@ -1115,19 +1136,19 @@ public function approveSurat(Request $request, SuratSpd $surat)
                     );
 
                     \App\Models\StrukItem::create([
-                        'spd_id'          => $surat->id,
+                        'spd_id' => $surat->id,
                         'nomor_surat_spd' => $surat->nomor_surat,
-                        'lpj_id'          => $laporan->id,
-                        'lpj_detail_id'   => $detail->id,
-                        'item_code'       => $itemCode,
-                        'path_image'      => $path,
-                        'struk_kategori'  => $kategori ?: ($tipePenggunaan === 'Lain-lain' ? 'Lainnya' : $tipePenggunaan),
+                        'lpj_id' => $laporan->id,
+                        'lpj_detail_id' => $detail->id,
+                        'item_code' => $itemCode,
+                        'path_image' => $path,
+                        'struk_kategori' => $kategori ?: ($tipePenggunaan === 'Lain-lain' ? 'Lainnya' : $tipePenggunaan),
                         'kategori_source' => $item['kategori_source'] ?? 'manual',
-                        'metadata_json'   => ! empty($item['metadata_json']) ? $item['metadata_json'] : null,
-                        'nominal'         => $item['nominal'],
-                        'tanggal'         => $item['tanggal'],
-                        'keterangan'      => $item['keterangan'] ?? '',
-                        'urutan'          => $index + 1,
+                        'metadata_json' => ! empty($item['metadata_json']) ? $item['metadata_json'] : null,
+                        'nominal' => $item['nominal'],
+                        'tanggal' => $item['tanggal'],
+                        'keterangan' => $item['keterangan'] ?? '',
+                        'urutan' => $index + 1,
                     ]);
 
                     $replacedIndices[] = $index;
@@ -1138,11 +1159,11 @@ public function approveSurat(Request $request, SuratSpd $surat)
             foreach ($oldStrukItems as $index => $old) {
                 if (isset($createdDetailIds[$index]) && ! in_array($index, $replacedIndices, true)) {
                     $old->update([
-                        'lpj_detail_id'   => $createdDetailIds[$index],
-                        'urutan'          => $index + 1,
-                        'nominal'         => $request->items[$index]['nominal'] ?? $old->nominal,
-                        'tanggal'         => $request->items[$index]['tanggal'] ?? $old->tanggal,
-                        'keterangan'      => $request->items[$index]['keterangan'] ?? $old->keterangan,
+                        'lpj_detail_id' => $createdDetailIds[$index],
+                        'urutan' => $index + 1,
+                        'nominal' => $request->items[$index]['nominal'] ?? $old->nominal,
+                        'tanggal' => $request->items[$index]['tanggal'] ?? $old->tanggal,
+                        'keterangan' => $request->items[$index]['keterangan'] ?? $old->keterangan,
                     ]);
                 } else {
                     $old->delete();
@@ -1155,8 +1176,9 @@ public function approveSurat(Request $request, SuratSpd $surat)
                 ->with('success', 'LPJ berhasil diperbaiki dan diajukan ulang!');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
+                ->with('error', 'Terjadi kesalahan: '.$e->getMessage())
                 ->withInput();
         }
     }
@@ -1187,7 +1209,7 @@ public function approveSurat(Request $request, SuratSpd $surat)
     /**
      * Show detail LPJ untuk requester
      *
-     * @param int $id
+     * @param  int  $id
      * @return \Illuminate\View\View
      */
     public function showLaporanRequester(LpjPenggantian $laporan)
@@ -1212,18 +1234,23 @@ public function approveSurat(Request $request, SuratSpd $surat)
      */
     public function indexLaporanSuperadmin()
     {
+        $siteIds = Auth::user()?->unitSiteIds();
+
         $pending_list = LpjPenggantian::pending()
+            ->inUnit($siteIds)
             ->with(['user', 'suratSpd.vehicle'])
             ->orderBy('created_at', 'desc')
             ->get();
 
         $approved_list = LpjPenggantian::approved()
+            ->inUnit($siteIds)
             ->with(['user', 'suratSpd.vehicle', 'approverPengguna'])
             ->orderBy('approved_pengguna_at', 'desc')
             ->limit(50)
             ->get();
 
         $rejected_list = LpjPenggantian::rejected()
+            ->inUnit($siteIds)
             ->with(['user', 'suratSpd.vehicle', 'rejector'])
             ->orderBy('rejected_at', 'desc')
             ->limit(50)
@@ -1232,14 +1259,15 @@ public function approveSurat(Request $request, SuratSpd $surat)
         // Stats
         $stats = [
             'pending' => $pending_list->count(),
-            'approved' => LpjPenggantian::approved()->count(),
-            'rejected' => LpjPenggantian::rejected()->count(),
-            'late' => LpjPenggantian::late()->count(),
-            'over_budget' => LpjPenggantian::overBudget()->count(),
+            'approved' => LpjPenggantian::approved()->inUnit($siteIds)->count(),
+            'rejected' => LpjPenggantian::rejected()->inUnit($siteIds)->count(),
+            'late' => LpjPenggantian::late()->inUnit($siteIds)->count(),
+            'over_budget' => LpjPenggantian::overBudget()->inUnit($siteIds)->count(),
         ];
 
         // Total amount bulan ini
         $total_approved_amount = LpjPenggantian::approved()
+            ->inUnit($siteIds)
             ->whereMonth('approved_pengguna_at', Carbon::now()->month)
             ->whereYear('approved_pengguna_at', Carbon::now()->year)
             ->sum('total_pengeluaran');
@@ -1256,7 +1284,7 @@ public function approveSurat(Request $request, SuratSpd $surat)
     /**
      * Show detail LPJ untuk validasi superadmin
      *
-     * @param int $id
+     * @param  int  $id
      * @return \Illuminate\View\View
      */
     public function showLaporanSuperadmin(LpjPenggantian $laporan)
@@ -1270,7 +1298,7 @@ public function approveSurat(Request $request, SuratSpd $surat)
             'user',
             'approverPengguna',
             'approverDivisiGa',
-            'rejector'
+            'rejector',
         ])->findOrFail($laporan->id);
 
         return view('superadmin.spd.lpj.detail', compact('laporan'));
@@ -1279,7 +1307,7 @@ public function approveSurat(Request $request, SuratSpd $surat)
     /**
      * Approve LPJ
      *
-     * @param int $id
+     * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse
      */
     public function approveLaporan(LpjPenggantian $laporan)
@@ -1298,16 +1326,16 @@ public function approveSurat(Request $request, SuratSpd $surat)
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+                ->with('error', 'Terjadi kesalahan: '.$e->getMessage());
         }
     }
 
     /**
      * Reject LPJ
      *
-     * @param Request $request
-     * @param int $id
+     * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse
      */
     public function rejectLaporan(Request $request, LpjPenggantian $laporan)
@@ -1328,20 +1356,19 @@ public function approveSurat(Request $request, SuratSpd $surat)
      * Update data keuangan LPJ (diisi admin GA / orang keuangan).
      * Driver tidak mengisi data ini saat membuat laporan harian.
      *
-     * @param Request $request
-     * @param int $id
+     * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse
      */
     public function updateKeuanganLaporan(Request $request, LpjPenggantian $laporan)
     {
         $request->validate([
-            'uang_dari'        => 'nullable|string|max:255',
+            'uang_dari' => 'nullable|string|max:255',
             'jumlah_diberikan' => 'nullable|numeric|min:0',
         ]);
 
         DB::transaction(function () use ($laporan, $request) {
             $laporan->update([
-                'uang_dari'        => $request->uang_dari ?? 'KAS',
+                'uang_dari' => $request->uang_dari ?? 'KAS',
                 'jumlah_diberikan' => $request->jumlah_diberikan ?? 0,
             ]);
             $laporan->calculateKeuangan();
@@ -1354,7 +1381,7 @@ public function approveSurat(Request $request, SuratSpd $surat)
     /**
      * Print LPJ
      *
-     * @param int $id
+     * @param  int  $id
      * @return \Illuminate\View\View
      */
     public function printLaporan(LpjPenggantian $laporan)
@@ -1364,9 +1391,9 @@ public function approveSurat(Request $request, SuratSpd $surat)
             'suratSpd.parentSurat',
             'suratSpd.details',
             'vehicle',
-            'user'
+            'user',
         ])->where('status', 'approved')
-          ->findOrFail($laporan->id);
+            ->findOrFail($laporan->id);
 
         return view('templates.template-surat.template-lpj', compact('laporan'));
     }
@@ -1380,7 +1407,7 @@ public function approveSurat(Request $request, SuratSpd $surat)
     /**
      * Get detail surat untuk AJAX (digunakan di form LPJ)
      *
-     * @param int $id
+     * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
     public function getSuratDetail(SuratSpd $surat)
@@ -1416,7 +1443,6 @@ public function approveSurat(Request $request, SuratSpd $surat)
     /**
      * Get surat list untuk dropdown (AJAX)
      *
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function getSuratListForDropdown(Request $request)
@@ -1437,10 +1463,10 @@ public function approveSurat(Request $request, SuratSpd $surat)
                 'id' => $surat->id,
                 'nomor_surat' => $surat->nomor_surat,
                 'text' => $surat->is_extension
-                    ? '└── ' . $surat->nomor_surat . ' (Perpanjangan)'
+                    ? '└── '.$surat->nomor_surat.' (Perpanjangan)'
                     : $surat->nomor_surat,
                 'tujuan' => $surat->tempat_tujuan,
-                'tanggal' => $surat->tanggal_berangkat->translatedFormat('d M') . ' - ' . $surat->tanggal_kembali->translatedFormat('d M Y'),
+                'tanggal' => $surat->tanggal_berangkat->translatedFormat('d M').' - '.$surat->tanggal_kembali->translatedFormat('d M Y'),
                 'is_extension' => $surat->is_extension,
                 'deadline' => $surat->lpj_deadline ? $surat->lpj_deadline->translatedFormat('d M Y') : '-',
                 'is_overdue' => $surat->isLpjDeadlineOverdue(),
@@ -1498,20 +1524,20 @@ public function approveSurat(Request $request, SuratSpd $surat)
     {
         try {
             $storageDir = storage_path('app/public/qr-surat');
-            if (!is_dir($storageDir)) {
+            if (! is_dir($storageDir)) {
                 mkdir($storageDir, 0755, true);
             }
 
-            $filename = 'QR_' . preg_replace('/[^A-Za-z0-9\-]/', '_', $surat->nomor_surat) . '.svg';
-            $relativePath = 'qr-surat/' . $filename;
-            $fullPath = $storageDir . '/' . $filename;
+            $filename = 'QR_'.preg_replace('/[^A-Za-z0-9\-]/', '_', $surat->nomor_surat).'.svg';
+            $relativePath = 'qr-surat/'.$filename;
+            $fullPath = $storageDir.'/'.$filename;
 
             // Generate QR SVG
             $qrData = json_encode([
-                'id'                => $surat->id,
-                'nomor_surat'       => $surat->nomor_surat,
-                'authorizer'        => $surat->pemberi_tugas_nama,
-                'tanggal_terbit'    => $surat->created_at->format('Y-m-d'),
+                'id' => $surat->id,
+                'nomor_surat' => $surat->nomor_surat,
+                'authorizer' => $surat->pemberi_tugas_nama,
+                'tanggal_terbit' => $surat->created_at->format('Y-m-d'),
                 'tanggal_disetujui' => $surat->approved_at?->format('Y-m-d'),
             ]);
 
@@ -1527,10 +1553,11 @@ public function approveSurat(Request $request, SuratSpd $surat)
             return $svgContent;
 
         } catch (\Throwable $e) {
-            \Log::warning('QR signature gagal: ' . $e->getMessage(), [
-                'surat_id'    => $surat->id,
+            \Log::warning('QR signature gagal: '.$e->getMessage(), [
+                'surat_id' => $surat->id,
                 'nomor_surat' => $surat->nomor_surat,
             ]);
+
             return null;
         }
     }
@@ -1542,74 +1569,75 @@ public function approveSurat(Request $request, SuratSpd $surat)
      * - Return base64 string siap pakai di <img src="...">
      */
     private function generateSignatureQr(SuratSpd $surat): ?string
-{
-    try {
-        $storageDir = storage_path('app/public/qr-surat');
-        if (!is_dir($storageDir)) {
-            mkdir($storageDir, 0755, true);
-        }
+    {
+        try {
+            $storageDir = storage_path('app/public/qr-surat');
+            if (! is_dir($storageDir)) {
+                mkdir($storageDir, 0755, true);
+            }
 
-        $filename = 'QR_' . preg_replace('/[^A-Za-z0-9\-]/', '_', $surat->nomor_surat) . '.svg';
-        $fullPath = $storageDir . '/' . $filename;
+            $filename = 'QR_'.preg_replace('/[^A-Za-z0-9\-]/', '_', $surat->nomor_surat).'.svg';
+            $fullPath = $storageDir.'/'.$filename;
 
-        // Cache — tidak generate ulang jika sudah ada
-        if (!file_exists($fullPath)) {
-            $qrData = json_encode([
-                'id'                => $surat->id,
-                'nomor_surat'       => $surat->nomor_surat,
-                'authorizer'        => $surat->pemberi_tugas_nama,
-                'tanggal_terbit'    => $surat->created_at->format('Y-m-d'),
-                'tanggal_disetujui' => $surat->approved_at?->format('Y-m-d'),
+            // Cache — tidak generate ulang jika sudah ada
+            if (! file_exists($fullPath)) {
+                $qrData = json_encode([
+                    'id' => $surat->id,
+                    'nomor_surat' => $surat->nomor_surat,
+                    'authorizer' => $surat->pemberi_tugas_nama,
+                    'tanggal_terbit' => $surat->created_at->format('Y-m-d'),
+                    'tanggal_disetujui' => $surat->approved_at?->format('Y-m-d'),
+                ]);
+
+                $svgContent = $this->generateQrSvgWithLogo($qrData);
+                file_put_contents($fullPath, $svgContent);
+            }
+
+            // Return SVG sebagai base64 data URI
+            return 'data:image/svg+xml;base64,'.base64_encode(file_get_contents($fullPath));
+
+        } catch (\Throwable $e) {
+            \Log::warning('QR signature gagal: '.$e->getMessage(), [
+                'surat_id' => $surat->id,
+                'nomor_surat' => $surat->nomor_surat,
             ]);
 
-            $svgContent = $this->generateQrSvgWithLogo($qrData);
-            file_put_contents($fullPath, $svgContent);
+            return null;
         }
-
-        // Return SVG sebagai base64 data URI
-        return 'data:image/svg+xml;base64,' . base64_encode(file_get_contents($fullPath));
-
-    } catch (\Throwable $e) {
-        \Log::warning('QR signature gagal: ' . $e->getMessage(), [
-            'surat_id'    => $surat->id,
-            'nomor_surat' => $surat->nomor_surat,
-        ]);
-        return null;
     }
-}
 
-private function generateQrSvgWithLogo(string $data): string
-{
-    $qrSize  = 300;
-    $logoSize = 54;
-    $padding  = 4;
+    private function generateQrSvgWithLogo(string $data): string
+    {
+        $qrSize = 300;
+        $logoSize = 54;
+        $padding = 4;
 
-    $renderer = new ImageRenderer(
-        new RendererStyle($qrSize, 1),
-        new SvgImageBackEnd()
-    );
-    $svg = (new Writer($renderer))->writeString($data);
+        $renderer = new ImageRenderer(
+            new RendererStyle($qrSize, 1),
+            new SvgImageBackEnd
+        );
+        $svg = (new Writer($renderer))->writeString($data);
 
-    // Ambil dimensi viewBox
-    preg_match('/viewBox="0 0 (\d+(?:\.\d+)?) (\d+(?:\.\d+)?)"/', $svg, $m);
-    $svgW = isset($m[1]) ? (float)$m[1] : $qrSize;
-    $svgH = isset($m[2]) ? (float)$m[2] : $qrSize;
+        // Ambil dimensi viewBox
+        preg_match('/viewBox="0 0 (\d+(?:\.\d+)?) (\d+(?:\.\d+)?)"/', $svg, $m);
+        $svgW = isset($m[1]) ? (float) $m[1] : $qrSize;
+        $svgH = isset($m[2]) ? (float) $m[2] : $qrSize;
 
-    $logoX = ($svgW - $logoSize) / 2;
-    $logoY = ($svgH - $logoSize) / 2;
+        $logoX = ($svgW - $logoSize) / 2;
+        $logoY = ($svgH - $logoSize) / 2;
 
-    // Embed logo sebagai base64
-    $logoPath = public_path('DashboardTemplates/assets/img/geodipa-logo.png');
-    $logoElements = '';
+        // Embed logo sebagai base64
+        $logoPath = public_path('DashboardTemplates/assets/img/geodipa-logo.png');
+        $logoElements = '';
 
-    if (file_exists($logoPath)) {
-        $logoBase64 = base64_encode(file_get_contents($logoPath));
-        $rectX = $logoX - $padding;
-        $rectY = $logoY - $padding;
-        $rectW = $logoSize + ($padding * 2);
-        $rectH = $logoSize + ($padding * 2);
+        if (file_exists($logoPath)) {
+            $logoBase64 = base64_encode(file_get_contents($logoPath));
+            $rectX = $logoX - $padding;
+            $rectY = $logoY - $padding;
+            $rectW = $logoSize + ($padding * 2);
+            $rectH = $logoSize + ($padding * 2);
 
-        $logoElements = <<<SVG
+            $logoElements = <<<SVG
 
     <rect x="{$rectX}" y="{$rectY}" width="{$rectW}" height="{$rectH}" fill="white" rx="3" ry="3"/>
     <image href="data:image/png;base64,{$logoBase64}"
@@ -1617,32 +1645,32 @@ private function generateQrSvgWithLogo(string $data): string
            width="{$logoSize}" height="{$logoSize}"
            preserveAspectRatio="xMidYMid meet"/>
 SVG;
+        }
+
+        return str_replace('</svg>', $logoElements."\n</svg>", $svg);
     }
 
-    return str_replace('</svg>', $logoElements . "\n</svg>", $svg);
-}
+    /**
+     * Simpan gambar struk ke storage dengan kompresi 50% (tanpa resize).
+     * Hanya path yang disimpan ke DB — tidak ada base64.
+     */
+    protected function storeStrukImage($file, string $context): string
+    {
+        $tmp = $file->getRealPath();
+        $jpeg = ImageCompressor::compressJpeg($tmp, 50);
 
-/**
- * Simpan gambar struk ke storage dengan kompresi 50% (tanpa resize).
- * Hanya path yang disimpan ke DB — tidak ada base64.
- */
-protected function storeStrukImage($file, string $context): string
-{
-    $tmp = $file->getRealPath();
-    $jpeg = ImageCompressor::compressJpeg($tmp, 50);
+        $ext = $file->getClientOriginalExtension() ?: 'jpg';
+        $filename = 'S.'.preg_replace('/[^A-Za-z0-9\-]/', '_', $context)
+            .'-'.now()->format('dmY-His').'-'.strtoupper(substr(uniqid(), -6)).'.'.$ext;
 
-    $ext = $file->getClientOriginalExtension() ?: 'jpg';
-    $filename = 'S.' . preg_replace('/[^A-Za-z0-9\-]/', '_', $context)
-        . '-' . now()->format('dmY-His') . '-' . strtoupper(substr(uniqid(), -6)) . '.' . $ext;
+        $path = 'transaction_proofs/struk/'.$filename;
 
-    $path = 'transaction_proofs/struk/' . $filename;
+        if ($jpeg !== null) {
+            Storage::disk('public')->put($path, $jpeg);
+        } else {
+            $file->storeAs('transaction_proofs/struk', $filename, 'public');
+        }
 
-    if ($jpeg !== null) {
-        Storage::disk('public')->put($path, $jpeg);
-    } else {
-        $file->storeAs('transaction_proofs/struk', $filename, 'public');
+        return $path;
     }
-
-    return $path;
-}
 }

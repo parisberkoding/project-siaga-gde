@@ -17,7 +17,9 @@ class EmployeeDefaultController extends Controller
      */
     public function index(Request $request)
     {
-        $query = EmployeeDefault::with(['defaultSite', 'aliases']);
+        $siteIds = $request->user()?->unitSiteIds();
+
+        $query = EmployeeDefault::with(['defaultSite', 'aliases'])->inUnit($siteIds);
 
         if ($search = $request->get('search')) {
             $query->where(function ($q) use ($search) {
@@ -32,9 +34,12 @@ class EmployeeDefaultController extends Controller
         }
 
         $employees = $query->orderBy('employee_name')->paginate(20)->withQueryString();
-        $sites     = Site::active()->get();
+        $sites     = Site::active()
+            ->when($siteIds !== null, fn ($q) => $q->whereIn('id', $siteIds))
+            ->get();
 
         $totalsBySite = EmployeeDefault::active()
+            ->inUnit($siteIds)
             ->whereNotNull('default_site_id')
             ->selectRaw('default_site_id, count(*) as total')
             ->groupBy('default_site_id')

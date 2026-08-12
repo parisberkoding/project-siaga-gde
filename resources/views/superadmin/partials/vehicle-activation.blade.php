@@ -89,7 +89,7 @@
     <div class="card-body">
 
         <!-- Filters -->
-        <form method="GET" action="{{ route('superadmin.vehicle-activation') }}" class="mb-4">
+        <form method="GET" action="{{ route('superadmin.vehicle-activation') }}" class="mb-4" data-autofilter>
             <div class="row g-2">
                 <div class="col-md-4">
                     <input type="text"
@@ -113,9 +113,9 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-funnel me-1"></i>Filter
-                    </button>
+                    <a href="{{ route('superadmin.vehicle-activation') }}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                    </a>
                 </div>
             </div>
         </form>
@@ -652,13 +652,32 @@
             cleanupModals();
             initEventHandlers();
             setupBulkDeactivateForm();
+            initAutoFilter();
             console.log('Vehicle activation handlers initialized');
         });
     } else {
         cleanupModals();
         initEventHandlers();
         setupBulkDeactivateForm();
+        initAutoFilter();
         console.log('Vehicle activation handlers initialized (immediate)');
+    }
+
+    // ✅ Realtime filter: submit otomatis tanpa tombol Filter
+    function initAutoFilter() {
+        document.querySelectorAll('form[data-autofilter]').forEach(function(form) {
+            const search = form.querySelector('input[name="search"]');
+            if (search) {
+                let timer;
+                search.addEventListener('input', function() {
+                    clearTimeout(timer);
+                    timer = setTimeout(function() { form.submit(); }, 400);
+                });
+            }
+            form.querySelectorAll('select').forEach(function(sel) {
+                sel.addEventListener('change', function() { form.submit(); });
+            });
+        });
     }
 
     // ✅ Setup bulk deactivate form

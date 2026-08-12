@@ -4,7 +4,7 @@ use App\Models\Permohonan;
 use App\Models\User;
 use App\Models\VehicleAndToolsConsumers;
 use App\Services\AI\DataMart\DataMartQueryEngine;
-use InvalidArgumentException;
+// use InvalidArgumentException;
 
 uses(Tests\TestCase::class);
 uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);

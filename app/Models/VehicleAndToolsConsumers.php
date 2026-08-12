@@ -127,6 +127,19 @@ class VehicleAndToolsConsumers extends Model
     }
 
     /**
+     * Scope unit bisnis: hanya kendaraan yang detailnya berada di site dalam unit.
+     * Null = tanpa scope (global / pusat).
+     */
+    public function scopeInUnit($query, ?array $siteIds)
+    {
+        if ($siteIds === null) {
+            return;
+        }
+
+        $query->whereHas('detail', fn ($q) => $q->whereIn('site_id', $siteIds));
+    }
+
+    /**
      * Budget operasional (nominal_full_tank) dari detail master vehicle.
      * Sumber tunggal untuk nominal default 1x pengisian full tank.
      */

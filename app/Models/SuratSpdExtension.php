@@ -154,6 +154,19 @@ class SuratSpdExtension extends Model
             ->where('is_acknowledged', false);
     }
 
+    /**
+     * Scope unit bisnis: delegasikan ke surat extension-nya (scopeInUnit SuratSpd).
+     * Null = tanpa scope (global / pusat).
+     */
+    public function scopeInUnit($query, ?array $siteIds)
+    {
+        if ($siteIds === null) {
+            return;
+        }
+
+        $query->whereHas('extensionSurat', fn ($q) => $q->inUnit($siteIds));
+    }
+
     // ============================================================
     // STATUS METHODS
     // ============================================================

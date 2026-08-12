@@ -22,25 +22,32 @@ class LunchForecastController extends Controller
     {
         $date = $request->get('date', now()->addDay()->toDateString());
 
+        $siteIds = $request->user()?->unitSiteIds();
+
         $forecasts = LunchForecast::forDate($date)
+            ->inUnit($siteIds)
             ->with(['employee.defaultSite', 'predictedSite', 'actualSite'])
             ->orderBy('predicted_site_id')
             ->paginate(50)
             ->withQueryString();
 
         $totalsBySite = LunchForecast::forDate($date)
+            ->inUnit($siteIds)
             ->whereNotNull('predicted_site_id')
             ->selectRaw('predicted_site_id, count(*) as total')
             ->groupBy('predicted_site_id')
             ->pluck('total', 'predicted_site_id');
 
         $totalsBySource = LunchForecast::forDate($date)
+            ->inUnit($siteIds)
             ->selectRaw('prediction_source, count(*) as total')
             ->groupBy('prediction_source')
             ->pluck('total', 'prediction_source');
 
-        $sites     = Site::active()->get();
-        $employees = EmployeeDefault::active()->orderBy('employee_name')->get(['id', 'slug', 'employee_name']);
+        $sites     = Site::active()
+            ->when($siteIds !== null, fn ($q) => $q->whereIn('id', $siteIds))
+            ->get();
+        $employees = EmployeeDefault::active()->inUnit($siteIds)->orderBy('employee_name')->get(['id', 'slug', 'employee_name']);
         $accuracy  = $this->service->accuracyForDate($date);
 
         return view('lunch.forecasts.index', compact(

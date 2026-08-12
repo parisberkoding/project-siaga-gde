@@ -88,6 +88,19 @@ class EmployeeDefault extends Model
     }
 
     /**
+     * Scope unit bisnis: karyawan yang default site-nya ada di dalam unit.
+     * Null = tanpa scope (global / pusat).
+     */
+    public function scopeInUnit($query, ?array $siteIds)
+    {
+        if ($siteIds === null) {
+            return;
+        }
+
+        $query->whereIn('default_site_id', $siteIds);
+    }
+
+    /**
      * Site dominan menurut Learning Engine (transaksi aktual terbanyak).
      */
     public function dominantLearningProfile(): ?LearningProfile

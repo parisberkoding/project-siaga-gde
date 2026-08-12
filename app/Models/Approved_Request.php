@@ -40,4 +40,17 @@ class Approved_Request extends Model  // Ubah dari Approved_Request
     {
         return $query->where('status', 'completed');
     }
+
+    /**
+     * Scope unit bisnis: voucher dari permohonan kendaraan di site dalam unit.
+     * Null = tanpa scope (global / pusat).
+     */
+    public function scopeInUnit($query, ?array $siteIds)
+    {
+        if ($siteIds === null) {
+            return;
+        }
+
+        $query->whereHas('permohonan', fn ($q) => $q->inUnit($siteIds));
+    }
 }
