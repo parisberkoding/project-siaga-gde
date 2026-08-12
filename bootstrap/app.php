@@ -14,7 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
-     ]);
+            'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
+            'csp' => \Spatie\Csp\Nonce\AddCspNonceToViews::class,
+            ]);
 
      $middleware->validateCsrfTokens(except: [
             'api/*', // Exclude semua API routes dari CSRF
