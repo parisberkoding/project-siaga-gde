@@ -1,845 +1,448 @@
-<!DOCTYPE html>
+「<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SIAGA — PT Geo Dipa Energi (Persero) Unit Patuha</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&family=Lora:ital,wght@1,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --gde-navy:        #1B3A6B;
-            --gde-navy-dark:   #122850;
-            --gde-green:       #5B9A3C;
-            --gde-green-light: #7AB84F;
-            --gde-green-pale:  #EBF4E5;
-            --gde-cream:       #F6F9F4;
-            --gde-border:      #e0e6ed;
-            --gde-muted:       #6B7A8D;
+            --gde-green:    #8DC63F;
+            --gde-green-d:  #7ab832;
+            --gde-red:      #ED1B2F;
+            --gde-yellow:   #FFF56B;
+            --gde-blue:     #0B50A1;
+            --gde-blue-d:   #093d7d;
+            --ink:          #1e293b;
+            --muted:        #64748b;
+            --light:        #f8fafc;
+            --border:       #e2e8f0;
+            --radius:       18px;
+            --radius-sm:    12px;
         }
 
         body {
-            font-family: 'Nunito', sans-serif;
+            font-family: 'Inter', sans-serif;
+            color: var(--ink);
             background: #fff;
-            color: #2d3a4a;
+            overflow-x: hidden;
         }
 
-        /* ── NAVBAR ── */
-        .navbar-gde {
-            background: #fff;
-            border-bottom: 1px solid var(--gde-border);
-            box-shadow: 0 1px 8px rgba(27,58,107,.06);
+        h1, h2, h3, h4 { font-family: 'Poppins', sans-serif; }
+
+        /* ─── NAVBAR ─── */
+        .navbar-gde { background: #fff; border-bottom: 1px solid var(--border); }
+        .navbar-brand-img { width: 34px; height: 34px; flex-shrink: 0; }
+        .navbar-brand-text { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--gde-blue); line-height: 1.1; }
+        .navbar-brand-sub { font-size: .58rem; font-weight: 600; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+        .navbar-brand-wrap { display: flex; align-items: center; gap: 8px; text-decoration: none; min-width: 0; }
+
+        .nav-link-custom {
+            font-size: .85rem; font-weight: 500; color: var(--muted);
+            padding: 8px 16px; border-radius: var(--radius-sm);
+            transition: all .2s; text-decoration: none;
         }
+        .nav-link-custom:hover, .nav-link-custom.active { color: var(--gde-green-d); background: rgba(141,198,63,.08); }
 
-        .nav-logomark {
-            width: 38px; height: 38px;
-            background: linear-gradient(135deg, var(--gde-green) 30%, var(--gde-navy));
-            border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            color: #fff; font-size: 1rem; flex-shrink: 0;
+        .navbar-toggler { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 10px; }
+        .navbar-toggler:focus { box-shadow: 0 0 0 3px rgba(141,198,63,.25); }
+
+        .btn-burger {
+            background: var(--gde-blue); color: #fff; border: none;
+            border-radius: 100px; padding: 10px 14px; line-height: 1;
+            display: inline-flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all .2s; white-space: nowrap;
         }
+        .btn-burger:hover { background: var(--gde-blue-d); }
+        .btn-burger::after { display: none !important; }
 
-        .nav-brand-title {
-            font-size: .95rem; font-weight: 800;
-            color: var(--gde-navy); line-height: 1.1;
+        .burger-dropdown {
+            background: #fff; border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 6px; min-width: 210px;
+            box-shadow: 0 20px 50px rgba(0,0,0,.12);
         }
-
-        .nav-brand-sub {
-            font-size: .68rem; font-weight: 600;
-            color: var(--gde-muted); letter-spacing: .04em; text-transform: uppercase;
+        .burger-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 16px; border-radius: var(--radius-sm);
+            font-size: .85rem; font-weight: 500; color: var(--ink);
+            text-decoration: none; transition: all .2s;
         }
+        .burger-item:hover { background: rgba(141,198,63,.08); color: var(--gde-green-d); }
+        .burger-item i { font-size: 1.05rem; width: 22px; color: var(--gde-green); }
 
-        .btn-login {
-            background: var(--gde-green); color: #fff !important;
-            border: none; border-radius: 6px; font-weight: 700;
-            font-size: .82rem; padding: 9px 22px;
-            display: inline-flex; align-items: center; gap: 7px;
-            text-decoration: none; white-space: nowrap;
-            transition: background .2s, box-shadow .2s;
-            font-family: 'Nunito', sans-serif;
-        }
-
-        .btn-login:hover {
-            background: var(--gde-green-light);
-            box-shadow: 0 4px 14px rgba(91,154,60,.32);
-        }
-
-        .navbar-toggler {
-            border: 1px solid var(--gde-border);
-            border-radius: 6px; padding: 5px 9px;
-        }
-
-        .navbar-toggler:focus { box-shadow: none; }
-
-        /* ── HERO ── */
+        /* ─── HERO ─── */
         .hero-section {
-            position: relative; min-height: 520px;
-            display: flex; align-items: center;
-            overflow: hidden; background: var(--gde-navy-dark);
+            position: relative; min-height: 560px;
+            display: flex; align-items: center; overflow: hidden;
+            background: var(--gde-blue-d);
         }
-
         .hero-bg {
             position: absolute; inset: 0;
             background-image: url('/img/landing_page_backdrop.jpeg');
             background-size: cover; background-position: center;
         }
-
         .hero-bg::after {
-            content: '';
-            position: absolute; inset: 0;
-            background: linear-gradient(110deg, rgba(18,40,80,.94) 0%, rgba(18,40,80,.82) 55%, rgba(18,40,80,.45) 100%);
-        }
-
-        .hero-content { position: relative; z-index: 2; padding: 88px 0; }
-
-        .hero-badge {
-            display: inline-flex; align-items: center; gap: 9px;
-            background: rgba(91,154,60,.16);
-            border: 1px solid rgba(91,154,60,.45);
-            color: #9cd870;
-            border-radius: 100px; padding: 5px 16px;
-            font-size: .72rem; font-weight: 700;
-            letter-spacing: .07em; text-transform: uppercase;
-            margin-bottom: 22px;
-        }
-
-        .hero-badge .dot {
-            width: 6px; height: 6px;
-            background: #9cd870; border-radius: 50%;
-            animation: blink 2s infinite;
-        }
-
-        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-
-        .hero-title {
-            font-size: clamp(1.8rem, 4vw, 2.9rem);
-            font-weight: 800; color: #fff;
-            line-height: 1.15; letter-spacing: -.025em;
-            margin-bottom: 16px;
-        }
-
-        .hero-title em {
-            font-family: 'Lora', serif;
-            font-style: italic; font-weight: 600;
-            color: #9cd870;
-        }
-
-        .hero-lead {
-            font-size: .98rem; color: rgba(255,255,255,.72);
-            line-height: 1.8; max-width: 470px; margin-bottom: 36px;
-        }
-
-        .btn-hero {
-            display: inline-flex; align-items: center; gap: 8px;
-            background: var(--gde-green); color: #fff;
-            text-decoration: none; border-radius: 8px;
-            padding: 12px 28px; font-weight: 700; font-size: .9rem;
-            box-shadow: 0 4px 18px rgba(91,154,60,.42);
-            transition: all .2s;
-        }
-
-        .btn-hero:hover { background: var(--gde-green-light); color: #fff; transform: translateY(-2px); }
-
-        .btn-hero-ghost {
-            display: inline-flex; align-items: center; gap: 8px;
-            background: transparent; color: rgba(255,255,255,.8);
-            text-decoration: none; border-radius: 8px;
-            padding: 12px 22px; font-weight: 600; font-size: .88rem;
-            border: 1px solid rgba(255,255,255,.24);
-            transition: all .2s;
-        }
-
-        .btn-hero-ghost:hover { background: rgba(255,255,255,.09); color: #fff; }
-
-        /* ── STATS BAR ── */
-        .stats-bar { background: var(--gde-navy); }
-
-        .stat-block {
-            padding: 20px 16px;
-            display: flex; align-items: center; gap: 13px;
-            border-right: 1px solid rgba(255,255,255,.07);
-        }
-
-        .stat-block:last-child { border-right: none; }
-
-        .stat-icon {
-            width: 40px; height: 40px;
-            background: rgba(91,154,60,.15);
-            border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            color: #9cd870; font-size: 1.1rem; flex-shrink: 0;
-        }
-
-        .stat-label {
-            font-size: .66rem; font-weight: 700;
-            color: rgba(255,255,255,.38); text-transform: uppercase; letter-spacing: .07em;
-        }
-
-        .stat-value {
-            font-size: .84rem; font-weight: 700; color: rgba(255,255,255,.86);
-        }
-
-        /* ── SECTION ── */
-        .section-eyebrow {
-            font-size: .7rem; font-weight: 800;
-            color: var(--gde-green); text-transform: uppercase; letter-spacing: .1em;
-        }
-
-        .section-title {
-            font-size: clamp(1.5rem, 2.5vw, 2.1rem);
-            font-weight: 800; color: var(--gde-navy);
-            letter-spacing: -.02em; line-height: 1.2;
-        }
-
-        .section-lead {
-            font-size: .95rem; color: var(--gde-muted); line-height: 1.8;
-        }
-
-        /* ── OPTIMIZATION CARDS (replaces PIJAR) ── */
-        .opt-section { background: var(--gde-cream); }
-
-        .opt-card {
-            background: #fff; border: 1px solid var(--gde-border);
-            border-radius: 12px; padding: 26px 20px;
-            height: 100%; position: relative; overflow: hidden;
-            transition: transform .25s, box-shadow .25s;
-            text-align: center;
-        }
-
-        .opt-card::after {
-            content: ''; position: absolute;
-            left: 0; bottom: 0; right: 0; height: 3px;
-            background: linear-gradient(90deg, var(--gde-green), var(--gde-navy));
-            transform: scaleX(0); transform-origin: left; transition: transform .3s;
-        }
-
-        .opt-card:hover { transform: translateY(-5px); box-shadow: 0 8px 28px rgba(27,58,107,.1); }
-        .opt-card:hover::after { transform: scaleX(1); }
-
-        .opt-icon {
-            width: 52px; height: 52px;
-            background: var(--gde-green-pale); border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.4rem; color: var(--gde-green);
-            margin: 0 auto 16px;
-        }
-
-        .opt-card-title {
-            font-size: .9rem; font-weight: 800;
-            color: var(--gde-navy); margin-bottom: 6px;
-        }
-
-        .opt-card-desc {
-            font-size: .8rem; color: var(--gde-muted); line-height: 1.7;
-        }
-
-        /* ── GA PANEL ── */
-        .ga-panel {
-            background: var(--gde-navy); border-radius: 14px;
-            padding: 38px 32px; color: #fff;
-            height: 100%; position: relative; overflow: hidden;
-        }
-
-        .ga-panel::before {
-            content: ''; position: absolute;
-            top: -70px; right: -70px; width: 200px; height: 200px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(91,154,60,.2), transparent 70%);
-        }
-
-        .ga-tag {
-            font-size: .68rem; font-weight: 800;
-            letter-spacing: .1em; text-transform: uppercase;
-            color: #9cd870; margin-bottom: 12px;
-        }
-
-        .ga-title {
-            font-size: 1.4rem; font-weight: 800;
-            line-height: 1.25; letter-spacing: -.02em;
-            color: #fff; margin-bottom: 14px;
-        }
-
-        .ga-desc { font-size: .84rem; color: rgba(255,255,255,.6); line-height: 1.8; }
-
-        /* ── FEATURE LIST ── */
-        .feature-list { list-style: none; padding: 0; margin: 0; }
-
-        .feature-list li {
-            display: flex; align-items: flex-start; gap: 14px;
-            padding: 15px 0; border-bottom: 1px solid var(--gde-border);
-        }
-
-        .feature-list li:last-child { border-bottom: none; }
-
-        .feature-chk {
-            width: 30px; height: 30px;
-            background: var(--gde-green-pale); border-radius: 7px;
-            display: flex; align-items: center; justify-content: center;
-            color: var(--gde-green); font-size: .88rem; flex-shrink: 0;
-        }
-
-        .feature-name {
-            font-size: .88rem; font-weight: 800;
-            color: var(--gde-navy); display: block; margin-bottom: 2px;
-        }
-
-        .feature-desc { font-size: .8rem; color: var(--gde-muted); line-height: 1.6; }
-
-        /* ── ACCESS CARDS ── */
-        .access-section { background: #fff; }
-
-        .access-card {
-            background: var(--gde-cream); border: 1px solid var(--gde-border);
-            border-radius: 14px; padding: 28px 24px;
-            height: 100%; text-decoration: none; color: inherit;
-            display: flex; flex-direction: column; align-items: center; text-align: center;
-            transition: transform .25s, box-shadow .25s;
-        }
-
-        .access-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 30px rgba(27,58,107,.1);
-            border-color: var(--gde-green);
-        }
-
-        .access-icon {
-            width: 56px; height: 56px;
-            background: var(--gde-green-pale); border-radius: 14px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.5rem; color: var(--gde-green);
-            margin-bottom: 14px;
-            transition: background .25s, color .25s;
-        }
-
-        .access-card:hover .access-icon {
-            background: var(--gde-green);
-            color: #fff;
-        }
-
-        .access-title {
-            font-size: .95rem; font-weight: 800; color: var(--gde-navy);
-            margin-bottom: 4px;
-        }
-
-        .access-desc {
-            font-size: .78rem; color: var(--gde-muted); line-height: 1.6;
-        }
-
-        .access-badge {
-            display: inline-block;
-            font-size: .6rem; font-weight: 800; letter-spacing: .07em;
-            text-transform: uppercase; border-radius: 4px;
-            padding: 2px 8px; margin-top: 8px;
-        }
-
-        /* ── DIGITALIZATION ── */
-        .digital-section {
-            background: linear-gradient(135deg, var(--gde-navy) 0%, #1a4a85 100%);
-            position: relative; overflow: hidden;
-        }
-
-        .digital-section::before {
-            content: '';
-            position: absolute; inset: 0;
-            background: radial-gradient(ellipse 80% 60% at 30% 50%, rgba(91,154,60,.12), transparent 60%);
-        }
-
-        .digital-content { position: relative; z-index: 2; }
-
-        .digital-title {
-            font-size: clamp(1.4rem, 2.5vw, 2rem);
-            font-weight: 800; color: #fff;
-            letter-spacing: -.02em; line-height: 1.25;
-        }
-
-        .digital-lead {
-            font-size: .9rem; color: rgba(255,255,255,.55); line-height: 1.8;
-        }
-
-        .digital-grid { display: flex; flex-wrap: wrap; gap: 12px; }
-
-        .digital-chip {
-            background: rgba(255,255,255,.07);
-            border: 1px solid rgba(255,255,255,.1);
-            border-radius: 100px; padding: 8px 18px;
-            color: rgba(255,255,255,.7); font-size: .82rem; font-weight: 600;
-            display: inline-flex; align-items: center; gap: 8px;
-            transition: all .2s;
-        }
-
-        .digital-chip:hover {
-            background: rgba(91,154,60,.2);
-            border-color: rgba(91,154,60,.4);
-            color: #9cd870;
-        }
-
-        .digital-chip i { color: #9cd870; font-size: .9rem; }
-
-        /* ── CTA ── */
-        .cta-section {
-            background: linear-gradient(135deg, var(--gde-navy) 0%, #1a4a85 100%);
-            padding: 72px 0; position: relative;
-            overflow: hidden; text-align: center;
-        }
-
-        .cta-section::before {
             content: ''; position: absolute; inset: 0;
-            background: radial-gradient(ellipse 70% 80% at 50% 0%, rgba(91,154,60,.14), transparent 65%);
+            background: rgba(0,0,0,.5);
         }
-
-        .cta-title {
-            font-size: clamp(1.6rem, 3vw, 2.3rem);
-            font-weight: 800; color: #fff;
-            letter-spacing: -.025em; margin-bottom: 12px;
+        .hero-content { position: relative; z-index: 2; padding: 100px 0 80px; }
+        .hero-title { font-size: clamp(2rem, 4.5vw, 3.2rem); font-weight: 800; color: #fff; line-height: 1.1; letter-spacing: -.03em; }
+        .hero-subtitle { font-size: 1.05rem; color: rgba(255,255,255,.72); max-width: 560px; line-height: 1.8; margin-top: 16px; }
+        .btn-hero-cta {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: var(--gde-green); color: #fff; text-decoration: none;
+            border-radius: 100px; padding: 14px 32px; font-weight: 600;
+            font-size: .92rem; transition: all .25s; margin-top: 28px;
         }
+        .btn-hero-cta:hover { background: var(--gde-green-d); color: #fff; transform: translateY(-2px); box-shadow: 0 12px 30px rgba(141,198,63,.35); }
 
-        .cta-lead {
-            font-size: .94rem; color: rgba(255,255,255,.6);
-            max-width: 420px; margin: 0 auto 32px; line-height: 1.8;
+        /* ─── SECTIONS ─── */
+        .section-py { padding: 90px 0; }
+        .section-eyebrow { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--gde-green-d); margin-bottom: 10px; }
+        .section-title { font-size: clamp(1.6rem, 2.8vw, 2.3rem); font-weight: 800; color: var(--gde-blue); letter-spacing: -.02em; line-height: 1.15; }
+        .section-lead { font-size: .95rem; color: var(--muted); line-height: 1.8; }
+
+        /* ─── ABOUT ─── */
+        .about-img { border-radius: var(--radius); box-shadow: 0 8px 30px rgba(0,0,0,.08); }
+
+        /* ─── SERVICES CARDS ─── */
+        .svc-card {
+            border-radius: var(--radius); padding: 32px 28px;
+            height: 100%; transition: transform .3s, box-shadow .3s;
         }
-
-        /* ── FOOTER ── */
-        footer { background: #0d2242; color: #fff; padding: 56px 0 0; }
-
-        .footer-logo-mark {
-            width: 34px; height: 34px;
-            background: linear-gradient(135deg, var(--gde-green), var(--gde-navy));
-            border-radius: 7px;
+        .svc-card:hover { transform: translateY(-6px); box-shadow: 0 20px 50px rgba(0,0,0,.1); }
+        .svc-icon {
+            width: 48px; height: 48px; border-radius: var(--radius-sm);
             display: flex; align-items: center; justify-content: center;
-            color: #fff; font-size: .95rem;
+            font-size: 1.3rem; margin-bottom: 18px;
         }
+        .svc-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 8px; }
+        .svc-desc { font-size: .85rem; line-height: 1.7; opacity: .75; margin-bottom: 20px; }
 
-        .footer-brand-name { font-size: .9rem; font-weight: 800; color: #fff; }
+        .svc-card-dark { background: var(--gde-blue); color: #fff; }
+        .svc-card-dark .svc-icon { background: rgba(255,255,255,.12); color: var(--gde-green); }
+        .svc-card-dark .svc-desc { opacity: .65; }
 
-        .footer-desc { font-size: .82rem; color: rgba(255,255,255,.42); line-height: 1.8; }
-
-        .footer-col-title {
-            font-size: .7rem; font-weight: 800;
-            color: rgba(255,255,255,.4); text-transform: uppercase;
-            letter-spacing: .09em; margin-bottom: 18px;
+        .svc-card-green { background: var(--gde-green); color: #fff; position: relative; overflow: hidden; padding: 0; }
+        .svc-card-green-inner { padding: 28px; position: relative; z-index: 2; }
+        .svc-card-green::after {
+            content: ''; position: absolute; bottom: -40px; right: -40px;
+            width: 200px; height: 200px; border-radius: 50%;
+            background: rgba(255,255,255,.08);
         }
-
-        .footer-link-list { list-style: none; padding: 0; }
-        .footer-link-list li { margin-bottom: 10px; }
-
-        .footer-link-list a {
-            color: rgba(255,255,255,.58); text-decoration: none;
-            font-size: .84rem; display: inline-flex; align-items: center; gap: 8px;
-            transition: color .2s;
+        .svc-badge {
+            display: inline-block; background: rgba(255,255,255,.25);
+            color: #fff; border-radius: 100px; padding: 6px 16px;
+            font-size: .75rem; font-weight: 600; letter-spacing: .04em;
+            backdrop-filter: blur(10px); margin-top: 14px;
         }
+        .svc-card-green .svc-icon { background: rgba(255,255,255,.18); color: #fff; }
 
-        .footer-link-list a:hover { color: #9cd870; }
+        .svc-card-light { background: var(--light); }
+        .svc-card-light .svc-icon { background: #fff; color: var(--gde-green); }
+        .skill-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .skill-label { font-size: .78rem; font-weight: 600; color: var(--ink); min-width: 90px; }
+        .skill-dots { display: flex; gap: 5px; }
+        .skill-dot { width: 12px; height: 12px; border-radius: 50%; transition: transform .2s; }
+        .skill-dot.filled { background: var(--gde-green); }
+        .skill-dot.empty { background: #cbd5e1; }
+        .skill-dot:hover { transform: scale(1.4); }
 
-        .footer-contact-row {
-            display: flex; align-items: flex-start; gap: 10px;
-            margin-bottom: 12px; font-size: .83rem; color: rgba(255,255,255,.52);
+        /* ─── STATS ─── */
+        .stats-section { background: #fff; }
+        .stat-card-item { text-align: center; padding: 28px 16px; }
+        .stat-number { font-family: 'Poppins', sans-serif; font-size: 2.2rem; font-weight: 800; background: linear-gradient(135deg, var(--gde-green-d), var(--gde-blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .stat-label { font-size: .82rem; color: var(--muted); margin-top: 6px; font-weight: 500; }
+
+        /* ─── SERVICE GRID / STAGGERED ─── */
+        .grid-section { background: var(--light); }
+        .btn-explore {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: var(--gde-blue); color: #fff; border-radius: 100px;
+            padding: 12px 28px; font-weight: 600; font-size: .88rem;
+            text-decoration: none; transition: all .25s; margin-top: 20px;
         }
-
-        .footer-contact-row i { color: #9cd870; margin-top: 2px; flex-shrink: 0; }
-
-        .footer-bottom {
-            margin-top: 48px; border-top: 1px solid rgba(255,255,255,.06);
-            padding: 20px 0;
+        .btn-explore:hover { background: var(--gde-blue-d); color: #fff; transform: translateY(-2px); }
+        .grid-img {
+            width: 100%; border-radius: var(--radius); object-fit: cover;
+            box-shadow: 0 8px 25px rgba(0,0,0,.06);
+            transition: transform .3s;
         }
+        .grid-img:hover { transform: scale(1.02); }
+        .grid-img-tall { height: 320px; }
+        .grid-img-short { height: 220px; }
 
-        .footer-bottom-text { font-size: .76rem; color: rgba(255,255,255,.28); margin: 0; }
-        .footer-bottom-badge { font-size: .76rem; color: rgba(255,255,255,.28); display: flex; align-items: center; gap: 5px; }
-        .footer-bottom-badge i { color: #9cd870; }
+        /* ─── FOOTER ─── */
+        .footer-section { background: var(--gde-blue); color: #fff; padding: 64px 0 0; }
+        .footer-brand { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1rem; }
+        .footer-desc { font-size: .82rem; color: rgba(255,255,255,.4); line-height: 1.8; max-width: 300px; }
+        .footer-col-title { font-size: .68rem; font-weight: 700; color: rgba(255,255,255,.3); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 18px; }
+        .footer-links { list-style: none; padding: 0; }
+        .footer-links li { margin-bottom: 10px; }
+        .footer-links a { color: rgba(255,255,255,.45); text-decoration: none; font-size: .84rem; display: inline-flex; align-items: center; gap: 8px; transition: color .2s; }
+        .footer-links a:hover { color: var(--gde-green); }
+        .footer-contact { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; font-size: .83rem; color: rgba(255,255,255,.38); }
+        .footer-contact i { color: var(--gde-green); margin-top: 3px; flex-shrink: 0; }
+        .footer-bottom { margin-top: 48px; border-top: 1px solid rgba(255,255,255,.06); padding: 20px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .footer-bottom p { font-size: .75rem; color: rgba(255,255,255,.2); margin: 0; }
 
-        /* ── Scroll fade ── */
-        .fade-up {
-            opacity: 0; transform: translateY(20px);
-            transition: opacity .55s ease, transform .55s ease;
-        }
-
+        .fade-up { opacity: 0; transform: translateY(24px); transition: opacity .6s ease, transform .6s ease; }
         .fade-up.in { opacity: 1; transform: none; }
 
-        /* ── Mobile ── */
-        @media (max-width: 767.98px) {
-            .hero-content { padding: 64px 0; }
-            .stat-block { border-right: none; border-bottom: 1px solid rgba(255,255,255,.07); }
-            .stats-bar .row > [class*="col"]:nth-child(odd) .stat-block { border-right: 1px solid rgba(255,255,255,.07); }
+        @media (max-width: 991.98px) {
+            .hero-section { min-height: 480px; }
+            .hero-content { padding: 80px 0 60px; }
+            .hero-title { font-size: 1.8rem; }
+            .grid-img-tall { height: 240px; }
+            .grid-img-short { height: 180px; }
         }
-
-        @media (max-width: 575.98px) { .ga-panel { padding: 28px 22px; } }
+        @media (max-width: 767.98px) {
+            .section-py { padding: 60px 0; }
+            .stat-card-item { padding: 18px 8px; }
+            .stat-number { font-size: 1.6rem; }
+            .navbar-brand-sub { font-size: .52rem; }
+            .navbar-brand-text { font-size: .9rem; }
+            .navbar-brand-img { width: 28px; height: 28px; }
+            .hero-section { min-height: 400px; }
+            .hero-content { padding: 60px 0 48px; }
+            .hero-title { font-size: 1.5rem; }
+            .hero-subtitle { font-size: .9rem; }
+        }
     </style>
 </head>
 <body>
 
-    <!-- ─── NAVBAR ──────────────────────────────────────────── -->
-    <nav class="navbar navbar-gde navbar-expand-md sticky-top">
-        <div class="container-fluid px-3 px-md-4">
-
-            <a href="#" class="navbar-brand d-flex align-items-center gap-2 py-2 me-0">
+    <nav class="navbar navbar-expand-lg navbar-gde sticky-top py-2">
+        <div class="container">
+            <a href="/" class="navbar-brand-wrap">
                 <img src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png"
-                     style="width:6%" alt="Logo Geodipa">
+                     class="navbar-brand-img" alt="Logo Geodipa">
                 <div>
-                    <div class="nav-brand-title">SIAGA</div>
-                    <div class="nav-brand-sub">SISTEM INFORMASI ADMINISTRASI GENERAL AFFAIRS</div>
+                    <div class="navbar-brand-text">SIAGA</div>
+                    <div class="navbar-brand-sub">SISTEM INFORMASI ADMINISTRASI GENERAL AFFAIRS</div>
                 </div>
             </a>
 
-            <button class="navbar-toggler" type="button"
-                    data-bs-toggle="collapse" data-bs-target="#navMain"
-                    aria-controls="navMain" aria-expanded="false">
-                <i class="bi bi-list" style="font-size:1.25rem; color:var(--gde-muted)"></i>
-            </button>
+            <div class="d-flex align-items-center gap-2 ms-auto ms-lg-0 order-lg-last">
+                <div class="dropdown d-none d-lg-block">
+                    <button class="btn-burger" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                        <i class="bi bi-list" style="font-size:1.25rem;"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end burger-dropdown">
+                        <li><a href="/login" class="burger-item"><i class="bi bi-box-arrow-in-right"></i>Login</a></li>
+                        <li><a href="{{ url('lunch-attendance') }}" class="burger-item"><i class="bi bi-egg-fried"></i>Absen Makan</a></li>
+                        <li><hr class="dropdown-divider" style="margin:4px 0"></li>
+                        <li><a href="{{ url('lunch-attendance') }}" class="burger-item"><i class="bi bi-person-badge"></i>Absen Makan Tamu</a></li>
+                    </ul>
+                </div>
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain"
+                        aria-controls="navMain" aria-expanded="false" aria-label="Toggle navigation">
+                    <i class="bi bi-list" style="font-size:1.3rem;color:var(--muted)"></i>
+                </button>
+            </div>
 
             <div class="collapse navbar-collapse" id="navMain">
-                <ul class="navbar-nav ms-auto align-items-center gap-1 gap-md-0">
-                    <li class="nav-item"><a href="/tentang" class="nav-link px-3 fw-semibold" style="color:var(--gde-muted);transition:color .2s;font-size:.84rem">Tentang</a></li>
-                    <li class="nav-item"><a href="/panduan" class="nav-link px-3 fw-semibold" style="color:var(--gde-muted);transition:color .2s;font-size:.84rem">Panduan</a></li>
+                <ul class="navbar-nav mx-auto align-items-lg-center gap-1 py-2 py-lg-0">
+                    <li class="nav-item"><a href="/" class="nav-link-custom active">Beranda</a></li>
+                    <li class="nav-item"><a href="/tentang" class="nav-link-custom">Tentang</a></li>
+                    <li class="nav-item"><a href="/panduan" class="nav-link-custom">Panduan</a></li>
+                    <li class="nav-item"><a href="#layanan" class="nav-link-custom">Layanan</a></li>
                 </ul>
-                <div class="ms-3 mt-2 mt-md-0">
-                    <a href="/login" class="btn-login">
-                        <i class="bi bi-box-arrow-in-right"></i>
-                        Masuk ke Sistem
-                    </a>
+                <div class="d-lg-none pt-2 border-top mt-2">
+                    <a href="/login" class="burger-item d-flex"><i class="bi bi-box-arrow-in-right"></i>Login</a>
+                    <a href="{{ url('lunch-attendance') }}" class="burger-item d-flex"><i class="bi bi-egg-fried"></i>Absen Makan</a>
+                    <a href="{{ url('lunch-attendance') }}" class="burger-item d-flex"><i class="bi bi-person-badge"></i>Absen Makan Tamu</a>
                 </div>
             </div>
         </div>
     </nav>
-
 
     <!-- ─── HERO ─────────────────────────────────────────────── -->
     <section class="hero-section">
         <div class="hero-bg"></div>
         <div class="container">
             <div class="row hero-content">
-                <div class="col-12 col-md-10 col-lg-7 col-xl-6">
-                    <div class="hero-badge">
-                        <span class="dot"></span>
-                        PT. Geo Dipa Energi (Persero) Unit Patuha · General Affairs
-                    </div>
-
+                <div class="col-12 col-lg-8 col-xl-7 fade-up">
                     <h1 class="hero-title">
-                        SIAGA<br>
-                        <em>Sistem Informasi Administrasi General Affairs</em>
+                        Sistem Informasi Administrasi General Affairs
                     </h1>
-
-                    <p class="hero-lead">
-                        Optimalisasi operasional one stop system melalui digitalisasi proses
-                        permohonan, approval, dan pelaporan yang efisien dan akuntabel.
+                    <p class="hero-subtitle">
+                        Optimalisasi operasional one stop system melalui digitalisasi proses permohonan,
+                        approval, dan pelaporan yang efisien dan akuntabel — di bawah naungan
+                        PT Geo Dipa Energi (Persero) Unit Patuha.
                     </p>
-
-                    <div class="d-flex flex-wrap gap-2">
-                        <a href="/login" class="btn-hero">
-                            <i class="bi bi-rocket-takeoff"></i>
-                            Mulai Sekarang
-                        </a>
-                        <a href="#fitur" class="btn-hero-ghost">
-                            <i class="bi bi-chevron-down"></i>
-                            Pelajari Fitur
-                        </a>
-                    </div>
+                    <a href="/login" class="btn-hero-cta">
+                        <i class="bi bi-rocket-takeoff"></i> Mulai Sekarang
+                    </a>
                 </div>
             </div>
         </div>
     </section>
 
-
-    <!-- ─── STATS BAR ────────────────────────────────────────── -->
-    <div class="stats-bar">
-        <div class="container-fluid px-3 px-md-4">
-            <div class="row g-0">
-                <div class="col-6 col-md-3">
-                    <div class="stat-block">
-                        <div class="stat-icon"><i class="bi bi-speedometer2"></i></div>
-                        <div>
-                            <div class="stat-label">Efisiensi</div>
-                            <div class="stat-value">Proses Cepat</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="stat-block">
-                        <div class="stat-icon"><i class="bi bi-shield-check"></i></div>
-                        <div>
-                            <div class="stat-label">Keamanan</div>
-                            <div class="stat-value">Akuntabel</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="stat-block">
-                        <div class="stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
-                        <div>
-                            <div class="stat-label">Monitoring</div>
-                            <div class="stat-value">Real-time</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="stat-block" style="border-right:none">
-                        <div class="stat-icon"><i class="bi bi-file-earmark-text"></i></div>
-                        <div>
-                            <div class="stat-label">Pelaporan</div>
-                            <div class="stat-value">Paperless</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- ─── OPTIMALISASI & TRANSPARANSI ──────────────────────── -->
-    <section class="opt-section py-5">
-        <div class="container py-4">
-            <div class="row justify-content-center mb-4">
-                <div class="col-12 col-lg-8 text-center fade-up">
-                    <div class="section-eyebrow mb-1">Komitmen Kami</div>
-                    <h2 class="section-title mb-3">Optimalisasi & Transparansi</h2>
-                    <p class="section-lead mx-auto" style="max-width:560px">
-                        SIAGA dibangun untuk mendorong efisiensi operasional GA melalui sistem
-                        yang transparan, terukur, dan dapat dipertanggungjawabkan.
+    <!-- ─── ABOUT SECTION ────────────────────────────────────── -->
+    <section class="section-py" id="tentang">
+        <div class="container">
+            <div class="row g-5 align-items-center">
+                <div class="col-lg-6 fade-up">
+                    <div class="section-eyebrow">Tentang SIAGA</div>
+                    <h2 class="section-title mb-3">Transformasi Digital Layanan General Affairs</h2>
+                    <p class="section-lead">
+                        <strong>SIAGA</strong> (Sistem Informasi Administrasi General Affairs) adalah platform digital
+                        terintegrasi yang dikembangkan oleh PT Geo Dipa Energi (Persero) Unit Patuha untuk mengelola
+                        seluruh layanan administrasi General Affairs secara paperless, transparan, dan akuntabel.
+                    </p>
+                    <p class="section-lead mt-2">
+                        Berlandaskan prinsip Good Corporate Governance (GCG) dan selaras dengan GEODIPA Integrated
+                        Management System (GIMS), SIAGA menghadirkan digitalisasi proses mulai dari permohonan,
+                        approval multi-level, hingga pelaporan dalam satu ekosistem yang modern.
                     </p>
                 </div>
-            </div>
-
-            <div class="row g-3">
-                <div class="col-6 col-md-3 fade-up">
-                    <div class="opt-card">
-                        <div class="opt-icon"><i class="bi bi-clock-history"></i></div>
-                        <div class="opt-card-title">Efisiensi Waktu</div>
-                        <p class="opt-card-desc">Proses permohonan dan approval lebih cepat tanpa birokrasi berbelit.</p>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3 fade-up">
-                    <div class="opt-card">
-                        <div class="opt-icon"><i class="bi bi-eye"></i></div>
-                        <div class="opt-card-title">Transparansi Penuh</div>
-                        <p class="opt-card-desc">Setiap transaksi terekam dan dapat diaudit secara real-time.</p>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3 fade-up">
-                    <div class="opt-card">
-                        <div class="opt-icon"><i class="bi bi-bar-chart-line"></i></div>
-                        <div class="opt-card-title">Data Terukur</div>
-                        <p class="opt-card-desc">Dashboard analitik untuk monitoring dan pengambilan keputusan.</p>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3 fade-up">
-                    <div class="opt-card">
-                        <div class="opt-icon"><i class="bi bi-file-earmark-check"></i></div>
-                        <div class="opt-card-title">Akuntabilitas</div>
-                        <p class="opt-card-desc">Setiap aktivitas memiliki jejak digital yang jelas dan sah.</p>
-                    </div>
+                <div class="col-lg-6 fade-up">
+                    <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=400&fit=crop"
+                         alt="SIAGA About" class="img-fluid about-img w-100" style="height:380px;object-fit:cover">
                 </div>
             </div>
         </div>
     </section>
 
-
-    <!-- ─── FITUR UNGGULAN ───────────────────────────────────── -->
-    <section class="py-5 bg-white" id="fitur">
-        <div class="container py-4">
-            <div class="row g-4 g-lg-5 align-items-stretch">
-
-                <div class="col-12 col-lg-4 fade-up">
-                    <div class="ga-panel">
-                        <div class="ga-tag">General Affairs · Unit Patuha</div>
-                        <h2 class="ga-title">Solusi Digital General Affairs</h2>
-                        <p class="ga-desc">
-                            SIAGA mengintegrasikan seluruh layanan administrasi GA dalam satu
-                            ekosistem digital yang transparan, efisien, dan akuntabel.
-                        </p>
-                        <div class="mt-4 pt-3" style="border-top:1px solid rgba(255,255,255,.12)">
-                            <a href="/login" class="btn-hero w-100 justify-content-center">
-                                <i class="bi bi-box-arrow-in-right"></i>
-                                Akses Sistem
-                            </a>
+    <!-- ─── SERVICES SECTION (3 Cards) ───────────────────────── -->
+    <section class="section-py" style="background: var(--light)" id="layanan">
+        <div class="container">
+            <div class="text-center mb-5 fade-up">
+                <div class="section-eyebrow">Layanan Kami</div>
+                <h2 class="section-title mb-2">Fitur Unggulan SIAGA</h2>
+                <p class="section-lead mx-auto" style="max-width:560px">Tiga pilar utama yang mendukung kelancaran operasional administrasi General Affairs di Unit Patuha.</p>
+            </div>
+            <div class="row g-4">
+                <div class="col-lg-4 fade-up">
+                    <div class="svc-card svc-card-dark">
+                        <div class="svc-icon"><i class="bi bi-speedometer2"></i></div>
+                        <h3 class="svc-title">Dashboard & Monitoring</h3>
+                        <p class="svc-desc">Pantau seluruh aktivitas GA secara real-time melalui dashboard interaktif yang intuitif dan mudah digunakan. Setiap transaksi tercatat rapih.</p>
+                        <div class="form-check form-switch mt-3">
+                            <input class="form-check-input" type="checkbox" role="switch" id="notifSwitch" checked>
+                            <label class="form-check-label" for="notifSwitch" style="font-size:.82rem;color:rgba(255,255,255,.7)">Notifikasi Otomatis</label>
                         </div>
                     </div>
                 </div>
-
-                <div class="col-12 col-lg-8 fade-up">
-                    <div class="section-eyebrow mb-1">Kemampuan Sistem</div>
-                    <h2 class="section-title mb-4">Fitur Unggulan SIAGA</h2>
-                    <ul class="feature-list">
-                        <li>
-                            <div class="feature-chk"><i class="bi bi-check2-circle"></i></div>
-                            <div>
-                                <span class="feature-name">Permohonan Digital</span>
-                                <span class="feature-desc">Proses pengajuan layanan GA tanpa kertas yang cepat dan terstruktur.</span>
+                <div class="col-lg-4 fade-up">
+                    <div class="svc-card svc-card-green">
+                        <img src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=500&h=300&fit=crop"
+                             alt="Service" class="img-fluid w-100" style="height:200px;object-fit:cover">
+                        <div class="svc-card-green-inner">
+                            <div class="svc-icon"><i class="bi bi-people-fill"></i></div>
+                            <h3 class="svc-title" style="color:#fff">Multi-Level Approval</h3>
+                            <p class="svc-desc" style="color:rgba(255,255,255,.75);opacity:1">Workflow approval terotomasi sesuai hierarki perusahaan dengan notifikasi instan.</p>
+                            <span class="svc-badge">Private & Group Lessons</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 fade-up">
+                    <div class="svc-card svc-card-light">
+                        <div class="svc-icon"><i class="bi bi-trophy-fill"></i></div>
+                        <h3 class="svc-title" style="color:var(--gde-blue)">7+ Modul Aktif</h3>
+                        <div class="skill-row">
+                            <span class="skill-label">BBM</span>
+                            <div class="skill-dots">
+                                <span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span>
                             </div>
-                        </li>
-                        <li>
-                            <div class="feature-chk"><i class="bi bi-check2-circle"></i></div>
-                            <div>
-                                <span class="feature-name">Multi-Level Approval</span>
-                                <span class="feature-desc">Workflow approval terotomasi sesuai hierarki perusahaan.</span>
+                        </div>
+                        <div class="skill-row">
+                            <span class="skill-label">SPD</span>
+                            <div class="skill-dots">
+                                <span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot empty"></span><span class="skill-dot empty"></span>
                             </div>
-                        </li>
-                        <li>
-                            <div class="feature-chk"><i class="bi bi-check2-circle"></i></div>
-                            <div>
-                                <span class="feature-name">Pelaporan Real-time</span>
-                                <span class="feature-desc">Dashboard interaktif untuk monitoring aktivitas GA secara langsung.</span>
+                        </div>
+                        <div class="skill-row">
+                            <span class="skill-label">Dispatcher</span>
+                            <div class="skill-dots">
+                                <span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot filled"></span><span class="skill-dot empty"></span><span class="skill-dot empty"></span><span class="skill-dot empty"></span>
                             </div>
-                        </li>
-                        <li>
-                            <div class="feature-chk"><i class="bi bi-check2-circle"></i></div>
-                            <div>
-                                <span class="feature-name">Manajemen Dokumen</span>
-                                <span class="feature-desc">Unggah, simpan, dan kelola dokumen pendukung setiap transaksi.</span>
-                            </div>
-                        </li>
-                        <li>
-                            <div class="feature-chk"><i class="bi bi-check2-circle"></i></div>
-                            <div>
-                                <span class="feature-name">Notifikasi Otomatis</span>
-                                <span class="feature-desc">Pemberitahuan instan untuk setiap perubahan status permohonan.</span>
-                            </div>
-                        </li>
-                    </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 
+    <!-- ─── STATS SECTION ────────────────────────────────────── -->
+    <section class="stats-section section-py">
+        <div class="container">
+            <div class="row">
+                <div class="col-6 col-md-3 fade-up">
+                    <div class="stat-card-item">
+                        <div class="stat-number">300+</div>
+                        <div class="stat-label">Pengguna Aktif</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 fade-up">
+                    <div class="stat-card-item">
+                        <div class="stat-number">12 000+</div>
+                        <div class="stat-label">Transaksi / Tahun</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 fade-up">
+                    <div class="stat-card-item">
+                        <div class="stat-number">7+</div>
+                        <div class="stat-label">Modul Layanan</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 fade-up">
+                    <div class="stat-card-item">
+                        <div class="stat-number">100%</div>
+                        <div class="stat-label">Paperless</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-    <!-- ─── AKSES CEPAT ──────────────────────────────────────── -->
-    @php $isLoggedIn = (bool) Auth::user(); @endphp
-
-    <section class="access-section py-5">
-        <div class="container py-4">
-            <div class="row justify-content-center mb-4">
-                <div class="col-12 col-lg-8 text-center fade-up">
-                    <div class="section-eyebrow mb-1">Akses Cepat</div>
-                    <h2 class="section-title mb-3">Layanan SIAGA</h2>
-                    <p class="section-lead mx-auto" style="max-width:560px">
-                        Pilih layanan yang tersedia untuk memulai proses administrasi General Affairs.
+    <!-- ─── SERVICE GRID / STAGGERED ─────────────────────────── -->
+    <section class="grid-section section-py">
+        <div class="container">
+            <div class="row g-5 align-items-start">
+                <div class="col-lg-5 fade-up">
+                    <div class="section-eyebrow">Ekosistem SIAGA</div>
+                    <h2 class="section-title mb-3">Satu Platform, Semua Layanan GA</h2>
+                    <p class="section-lead">
+                        Dari pengajuan BBM, surat perjalanan dinas, manajemen armada kendaraan, hingga booking
+                        makan siang — semua terintegrasi dalam satu dashboard yang rapi dan mudah diakses.
                     </p>
-                </div>
-            </div>
-
-            <div class="row g-3 justify-content-center">
-                <div class="col-6 col-md-4 col-lg-3 fade-up">
-                    <a href="{{ url('lunch-attendance') }}" class="access-card">
-                        <div class="access-icon"><i class="bi bi-fork-knife"></i></div>
-                        <div class="access-title">Absen Makan Siang</div>
-                        <div class="access-desc">Scan to eat, and <i>bon appetit</i></div>
-                        <span class="access-badge text-bg-primary">Klik disini</span>
+                    <a href="/login" class="btn-explore">
+                        <i class="bi bi-arrow-right"></i> Explore Lebih Lanjut
                     </a>
                 </div>
-                <div class="col-6 col-md-4 col-lg-3 fade-up">
-                    <a href="{{ url('my/lunch-plan') }}" class="access-card">
-                        <div class="access-icon"><i class="bi bi-calendar-check"></i></div>
-                        <div class="access-title">Mylunch</div>
-                        <div class="access-desc">Atur jadwal makan siang mandiri</div>
-                        <span class="access-badge text-bg-primary">Klik Disini</span>
-                    </a>
-                </div>
-                <div class="col-6 col-md-4 col-lg-3 fade-up">
-                    <a href="{{ $isLoggedIn ? url('/') : url('login') }}" class="access-card">
-                        <div class="access-icon"><i class="bi bi-speedometer2"></i></div>
-                        <div class="access-title">Dashboard</div>
-                        <div class="access-desc">Beranda dan ringkasan aktivitas</div>
-                        <span class="access-badge text-bg-secondary">Terautentikasi</span>
-                    </a>
-                </div>
-                <div class="col-6 col-md-4 col-lg-3 fade-up">
-                    <a href="{{ $isLoggedIn ? url('/requester/view-request-bbm') : url('login') }}" class="access-card">
-                        <div class="access-icon"><i class="bi bi-file-earmark-plus"></i></div>
-                        <div class="access-title">Pengajuan</div>
-                        <div class="access-desc">Ajukan permohonan layanan GA</div>
-                        <span class="access-badge text-bg-secondary">Terautentikasi</span>
-                    </a>
-                </div>
-                <div class="col-6 col-md-4 col-lg-3 fade-up">
-                    <a href="{{ $isLoggedIn ? url('/surat_requester/main-surat') : url('login') }}" class="access-card">
-                        <div class="access-icon"><i class="bi bi-signpost-2"></i></div>
-                        <div class="access-title">Surat Perjalanan Dinas</div>
-                        <div class="access-desc">Kelola perjalanan dinas</div>
-                        <span class="access-badge text-bg-secondary">Terautentikasi</span>
-                    </a>
-                </div>
-                <div class="col-6 col-md-4 col-lg-3 fade-up">
-                    <a href="{{ $isLoggedIn ? url('/requester/bbm-history') : url('login') }}" class="access-card">
-                        <div class="access-icon"><i class="bi bi-fuel-pump"></i></div>
-                        <div class="access-title">BBM Operasional</div>
-                        <div class="access-desc">Manajemen BBM kendaraan</div>
-                        <span class="access-badge text-bg-secondary">Terautentikasi</span>
-                    </a>
-                </div>
-                <div class="col-6 col-md-4 col-lg-3 fade-up">
-                    <a href="{{ $isLoggedIn ? url('/dispatcher/dashboard') : url('login') }}" class="access-card">
-                        <div class="access-icon"><i class="bi bi-truck"></i></div>
-                        <div class="access-title">Dispatcher</div>
-                        <div class="access-desc">Pengelolaan armada kendaraan</div>
-                        <span class="access-badge text-bg-secondary">Terautentikasi</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </section>
-
-
-    <!-- ─── DIGITALISASI ─────────────────────────────────────── -->
-    <section class="digital-section py-5">
-        <div class="container py-4">
-            <div class="row align-items-center g-4 digital-content">
-                <div class="col-12 col-lg-6 fade-up">
-                    <div class="hero-badge" style="margin-bottom:18px">
-                        <span class="dot"></span>
-                        Transformasi Digital
-                    </div>
-                    <h2 class="digital-title">Digitalisasi Layanan General Affairs</h2>
-                    <p class="digital-lead">
-                        SIAGA menghadirkan transformasi digital untuk seluruh layanan administrasi
-                        General Affairs — dari pengajuan, approval, hingga pelaporan — dalam satu
-                        platform terintegrasi yang modern dan mudah digunakan.
-                    </p>
-                    <div class="mt-4">
-                        <a href="/login" class="btn-hero">
-                            <i class="bi bi-rocket-takeoff"></i>
-                            Mulai Sekarang
-                        </a>
-                    </div>
-                </div>
-                <div class="col-12 col-lg-6 fade-up">
-                    <div class="digital-grid">
-                        <div class="digital-chip"><i class="bi bi-check-lg"></i>Pengajuan Online</div>
-                        <div class="digital-chip"><i class="bi bi-check-lg"></i>Approval Otomatis</div>
-                        <div class="digital-chip"><i class="bi bi-check-lg"></i>Dashboard Analitik</div>
-                        <div class="digital-chip"><i class="bi bi-check-lg"></i>Manajemen Armada</div>
-                        <div class="digital-chip"><i class="bi bi-check-lg"></i>Booking Makan Siang</div>
-                        <div class="digital-chip"><i class="bi bi-check-lg"></i>Surat Perjalanan Dinas</div>
-                        <div class="digital-chip"><i class="bi bi-check-lg"></i>Manajemen BBM</div>
-                        <div class="digital-chip"><i class="bi bi-check-lg"></i>Pelaporan Paperless</div>
-                        <div class="digital-chip"><i class="bi bi-check-lg"></i>Notifikasi Real-time</div>
-                        <div class="digital-chip"><i class="bi bi-check-lg"></i>Audit Trail</div>
+                <div class="col-lg-7 fade-up">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=500&fit=crop"
+                                 alt="Dashboard" class="grid-img grid-img-tall">
+                        </div>
+                        <div class="col-6 d-flex flex-column gap-3">
+                            <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=250&fit=crop"
+                                 alt="Analytics" class="grid-img grid-img-short mt-4">
+                            <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400&h=250&fit=crop"
+                                 alt="Reports" class="grid-img grid-img-short">
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
-
-
-    <!-- ─── CTA ──────────────────────────────────────────────── -->
-    <section class="cta-section">
-        <div class="container position-relative" style="z-index:2">
-            <h2 class="cta-title">Siap menjadi insan Geodipa yang lebih digital?</h2>
-            <p class="cta-lead">Masuk ke sistem dan nikmati kemudahan layanan General Affairs yang digital, transparan, dan akuntabel.</p>
-            <a href="/login" class="btn-hero d-inline-flex">
-                <i class="bi bi-rocket-takeoff"></i>
-                Login ke SIAGA
-            </a>
-        </div>
-    </section>
-
 
     <!-- ─── FOOTER ───────────────────────────────────────────── -->
-    <footer>
+    <footer class="footer-section">
         <div class="container">
             <div class="row g-4 g-lg-5">
                 <div class="col-12 col-md-5 col-lg-4">
                     <div class="d-flex align-items-center gap-2 mb-3">
-                        <div class="footer-logo-mark"><i class="bi bi-gear-fill"></i></div>
-                        <span class="footer-brand-name">SIAGA GDE Patuha</span>
+                        <img src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png"
+                             style="width:30px;height:30px" alt="Logo">
+                        <span class="footer-brand">SIAGA GDE Patuha</span>
                     </div>
                     <p class="footer-desc">
                         Sistem Informasi Administrasi General Affairs terintegrasi dengan
@@ -847,46 +450,27 @@
                         Good Corporate Governance.
                     </p>
                 </div>
-
                 <div class="col-6 col-md-3 col-lg-2 offset-lg-2">
                     <div class="footer-col-title">Navigasi</div>
-                    <ul class="footer-link-list">
+                    <ul class="footer-links">
                         <li><a href="/"><i class="bi bi-house"></i>Beranda</a></li>
                         <li><a href="/tentang"><i class="bi bi-info-circle"></i>Tentang</a></li>
                         <li><a href="/panduan"><i class="bi bi-book"></i>Panduan</a></li>
                     </ul>
                 </div>
-
                 <div class="col-6 col-md-4 col-lg-4">
                     <div class="footer-col-title">Kontak</div>
-                    <div class="footer-contact-row">
-                        <i class="bi bi-building"></i>
-                        <span>PT Geo Dipa Energi (Persero), Unit Patuha</span>
-                    </div>
-                    <div class="footer-contact-row">
-                        <i class="bi bi-geo-alt"></i>
-                        <span>Jawa Barat, Indonesia</span>
-                    </div>
-                    <div class="footer-contact-row">
-                        <i class="bi bi-envelope"></i>
-                        <span>general.affairs@geodipa.co.id</span>
-                    </div>
+                    <div class="footer-contact"><i class="bi bi-building"></i><span>PT Geo Dipa Energi (Persero), Unit Patuha</span></div>
+                    <div class="footer-contact"><i class="bi bi-geo-alt"></i><span>Jawa Barat, Indonesia</span></div>
+                    <div class="footer-contact"><i class="bi bi-envelope"></i><span>general.affairs@geodipa.co.id</span></div>
                 </div>
             </div>
-
             <div class="footer-bottom">
-                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <p class="footer-bottom-text">
-                        &copy; 2026 PT Geo Dipa Energi (Persero) Unit Patuha. All Right Reserved.
-                    </p>
-                    <div class="footer-bottom-badge">
-                        Dikembangkan khusus oleh tim internal IT unit patuha</i>
-                    </div>
-                </div>
+                <p>&copy; 2026 PT Geo Dipa Energi (Persero) Unit Patuha. All Right Reserved.</p>
+                <p>Dikembangkan oleh tim internal IT Unit Patuha</p>
             </div>
         </div>
     </footer>
-
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -894,7 +478,7 @@
         const io = new IntersectionObserver((entries) => {
             entries.forEach((e, i) => {
                 if (e.isIntersecting) {
-                    setTimeout(() => e.target.classList.add('in'), i * 80);
+                    setTimeout(() => e.target.classList.add('in'), i * 100);
                     io.unobserve(e.target);
                 }
             });
@@ -902,4 +486,4 @@
         fadeEls.forEach(el => io.observe(el));
     </script>
 </body>
-</html>
+</html>」

@@ -39,9 +39,18 @@ class RAGContextBuilder
             $lines[] = 'RECORD COUNT: '.($result['matched'] ?? 0);
             $lines[] = 'RETURNED TO MODEL: '.($result['returned'] ?? 0);
             $lines[] = 'TRUNCATED: '.(($result['truncated'] ?? false) ? 'true' : 'false');
+
+            if ($result['truncated'] ?? false) {
+                $returned = $result['returned'] ?? 0;
+                $matched = $result['matched'] ?? 0;
+                $lines[] = 'NOTE FOR MODEL: Anda HANYA menerima '.$returned.' dari total '.$matched.' record (data terbaru). Sebutkan jumlah ini dalam jawaban Anda. Contoh: "Saya hanya bisa menampilkan '.$returned.' dari total '.$matched.' record terbaru."';
+            }
         }
 
         if (in_array($query->intent, ['detail', 'listing'], true) && ($result['records'] ?? []) !== []) {
+            $returned = $result['returned'] ?? count($result['records']);
+            $matched = $result['matched'] ?? $returned;
+            $lines[] = 'RECORDS DISPLAYED: '.$returned.' of '.$matched.' (data terbaru)';
             $lines[] = 'RESULTS:';
             $lines[] = json_encode(
                 array_map(fn ($row) => $this->sanitize($row), $result['records']),

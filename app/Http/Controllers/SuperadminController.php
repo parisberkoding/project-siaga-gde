@@ -2392,8 +2392,7 @@ class SuperadminController extends Controller
      * Update Laporan Transaksi
      */
     public function updateLaporan(Request $request, $id)
-    {
-        // Catatan: laporan ini adalah BBM OPERASIONAL (Transaction_Proofs), 1 permohonan = 1 struk.
+    {        // Catatan: laporan ini adalah BBM OPERASIONAL (Transaction_Proofs), 1 permohonan = 1 struk.
         // Rincian per-item dengan gambar + kategori + item_code (struk_items) khusus SPD,
         // divisualisasikan pada validasi LPJ (SpdController::showLaporanSuperadmin → superadmin/spd/lpj/*).
         $laporan = Transaction_Proofs::findOrFail($id);
@@ -2468,10 +2467,116 @@ class SuperadminController extends Controller
     }
 
     /**
-     * Delete Laporan Transaksi
+     * Generate kode voucher (format: BBMGDE-RANDOM6-DDMMYY).
+     */
+    private function generateVoucherCodePermohonan(): string
+    {
+        $date = now()->format('dmy');
+        $random = strtoupper(substr(md5(uniqid(rand(), true)), 0, 6));
+
+        return "BBMGDE-{$random}-{$date}";
+    }
+
+    /**
+     * Bulk approve/reject permohonan dengan komentar (Superadmin).
+     *
+     * Request body: decisions = JSON array [ { request_id, status: approve|reject, note } ]
+     */
+    public function bulkProcessPermohonan(Request $request)
+    {
+        $validated = $request->validate([
+            'decisions' => 'required|string',
+        ]);
+
+        $decisions = json_decode($validated['decisions'], true);
+
+        if (! is_array($decisions) || empty($decisions)) {
+            return back()->with('error', 'Format data tidak valid');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $approvedCount = 0;
+            $rejectedCount = 0;
+            $skippedCount = 0;
+
+            foreach ($decisions as $decision) {
+                if (! isset($decision['request_id']) || ! isset($decision['status'])) {
+                    $skippedCount++;
+
+                    continue;
+                }
+
+                $permohonan = Permohonan::where('status', 'pending')->find($decision['request_id']);
+
+                if (! $permohonan) {
+                    $skippedCount++;
+
+                    continue;
+                }
+
+                $newStatus = $decision['status'] === 'approve' ? 'approved' : 'rejected';
+
+                $note = isset($decision['note']) && trim((string) $decision['note']) !== ''
+                    ? trim((string) $decision['note'])
+                    : null;
+
+                $permohonan->update([
+                    'status' => $newStatus,
+                    'authorizer_id' => Auth::id(),
+                    'authorization_date' => now(),
+                    'authorizer_notes' => $newStatus === 'rejected'
+                        ? ($note ? '[SUPERADMIN REJECTION] '.$note : '[SUPERADMIN REJECTION] Bulk rejection')
+                        : ($note ? '[SUPERADMIN APPROVAL] '.$note : '[SUPERADMIN APPROVAL]'),
+                ]);
+
+                if ($newStatus === 'approved') {
+                    Approved_Request::create([
+                        'permohonan_id' => $permohonan->id,
+                        'approval_date' => now(),
+                        'voucher_code' => $this->generateVoucherCodePermohonan(),
+                        'valid_until' => now()->addHours(50),
+                        'approved_amount' => $permohonan->bill_amounts,
+                        'authorizer_id' => Auth::id(),
+                        'status' => 'approved',
+                        'approval_notes' => null,
+                    ]);
+
+                    $approvedCount++;
+                } else {
+                    $rejectedCount++;
+                }
+            }
+
+            DB::commit();
+
+            $message = [];
+            if ($approvedCount > 0) {
+                $message[] = "{$approvedCount} permohonan disetujui";
+            }
+            if ($rejectedCount > 0) {
+                $message[] = "{$rejectedCount} permohonan ditolak";
+            }
+            if ($skippedCount > 0) {
+                $message[] = "{$skippedCount} dilewati (tidak valid/sudah diproses)";
+            }
+
+            return redirect()->route('superadmin.permohonan', ['tab' => 'permohonan'])
+                ->with('success', implode(' | ', $message));
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return back()->with('error', 'Gagal memproses bulk action: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Hapus Laporan Transaksi
      */
     public function deleteLaporan($id)
     {
+
         try {
             DB::beginTransaction();
 

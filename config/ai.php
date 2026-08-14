@@ -28,6 +28,18 @@ return [
         'cache_ttl' => (int) env('AI_DATAMART_CACHE_TTL', 300),
 
         /*
+         * TTL cache Data Mart Context Builder per unit (detik).
+         * Default 86400 = 1 hari. JSON konteks digunakan sebagai pre-prompt AI.
+         */
+        'context_cache_ttl' => (int) env('AI_CONTEXT_CACHE_TTL', 86400),
+
+        /*
+         * Batas detailing record di Context Builder per modul.
+         * Mencegah LLM token bloat.
+         */
+        'context_detail_limit' => (int) env('AI_CONTEXT_DETAIL_LIMIT', 30),
+
+        /*
          * Batas maksimum baris yang dimuat ke Data Mart per modul.
          */
         'max_records' => (int) env('AI_DATAMART_MAX_RECORDS', 50000),

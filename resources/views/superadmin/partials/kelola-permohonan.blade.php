@@ -89,6 +89,27 @@
                 </div>
             </form>
 
+            <!-- Bulk Approval Form -->
+            <form method="POST" action="{{ route('superadmin.permohonan.bulk-process') }}" id="bulkApprovalForm" class="mb-3">
+                @csrf
+                <input type="hidden" name="decisions" id="decisionsInput" value="">
+
+                <div class="bulk-action-bar mb-3 d-none align-items-center justify-content-between bg-light border rounded p-2 px-3" id="bulkActionBar">
+                    <span class="text-secondary small">
+                        <i class="bi bi-check-square-fill"></i>
+                        <strong><span id="selectedCount">0</span></strong> permohonan dipilih
+                        <small class="ms-2">
+                            (<span id="approveCount" class="text-success">0</span> approve,
+                            <span id="rejectCount" class="text-danger">0</span> reject)
+                        </small>
+                        &nbsp;·&nbsp;
+                        <input type="text" id="bulkNoteInput" class="form-control form-control-sm d-inline-block" style="width:220px" placeholder="Komentar untuk semua (opsional)">
+                    </span>
+                    <button class="btn btn-primary btn-sm" type="button" onclick="saveBulkActions()">
+                        <i class="bi bi-save"></i> Simpan Keputusan
+                    </button>
+                </div>
+
             <!-- Table Permohonan -->
             <div class="table-responsive">
                 <table class="table table-hover table-sm">
@@ -101,6 +122,7 @@
                             <th>Nominal</th>
                             <th>Tanggal</th>
                             <th>Status</th>
+                            <th width="220">Finishing</th>
                             <th width="150">Aksi</th>
                         </tr>
                     </thead>
@@ -138,6 +160,42 @@
                                     <span class="badge bg-dark">Cancelled</span>
                                 @endif
                             </td>
+                            @if($p->status == 'pending')
+                            <td>
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="d-flex gap-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input decision-checkbox" type="checkbox"
+                                                   data-id="{{ $p->id }}" data-action="approve"
+                                                   id="superapprove_{{ $p->id }}">
+                                            <label class="form-check-label text-success small" for="superapprove_{{ $p->id }}">
+                                                <i class="bi bi-check-circle"></i> Approve
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input decision-checkbox" type="checkbox"
+                                                   data-id="{{ $p->id }}" data-action="reject"
+                                                   id="superreject_{{ $p->id }}">
+                                            <label class="form-check-label text-danger small" for="superreject_{{ $p->id }}">
+                                                <i class="bi bi-x-circle"></i> Reject
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <input type="text" class="form-control form-control-sm item-note" data-id="{{ $p->id }}"
+                                           placeholder="Komentar (opsional)">
+                                </div>
+                            </td>
+                            @else
+                            <td>
+                                <small class="text-muted">
+                                    @if($p->authorizer_notes)
+                                        <i class="bi bi-chat-left-text"></i> {{ $p->authorizer_notes }}
+                                    @else
+                                        {{ $p->approvedRequest?->voucher_code ?? '-' }}
+                                    @endif
+                                </small>
+                            </td>
+                            @endif
                             <td>
                                 <div class="btn-group btn-group-sm">
                                     {{-- ✅ GUNAKAN DATA ATTRIBUTES BUKAN ONCLICK INLINE --}}
@@ -182,7 +240,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8">
+                            <td colspan="9">
                                 <div class="text-center py-4 text-muted">
                                     <i class="bi bi-inbox" style="font-size: 3rem;"></i>
                                     <p>Tidak ada data permohonan</p>
@@ -193,6 +251,7 @@
                     </tbody>
                 </table>
             </div>
+            </form>
 
             <!-- Pagination -->
             <div class="mt-3">
@@ -830,6 +889,76 @@
             });
         });
     }
+
+    // ============================================================
+    // BULK APPROVAL (Superadmin) — approve/reject + komentar massal
+    // ============================================================
+    const bulkDecisions = {};
+
+    document.querySelectorAll('.decision-checkbox').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+            const requestId = this.getAttribute('data-id');
+            const action = this.getAttribute('data-action');
+            const opposite = action === 'approve' ? 'reject' : 'approve';
+            const opp = document.getElementById('super' + opposite + '_' + requestId);
+
+            if (this.checked) {
+                bulkDecisions[requestId] = action;
+                if (opp) { opp.checked = false; }
+            } else {
+                delete bulkDecisions[requestId];
+            }
+            updateBulkBar();
+        });
+    });
+
+    // Komentar per item ikut terbawa decisions
+    document.querySelectorAll('.item-note').forEach(function(input) {
+        input.addEventListener('change', function() { updateBulkBar(); });
+    });
+
+    function updateBulkBar() {
+        const total = Object.keys(bulkDecisions).length;
+        const approve = Object.values(bulkDecisions).filter(v => v === 'approve').length;
+        const reject = Object.values(bulkDecisions).filter(v => v === 'reject').length;
+        document.getElementById('selectedCount').textContent = total;
+        document.getElementById('approveCount').textContent = approve;
+        document.getElementById('rejectCount').textContent = reject;
+        const bar = document.getElementById('bulkActionBar');
+        bar.classList.toggle('d-none', total === 0);
+        bar.classList.toggle('d-flex', total > 0);
+    }
+
+    window.saveBulkActions = function() {
+        const decisionsArray = [];
+        for (const [requestId, status] of Object.entries(bulkDecisions)) {
+            const noteInput = document.querySelector('.item-note[data-id="' + requestId + '"]');
+            const note = noteInput ? noteInput.value : '';
+            decisionsArray.push({ request_id: parseInt(requestId, 10), status: status, note: note });
+        }
+
+        if (decisionsArray.length === 0) {
+            alert('Tidak ada permohonan yang dipilih.');
+            return;
+        }
+
+        const approveCount = decisionsArray.filter(d => d.status === 'approve').length;
+        const rejectCount = decisionsArray.filter(d => d.status === 'reject').length;
+        const globalNote = document.getElementById('bulkNoteInput').value.trim();
+
+        // Ambil komentar global & terapkan ke decision yang belum ada note
+        if (globalNote !== '') {
+            decisionsArray.forEach(function(d) {
+                if (!d.note) { d.note = globalNote; }
+            });
+        }
+
+        const msg = 'Simpan keputusan?\n\nApprove: ' + approveCount + '\nReject: ' + rejectCount;
+        if (!confirm(msg)) { return; }
+
+        document.getElementById('decisionsInput').value = JSON.stringify(decisionsArray);
+        document.getElementById('bulkApprovalForm').submit();
+    };
 
     // ✅ Cleanup on unload
     window.addEventListener('beforeunload', cleanupModals);

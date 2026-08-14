@@ -77,7 +77,7 @@ Route::middleware(['auth'])->group(function () {
 // Di bawah permission pelaporan baru. Menangani upload struk + AI/OCR,
 // mode SPD & mode operasional dalam satu halaman.
 // ────────────────────────────────────────────────────────────────────────
-Route::middleware(['auth', 'permission:pelaporan.view,pelaporan.create'])->prefix('pelaporan')->name('pelaporan.')->group(function () {
+Route::middleware(['auth', 'role:requester,general_affairs,dispatcher,manager'])->prefix('pelaporan')->name('pelaporan.')->group(function () {
     Route::get('/', [ReportingController::class, 'index'])->name('index');
     Route::post('/analyze-struk', [ReportingController::class, 'analyzeStruk'])->name('analyze-struk');
     Route::post('/vehicle-budget', [ReportingController::class, 'vehicleBudget'])->name('vehicle-budget');
@@ -204,24 +204,6 @@ Route::middleware(['auth', 'role:admin,superadmin'])->group(function () {
     Route::get('/vouchers/list', [RequestManagementController::class, 'voucherList'])->name('admin.vouchers.list');
     Route::post('/vouchers/export', [RequestManagementController::class, 'voucherExport'])->name('admin.vouchers.export');
 
-    // ────────────────────────────────────────────────────────────────────────
-    // SPAREPART REQUEST REPAIR - Approve, Schedule, Monitor
-    // ────────────────────────────────────────────────────────────────────────
-    Route::prefix('admin/sparepart-request')->name('admin.sparepart-request.')->group(function () {
-        Route::get('/', [VehicleSparepartRequestRepairController::class, 'index'])
-            ->name('index');
-        Route::get('/{vprCode}', [VehicleSparepartRequestRepairController::class, 'show'])
-            ->name('show');
-        Route::post('/{vprCode}/approve', [VehicleSparepartRequestRepairController::class, 'approve'])
-            ->name('approve');
-        Route::post('/{vprCode}/reject', [VehicleSparepartRequestRepairController::class, 'reject'])
-            ->name('reject');
-        Route::post('/{vprCode}/schedule', [VehicleSparepartRequestRepairController::class, 'schedule'])
-            ->name('schedule');
-        Route::post('/{vprCode}/complete', [VehicleSparepartRequestRepairController::class, 'markCompleted'])
-            ->name('complete');
-    });
-
     Route::get('/admin/service-scheduling', [VehicleSparepartRequestRepairController::class, 'schedulingIndex'])
         ->name('admin.service-scheduling.index');
 
@@ -248,6 +230,18 @@ Route::middleware(['auth', 'role:admin,superadmin'])->group(function () {
         Route::get('/', [MasterGasolineController::class, 'index'])->name('index');
         Route::post('/sync', [MasterGasolineController::class, 'sync'])->name('sync');
     });
+});
+
+// ────────────────────────────────────────────────────────────────────────
+// SPAREPART REQUEST REPAIR - Permission-based (vehicle.sparepart)
+// ────────────────────────────────────────────────────────────────────────
+Route::middleware(['auth', 'permission:vehicle.sparepart'])->prefix('admin/sparepart-request')->name('admin.sparepart-request.')->group(function () {
+    Route::get('/', [VehicleSparepartRequestRepairController::class, 'index'])->name('index');
+    Route::get('/{vprCode}', [VehicleSparepartRequestRepairController::class, 'show'])->name('show');
+    Route::post('/{vprCode}/approve', [VehicleSparepartRequestRepairController::class, 'approve'])->name('approve');
+    Route::post('/{vprCode}/reject', [VehicleSparepartRequestRepairController::class, 'reject'])->name('reject');
+    Route::post('/{vprCode}/schedule', [VehicleSparepartRequestRepairController::class, 'schedule'])->name('schedule');
+    Route::post('/{vprCode}/complete', [VehicleSparepartRequestRepairController::class, 'markCompleted'])->name('complete');
 });
 
 // export laporan transaksi bbm
@@ -287,8 +281,8 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
     Route::post('vehicles/{id}/delete', [SuperadminController::class, 'deleteVehicle'])->name('vehicles.delete');
     Route::post('vehicles/{id}/restore', [SuperadminController::class, 'restoreVehicle'])->name('vehicles.restore');
 
-    // Vehicle Approval
-    Route::get('/approval', [SuperadminController::class, 'approvalDashboard'])->name('superadmin.approval');
+    // Vehicle Approval — DISEMBUNYIKAN: route dibuat inactive (tidak diakses siapa pun).
+    // Route::get('/approval', [SuperadminController::class, 'approvalDashboard'])->name('superadmin.approval');
     Route::post('/vehicles/{id}/approve', [SuperadminController::class, 'approveVehicle'])->name('superadmin.vehicle.approve');
     Route::post('/vehicles/{id}/reject', [SuperadminController::class, 'rejectVehicle'])->name('superadmin.vehicle.reject');
 
@@ -309,6 +303,7 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
     Route::post('/permohonan/{id}/update', [SuperadminController::class, 'updatePermohonan'])->name('superadmin.permohonan.update');
     Route::post('/permohonan/{id}/cancel', [SuperadminController::class, 'cancelPermohonan'])->name('superadmin.permohonan.cancel');
     Route::post('/permohonan/{id}/delete', [SuperadminController::class, 'deletePermohonan'])->name('superadmin.permohonan.delete');
+    Route::post('/kelola-permohonan/bulk-process', [SuperadminController::class, 'bulkProcessPermohonan'])->name('superadmin.permohonan.bulk-process');
 
     Route::post('/laporan/{id}/update', [SuperadminController::class, 'updateLaporan'])->name('superadmin.laporan.update');
     Route::post('/laporan/{id}/delete', [SuperadminController::class, 'deleteLaporan'])->name('superadmin.laporan.delete');
@@ -338,6 +333,17 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
         Route::get('/dashboard/vehicle-km-performance', [SuperadminController::class, 'getVehicleKmPerformance'])->name('dashboard.vehicle-km');
         Route::get('/dashboard/pivot-table', [SuperadminController::class, 'getCompletePivotTable'])->name('pivot.data');
         // Route::get('/activity-log', [SuperadminController::class, 'getActivityLog'])->name('activity.log');
+    });
+
+    // ==================== DATA MART CONTEXT API ====================
+    // Endpoint: GET /api/data-mart/{unitId}
+    // Menghasilkan JSON konteks per Unit untuk AI (overview/sub_overview/detailing).
+    // Cache harian 86400 detik via DataMartContextBuilder.
+    Route::middleware(['auth', 'role:superadmin'])->prefix('api/data-mart')->name('api.datamart.')->group(function () {
+        Route::get('/{unitId}', [App\Http\Controllers\Api\DataMartContextController::class, 'show'])
+            ->name('context');
+        Route::get('/{unitId}/refresh', [App\Http\Controllers\Api\DataMartContextController::class, 'refresh'])
+            ->name('refresh');
     });
 
     // ==================== ANALYTICS ====================
@@ -463,9 +469,9 @@ Route::middleware(['auth', 'role:manager,superadmin'])->group(function () {
 });
 
 // ────────────────────────────────────────────────────────────────────────
-// BARCODE SCAN & RIWAYAT KENDARAAN — Dispatcher, Superadmin, Admin
+// BARCODE SCAN & RIWAYAT KENDARAAN — Permission-based (vehicle.checking)
 // ────────────────────────────────────────────────────────────────────────
-Route::middleware(['auth', 'role:dispatcher,superadmin,admin'])->prefix('dispatcher')->name('dispatcher.')->group(function () {
+Route::middleware(['auth', 'permission:vehicle.checking'])->prefix('dispatcher')->name('dispatcher.')->group(function () {
     // Scanner riwayat (eksisting) — scan untuk lihat riwayat pengecekan
     Route::get('/scan-vehicle', [VehicleHealthHistoryController::class, 'scanView'])
         ->name('scan-vehicle');
@@ -622,15 +628,6 @@ Route::middleware(['auth', 'role:admin,superadmin'])->prefix('lunch')->name('lun
     // Dashboard
     Route::get('/', [LunchDashboardController::class, 'index'])->name('dashboard');
 
-    // Employee Default (master karyawan + alias)
-    Route::get('/employee-defaults', [EmployeeDefaultController::class, 'index'])->name('employee-defaults.index');
-    Route::post('/employee-defaults', [EmployeeDefaultController::class, 'store'])->name('employee-defaults.store');
-    Route::put('/employee-defaults/{employeeDefault}', [EmployeeDefaultController::class, 'update'])->name('employee-defaults.update');
-    Route::delete('/employee-defaults/{employeeDefault}', [EmployeeDefaultController::class, 'destroy'])->name('employee-defaults.destroy');
-    Route::post('/employee-defaults/{employeeDefault}/restore', [EmployeeDefaultController::class, 'restore'])->name('employee-defaults.restore');
-    Route::get('/employee-defaults-export', [EmployeeDefaultController::class, 'export'])->name('employee-defaults.export');
-    Route::post('/employee-defaults-import', [EmployeeDefaultController::class, 'import'])->name('employee-defaults.import');
-
     // Forecast (generate H+1, manual override)
     Route::get('/forecasts', [LunchForecastController::class, 'index'])->name('forecasts.index');
     Route::post('/forecasts/generate', [LunchForecastController::class, 'generate'])->name('forecasts.generate');
@@ -665,6 +662,19 @@ Route::middleware(['auth', 'role:admin,superadmin'])->prefix('lunch')->name('lun
     // Self-Booking — booking mandiri makan siang (kalender multi-hari)
     Route::post('/self-booking', [SelfBookingController::class, 'store'])->name('self-booking.store');
     Route::get('/self-booking', [SelfBookingController::class, 'index'])->name('self-booking.index');
+});
+
+// ────────────────────────────────────────────────────────────────────────
+// EMPLOYEE DEFAULTS (Lunch) - Permission-based (lunch.manage)
+// ────────────────────────────────────────────────────────────────────────
+Route::middleware(['auth', 'permission:lunch.manage'])->prefix('lunch')->name('lunch.')->group(function () {
+    Route::get('/employee-defaults', [EmployeeDefaultController::class, 'index'])->name('employee-defaults.index');
+    Route::post('/employee-defaults', [EmployeeDefaultController::class, 'store'])->name('employee-defaults.store');
+    Route::put('/employee-defaults/{employeeDefault}', [EmployeeDefaultController::class, 'update'])->name('employee-defaults.update');
+    Route::delete('/employee-defaults/{employeeDefault}', [EmployeeDefaultController::class, 'destroy'])->name('employee-defaults.destroy');
+    Route::post('/employee-defaults/{employeeDefault}/restore', [EmployeeDefaultController::class, 'restore'])->name('employee-defaults.restore');
+    Route::get('/employee-defaults-export', [EmployeeDefaultController::class, 'export'])->name('employee-defaults.export');
+    Route::post('/employee-defaults-import', [EmployeeDefaultController::class, 'import'])->name('employee-defaults.import');
 });
 
 // Self-Booking untuk semua pegawai (public — cukup masuk tanpa login)

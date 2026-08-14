@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 
 class StorageFileController extends Controller
 {
@@ -20,10 +20,17 @@ class StorageFileController extends Controller
 
         $mimeType = File::mimeType($fullPath);
 
-        // Return& Headers caching
+        // Pastikan SVG (barcode QR) disajikan dengan mime yang benar.
+        // File::mimeType() kadang mengembalikan text/plain untuk .svg, yang
+        // menyebabkan browser menolak render di <img>.
+        if (strtolower(File::extension($fullPath)) === 'svg') {
+            $mimeType = 'image/svg+xml';
+        }
+
         return response(File::get($fullPath), 200)
             ->header('Content-Type', $mimeType)
             ->header('Content-Length', File::size($fullPath))
-            ->header('Cache-Control', 'public, max-age=86400');
+            ->header('Cache-Control', 'public, max-age=86400')
+            ->header('X-Content-Type-Options', 'nosniff');
     }
 }

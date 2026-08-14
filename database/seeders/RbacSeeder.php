@@ -101,6 +101,7 @@ class RbacSeeder extends Seeder
             ['vehicle', 'approve',   'vehicle', 'Menyetujui kendaraan & alat'],
             ['vehicle', 'checking',  'vehicle', 'Input body & daily checking'],
             ['vehicle', 'master',    'vehicle', 'Kelola Master Vehicle (budget, site, kuota BBM)'],
+            ['vehicle', 'sparepart', 'vehicle', 'Kelola sparepart request & repair'],
 
             // Users
             ['users', 'view',   'users', 'Melihat user'],
@@ -116,6 +117,7 @@ class RbacSeeder extends Seeder
             // Lunch Management
             ['lunch', 'view',   'lunch', 'Melihat data lunch (kehadiran, forecast, distribusi)'],
             ['lunch', 'export', 'lunch', 'Export data lunch'],
+            ['lunch', 'manage', 'lunch', 'Kelola employee defaults lunch'],
 
             // Settings
             ['settings', 'view',   'settings', 'Melihat pengaturan'],
@@ -154,9 +156,8 @@ class RbacSeeder extends Seeder
                     'bbm.view', 'bbm.request', 'bbm.report', 'bbm.approve', 'bbm.export',
                     'spd.view', 'spd.create', 'spd.update', 'spd.delete', 'spd.approve', 'spd.assign',
                     'lpj.view', 'lpj.create', 'lpj.update', 'lpj.delete', 'lpj.validate', 'lpj.export',
-                    'pelaporan.view', 'pelaporan.create', 'pelaporan.analyze',
                     'vehicle.view', 'vehicle.create', 'vehicle.update', 'vehicle.delete',
-                    'vehicle.approve', 'vehicle.checking', 'vehicle.master',
+                    'vehicle.approve', 'vehicle.master',
                     'lunch.view', 'lunch.export',
                     'settings.view',
                 ],

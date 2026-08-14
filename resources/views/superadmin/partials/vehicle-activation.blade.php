@@ -1,11 +1,11 @@
 @extends('templates.main')
 
-@section('title', 'Kelola Status Kendaraan & Alat')
+@section('title', 'Aktivasi Kendaraan & Alat')
 
 @section('content')
 
 <div class="pagetitle">
-    <h1>Aktivasi Kendaraan</h1>
+    <h1>Aktivasi Kendaraan & Alat</h1>
     <nav>
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{ route('admin-dashboard') }}">Home</a></li>
@@ -15,7 +15,6 @@
     </nav>
 </div>
 
-<!-- Alert Messages -->
 @if(session('success'))
 <div class="alert alert-success alert-dismissible fade show">
     <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
@@ -37,43 +36,55 @@
 </div>
 @endif
 
-<!-- Statistics Cards -->
+{{-- Stats Cards --}}
 <div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card text-center">
+    <div class="col-xxl-4 col-md-6">
+        <div class="card info-card sales-card">
             <div class="card-body">
-                <h3 class="text-primary">{{ $stats['total'] }}</h3>
-                <p class="text-muted mb-0">Total Kendaraan & Alat</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h3 class="text-success">{{ $stats['active'] }}</h3>
-                <p class="text-muted mb-0"><i class="bi bi-check-circle"></i> Aktif</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h3 class="text-warning">{{ $stats['inactive'] }}</h3>
-                <p class="text-muted mb-0"><i class="bi bi-x-circle"></i> Tidak Aktif</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-6 border-end">
-                        <h5 class="text-info mb-0">{{ $stats['kendaraan_active'] }}</h5>
-                        <small class="text-muted">Kendaraan</small>
+                <h5 class="card-title">Total Kendaraan & Alat</h5>
+                <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                        <i class="bi bi-truck"></i>
                     </div>
-                    <div class="col-6">
-                        <h5 class="text-info mb-0">{{ $stats['alat_active'] }}</h5>
-                        <small class="text-muted">Alat</small>
+                    <div class="ps-3">
+                        <h6>{{ $stats['total'] }}</h6>
+                        <span class="text-muted small pt-2">Keseluruhan</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xxl-4 col-md-6">
+        <div class="card info-card revenue-card">
+            <div class="card-body">
+                <h5 class="card-title">Aktif</h5>
+                <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                    <div class="ps-3">
+                        <h6>{{ $stats['active'] }}</h6>
+                        <span class="text-muted small pt-2">
+                            {{ $stats['kendaraan_active'] }} Kendaraan · {{ $stats['alat_active'] }} Alat
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xxl-4 col-md-6">
+        <div class="card info-card warning-card">
+            <div class="card-body">
+                <h5 class="card-title">Tidak Aktif</h5>
+                <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                        <i class="bi bi-x-circle"></i>
+                    </div>
+                    <div class="ps-3">
+                        <h6>{{ $stats['inactive'] }}</h6>
+                        <span class="text-muted small pt-2">Perlu aktivasi</span>
                     </div>
                 </div>
             </div>
@@ -81,24 +92,23 @@
     </div>
 </div>
 
-<!-- Main Card -->
+{{-- Main Card --}}
 <div class="card">
-    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="bi bi-toggle-on me-2"></i>Kelola Status Kendaraan & Alat</h5>
-    </div>
-    <div class="card-body">
+    <div class="card-body pt-4">
+        <h5 class="card-title">
+            <i class="bi bi-toggle-on me-2"></i>Kelola Status Kendaraan & Alat
+        </h5>
 
-        <!-- Filters -->
-        <form method="GET" action="{{ route('superadmin.vehicle-activation') }}" class="mb-4" data-autofilter>
+        <form method="GET" action="{{ route('superadmin.vehicle-activation') }}" class="mb-3" data-autofilter>
             <div class="row g-2">
-                <div class="col-md-4">
+                <div class="col-md-5">
                     <input type="text"
                            class="form-control"
                            name="search"
                            value="{{ $search }}"
                            placeholder="🔍 Cari kode, nama, atau catatan...">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <select class="form-select" name="type">
                         <option value="">-- Semua Tipe --</option>
                         <option value="KENDARAAN" {{ $type == 'KENDARAAN' ? 'selected' : '' }}>Kendaraan</option>
@@ -111,11 +121,6 @@
                         <option value="active" {{ $status == 'active' ? 'selected' : '' }}>Aktif</option>
                         <option value="inactive" {{ $status == 'inactive' ? 'selected' : '' }}>Tidak Aktif</option>
                     </select>
-                </div>
-                <div class="col-md-2">
-                    <a href="{{ route('superadmin.vehicle-activation') }}" class="btn btn-outline-secondary w-100">
-                        <i class="bi bi-arrow-counterclockwise"></i> Reset
-                    </a>
                 </div>
             </div>
         </form>
