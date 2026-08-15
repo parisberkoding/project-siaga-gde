@@ -99,6 +99,21 @@ abstract class AbstractDataMart implements DataMartContract
     }
 
     /**
+     * Terapkan scope unit bisnis (inUnit) ke query bila user bukan pusat.
+     *
+     * @param  mixed  $query  \Illuminate\Database\Eloquent\Builder
+     * @param  array<string, mixed>  $options
+     */
+    protected function applyUnitScope($query, array $options): void
+    {
+        $scope = $options['scope'] ?? null;
+
+        if ($scope instanceof DataMartScope && ! $scope->isGlobal()) {
+            $query->inUnit($scope->siteIds);
+        }
+    }
+
+    /**
      * Daftar module lain yang bertanggung jawab atas entity jika filter lintas
      * module diperlukan di masa depan. Kosong secara default.
      *

@@ -105,6 +105,8 @@ class VehicleCheckDataMart extends AbstractDataMart
             ])
             ->orderByDesc('next_due_date');
 
+        $this->applyUnitScope($query, $options);
+
         if (! empty($filters['date_from'])) {
             $query->whereDate('next_due_date', '>=', $filters['date_from']);
         }

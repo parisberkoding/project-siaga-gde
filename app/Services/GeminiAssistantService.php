@@ -5,9 +5,11 @@ namespace App\Services;
 use App\Models\AiChatMessage;
 use App\Models\AiChatSession;
 use App\Models\Transaction_Proofs;
+use App\Services\AI\ChatPoliteness;
 use App\Services\AI\DataMart\DataMartContextBuilder;
 use App\Services\AI\DataMart\DataMartManager;
 use App\Services\AI\DataMart\DataMartQueryEngine;
+use App\Services\AI\DataMart\DataMartScope;
 use App\Services\AI\DataMart\Modules\DriverDataMart;
 use App\Services\AI\DataMart\Modules\GasolineDataMart;
 use App\Services\AI\DataMart\Modules\PermohonanDataMart;
@@ -37,13 +39,18 @@ class GeminiAssistantService
 
     protected const MAX_HISTORY = 12;
 
+    /** Lingkup akses data user pada request berjalan (untuk fallback function calling). */
+    protected ?DataMartScope $currentScope = null;
+
+    /** Akumulasi token LLM untuk balasan yang sedang diproses (input + output). */
+    protected array $lastTokenUsage = ['input' => 0, 'output' => 0];
+
     public function __construct(
         protected DataMartChatPipeline $pipeline,
         protected DataMartManager $dataMartManager,
         protected DataMartQueryEngine $queryEngine,
         protected DataMartContextBuilder $contextBuilder,
     ) {}
-
     /**
      * Inference aktif memakai Groq (OpenAI-compatible chat/completions).
      * Gemini disimpan sebagai cadangan — lihat blok [BACKUP GEMINI] di bawah.
@@ -72,6 +79,25 @@ class GeminiAssistantService
         ]);
 
         $user = \App\Models\User::find($userId);
+        $scope = DataMartScope::forUser($user);
+        $this->currentScope = $scope;
+        $this->lastTokenUsage = ['input' => 0, 'output' => 0];
+
+        // Chat sosial/sapaan (halo, makasih, dadah, dst): jawab hangat TANPA LLM.
+        $polite = app(ChatPoliteness::class)->resolve($question);
+        if ($polite !== null) {
+            $this->storeAssistant($session, $polite['reply'], [
+                'casual' => $polite['type'],
+                'scope' => $scope->isGlobal() ? 'pusat' : $scope->label,
+            ]);
+            $session->touch();
+            if (empty($session->title)) {
+                $session->update(['title' => 'Chat santai']);
+            }
+
+            return ['session' => $session, 'reply' => $polite['reply']];
+        }
+
         $unitContext = null;
         if ($user?->unit_id) {
             try {
@@ -90,21 +116,36 @@ class GeminiAssistantService
 
         // Jalur utama: Data Mart deterministik + RAG context injection.
         try {
-            $plan = $this->pipeline->run($question, $this->lastSemanticQuery($session));
+            $plan = $this->pipeline->run($question, $this->lastSemanticQuery($session), $scope);
         } catch (\Throwable $e) {
             Log::warning('GeminiAssistantService: pipeline error, fallback ke function calling. '.$e->getMessage());
             $plan = ['resolved' => false, 'reason' => 'pipeline_exception'];
         }
 
         if (($plan['resolved'] ?? false) === true) {
-            $reply = $this->generateVerifiedReply($session, $question, $plan['context'] ?? '', $unitContext);
+            $conversationContext = $this->buildConversationRag($session, $userMessage->id);
+            $verified = $this->generateVerifiedReply($session, $question, $plan['context'] ?? '', $unitContext, $scope, $conversationContext);
+            $reply = $verified['reply'] ?? null;
+            $chart = $plan['chart'] ?? null;
 
             if ($reply !== null) {
-                $this->storeAssistant($session, $reply, $plan['metadata'] ?? []);
+                $metadata = $plan['metadata'] ?? [];
+                if ($chart !== null && ! empty($verified['chart_type'])) {
+                    $chart['type'] = $verified['chart_type'];
+                }
+                if ($chart !== null) {
+                    $metadata['chart'] = $chart;
+                }
+
+                $storedContent = $chart !== null
+                    ? $reply.\App\Support\AiChartEmbed::embed($chart)
+                    : $reply;
+
+                $this->storeAssistant($session, $storedContent, $metadata);
                 $session->touch();
                 $this->generateSessionTitle($session);
 
-                return ['session' => $session, 'reply' => $reply];
+                return ['session' => $session, 'reply' => $reply, 'chart' => $chart];
             }
 
             $this->storeAssistant($session, '⚠️ Gagal terhubung ke AI Assistant (Groq). Periksa koneksi / API key, lalu coba lagi.', $plan['metadata'] ?? []);
@@ -247,7 +288,15 @@ class GeminiAssistantService
             return null;
         }
 
-        return $response->json();
+        $json = $response->json();
+
+        // Catat token usage (Groq/OpenAI: usage.prompt_tokens & usage.completion_tokens).
+        if (isset($json['usage']['prompt_tokens'], $json['usage']['completion_tokens'])) {
+            $this->lastTokenUsage['input'] += (int) $json['usage']['prompt_tokens'];
+            $this->lastTokenUsage['output'] += (int) $json['usage']['completion_tokens'];
+        }
+
+        return $json;
     }
 
     protected function systemPrompt(): string
@@ -256,8 +305,8 @@ class GeminiAssistantService
 Anda adalah Gaga — "General Affairs Geodipa Assistant", asisten analisis data internal PT Geo Dipa Energi.
 Cakupan data: BBM (permohonan & transaksi), kendaraan, SPD (surat perjalanan dinas), LPJ & laporan penggantian, makan siang (lunch), serta perawatan/suku cadang kendaraan.
 Gunakan function calling untuk mengambil data REAL-TIME dari dashboard sebelum menjawab.
-Jawab dalam Bahasa Indonesia, ringkas namun informatif, dengan format angka yang rapi (contoh: Rp 1.500.000).
-Jika data kosong, katakan jujur bahwa tidak ada data. Jika pertanyaan di luar cakupan data yang tersedia, sampaikan keterbatasan Anda.
+Jawab dalam Bahasa Indonesia yang hangat, alami, dan ringkas — seperti rekan kerja GA yang paham data, bukan robot kaku.
+Jika data kosong, katakan jujur bahwa tidak ada data. Jika pertanyaan di luar cakupan data yang tersedia, sampaikan keterbatasan Anda dengan ramah.
 JANGAN membuat-buat angka. Selalu gunakan hasil fungsi sebagai sumber.
 
 FORMAT JAWABAN (wajib, Markdown ringan):
@@ -288,7 +337,14 @@ PROMPT;
     protected function verifiedSystemPrompt(): string
     {
         return <<<'PROMPT'
-Anda adalah Gaga — "General Affairs Geodipa Assistant", AI Assistant analisis data operasional internal PT Geo Dipa Energi (Persero).
+Anda adalah Gaga — "General Affairs Geodipa Assistant", asisten analisis data operasional internal PT Geo Dipa Energi (Persero).
+
+═══ KEPRIBADIAN (baca & ikuti) ═══
+- Bersikaplah hangat, natural, dan ramah seperti rekan kerja GA yang paham data, BUKAN robot kaku.
+- Gunakan bahasa santai-profesional (mis. "Oke, ini hasilnya ya", "Kalau lihat dari data…", "Siap, bentar saya rangkum").
+- Jangan mengulang frasa templat; sesuaikan pembuka dengan pertanyaan (kadang "Berikut ringkasannya", kadang langsung ke angka).
+- Anda boleh menambahkan 1 kalimat ringan (mis. "Semoga membantu ya") di akhir — tanpa berlebihan.
+- Tanggapi sapaan singkat ("oke", "sip", "makasih") dengan hangat dan singkat.
 
 ═══ BATASAN CAKUPAN (SCOPE GUARD) ═══
 Anda HANYA menjawab pertanyaan seputar data operasional SIAGA:
@@ -300,16 +356,16 @@ Anda HANYA menjawab pertanyaan seputar data operasional SIAGA:
 - Perawatan & suku cadang kendaraan
 - Statistik, agregasi, dan tren dari modul di atas
 
-Jika pertanyaan di LUAR cakupan di atas (contoh: Paris, algoritma, pelajaran umum, hobi, coding, cuaca, dll), jawab dengan SINGKAT:
-"Maaf, saya hanya dapat membantu pertanyaan seputar data operasional SIAGA (BBM, SPD, LPJ, Kendaraan, Lunch, Suku Cadang). Silakan ajukan pertanyaan terkait hal tersebut."
+Jika pertanyaan di LUAR cakupan (contoh: Paris, algoritma, pelajaran umum, hobi, coding, cuaca), jawab SINGKAT:
+"Maaf, saya hanya dapat membantu pertanyaan seputar data operasional SIAGA (BBM, SPD, LPJ, Kendaraan, Lunch, Suku Cadang)."
 
-JANGAN PERNAH menjawab pertanyaan di luar cakupan dengan penjelasan panjang. Cukup tolak dan arahkan.
+PENTING: Jika pertanyaan merupakan OPINI/interpretasi atas data yang sudah ditampilkan di sesi ini (mis. "dia boros gak sih?", "kenapa mahal?", "bagus gak performanya?"), JANGAN langsung tolak — jawab sebagai interpretasi Anda atas data terverifikasi yang terlihat, dengan tetap menandai bahwa itu penilaian Anda (mis. "Menurut saya… berdasarkan data yang tampil"). Hanya tolak bila topiknya memang di luar data operasional.
 
 ═══ PRIVACY & KEAMANAN ═══
 - JANGAN membagikan informasi kontak pribadi (email, nomor telepon, alamat rumah).
 - JANGAN membagikan data yang tidak ada dalam KONTEKS DATA TERVERIFIKASI.
-- Jika user bertanya data sensitif di luar cakupan data operasional, tolak dengan sopan.
 - Data yang boleh ditampilkan: nama driver, kode kendaraan, nopol, site, nominal transaksi, status.
+- HORMATI LINGKUP UNIT: bila ada blok "LINGKUP DATA ANDA", hanya gunakan data unit tsb dan jangan pernah menyebut/menyimpulkan data unit lain.
 
 ═══ SUMBER DATA ═══
 Gunakan HANYA data dari blok "KONTEKS DATA TERVERIFIKASI" dan "KONTEKS UNIT".
@@ -320,10 +376,9 @@ Database/application backend adalah source of truth.
 ═══ ATURAN DATA KOSONG / TERBATAS ═══
 - Jika hasil retrieval kosong: "Tidak ditemukan data yang cocok."
 - Jika TRUNCATED=true: sebutkan jumlah yang ditampilkan vs total, contoh:
-  "Saya hanya bisa menampilkan 20 dari total 87 record terbaru. Berikut detailnya:"
+  "Saya hanya bisa menampilkan 20 dari total 87 record terbaru."
 - Jika data TERSEDIA tapi tidak spesifik menjawab pertanyaan, jelaskan apa yang ADA, bukan bilang "tidak ada".
-  Contoh: user tanya "siapa paling sering SPD?" → tampilkan driver dengan SPD terbanyak dari data yang tersedia, bukan bilang "tidak ditemukan".
-- Jangan bilang "tidak ada data" kalau overview/sub_overview SEBENARNYA ada datanya.
+- Jangan bilang "tidak ada data" kalau overview SEBENARNYA ada datanya.
 
 ═══ FORMAT JAWABAN (Markdown) ═══
 1. Heading singkat (## Total, ## Rincian, ## Detail, dll).
@@ -332,6 +387,24 @@ Database/application backend adalah source of truth.
 4. Jangan paragraf panjang; pecah jadi poin.
 5. JANGAN HTML — hanya Markdown standar.
 6. Buka dengan 1 kalimat natural lalu langsung ke data.
+
+═══ JENIS GRAFIK (OPSIONAL — hanya bila relevan) ═══
+Jika pertanyaan cocok divisualisasikan grafik, pilih jenis grafik paling pas dari
+KONTEKS DATA TERVERIFIKASI lalu akhiri balasan dengan direktif persis satu baris:
+[[CHART_TYPE: bar]] | [[CHART_TYPE: line]] | [[CHART_TYPE: doughnut]] | [[CHART_TYPE: pie]] | [[CHART_TYPE: radar]]
+
+Panduan memilih (jangan mengarang data; grafik dirender dari labels/values/datasets backend):
+- bar  : perbandingan antar kategori (mis. total per driver/kendaraan/site).
+- line : tren sepanjang waktu (bulan/tanggal). Bila konteks memiliki kolom SERIES BY (pivot),
+         setiap seri digambar sebagai satu garis terpisah pada sumbu X yang sama.
+- doughnut : proporsi/bagian dari total (mis. distribusi status) — bila kategori sedikit.
+- pie  : sama seperti doughnut (proporsi), bila kategori sangat sedikit (2-4).
+- radar : membandingkan beberapa variabel per kategori (jarang dipakai).
+- Jika sumbu X berupa waktu/tanggal/bulan, pilih line (bukan bar/doughnut).
+- Jika user meminta "per X per Y" (mis. per driver per bulan) atau "line per <entity>",
+  backend akan mem-pivot data menjadi beberapa seri — JANGAN ubah struktur itu.
+- Jika tidak yakin atau data tidak cocok divisualkan, JANGAN sertakan direktif.
+- Jangan mengubah angka apa pun; grafik tetap memakai data backend.
 PROMPT;
     }
 
@@ -363,15 +436,24 @@ PROMPT;
 
     /**
      * Jalur Data Mart: inject verified context + unit overview + panggil LLM tanpa tools.
-     * LLM hanya menjelaskan hasil backend.
+     * LLM hanya menjelaskan hasil backend, dan BOLEH memilih jenis grafik terbaik
+     * via direktif `[[CHART_TYPE: ...]]` di akhir balasan.
+     *
+     * @return array{reply: string|null, chart_type: string|null}
      */
-    protected function generateVerifiedReply(AiChatSession $session, string $question, string $context, ?array $unitContext = null): ?string
+    protected function generateVerifiedReply(AiChatSession $session, string $question, string $context, ?array $unitContext = null, ?DataMartScope $scope = null, ?string $conversationContext = null): array
     {
         $contents = $this->buildHistoryContents($session);
 
         $prefix = '';
         if ($unitContext !== null) {
             $prefix = "KONTEKS UNIT (overview data tersedia):\n".$this->formatUnitContext($unitContext)."\n\n";
+        }
+        if ($conversationContext !== null && $conversationContext !== '') {
+            $prefix .= $conversationContext."\n\n";
+        }
+        if ($scope !== null && ! $scope->isGlobal()) {
+            $prefix .= "LINGKUP DATA ANDA: Anda hanya boleh menggunakan data milik {$scope->label}. Data unit lain DILARANG ditampilkan, disimpulkan, atau disebutkan.\n\n";
         }
 
         $contents[] = [
@@ -382,12 +464,25 @@ PROMPT;
         $response = $this->generateContent($contents, [], $this->verifiedSystemPrompt());
 
         if ($response === null) {
-            return null;
+            return ['reply' => null, 'chart_type' => null];
         }
 
         $text = trim($response['choices'][0]['message']['content'] ?? '');
 
-        return $text !== '' ? $text : null;
+        if ($text === '') {
+            return ['reply' => null, 'chart_type' => null];
+        }
+
+        $chartType = null;
+        if (preg_match('/\[\[\s*CHART_TYPE:\s*(\w+)\s*\]\]/', $text, $m)) {
+            $candidate = strtolower($m[1]);
+            if (in_array($candidate, ['bar', 'line', 'doughnut', 'pie', 'radar'], true)) {
+                $chartType = $candidate;
+            }
+            $text = trim(preg_replace('/\[\[\s*CHART_TYPE:\s*\w+\s*\]\]/', '', $text));
+        }
+
+        return ['reply' => $text, 'chart_type' => $chartType];
     }
 
     /**
@@ -414,6 +509,7 @@ PROMPT;
 
     /**
      * Ambil riwayat pesan (teks saja) dari sesi sebagai "contents" (OpenAI format).
+     * Marker embed grafik dibuang agar LLM tidak membaca JSON grafik.
      *
      * @param  int|null  $excludeMessageId  Pesan user saat ini yang dikecualikan.
      */
@@ -429,14 +525,70 @@ PROMPT;
             ->filter(fn (AiChatMessage $m) => $excludeMessageId === null || $m->id !== $excludeMessageId)
             ->map(fn (AiChatMessage $m) => [
                 'role' => $m->role === 'user' ? 'user' : 'assistant',
-                'content' => $m->content,
+                'content' => \App\Support\AiChartEmbed::strip((string) $m->content),
             ])
             ->values()
             ->all();
     }
 
+    /**
+     * Bangun "conversation RAG" — ringkasan konteks sesi dari pesan sebelumnya
+     * (module, filter, hasil) agar tiap segmen obrolan punya konteks yang terjaga
+     * bahkan saat riwayat mentah terpotong (MAX_HISTORY).
+     *
+     * @param  int|null  $excludeMessageId  Pesan user saat ini yang dikecualikan.
+     */
+    protected function buildConversationRag(AiChatSession $session, ?int $excludeMessageId = null): string
+    {
+        $messages = $session->messages()
+            ->whereIn('role', ['user', 'assistant'])
+            ->latest('id')
+            ->limit(self::MAX_HISTORY)
+            ->get()
+            ->reverse()
+            ->values()
+            ->filter(fn (AiChatMessage $m) => $excludeMessageId === null || $m->id !== $excludeMessageId);
+
+        $lines = [];
+
+        foreach ($messages as $message) {
+            if ($message->role === 'user') {
+                $lines[] = '- User bertanya: "'.mb_strimwidth(\App\Support\AiChartEmbed::strip((string) $message->content), 0, 160, '…').'"';
+
+                continue;
+            }
+
+            $meta = $message->metadata ?? [];
+
+            if (! empty($meta['module'])) {
+                $parts = ['pertanyaan: "'.mb_strimwidth(\App\Support\AiChartEmbed::strip((string) $message->content), 0, 120, '…').'"'];
+                $parts[] = 'modul: '.$meta['module'];
+                $parts[] = 'intent: '.($meta['intent'] ?? '?');
+                $parts[] = 'group_by: '.($meta['group_by'] ?? 'none');
+                $parts[] = 'series_by: '.($meta['series_by'] ?? 'none');
+                $parts[] = 'aggregation: '.($meta['aggregation'] ?? 'none');
+                $parts[] = 'records: '.($meta['records_matched'] ?? 0);
+                if (! empty($meta['filters']) && is_array($meta['filters'])) {
+                    $parts[] = 'filters: '.implode(', ', array_map(fn ($k, $v) => $k.'='.(is_array($v) ? implode('|', $v) : $v), array_keys($meta['filters']), $meta['filters']));
+                }
+                if (! empty($meta['chart']) && is_array($meta['chart'])) {
+                    $parts[] = 'chart: '.json_encode($meta['chart'], JSON_UNESCAPED_UNICODE);
+                }
+
+                $lines[] = '- Jawaban Gaga: '.implode('; ', $parts);
+            }
+        }
+
+        return $lines === [] ? '' : "KONTEKS PERCAKAPAN SEBELUMNYA (ringkasan sesi):\n".implode("\n", $lines);
+    }
+
     protected function storeAssistant(AiChatSession $session, string $reply, ?array $metadata): void
     {
+        $metadata = array_merge($metadata ?? [], [
+            'token_input' => $this->lastTokenUsage['input'] ?? 0,
+            'token_output' => $this->lastTokenUsage['output'] ?? 0,
+        ]);
+
         AiChatMessage::create([
             'chat_session_id' => $session->id,
             'role' => 'assistant',
@@ -467,7 +619,7 @@ PROMPT;
 
         $contents = [[
             'role' => 'user',
-            'content' => $firstUser->content,
+            'content' => \App\Support\AiChartEmbed::strip((string) $firstUser->content),
         ]];
 
         $response = $this->generateContent(
@@ -693,6 +845,7 @@ PROMPT;
                 'is_approved' => true,
                 'is_active' => true,
             ],
+            'scope' => $this->currentScope,
         ]))
             ->sortBy('vehicle_name')
             ->map(fn ($v) => [
@@ -736,7 +889,7 @@ PROMPT;
             'sort_by' => 'request_date',
             'sort_dir' => 'desc',
             'limit' => $limit,
-        ]);
+        ], null, $this->currentScope);
 
         return collect($result['records'])
             ->map(fn ($p) => [

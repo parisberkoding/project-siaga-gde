@@ -28,11 +28,21 @@ class RAGContextBuilder
 
         if ($result['group_by'] ?? null) {
             $lines[] = 'GROUPED BY: '.$result['group_by'];
+            if (! empty($result['series_by'])) {
+                $lines[] = 'SERIES BY (pivot): '.$result['series_by'];
+            }
             $lines[] = 'TOTAL MATCHED: '.($result['matched'] ?? 0);
             $lines[] = 'GROUPS:';
             foreach (($result['groups'] ?? []) as $group) {
-                $lines[] = '  - '.$group['group'].': '.$group['count'].' transaksi'
+                $line = '  - '.$group['group'].': '.$group['count'].' transaksi'
                     .($group['value'] !== null ? ' (nilai '.$this->formatNumber($group['value']).')' : '');
+                if (! empty($group['series'])) {
+                    $parts = collect($group['series'])->map(
+                        fn ($s) => $s['name'].'='.$s['count'].' ('.($s['value'] !== null ? $this->formatNumber($s['value']) : 'n/a').')'
+                    )->implode(', ');
+                    $line .= '  [' .$parts.']';
+                }
+                $lines[] = $line;
             }
         } else {
             $lines[] = 'VERIFIED RESULT: '.$this->formatAggregation($result);

@@ -4,6 +4,7 @@ namespace App\Services\AI;
 
 use App\Services\AI\DataMart\DataMartManager;
 use App\Services\AI\DataMart\DataMartQueryEngine;
+use App\Services\AI\DataMart\DataMartScope;
 use App\Services\AI\Query\SemanticQuery;
 use App\Services\AI\Query\SemanticQueryBuilder;
 use App\Services\AI\RAG\RAGContextBuilder;
@@ -35,7 +36,7 @@ class DataMartChatPipeline
      * @param  array<string, mixed>|null  $previous  Konteks sesi (module/filters/measure pesan sebelumnya)
      * @return array<string, mixed>
      */
-    public function run(string $question, ?array $previous = null): array
+    public function run(string $question, ?array $previous = null, ?DataMartScope $scope = null): array
     {
         if (! config('ai.datamart.enabled', true)) {
             return ['resolved' => false, 'reason' => 'disabled'];
@@ -69,7 +70,7 @@ class DataMartChatPipeline
         try {
             $semanticQuery = $this->builder->build($question, $moduleName, $intent, $previous);
             $queryArray = $this->toEngineQuery($semanticQuery);
-            $result = $this->engine->execute($queryArray);
+            $result = $this->engine->execute($queryArray, null, $scope);
             $context = $this->context->build($semanticQuery, $result);
         } catch (Throwable $e) {
             Log::error('DataMartChatPipeline: query engine error: '.$e->getMessage());
@@ -88,6 +89,8 @@ class DataMartChatPipeline
 
         $duration = (int) round((hrtime(true) - $start) / 1e6);
 
+        $chart = $this->buildChartSpec($semanticQuery, $result);
+
         $metadata = [
             'module' => $moduleName,
             'module_confidence' => round((float) $module['confidence'], 2),
@@ -98,6 +101,7 @@ class DataMartChatPipeline
             'aggregation' => $semanticQuery->aggregation,
             'measure' => $semanticQuery->measure,
             'group_by' => $semanticQuery->groupBy,
+            'series_by' => $semanticQuery->seriesBy,
             'limit' => $semanticQuery->limit,
             'records_matched' => (int) ($result['matched'] ?? 0),
             'records_injected' => in_array($semanticQuery->intent, ['detail', 'listing'], true)
@@ -108,6 +112,10 @@ class DataMartChatPipeline
             'source' => $result['source'] ?? config('ai.source', 'database'),
             'semantic_query' => $semanticQuery->toArray(),
         ];
+
+        if ($chart !== null) {
+            $metadata['chart'] = $chart;
+        }
 
         Log::info('AI DataMart resolved', [
             'module' => $moduleName,
@@ -129,6 +137,7 @@ class DataMartChatPipeline
             'semantic_query' => $semanticQuery->toArray(),
             'result' => $result,
             'context' => $context,
+            'chart' => $chart,
             'metadata' => $metadata,
         ];
     }
@@ -154,6 +163,10 @@ class DataMartChatPipeline
             $engineQuery['group_by'] = $query->groupBy;
         }
 
+        if ($query->seriesBy !== null) {
+            $engineQuery['series_by'] = $query->seriesBy;
+        }
+
         if ($query->sortBy !== null) {
             $engineQuery['sort_by'] = $query->sortBy;
             $engineQuery['sort_dir'] = $query->sortDir;
@@ -164,5 +177,165 @@ class DataMartChatPipeline
         }
 
         return $engineQuery;
+    }
+
+    /**
+     * Bangun spesifikasi grafik mini dari hasil query ber-group.
+     * Hasil ini dikirim ke frontend untuk dirender pakai Chart.js.
+     *
+     * Mendukung pivot: saat `series_by` hadir, keluar `datasets` (banyak seri),
+     * mis. satu garis per driver sepanjang waktu. Tanpa series, keluar
+     * `labels` + `values` tunggal (backward compatible).
+     *
+     * @return array{type: string, title: string, labels: list<string>, values: list<int|float>, datasets?: list<array{label: string, values: list<int|float>}>, currency: bool, x_label?: string, y_label?: string}|null
+     */
+    protected function buildChartSpec(SemanticQuery $query, array $result): ?array
+    {
+        $groups = $result['groups'] ?? [];
+
+        if ($groups === [] || $query->groupBy === null) {
+            return null;
+        }
+
+        // Urutkan naik (kronologis) bila group adalah dimensi waktu, agar
+        // garis waktu tidak terbalik saat dipetakan ke sumbu X.
+        if (in_array((string) $query->groupBy, ['month', 'distribution_date', 'request_date', 'tanggal_berangkat', 'tanggal_lpj'], true)) {
+            usort($groups, fn ($a, $b) => (string) $a['group'] <=> (string) $b['group']);
+        }
+
+        $currency = in_array($query->measure, [
+            'bill_amounts', 'total_budget', 'total_pengeluaran', 'total_amount',
+            'avg_nominal', 'nominal_full_tank', 'price_per_liter', 'total_count',
+        ], true);
+
+        $labels = collect($groups)->pluck('group')->map(fn ($g) => (string) $g)->values()->all();
+
+        $hasSeries = ($query->seriesBy !== null || ($result['series_by'] ?? null) !== null)
+            && ! empty($groups[0]['series']);
+
+        if ($hasSeries) {
+            $seriesNames = collect($groups)
+                ->flatMap(fn ($g) => array_column($g['series'], 'name'))
+                ->unique()
+                ->values()
+                ->all();
+
+            $datasets = array_map(function ($name) use ($groups) {
+                return [
+                    'label' => (string) $name,
+                    'values' => collect($groups)
+                        ->map(function ($g) use ($name) {
+                            $match = collect($g['series'] ?? [])->first(fn ($s) => $s['name'] === $name);
+                            if ($match === null) {
+                                return 0;
+                            }
+
+                            return (int) round($match['value'] ?? $match['count']);
+                        })
+                        ->values()
+                        ->all(),
+                ];
+            }, $seriesNames);
+
+            $values = collect($groups)->map(fn ($g) => (int) round($g['value'] ?? $g['count']))->values()->all();
+
+            return [
+                'type' => $this->pickChartType($query, count($labels)),
+                'title' => $this->chartTitle($query),
+                'labels' => $labels,
+                'values' => $values,
+                'datasets' => $datasets,
+                'currency' => $currency,
+                'x_label' => $this->axisLabel($query->groupBy),
+                'y_label' => $this->measureLabel($query),
+            ];
+        }
+
+        $values = collect($groups)->map(fn ($g) => (int) round($g['value'] ?? $g['count']))->values()->all();
+
+        return [
+            'type' => $this->pickChartType($query, count($labels)),
+            'title' => $this->chartTitle($query),
+            'labels' => $labels,
+            'values' => $values,
+            'currency' => $currency,
+            'x_label' => $this->axisLabel($query->groupBy),
+            'y_label' => $this->measureLabel($query),
+        ];
+    }
+
+    /**
+     * Pilih jenis grafik terbaik:
+     *   1. User eksplisit (pie/donut/bar/line/radar) -> ikuti.
+     *   2. Data-driven: tren waktu -> line; distribusi (sedikit kategori) -> doughnut; ranking -> bar.
+     *   Grafik multi-series (pivot) otomatis jadi line bila X = waktu.
+     * Dipanggil LLM hanya sebagai pilihan final di reply; di sini backend yang memutuskan.
+     */
+    protected function pickChartType(SemanticQuery $query, int $groupCount): string
+    {
+        $requested = $query->chartType;
+        if ($requested !== null && in_array($requested, ['bar', 'line', 'doughnut', 'pie', 'radar'], true)) {
+            return $requested;
+        }
+
+        $group = (string) $query->groupBy;
+        $isTimeGroup = in_array($group, ['month', 'distribution_date', 'request_date', 'tanggal_berangkat', 'tanggal_lpj'], true);
+
+        if ($query->seriesBy !== null) {
+            return $isTimeGroup && $requested === 'line' ? 'line' : 'bar';
+        }
+
+        if ($isTimeGroup) {
+            return 'line';
+        }
+
+        if ($group === 'status' || $groupCount <= 6) {
+            return 'doughnut';
+        }
+
+        return 'bar';
+    }
+
+    protected function chartTitle(SemanticQuery $query): string
+    {
+        $agg = strtolower((string) ($query->aggregation ?? 'count'));
+        $group = str_replace('_', ' ', (string) $query->groupBy);
+
+        $title = match (true) {
+            str_contains($group, 'driver') => "Total per {$group}",
+            str_contains($group, 'vehicle') => "Total per kendaraan",
+            str_contains($group, 'month') => "Tren per bulan ({$agg})",
+            $group === 'status' => "Distribusi status ({$agg})",
+            default => "Total per {$group} ({$agg})",
+        };
+
+        if ($query->seriesBy !== null) {
+            $series = str_replace('_', ' ', (string) $query->seriesBy);
+            $title .= " — per {$series}";
+        }
+
+        return $title;
+    }
+
+    protected function axisLabel(string $dimension): string
+    {
+        return match ($dimension) {
+            'month' => 'Bulan',
+            'request_date', 'distribution_date', 'tanggal_berangkat', 'tanggal_lpj' => 'Tanggal',
+            'driver' => 'Driver',
+            'vehicle', 'vehicle_code' => 'Kendaraan',
+            'status' => 'Status',
+            'site' => 'Site',
+            'gasoline_type', 'fuel_type' => 'Jenis BBM',
+            default => str_replace('_', ' ', $dimension),
+        };
+    }
+
+    protected function measureLabel(SemanticQuery $query): string
+    {
+        $agg = strtoupper((string) ($query->aggregation ?? 'COUNT'));
+        $measure = str_replace('_', ' ', (string) ($query->measure ?? 'value'));
+
+        return "{$agg} {$measure}";
     }
 }

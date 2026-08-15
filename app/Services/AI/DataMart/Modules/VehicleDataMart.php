@@ -87,6 +87,8 @@ class VehicleDataMart extends AbstractDataMart
             ->with(['detail.site:id,name,code'])
             ->orderBy('consumerial_name');
 
+        $this->applyUnitScope($query, $options);
+
         if (! empty($filters['consumerial_type'])) {
             $query->whereIn('consumerial_type', (array) $filters['consumerial_type']);
         }

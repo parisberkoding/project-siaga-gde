@@ -250,6 +250,11 @@ Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
     Route::get('/print-report', [SuperadminController::class, 'printReport'])->name('superadmin.print-report');
     Route::get('/print-report/form', [SuperadminController::class, 'printReportPage'])->name('superadmin.print-report.form');
 });
+Route::middleware(['auth', 'role:superadmin,admin,admin_bbm,dispatcher,manager,non_ga_staff,general_affairs,view_only'])->group(function () {
+    Route::get('/ai-assistant', [AiAssistantController::class, 'index'])->name('ai-assistant.index');
+    Route::post('/ai-assistant/send', [AiAssistantController::class, 'send'])->name('ai-assistant.send');
+    Route::delete('/ai-assistant/sessions/{session}', [AiAssistantController::class, 'destroySession'])->name('ai-assistant.sessions.destroy');
+});
 
 Route::middleware(['auth', 'role:superadmin'])->group(function () {
 
@@ -257,11 +262,6 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
     Route::get('/sa/dashboard', [SuperadminController::class, 'index'])->name('superadmin-dashboard');
     Route::get('/dashboard/stats', [SuperadminController::class, 'getDashboardStats'])->name('dashboard.stats');
     Route::get('/dashboard/driver-stats', [SuperadminController::class, 'getDetailedDriverStats'])->name('dashboard.driver-stats');
-
-    // ==================== AI ASSISTANT (Gemini, masih pengembangan) ====================
-    Route::get('/ai-assistant', [AiAssistantController::class, 'index'])->name('ai-assistant.index');
-    Route::post('/ai-assistant/send', [AiAssistantController::class, 'send'])->name('ai-assistant.send');
-    Route::delete('/ai-assistant/sessions/{session}', [AiAssistantController::class, 'destroySession'])->name('ai-assistant.sessions.destroy');
 
     // ==================== USER MANAGEMENT ====================
     Route::get('users', [SuperadminController::class, 'indexUsers'])->name('users');

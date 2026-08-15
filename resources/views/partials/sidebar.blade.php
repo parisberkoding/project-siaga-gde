@@ -161,7 +161,7 @@
             ['label' => 'Lap. Keuangan Service', 'icon' => 'bi bi-circle', 'route' => 'superadmin.financial-report.index', 'active' => ['superadmin.financial-report.*'], 'roles' => ['superadmin']],
             ['label' => 'Lap. Transaksi Sparepart', 'icon' => 'bi bi-circle', 'route' => 'superadmin.transaction-report.index', 'active' => ['superadmin.transaction-report.*'], 'roles' => ['superadmin']],
             ['label' => 'Cetak Laporan BBM', 'icon' => 'bi bi-circle', 'route' => 'superadmin.print-report', 'active' => ['superadmin.print-report*'], 'roles' => ['superadmin']],
-            ['label' => 'AI Assistant (Beta)', 'icon' => 'bi bi-circle', 'route' => 'ai-assistant.index', 'active' => ['ai-assistant.*'], 'roles' => ['superadmin']],
+            ['label' => 'AI Assistant (Beta)', 'icon' => 'bi bi-circle', 'route' => 'ai-assistant.index', 'active' => ['ai-assistant.*'], 'roles' => ['superadmin', 'general_affairs', 'admin', 'admin_bbm', 'dispatcher', 'manager', 'non_ga_staff', 'view_only']],
         ]],
     ]));
   @endphp

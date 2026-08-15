@@ -47,13 +47,17 @@ class SemanticQueryBuilder
         }
 
         // Merger filter sesi sebelumnya (pertanyaan lanjutan), kecuali yang baru ditentukan.
-        $filters = $this->mergePreviousFilters($filters, $previous);
+        // Hanya reuse bila modul sama — filter modul lain (mis. is_late SPD) tidak valid untuk BBM.
+        $sameModule = ($previous['module'] ?? null) === $module;
+        if ($sameModule) {
+            $filters = $this->mergePreviousFilters($filters, $previous);
+        }
 
         $aggregation = $this->keywords->aggregation($question)
-            ?? ($previous['aggregation'] ?? 'SUM');
+            ?? (($sameModule && $previous['aggregation'] !== null) ? $previous['aggregation'] : 'SUM');
 
         $measure = $this->keywords->measure($question, $module)
-            ?? ($previous['measure'] ?? $this->defaultMeasure($module));
+            ?? (($sameModule && $previous['measure'] !== null) ? $previous['measure'] : $this->defaultMeasure($module));
 
         $query = new SemanticQuery(
             module: $module,
@@ -63,15 +67,19 @@ class SemanticQueryBuilder
             filters: $filters,
         );
 
-        $this->applyIntentShape($query, $question, $module);
+        $query->chartType = $this->detectChartType($question);
+
+        $this->applyIntentShape($query, $question, $module, $previous, $intent['intent']);
 
         return $query;
     }
 
     /**
      * Bentuk query sesuai intent (summary/aggregation vs detail/listing).
+     *
+     * @param  array<string, mixed>|null  $previous
      */
-    protected function applyIntentShape(SemanticQuery $query, string $question, string $module): void
+    protected function applyIntentShape(SemanticQuery $query, string $question, string $module, ?array $previous = null, ?string $fallbackIntent = null): void
     {
         $topK = (int) config('ai.rag.top_k', 10);
         $maxTopK = (int) config('ai.rag.max_top_k', 50);
@@ -105,10 +113,23 @@ class SemanticQueryBuilder
             }
         }
 
-        // Grouping untuk top-entity / tren.
-        if ($this->wantsGrouping($question)) {
-            $query->groupBy = $this->detectGroupDimension($question, $module);
-            $query->aggregation = $this->keywords->aggregation($question) ?? 'COUNT';
+        // Grouping untuk top-entity / tren / grafik.
+        $sameModule = ($previous['module'] ?? null) === $module;
+        $continuesChart = $previous !== null
+            && $sameModule
+            && ($previous['group_by'] ?? null) !== null
+            && $this->isFollowUpRegroup($question);
+
+        if ($this->wantsGrouping($question) || $this->wantsChart($question) || $continuesChart) {
+            $axes = $this->detectAxes($query, $module, $question, $previous);
+            $query->groupBy = $axes['x'];
+            $query->seriesBy = $axes['series'];
+
+            $query->aggregation = $axes['aggregation'] ?? $this->keywords->aggregation($question)
+                ?? (($sameModule && $previous['aggregation'] !== null) ? $previous['aggregation'] : ($this->wantsChart($question) ? 'SUM' : 'COUNT'));
+            if (! empty($axes['measure'])) {
+                $query->measure = $axes['measure'];
+            }
             $query->limit = $topK;
         }
 
@@ -221,7 +242,7 @@ class SemanticQueryBuilder
     protected function wantsGrouping(string $question): bool
     {
         $hasEntity = (bool) preg_match(
-            '/driver|pengemudi|pemohon|sopir|kendaraan|vehicle|armada|mobil|per bulan|bulanan|status/i',
+            '/driver|pengemudi|pemohon|sopir|kendaraan|vehicle|armada|mobil|per bulan|bulanan|status|nama|name|nama driver|per nama|by nama|by name/i',
             $question
         );
 
@@ -231,28 +252,282 @@ class SemanticQueryBuilder
 
         $hasRanking = (bool) preg_match('/terbanyak|tertinggi|terbesar|teratas|top\b|teraktif|paling aktif/i', $question);
 
-        return $hasRanking || (bool) preg_match('/per bulan|bulanan|per kendaraan|per driver/i', $question);
+        return $hasRanking || (bool) preg_match('/per bulan|bulanan|per kendaraan|per driver|per nama|per nama|by nama|by name|per driver/i', $question);
     }
 
-    protected function detectGroupDimension(string $question, string $module): string
+    /**
+     * Follow-up regrouping seperti "kalau by nama?", "kalo per bulan?", "bagaimana
+     * kalau dibagi per status?" — pertanyaan lanjutan dari visualisasi sebelumnya
+     * yang mengubah dimensi group tanpa menyebut kata "grafik/chart" lagi.
+     */
+    protected function isFollowUpRegroup(string $question): bool
     {
+        return (bool) preg_match(
+            '/kalau|kalo|bagaimana|gimana|by nama|by name|per nama|per bulan|dibagi|dipecah|per status|per kendaraan|per driver|per site/i',
+            $question
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $previous
+     */
+    protected function detectGroupDimension(string $question, string $module, ?array $previous = null): string
+    {
+        $dimensions = $this->dimensionsOf($module);
+
         if ($module === 'gasoline') {
             return preg_match('/provinsi|region/i', $question) ? 'province' : 'fuel_type';
         }
 
-        if (preg_match('/driver|pengemudi|pemohon|sopir/i', $question)) {
-            return 'driver';
+        if (preg_match('/driver|pengemudi|pemohon|sopir|requester|by nama|per nama|nama|name/i', $question)) {
+            return in_array('driver', $dimensions, true) ? 'driver' : ($dimensions[0] ?? 'status');
         }
 
         if (preg_match('/kendaraan|vehicle|armada|mobil/i', $question)) {
-            return 'vehicle';
+            return in_array('vehicle', $dimensions, true) ? 'vehicle' : ($dimensions[0] ?? 'status');
         }
 
         if (preg_match('/per bulan|bulanan|tren/i', $question)) {
+            return in_array('month', $dimensions, true) ? 'month' : ($dimensions[0] ?? 'status');
+        }
+
+        // Pertanyaan lanjutan memakai dimensi dari sesi sebelumnya.
+        if ($previous !== null
+            && ($previous['module'] ?? null) === $module
+            && ($previous['group_by'] ?? null) !== null) {
+            $dimension = (string) $previous['group_by'];
+            if (in_array($dimension, $dimensions, true)) {
+                return $dimension;
+            }
+        }
+
+        return in_array('status', $dimensions, true) ? 'status' : ($dimensions[0] ?? 'status');
+    }
+
+    /**
+     * Tentukan sumbu X (group) dan sumbu series (pivot) untuk grafik.
+     *
+     * Prioritas:
+     *  1. User eksplisit menyebut "sumbu X ..." / "X = ..." -> pakai dimensi tsb.
+     *  2. Trend + entity (mis. "pivot bulan x driver") -> X=time, series=entity.
+     *  3. Jenis grafik line + entity -> X=time (default), series=entity.
+     *  4. Fallback: detectGroupDimension lama.
+     *
+     * @param  array<string, mixed>|null  $previous
+     * @return array{x: string, series: string|null, aggregation?: string|null, measure?: string|null}
+     */
+    protected function detectAxes(SemanticQuery $query, string $module, string $question, ?array $previous = null): array
+    {
+        $dimensions = $this->dimensionsOf($module);
+
+        if ($explicit = $this->detectExplicitAxes($question, $module, $dimensions)) {
+            return $explicit;
+        }
+
+        $timeDim = $this->detectTimeDimension($question, $module, $dimensions);
+        $entityDim = $this->detectEntityDimension($question, $module, $dimensions);
+
+        $isLine = $query->chartType === 'line'
+            || (bool) preg_match('/line\b|line chart|linechart|garis|tren|time series|sepanjang waktu|waktu/i', $question);
+
+        // Trend + entity -> pivot: X = waktu, series = entity.
+        if ($timeDim !== null && $entityDim !== null && $entityDim !== $timeDim) {
+            return ['x' => $timeDim, 'series' => $entityDim];
+        }
+
+        // Line chart + entity -> pivot ke time untuk X, entity sebagai series.
+        if ($isLine && $entityDim !== null && $entityDim !== $timeDim) {
+            $x = $timeDim ?? $this->defaultTimeDimension($module, $dimensions);
+
+            return ['x' => $x, 'series' => $entityDim];
+        }
+
+        if ($timeDim !== null) {
+            return ['x' => $timeDim, 'series' => null];
+        }
+
+        return ['x' => $this->detectGroupDimension($question, $module, $previous), 'series' => null];
+    }
+
+    /**
+     * User eksplisit menyebut sumbu X/Y atau "X = <dimensi>".
+     *
+     * @return array{x: string, series: string|null, aggregation?: string|null, measure?: string|null}|null
+     */
+    protected function detectExplicitAxes(string $question, string $module, array $dimensions): ?array
+    {
+        if (! preg_match('/sumbu\s*x|sumbu-x|sumbu_x|\bx\s*[:=]|poros\s*x/i', $question)) {
+            return null;
+        }
+
+        $normalized = mb_strtolower($question);
+
+        $xDim = null;
+        foreach ($this->dimensionAliases() as $dim => $patterns) {
+            if (! in_array($dim, $dimensions, true)) {
+                continue;
+            }
+            if ($this->axisMentionsX($normalized, $patterns)) {
+                $xDim = $dim;
+                break;
+            }
+        }
+
+        if ($xDim === null) {
+            return null;
+        }
+
+        $axis = ['x' => $xDim, 'series' => null];
+
+        if ($this->axisMentionsY($normalized, ['bulan', 'tahun', 'tanggal', 'waktu', 'date', 'month'])) {
+            $y = $this->detectTimeDimension($question, $module, $dimensions);
+            if ($y !== null && $y !== $xDim) {
+                $axis['series'] = $y;
+            }
+        } elseif ($this->axisMentionsY($normalized, ['driver', 'nama', 'per nama', 'by nama'])) {
+            $axis['series'] = in_array('driver', $dimensions, true) ? 'driver' : null;
+        } elseif ($this->axisMentionsY($normalized, ['kendaraan', 'vehicle', 'armada'])) {
+            $axis['series'] = in_array('vehicle', $dimensions, true) ? 'vehicle' : null;
+        }
+
+        return $axis;
+    }
+
+    /**
+     * Apakah pertanyaan menyebut sumbu X lalu menyebut dimensi/pola tertentu?
+     */
+    protected function axisMentionsX(string $question, array $patterns): bool
+    {
+        foreach ($patterns as $pattern) {
+            if (preg_match('/sumbu\s*x.{0,40}'.$pattern.'|sumbu-x\s*'.$pattern.'|\bx\s*[:=]\s*'.$pattern.'/iu', $question)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Apakah pertanyaan menyebut sumbu Y lalu mengenali dimensi/pola tersebut?
+     */
+    protected function axisMentionsY(string $question, array $patterns): bool
+    {
+        foreach ($patterns as $pattern) {
+            if (preg_match('/sumbu\s*y.{0,40}'.$pattern.'/iu', $question)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    protected function dimensionAliases(): array
+    {
+        return [
+            'month' => ['bulan|month'],
+            'driver' => ['nama|driver|pengemudi|pemohon|sopir|requester'],
+            'vehicle' => ['kendaraan|vehicle|armada|mobil'],
+            'status' => ['status'],
+            'site' => ['site|lokasi|unit'],
+            'gasoline_type' => ['jenis|fuel|bbm'],
+            'fuel_type' => ['jenis|fuel|bbm'],
+            'request_date' => ['tanggal|date'],
+            'distribution_date' => ['tanggal|date'],
+            'tanggal_berangkat' => ['tanggal|date'],
+            'tanggal_lpj' => ['tanggal|date'],
+        ];
+    }
+
+    /**
+     * Dimensi waktu dari pola natural. Prioritas: daily date -> month.
+     */
+    protected function detectTimeDimension(string $question, string $module, array $dimensions): ?string
+    {
+        $dateDim = $this->manager->resolve($module)->dateDimension();
+
+        if (in_array('month', $dimensions, true)
+            && preg_match('/per bulan|bulanan|monthly|tren|time series|per tanggal|per hari|per minggu/i', $question)) {
             return 'month';
         }
 
-        return 'status';
+        if ($dateDim !== null && in_array($dateDim, $dimensions, true)
+            && preg_match('/per tanggal|per hari|per date|daily|per day/i', $question)) {
+            return $dateDim;
+        }
+
+        return null;
+    }
+
+    /**
+     * Dimensi entity/kategori yang disebut user (driver, kendaraan, status, site).
+     */
+    protected function detectEntityDimension(string $question, string $module, array $dimensions): ?string
+    {
+        $map = [
+            'driver' => ['driver|pengemudi|pemohon|sopir|requester|by nama|per nama|nama|name'],
+            'vehicle' => ['kendaraan|vehicle|armada|mobil'],
+            'vehicle_code' => ['kendaraan|vehicle|armada|mobil|nopol'],
+            'status' => ['status'],
+            'site' => ['site|lokasi|unit|cabang'],
+        ];
+
+        foreach ($map as $dim => $patterns) {
+            if (! in_array($dim, $dimensions, true)) {
+                continue;
+            }
+            foreach ($patterns as $pattern) {
+                if (preg_match('/'.$pattern.'/iu', $question)) {
+                    return $dim;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    protected function defaultTimeDimension(string $module, array $dimensions): string
+    {
+        if (in_array('month', $dimensions, true)) {
+            return 'month';
+        }
+
+        $dateDim = $this->manager->resolve($module)->dateDimension();
+
+        return $dateDim !== null && in_array($dateDim, $dimensions, true) ? $dateDim : 'month';
+    }
+
+    protected function wantsChart(string $question): bool
+    {
+        return (bool) preg_match('/grafik|chart|diagram|visual|barchart|pie\b|bar\b|piechart|bar chart|line chart|plot|donut|doughnut|polar|radar/i', $question);
+    }
+
+    /**
+     * Deteksi jenis grafik yang EKSPLISIT diminta user. Hanya dikembalikan
+     * bila user menyebut jenis tertentu (pie, donut, bar, line, polar, radar);
+     * bila tidak disebut, backend/AI yang memutuskan sendiri.
+     */
+    protected function detectChartType(string $question): ?string
+    {
+        if (preg_match('/polar|radar/i', $question)) {
+            return 'radar';
+        }
+        if (preg_match('/donut|doughnut/i', $question)) {
+            return 'doughnut';
+        }
+        if (preg_match('/pie\b|piechart|pie chart/i', $question)) {
+            return 'pie';
+        }
+        if (preg_match('/line\b|line chart|linechart|garis|tren/i', $question)) {
+            return 'line';
+        }
+        if (preg_match('/bar\b|barchart|bar chart|batang/i', $question)) {
+            return 'bar';
+        }
+
+        return null;
     }
 
     /**

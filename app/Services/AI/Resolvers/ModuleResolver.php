@@ -148,7 +148,7 @@ class ModuleResolver
         $contextModule = $context['module'] ?? null;
 
         if ($best === null || $bestWeight === 0) {
-            return $this->reuseContext($context);
+            return $this->reuseContext($context) ?? $this->chartFallback($normalized);
         }
 
         $threshold = (float) config('ai.confidence.module_threshold', 0.70);
@@ -174,7 +174,9 @@ class ModuleResolver
             return ['module' => $best, 'confidence' => round($confidence, 2)];
         }
 
-        return $this->reuseContext($context);
+        // Pertanyaan grafik dengan istilah modul lemah/tidak tegas (mis. frasa
+        // panjang "grafik BBM ... line chart per requester") => arahkan ke BBM.
+        return $this->reuseContext($context) ?? $this->chartFallback($normalized);
     }
 
     /**
@@ -192,6 +194,26 @@ class ModuleResolver
         $confidence = (float) config('ai.confidence.module_threshold', 0.70) + 0.05;
 
         return ['module' => $contextModule, 'confidence' => round($confidence, 2), 'reused' => true];
+    }
+
+    /**
+     * Query bertema grafik/diagram tanpa istilah modul eksplisit diarahkan ke
+     * module BBM (sumber data paling umum) agar "tampilkan grafik by nama dong"
+     * tetap ter-resolve deterministik.
+     *
+     * @return array{module: string, confidence: float, reused: bool}|null
+     */
+    protected function chartFallback(string $normalized): ?array
+    {
+        if (! preg_match('/grafik|chart|diagram|visual|barchart|pie\b|bar\b|piechart|plot/i', $normalized)) {
+            return null;
+        }
+
+        if ($this->manager->has('permohonan_bbm')) {
+            return ['module' => 'permohonan_bbm', 'confidence' => 0.75, 'reused' => false];
+        }
+
+        return null;
     }
 
     protected function hasStrongTerm(string $normalized, string $module): bool

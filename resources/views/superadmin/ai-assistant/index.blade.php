@@ -195,6 +195,36 @@
 
     .ai-typing-row .ai-bubble { color: #9ca3af; font-style: italic; }
 
+    /* ---------- Mini chart response ---------- */
+    .ai-chart-holder {
+        width: 100%;
+        max-width: 520px;
+        margin-top: 4px;
+    }
+    .ai-chart-holder hr {
+        border: none;
+        border-top: 1px solid var(--ai-border);
+        margin: 10px 0;
+    }
+    .ai-chart-box {
+        background: #fff;
+        border: 1px solid var(--ai-border);
+        border-radius: 12px;
+        padding: 12px 14px;
+        box-shadow: 0 1px 3px rgba(17, 24, 39, 0.06);
+    }
+    .ai-chart-box .chart-title {
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--ai-ink);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .ai-chart-box .chart-title i { color: var(--ai-emerald); }
+    .ai-chart-box canvas { max-height: 240px; width: 100%; }
+
     /* ---------- History panel (30%) ---------- */
     .ai-history-panel {
         flex: 3;
@@ -275,6 +305,26 @@
     .ai-empty h4 { color: var(--ai-ink); font-weight: 600; }
 
     .ai-scroll-hint { font-size: 11px; color: #9ca3af; text-align: center; padding-top: 2px; }
+    .ai-token-info {
+        font-size: 11px;
+        color: #9ca3af;
+        text-align: center;
+        padding-top: 4px;
+        font-variant-numeric: tabular-nums;
+    }
+    .ai-token-info .tok-eq { color: #6b7280; padding: 0 1px; }
+    .ai-token-info b { color: #4b5563; font-weight: 600; }
+    .ai-disclaimer {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        font-size: 10.5px;
+        color: #9ca3af;
+        text-align: center;
+        padding: 6px 0 0;
+    }
+    .ai-disclaimer i { color: #d97706; }
 
     @media (max-width: 991.98px) {
         .ai-shell { flex-direction: column; height: auto; }
@@ -360,6 +410,8 @@
                 </button>
             </div>
             <div class="ai-scroll-hint">Enter untuk kirim · model: Llama 3.3 70B (Groq)</div>
+            <div class="ai-token-info">tok. inp <span class="tok-eq">≈</span> <span id="aiTokInput">{{ number_format($tokenUsage['input']) }}</span> | output <span id="aiTokOutput">{{ number_format($tokenUsage['output']) }}</span></div>
+            <div class="ai-disclaimer"><i class="bi bi-info-circle"></i> AI hanya bisa dijadikan referensi — hasil dapat mengandung kesalahan/halusinasi. Mohon verifikasi ulang.</div>
         </div>
     </div>
 
@@ -373,7 +425,7 @@
         </div>
         <div class="ai-history-list">
             @forelse ($sessions as $s)
-                <a href="{{ route('ai-assistant.index') }}#{{ $s->id }}"
+                <a href="{{ route('ai-assistant.index', ['session' => $s->id]) }}"
                    class="ai-hist-card {{ $activeSession && $activeSession->id === $s->id ? 'active' : '' }}"
                    data-session-id="{{ $s->id }}">
                     <div class="title"><i class="bi bi-chat-dots text-primary me-1"></i>{{ Str::limit($s->title ?? 'Sesi baru', 40) }}</div>
@@ -421,26 +473,57 @@
             messagesEl.scrollTop = messagesEl.scrollHeight;
         }
         scrollToBottom();
+        initCharts(messagesEl);
 
         function nl2br(text) {
             return text.replace(/\n/g, '<br>');
         }
 
-        function addMessage(role, content, contentHtml) {
+        function addMessage(role, content, contentHtml, chart) {
             if (emptyEl) emptyEl.remove();
             const div = document.createElement('div');
             div.className = 'ai-row ' + role;
             if (role === 'assistant') {
+                const bubble = document.createElement('div');
+                bubble.className = 'ai-bubble assistant ai-md';
                 const body = contentHtml ? contentHtml : nl2br(escapeHtml(content));
-                div.innerHTML = '<div class="ai-avatar assistant"><i class="bi bi-stars"></i></div>'
-                    + '<div class="ai-bubble assistant ai-md">' + body + '</div>';
+                bubble.innerHTML = body;
+                div.appendChild(createAvatar('assistant'));
+                div.appendChild(bubble);
+                if (chart && typeof chart.labels !== 'undefined') {
+                    bubble.appendChild(createChartSection(chart));
+                }
             } else {
                 div.innerHTML = '<div class="ai-bubble user">' + escapeHtml(content) + '</div>'
                     + '<div class="ai-avatar user">YOU</div>';
             }
             messagesEl.appendChild(div);
             scrollToBottom();
+            initCharts(div);
             return div;
+        }
+
+        function createAvatar(role) {
+            const avatar = document.createElement('div');
+            avatar.className = 'ai-avatar ' + role;
+            if (role === 'assistant') {
+                avatar.innerHTML = '<i class="bi bi-stars"></i>';
+            } else {
+                avatar.textContent = 'YOU';
+            }
+            return avatar;
+        }
+
+        function createChartSection(chart) {
+            const holder = document.createElement('div');
+            holder.className = 'ai-chart-holder';
+            const hr = document.createElement('hr');
+            holder.appendChild(hr);
+            const box = document.createElement('div');
+            box.className = 'ai-chart-box';
+            box.dataset.chart = JSON.stringify(chart);
+            holder.appendChild(box);
+            return holder;
         }
 
         function escapeHtml(text) {
@@ -449,9 +532,325 @@
             return el.innerHTML;
         }
 
+        const chartPalette = ['#0d754b', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6', '#f97316', '#64748b'];
+
+        function formatChartValue(spec, value) {
+            if (spec.currency) {
+                return 'Rp ' + Number(value).toLocaleString('id-ID');
+            }
+            return Number(value).toLocaleString('id-ID');
+        }
+
+        function initCharts(root) {
+            if (typeof Chart === 'undefined') return;
+            const boxes = root.querySelectorAll('.ai-chart-box[data-chart]');
+            boxes.forEach(function (box) {
+                if (box.dataset.inited === '1') return;
+                box.dataset.inited = '1';
+                try {
+                    renderChart(box);
+                } catch (err) {
+                    console.error('AI chart render failed:', err);
+                }
+            });
+        }
+
+        function renderChart(box) {
+            const spec = JSON.parse(box.dataset.chart);
+            const canvas = document.createElement('canvas');
+            const icon = (spec.type === 'line')
+                ? 'bi-graph-up'
+                : (spec.type === 'doughnut' || spec.type === 'pie' ? 'bi-pie-chart' : 'bi-bar-chart');
+            box.innerHTML = '<div class="chart-title"><i class="bi ' + icon + '"></i>' + escapeHtml(spec.title || 'Grafik') + '</div>';
+            box.appendChild(canvas);
+            const labels = spec.labels || [];
+            const isCurrency = !!spec.currency;
+            const hasSeries = Array.isArray(spec.datasets) && spec.datasets.length > 0;
+
+            function seriesColor(i) {
+                return chartPalette[i % chartPalette.length];
+            }
+
+            function fmt(datasetIndex, value) {
+                const s = spec.datasets && spec.datasets[datasetIndex];
+                const label = s && s.label ? s.label + ': ' : '';
+                return ' ' + label + formatChartValue(spec, value);
+            }
+
+            let config;
+            if (spec.type === 'doughnut' || spec.type === 'pie') {
+                const values = (spec.values || []).map(Number);
+                const colors = labels.map(function (_, i) { return seriesColor(i); });
+                config = {
+                    type: spec.type,
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: colors,
+                            borderWidth: 0,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    boxWidth: 12,
+                                    boxHeight: 12,
+                                    usePointStyle: true,
+                                    padding: 12,
+                                    font: { size: 11 },
+                                    color: '#374151',
+                                },
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (ctx) {
+                                        return fmt(ctx.datasetIndex, ctx.parsed);
+                                    },
+                                },
+                            },
+                        },
+                    },
+                };
+            } else if (spec.type === 'radar') {
+                const values = (spec.values || []).map(Number);
+                config = {
+                    type: 'radar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: 'rgba(13, 117, 75, 0.15)',
+                            borderColor: '#0d754b',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#0d754b',
+                            pointRadius: 3,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    boxWidth: 12,
+                                    boxHeight: 12,
+                                    usePointStyle: true,
+                                    padding: 12,
+                                    font: { size: 11 },
+                                    color: '#374151',
+                                },
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (ctx) {
+                                        return this.chart.data.labels[ctx.dataIndex] + ': ' + formatChartValue(spec, ctx.parsed.r);
+                                    },
+                                },
+                            },
+                        },
+                        scales: {
+                            r: { beginAtZero: true, ticks: { backdropColor: 'transparent', font: { size: 9 } } },
+                        },
+                    },
+                };
+            } else if (spec.type === 'line') {
+                if (hasSeries) {
+                    const datasets = spec.datasets.map(function (d, i) {
+                        return {
+                            label: d.label,
+                            data: (d.values || []).map(Number),
+                            borderColor: seriesColor(i),
+                            backgroundColor: 'rgba(0,0,0,0)',
+                            fill: i === 0,
+                            tension: 0.3,
+                            pointBackgroundColor: seriesColor(i),
+                            pointRadius: 3,
+                        };
+                    });
+                    config = {
+                        type: 'line',
+                        data: { labels: labels, datasets: datasets },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        boxWidth: 12,
+                                        boxHeight: 12,
+                                        usePointStyle: true,
+                                        padding: 12,
+                                        font: { size: 11 },
+                                        color: '#374151',
+                                    },
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (ctx) {
+                                            return ' ' + (ctx.dataset.label || '') + ': ' + formatChartValue(spec, ctx.parsed.y);
+                                        },
+                                    },
+                                },
+                            },
+                            scales: {
+                                x: { ticks: { maxRotation: 45, font: { size: 10 } } },
+                                y: { beginAtZero: true, grid: { color: 'rgba(107,114,128,0.15)' }, ticks: { font: { size: 10 } } },
+                            },
+                        },
+                    };
+                } else {
+                    const values = (spec.values || []).map(Number);
+                    config = {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: values,
+                                borderColor: '#0d754b',
+                                backgroundColor: 'rgba(13, 117, 75, 0.12)',
+                                fill: true,
+                                tension: 0.3,
+                                pointBackgroundColor: '#0d754b',
+                                pointRadius: 3,
+                            }],
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        boxWidth: 12,
+                                        boxHeight: 12,
+                                        usePointStyle: true,
+                                        padding: 12,
+                                        font: { size: 11 },
+                                        color: '#374151',
+                                    },
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (ctx) {
+                                            return ' ' + formatChartValue(spec, ctx.parsed.y);
+                                        },
+                                    },
+                                },
+                            },
+                            scales: {
+                                x: { ticks: { maxRotation: 45, font: { size: 10 } } },
+                                y: { beginAtZero: true, ticks: { font: { size: 10 } } },
+                            },
+                        },
+                    };
+                }
+            } else {
+                if (hasSeries) {
+                    const datasets = spec.datasets.map(function (d, i) {
+                        return {
+                            label: d.label,
+                            data: (d.values || []).map(Number),
+                            backgroundColor: seriesColor(i),
+                            borderRadius: 4,
+                        };
+                    });
+                    config = {
+                        type: 'bar',
+                        data: { labels: labels, datasets: datasets },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        boxWidth: 12,
+                                        boxHeight: 12,
+                                        usePointStyle: true,
+                                        padding: 12,
+                                        font: { size: 11 },
+                                        color: '#374151',
+                                    },
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (ctx) {
+                                            return ' ' + (ctx.dataset.label || '') + ': ' + formatChartValue(spec, ctx.parsed.y);
+                                        },
+                                    },
+                                },
+                            },
+                            scales: {
+                                x: { stacked: true, ticks: { maxRotation: 45, font: { size: 10 } } },
+                                y: { beginAtZero: true, ticks: { font: { size: 10 } } },
+                            },
+                        },
+                    };
+                } else {
+                    const values = (spec.values || []).map(Number);
+                    const colors = labels.map(function (_, i) { return seriesColor(i); });
+                    config = {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: values,
+                                backgroundColor: colors,
+                                borderRadius: 4,
+                            }],
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        boxWidth: 12,
+                                        boxHeight: 12,
+                                        usePointStyle: true,
+                                        padding: 12,
+                                        font: { size: 11 },
+                                        color: '#374151',
+                                    },
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (ctx) {
+                                            return ' ' + formatChartValue(spec, ctx.parsed.y);
+                                        },
+                                    },
+                                },
+                            },
+                            scales: {
+                                x: { ticks: { maxRotation: 45, font: { size: 10 } } },
+                                y: { beginAtZero: true, ticks: { font: { size: 10 } } },
+                            },
+                        },
+                    };
+                }
+            }
+            new Chart(canvas.getContext('2d'), config);
+        }
+
         function setBusy(busy) {
             btnSend.disabled = busy;
             inputEl.disabled = busy;
+        }
+
+        function updateTokenUsage(usage) {
+            const elInput = document.getElementById('aiTokInput');
+            const elOutput = document.getElementById('aiTokOutput');
+            if (!usage || !elInput || !elOutput) return;
+            elInput.textContent = Number(usage.input || 0).toLocaleString('id-ID');
+            elOutput.textContent = Number(usage.output || 0).toLocaleString('id-ID');
         }
 
         async function send() {
@@ -483,7 +882,10 @@
                 if (data.ok) {
                     sessionIdEl.value = data.session_id;
                     sessionLabel.textContent = data.title || 'Sesi baru';
-                    addMessage('assistant', data.reply, data.reply_html);
+                    addMessage('assistant', data.reply, data.reply_html, data.chart);
+                    if (data.token_usage) {
+                        updateTokenUsage(data.token_usage);
+                    }
                 } else {
                     addMessage('assistant', '⚠️ ' + (data.error || 'Terjadi kesalahan.'));
                 }
@@ -513,6 +915,7 @@
             sessionLabel.textContent = 'Sesi baru';
             messagesEl.innerHTML = '';
             if (emptyEl) messagesEl.appendChild(emptyEl);
+            updateTokenUsage({ input: 0, output: 0 });
             inputEl.focus();
         });
     });

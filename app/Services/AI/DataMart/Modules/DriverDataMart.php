@@ -76,6 +76,8 @@ class DriverDataMart extends AbstractDataMart
             ->with('requester:id,nama_lengkap')
             ->select(['id', 'requester_id', 'status', 'bill_amounts', 'request_date']);
 
+        $this->applyUnitScope($query, $options);
+
         if (! empty($filters['date_from'])) {
             $query->whereDate('request_date', '>=', $filters['date_from']);
         }

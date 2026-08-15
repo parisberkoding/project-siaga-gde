@@ -116,6 +116,7 @@ class SpdDataMart extends AbstractDataMart
             ])
             ->orderByDesc('tanggal_berangkat');
 
+        $this->applyUnitScope($query, $options);
         $this->applyFilters($query, $filters);
 
         $rows = $query->limit($this->maxRecords())->get();

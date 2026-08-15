@@ -47,6 +47,19 @@ class VehicleCheckingSchedule extends Model
         return $this->belongsTo(VehicleAndToolsConsumers::class, 'vehicle_id');
     }
 
+    /**
+     * Scope unit bisnis: jadwal pengecekan dari kendaraan yang detailnya berada
+     * di site dalam unit. Null = tanpa scope (global / pusat).
+     */
+    public function scopeInUnit($query, ?array $siteIds)
+    {
+        if ($siteIds === null) {
+            return;
+        }
+
+        $query->whereHas('vehicle', fn ($q) => $q->inUnit($siteIds));
+    }
+
     public function assignedDispatcher()
     {
         return $this->belongsTo(User::class, 'assigned_dispatcher_id');

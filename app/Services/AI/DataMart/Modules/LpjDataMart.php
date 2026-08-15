@@ -130,6 +130,7 @@ class LpjDataMart extends AbstractDataMart
             ])
             ->orderByDesc('tanggal_lpj');
 
+        $this->applyUnitScope($query, $options);
         $this->applyFilters($query, $filters);
 
         $rows = $query->limit($this->maxRecords())->get();

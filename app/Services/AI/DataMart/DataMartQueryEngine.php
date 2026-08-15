@@ -28,6 +28,7 @@ class DataMartQueryEngine
      *                                       filters?: array<string, mixed>,
      *                                       aggregation?: array{function: string, field?: string},
      *                                       group_by?: string,
+     *                                       series_by?: string|null,
      *                                       sort_by?: string|null,
      *                                       sort_dir?: 'asc'|'desc',
      *                                       limit?: int|null,
@@ -35,7 +36,7 @@ class DataMartQueryEngine
      *                                       }
      * @return array<string, mixed>
      */
-    public function execute(array $query, ?DataMartContract $dataMart = null): array
+    public function execute(array $query, ?DataMartContract $dataMart = null, ?DataMartScope $scope = null): array
     {
         $start = hrtime(true);
 
@@ -45,10 +46,11 @@ class DataMartQueryEngine
         $this->validateQuery($query, $dataMart);
 
         $filters = $query['filters'] ?? [];
-        $records = $dataMart->records(['filters' => $filters]);
+        $records = $dataMart->records(['filters' => $filters, 'scope' => $scope]);
 
         $aggregation = $this->buildAggregation($query, $dataMart);
         $groupBy = isset($query['group_by']) ? (string) $query['group_by'] : null;
+        $seriesBy = isset($query['series_by']) && $query['series_by'] !== null ? (string) $query['series_by'] : null;
         $sortBy = isset($query['sort_by']) && $query['sort_by'] !== null ? (string) $query['sort_by'] : null;
         $sortDir = strtolower((string) ($query['sort_dir'] ?? 'desc'));
         $limit = isset($query['limit']) && $query['limit'] !== null ? (int) $query['limit'] : null;
@@ -58,7 +60,7 @@ class DataMartQueryEngine
         $matched = $this->filterRecords($records, $filters, $dataMart);
 
         if ($groupBy !== null) {
-            $grouped = $this->groupRecords($matched, $groupBy, $aggregation);
+            $grouped = $this->groupRecords($matched, $groupBy, $seriesBy, $aggregation);
 
             $result = [
                 'module' => $module,
@@ -66,6 +68,7 @@ class DataMartQueryEngine
                     ? ['function' => $aggregation['function'], 'field' => $aggregation['field'] ?? null]
                     : null,
                 'group_by' => $groupBy,
+                'series_by' => $seriesBy,
                 'groups' => $grouped,
                 'matched' => count($matched),
             ];
@@ -147,6 +150,16 @@ class DataMartQueryEngine
             $group = (string) $query['group_by'];
             if (! in_array($group, $dimensions, true)) {
                 throw new InvalidArgumentException("Dimensi group tidak diizinkan: {$group}");
+            }
+        }
+
+        if (isset($query['series_by']) && $query['series_by'] !== null) {
+            $series = (string) $query['series_by'];
+            if (! in_array($series, $dimensions, true)) {
+                throw new InvalidArgumentException("Dimensi series tidak diizinkan: {$series}");
+            }
+            if ($series === (string) ($query['group_by'] ?? '')) {
+                throw new InvalidArgumentException('Dimensi series tidak boleh sama dengan group.');
             }
         }
 
@@ -276,28 +289,65 @@ class DataMartQueryEngine
     }
 
     /**
+     * Kelompokkan record per group, opsional dipecah lagi per series (pivot).
+     *
      * @param  list<array<string, mixed>>  $records
      * @param  array{function: string, field?: string}|null  $aggregation
      * @return array<string, array<string, mixed>>
      */
-    protected function groupRecords(array $records, string $groupBy, ?array $aggregation): array
+    protected function groupRecords(array $records, string $groupBy, ?string $seriesBy, ?array $aggregation): array
     {
+        $func = $aggregation['function'] ?? null;
+        $aggField = $aggregation['field'] ?? null;
+
         $groups = [];
         foreach ($records as $row) {
             $key = (string) ($row[$groupBy] ?? 'Tidak diketahui');
+
+            if ($seriesBy === null) {
+                if (! isset($groups[$key])) {
+                    $groups[$key] = ['group' => $key, 'count' => 0, 'value' => null];
+                }
+                $groups[$key]['count']++;
+                if ($func !== null && $func !== 'COUNT') {
+                    $groups[$key]['value'] = ($groups[$key]['value'] ?? 0) + (float) ($row[$aggField] ?? 0);
+                }
+
+                continue;
+            }
+
+            $seriesKey = (string) ($row[$seriesBy] ?? 'Tidak diketahui');
+
             if (! isset($groups[$key])) {
-                $groups[$key] = ['group' => $key, 'count' => 0, 'value' => null];
+                $groups[$key] = ['group' => $key, 'count' => 0, 'value' => null, 'series' => []];
             }
             $groups[$key]['count']++;
-            if ($aggregation !== null && $aggregation['function'] !== 'COUNT') {
-                $value = (float) ($row[$aggregation['field']] ?? 0);
-                $groups[$key]['value'] = ($groups[$key]['value'] ?? 0) + $value;
+
+            if ($func !== null && $func !== 'COUNT') {
+                $groups[$key]['value'] = ($groups[$key]['value'] ?? 0) + (float) ($row[$aggField] ?? 0);
+            }
+
+            if (! isset($groups[$key]['series'][$seriesKey])) {
+                $groups[$key]['series'][$seriesKey] = ['name' => $seriesKey, 'count' => 0, 'value' => null];
+            }
+            $groups[$key]['series'][$seriesKey]['count']++;
+            if ($func !== null && $func !== 'COUNT') {
+                $groups[$key]['series'][$seriesKey]['value'] = ($groups[$key]['series'][$seriesKey]['value'] ?? 0) + (float) ($row[$aggField] ?? 0);
             }
         }
 
-        if ($aggregation !== null && $aggregation['function'] === 'AVG') {
+        if ($func === 'AVG') {
             foreach ($groups as &$group) {
                 $group['value'] = $group['count'] > 0 ? round($group['value'] / $group['count'], 2) : 0;
+                foreach (($group['series'] ?? []) as &$series) {
+                    $series['value'] = $series['count'] > 0 ? round($series['value'] / $series['count'], 2) : 0;
+                }
+            }
+        }
+
+        foreach ($groups as &$finalGroup) {
+            if (isset($finalGroup['series'])) {
+                $finalGroup['series'] = array_values($finalGroup['series']);
             }
         }
 

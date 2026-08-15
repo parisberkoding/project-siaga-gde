@@ -104,6 +104,8 @@ class VehiclePartsDataMart extends AbstractDataMart
             ])
             ->orderByDesc('scheduled_date');
 
+        $this->applyUnitScope($query, $options);
+
         if (! empty($filters['date_from'])) {
             $query->whereDate('scheduled_date', '>=', $filters['date_from']);
         }

@@ -110,6 +110,7 @@ class PermohonanDataMart extends AbstractDataMart
             ])
             ->orderByDesc('request_date');
 
+        $this->applyUnitScope($query, $options);
         $this->applyFilters($query, $filters);
 
         $rows = $query->limit($this->maxRecords())->get();

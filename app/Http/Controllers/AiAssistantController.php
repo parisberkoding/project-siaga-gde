@@ -9,7 +9,7 @@ use Throwable;
 
 class AiAssistantController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $title = 'AI Assistant';
 
@@ -19,13 +19,22 @@ class AiAssistantController extends Controller
             ->orderByDesc('updated_at')
             ->get();
 
-        $activeSession = $sessions->first();
+        $sessionId = $request->integer('session') ?: null;
+
+        // Tanpa ?session=, buka sesi baru (kosong) — sidebar langsung fresh session.
+        $activeSession = $sessionId !== null
+            ? $sessions->firstWhere('id', $sessionId)
+            : null;
 
         $messages = $activeSession
             ? $activeSession->messages()->orderBy('id')->get()
             : collect();
 
-        return view('superadmin.ai-assistant.index', compact('title', 'sessions', 'activeSession', 'messages'));
+        $tokenUsage = $activeSession
+            ? $this->tokenTotals($activeSession)
+            : ['input' => 0, 'output' => 0];
+
+        return view('superadmin.ai-assistant.index', compact('title', 'sessions', 'activeSession', 'messages', 'tokenUsage'));
     }
 
     public function send(Request $request, GeminiAssistantService $service)
@@ -48,6 +57,8 @@ class AiAssistantController extends Controller
                 'title'      => $result['session']->title,
                 'reply'      => $result['reply'],
                 'reply_html' => \App\Support\AiMarkdown::render($result['reply']),
+                'chart'      => $result['chart'] ?? null,
+                'token_usage' => $this->tokenTotals($result['session']),
             ]);
         } catch (Throwable $e) {
             return response()->json([
@@ -68,5 +79,25 @@ class AiAssistantController extends Controller
         }
 
         return redirect()->route('ai-assistant.index')->with('success', 'Sesi chat dihapus.');
+    }
+
+    /**
+     * Total token input & output milik sebuah sesi (dijumlah dari metadata pesan).
+     *
+     * @return array{input: int, output: int}
+     */
+    protected function tokenTotals(AiChatSession $session): array
+    {
+        $meta = $session->messages()
+            ->where('role', 'assistant')
+            ->get(['metadata']);
+
+        $input = $output = 0;
+        foreach ($meta as $message) {
+            $input += (int) ($message->metadata['token_input'] ?? 0);
+            $output += (int) ($message->metadata['token_output'] ?? 0);
+        }
+
+        return ['input' => $input, 'output' => $output];
     }
 }
