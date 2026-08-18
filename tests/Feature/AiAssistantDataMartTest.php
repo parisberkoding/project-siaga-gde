@@ -743,6 +743,41 @@ it('menghargai sumbu X eksplisit "sumbu X bulan"', function () {
         ->and($chart['labels'])->toBe(['2026-01', '2026-02']);
 });
 
+it('elemen grafik & tabel tetap tampil saat sesi dibuka kembali dari riwayat (reload)', function () {
+    fakeLlmText("Berikut grafiknya.\n\n[[CHART_TYPE: bar]]");
+
+    $fajar = User::factory()->create(['nama_lengkap' => 'Fajar']);
+    $gita  = User::factory()->create(['nama_lengkap' => 'Gita']);
+    Permohonan::factory()->create([
+        'requester_id' => $fajar->id,
+        'status' => 'completed',
+        'bill_amounts' => 300000,
+        'request_date' => now()->format('Y-m-d H:i:s'),
+    ]);
+    Permohonan::factory()->create([
+        'requester_id' => $gita->id,
+        'status' => 'completed',
+        'bill_amounts' => 200000,
+        'request_date' => now()->format('Y-m-d H:i:s'),
+    ]);
+
+    $sent = $this->actingAs($this->admin)
+        ->postJson(route('ai-assistant.send'), ['message' => 'Tampilkan grafik by nama'])
+        ->assertOk()
+        ->json();
+
+    expect($sent['chart'])->not->toBeNull();
+
+    // Muat ulang sesi seperti membuka lagi dari riwayat setelah browser session habis.
+    $this->actingAs($this->admin)
+        ->get(route('ai-assistant.index', ['session' => $sent['session_id']]))
+        ->assertOk()
+        ->assertSee('ai-chart-box')
+        ->assertSee('Fajar')
+        ->assertSee('data-chart=')
+        ->assertDontSee('AI_CHART');
+});
+
 it('mengurutkan label waktu naik (kronologis) untuk line chart', function () {
     fakeLlmText("Tren bulanan.\n\n[[CHART_TYPE: line]]");
 

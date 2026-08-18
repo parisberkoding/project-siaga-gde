@@ -186,7 +186,7 @@ class GeminiAssistantService
             }
 
             $message = $response['choices'][0]['message'] ?? [];
-            $text = trim($message['content'] ?? '');
+            $text = $this->stripReasoning(trim((string) ($message['content'] ?? '')));
             $calls = $message['tool_calls'] ?? [];
 
             if (empty($calls)) {
@@ -467,7 +467,7 @@ PROMPT;
             return ['reply' => null, 'chart_type' => null];
         }
 
-        $text = trim($response['choices'][0]['message']['content'] ?? '');
+        $text = $this->stripReasoning(trim((string) ($response['choices'][0]['message']['content'] ?? '')));
 
         if ($text === '') {
             return ['reply' => null, 'chart_type' => null];
@@ -595,6 +595,23 @@ PROMPT;
             'content' => $reply,
             'metadata' => $metadata,
         ]);
+    }
+
+    /**
+     * Bersihkan draft reasoning yang ikut dijawab model reasoning
+     * (Qwen/DeepSeek:  thinking...</think>) supaya tidak tampil di chat.
+     * Beberapa model reasoning lama memakai penanda ⟪ ... ⟫.
+     */
+    protected function stripReasoning(string $text): string
+    {
+        if ($text === '') {
+            return trim($text);
+        }
+
+        $text = (string) preg_replace('/<\s*think\s*>.*?<\s*\/\s*think\s*>/s', '', $text);
+        $text = (string) preg_replace('/⟪.*?⟫/s', '', $text);
+
+        return trim($text);
     }
 
     /**

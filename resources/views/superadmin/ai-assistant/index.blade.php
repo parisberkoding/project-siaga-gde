@@ -356,7 +356,7 @@
     <i class="bi bi-exclamation-triangle-fill fs-5"></i>
     <div>
         <strong>Fitur masih dalam tahap pengembangan / belum stabil.</strong> Jawaban dihasilkan oleh model
-        <em>Llama 3.3 70B (Groq)</em> dan dapat membaca data dashboard secara real-time (BBM, kendaraan, SPD, LPJ, makan siang),
+        <em>{{ config('services.groq.model') }} (Groq)</em> dan dapat membaca data dashboard secara real-time (BBM, kendaraan, SPD, LPJ, makan siang),
         namun hasilnya <strong>tidak 100% akurat</strong> dan tidak boleh dijadikan satu-satunya dasar keputusan.
     </div>
 </div>
@@ -409,7 +409,7 @@
                     </svg>
                 </button>
             </div>
-            <div class="ai-scroll-hint">Enter untuk kirim · model: Llama 3.3 70B (Groq)</div>
+            <div class="ai-scroll-hint">Enter untuk kirim · model: {{ config('services.groq.model') }}</div>
             <div class="ai-token-info">tok. inp <span class="tok-eq">≈</span> <span id="aiTokInput">{{ number_format($tokenUsage['input']) }}</span> | output <span id="aiTokOutput">{{ number_format($tokenUsage['output']) }}</span></div>
             <div class="ai-disclaimer"><i class="bi bi-info-circle"></i> AI hanya bisa dijadikan referensi — hasil dapat mengandung kesalahan/halusinasi. Mohon verifikasi ulang.</div>
         </div>
