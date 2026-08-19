@@ -1,3 +1,12 @@
+{{-- ═══════════════════════════════════════════════════════════════════════
+     ⚠️ VIEW INI DIHIDE / TIDAK DIPAKAI (FLOW BARU).
+     FLOW LAMA : form input laporan harian (1 file per upload) + tombol kirim per
+                 hari untuk di-validasi di akhir periode SPD.
+     PENGGANTI : halaman validasi (pelaporan.spd.validasi) menampung bulk upload
+                 image (maks 5 gambar per kirim) langsung tersimpan sebagai
+                 draft + finalisasi. File ini sengaja TIDAK dihapus.
+     ───────────────────────────────────────────────────────────────────────
+--}}
 @extends('templates.main')
 
 @section('title', $daily->exists ? 'Edit Laporan Harian' : 'Tambah Laporan Harian')

@@ -19,11 +19,15 @@ class AiAssistantController extends Controller
             ->orderByDesc('updated_at')
             ->get();
 
-        $sessionId = $request->integer('session') ?: null;
+        $sessionRef = $request->query('session');
+        $sessionRef = is_string($sessionRef) ? trim($sessionRef) : '';
 
         // Tanpa ?session=, buka sesi baru (kosong) — sidebar langsung fresh session.
-        $activeSession = $sessionId !== null
-            ? $sessions->firstWhere('id', $sessionId)
+        // ?session= memakai session_key (token, tanpa ID) — legacy ID numerik
+        // tetap diterima untuk kompatibilitas tautan lama.
+        $activeSession = $sessionRef !== ''
+            ? ($sessions->first(fn ($s) => $s->session_key === $sessionRef)
+                ?? $sessions->firstWhere('id', (int) $sessionRef))
             : null;
 
         $messages = $activeSession

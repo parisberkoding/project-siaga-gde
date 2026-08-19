@@ -194,3 +194,25 @@ it('membutuhkan minimal 1 item pengeluaran saat finalize', function () {
 
     expect(LpjPenggantian::where('surat_spd_id', $surat->id)->count())->toBe(0);
 });
+
+it('menolak bulk upload > 5 gambar sekaligus (FLOW BARU: maks 5 per kirim)', function () {
+    $surat = makeSuratFor($this->user);
+
+    $this->actingAs($this->user)
+        ->postJson(route('pelaporan.spd.daily.upload-items', $surat), [
+            'surat_spd_id' => $surat->id,
+            'tanggal'      => now()->format('Y-m-d'),
+            'images'       => [
+                \Illuminate\Http\UploadedFile::fake()->image('a.jpg'),
+                \Illuminate\Http\UploadedFile::fake()->image('b.jpg'),
+                \Illuminate\Http\UploadedFile::fake()->image('c.jpg'),
+                \Illuminate\Http\UploadedFile::fake()->image('d.jpg'),
+                \Illuminate\Http\UploadedFile::fake()->image('e.jpg'),
+                \Illuminate\Http\UploadedFile::fake()->image('f.jpg'),
+            ],
+        ])
+        ->assertStatus(422)
+        ->assertJson(['success' => false]);
+
+    expect(StrukItem::where('spd_id', $surat->id)->count())->toBe(0);
+});

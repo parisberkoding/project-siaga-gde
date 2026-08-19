@@ -92,3 +92,55 @@ it('tidak mengizinkan akses untuk user selain superadmin', function () {
         ->get(route('ai-assistant.index'))
         ->assertStatus(403);
 });
+
+it('menggunakan token (bukan ID numerik) untuk tautan sesi di URL', function () {
+    $session = AiChatSession::create(['user_id' => $this->admin->id, 'title' => 'Tes SPD']);
+
+    expect($session->session_key)->not->toBeNull()
+        ->and(strlen($session->session_key))->toBe(32);
+
+    // Tautan sidebar memakai session_key — ID database tidak muncul di URL.
+    $this->actingAs($this->admin)
+        ->get(route('ai-assistant.index'))
+        ->assertOk()
+        ->assertSee(route('ai-assistant.index', ['session' => $session->session_key]), false)
+        ->assertDontSee('session='.$session->id);
+
+    // Sesi tetap bisa dibuka lewat token.
+    $this->actingAs($this->admin)
+        ->get(route('ai-assistant.index', ['session' => $session->session_key]))
+        ->assertOk()
+        ->assertSee($session->title);
+});
+
+it('menampilkan kembali visualisasi (grafik) yang sudah tersimpan saat sesi dibuka ulang via token', function () {
+    $session = AiChatSession::create(['user_id' => $this->admin->id, 'title' => 'Top 5 SPD']);
+
+    $chart = [
+        'type'     => 'bar',
+        'title'    => 'Total per driver',
+        'labels'   => ['Faris Test Driver', 'Monica Wilderman MD'],
+        'values'   => [18349000, 0],
+        'currency' => true,
+        'x_label'  => 'Driver',
+        'y_label'  => 'MAX total budget',
+    ];
+
+    AiChatMessage::create([
+        'chat_session_id' => $session->id,
+        'role'            => 'assistant',
+        'content'         => "Top 5 Request SPD\n\n| Nama Driver | Jumlah Transaksi | Nilai Total |\n|---|---|---|\n| Faris Test Driver | 14 | Rp 18.349.000 |"
+            .\App\Support\AiChartEmbed::embed($chart),
+        'metadata' => ['chart' => $chart],
+    ]);
+
+    // Muat ulang sesi — tabel & grafik tetap dirender dari database (bukan ID).
+    $this->actingAs($this->admin)
+        ->get(route('ai-assistant.index', ['session' => $session->session_key]))
+        ->assertOk()
+        ->assertSee('Top 5 Request SPD', false)
+        ->assertSee('ai-chart-box', false)
+        ->assertSee('Faris Test Driver', false)
+        ->assertSee('data-chart=', false)
+        ->assertDontSee('AI_CHART');
+});

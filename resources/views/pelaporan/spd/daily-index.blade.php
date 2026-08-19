@@ -1,3 +1,13 @@
+{{-- ═══════════════════════════════════════════════════════════════════════
+     ⚠️ VIEW INI DIHIDE / TIDAK DIPAKAI (FLOW BARU).
+     FLOW LAMA : daftar laporan harian yang harus diinput satu-per-satu per hari,
+                 lalu dibuka lagi saat validasi di akhir periode SPD.
+     PENGGANTI : SATU halaman validasi (pelaporan.spd.validasi) menampung input
+                 struk (bulk, maks 5/kirim) + segmentasi draft/final + finalisasi.
+     Controller index() kini redirect ke pelaporan.spd.validasi. File ini
+     sengaja TIDAK dihapus agar tidak menghilangkan view lama.
+     ───────────────────────────────────────────────────────────────────────
+--}}
 @extends('templates.main')
 
 @section('title', 'Laporan Harian SPD')
@@ -29,18 +39,31 @@
 
     {{-- Info surat --}}
     <div class="card mb-3">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-                <div>
-                    <h5 class="card-title mb-1"><i class="bi bi-file-earmark-text"></i> {{ $surat->nomor_surat }}</h5>
-                    <div class="small text-muted">
-                        {{ $surat->tempat_tujuan }}
-                        @if($surat->is_extension) <span class="badge bg-secondary">Perpanjangan</span> @endif
+        <div class="card-body py-3">
+            <div class="row g-3 align-items-center">
+                <div class="col-md">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-file-earmark-text text-primary" style="font-size:1.4rem; line-height:1.2;"></i>
+                        <div>
+                            <h5 class="card-title mb-0 fw-bold" style="word-break:break-word;">{{ $surat->nomor_surat }}</h5>
+                            <div class="text-muted small">
+                                <i class="bi bi-geo-alt me-1"></i>{{ $surat->tempat_tujuan }}
+                                @if($surat->is_extension) <span class="badge bg-secondary ms-1">Perpanjangan</span> @endif
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="text-end small">
-                    <div><strong>Jadwal:</strong> {{ $surat->tanggal_berangkat->translatedFormat('d M Y') }} s/d {{ $surat->tanggal_kembali->translatedFormat('d M Y') }}</div>
-                    <div><strong>Kendaraan:</strong> {{ $surat->vehicle?->consumerial_code ?? '-' }}</div>
+                <div class="col-md-auto">
+                    <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+                        <span class="badge text-bg-light border py-2">
+                            <i class="bi bi-calendar3 me-1"></i>
+                            {{ $surat->tanggal_berangkat->translatedFormat('d F Y') }} s/d
+                            {{ $surat->tanggal_kembali->translatedFormat('d F Y') }}
+                        </span>
+                        <span class="badge text-bg-light border py-2">
+                            <i class="bi bi-truck me-1"></i>{{ $surat->vehicle?->consumerial_code ?? '-' }}
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>

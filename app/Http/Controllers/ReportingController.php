@@ -69,8 +69,12 @@ class ReportingController extends Controller
             $surat->daily_submitted_count = $submitted->count();
             $surat->daily_item_count = (int) $submitted->sum(fn ($r) => $r->strukItems->count());
             $surat->has_draft_daily = $surat->dailyReports->contains('status', 'draft');
-            $surat->can_finalize = $surat->tanggal_kembali->isPast()
-                && $surat->daily_submitted_count > 0;
+            // FLOW BARU: halaman validasi adalah satu-satunya entry pelaporan SPD,
+            // sehingga tombol tersedia selama surat belum punya LPJ (draft, submitted,
+            // maupun periode yang masih berjalan).
+            $surat->can_finalize = $surat->has_draft_daily
+                || $surat->daily_submitted_count > 0
+                || ! $surat->tanggal_kembali->isPast();
             $surat->daily_reports_available = $surat->dailyReports->isNotEmpty();
             return $surat;
         });

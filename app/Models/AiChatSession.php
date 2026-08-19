@@ -14,7 +14,21 @@ class AiChatSession extends Model
     protected $fillable = [
         'user_id',
         'title',
+        'session_key',
     ];
+
+    /**
+     * Token unik untuk URL sesi (mis. ?session=<session_key>) — ID numerik
+     * tidak pernah tampil di URL. Dibangkitkan otomatis saat membuat sesi.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (AiChatSession $session) {
+            if (empty($session->session_key)) {
+                $session->session_key = \Illuminate\Support\Str::random(32);
+            }
+        });
+    }
 
     public function user()
     {

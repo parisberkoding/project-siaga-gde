@@ -16,23 +16,42 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 /**
- * SpdDailyReportController — LAPORAN HARIAN SPD (pre-fixed report).
+ * SpdDailyReportController — PELAPORAN SPD (FLOW BARU: SATU HALAMAN VALIDASI).
  *
- * Alur baru pelaporan SPD:
- *  1. Driver mengirim laporan per hari selama perjalanan dinas
- *     (status draft → submitted). Item di-upload satu-per-satu via AJAX
- *     dan langsung tersimpan server-side → refresh tidak menghilangkan data.
- *  2. Setelah tanggal selesai SPD lewat, driver membuka halaman validasi
- *     yang menampilkan SEMUA file yang sudah dikirim; bisa menghapus/mengubah
- *     item yang salah sebelum LPJ dibuat.
+ * ═════════════ FLOW LAMA (di-hide, dikomentari di masing-masing method) ═════════════
+ *  1. Driver wajib input struk PER HARI (halaman /daily → form /daily/create,
+ *     status draft → submitted), item di-upload satu-per-satu via AJAX.
+ *  2. Setelah SPD selesai, driver buka halaman validasi, meninjau SEMUA file
+ *     yang sudah dikirim.
  *  3. Tombol "Submit sebagai LPJ" menggabungkan seluruh laporan harian menjadi
- *     satu LpjPenggantian (fixed report) berstatus pending → direview admin GA.
+ *     satu LpjPenggantian (fixed report) status pending → direview admin GA.
+ *
+ * ═════════════ FLOW BARU (aktif — diimplementasikan di method bawah) ═════════════
+ *  View sehari-hari DIHIDE (index/create/edit redirect ke /validasi).
+ *  Satu view validasi sekarang dipakai untuk SEMUA pelaporan SPD, dipecah
+ *  menjadi 2 SEGMENTASI:
+ *    ▶ DRAFT : input struk saat periode SPD masih berjalan, ATAU bulk input
+ *              setelah SPD selesai tapi driver belum mau finalisasi. Item
+ *              tersimpan otomatis server-side dalam status draft.
+ *    ▶ FINAL : setelah tanggal_kembali lewat, driver bulk-upload dari halaman
+ *              validasi (maks 5 gambar per kirim, bisa lanjut 5 lagi dst) lalu
+ *              langsung "Submit sebagai LPJ".
+ *
+ *  uploadItems() = bulk upload (maks 5/kirim) → FLOW BARU.
+ *  uploadItem()  = legacy upload 1 file (tetap berfungsi, tidak dihapus).
  *
  * Informasi keuangan (uang_dari / jumlah_diberikan) TIDAK diisi driver —
  * diisi oleh admin GA / keuangan saat review LPJ.
  */
 class SpdDailyReportController extends Controller
 {
+    /**
+     * Batas maksimum jumlah gambar per sekali kirim bulk-upload (FLOW BARU).
+     * Driver boleh kirim berulang (5 lagi, 5 lagi, dst) untuk meringankan beban
+     * AI VLM saat memproses satu batch.
+     */
+    public const MAX_BULK_UPLOAD = 5;
+
     protected ImageAnalysisService $analysis;
 
     public function __construct(ImageAnalysisService $analysis)
@@ -54,54 +73,53 @@ class SpdDailyReportController extends Controller
 
     /**
      * GET /pelaporan/spd/{surat}/daily — daftar laporan harian satu surat.
+     *
+     * ⚠️ DI-HIDE / TIDAK DIPAKAI (FLOW BARU).
+     * FLOW LAMA: menampilkan daftar laporan harian yang diinput satu-per-satu.
+     * PENGGANTI : SATU halaman validasi (pelaporan.spd.validasi) menampung input
+     *             struk + segmentasi draft/final. Redirect agar driver selalu
+     *             diarahkan ke satu view tersebut.
      */
     public function index(SuratSpd $surat)
     {
-        $surat = $this->findSuratForUser($surat->id);
-
-        $reports = $surat->dailyReports->sortByDesc('tanggal')->values();
-        $draft = $reports->first(fn ($r) => $r->isDraft());
-
-        return view('pelaporan.spd.daily-index', compact('surat', 'reports', 'draft'));
+        return redirect()->route('pelaporan.spd.validasi', $surat)
+            ->with('info', 'Pelaporan SPD kini cukup lewat satu halaman validasi (input struk & finalisasi).');
     }
 
     /**
      * GET /pelaporan/spd/{surat}/daily/create — form laporan harian baru.
-     * Kalau masih ada draft aktif, langsung dialihkan ke draft itu.
+     *
+     * ⚠️ DI-HIDE / TIDAK DIPAKAI (FLOW BARU).
+     * FLOW LAMA: form input per hari dengan upload 1 file + tombol kirim per hari.
+     * PENGGANTI : halaman validasi menggabungkan input struk (bulk, maks 5/kirim)
+     *             & finalisasi. Redirect demi konsistensi SATU view pelaporan.
      */
     public function create(SuratSpd $surat)
     {
-        $surat = $this->findSuratForUser($surat->id);
-
-        $existingDraft = $surat->dailyReports->first(fn ($r) => $r->isDraft());
-        if ($existingDraft) {
-            return redirect()->route('pelaporan.spd.daily.edit', [$surat, $existingDraft])
-                ->with('info', 'Anda masih punya draft laporan harian yang belum dikirim — lanjutkan draft tersebut.');
-        }
-
-        return view('pelaporan.spd.daily-form', [
-            'surat' => $surat,
-            'daily' => new SpdDailyReport(),
-        ]);
+        return redirect()->route('pelaporan.spd.validasi', $surat)
+            ->with('info', 'Input struk kini dilakukan dari satu halaman validasi.');
     }
 
     /**
      * GET /pelaporan/spd/{surat}/daily/{daily}/edit — edit draft laporan harian.
+     *
+     * ⚠️ DI-HIDE / TIDAK DIPAKAI (FLOW BARU).
+     * FLOW LAMA: edit draft harian via form terpisah.
+     * PENGGANTI : halaman validasi langsung menampilkan semua item (draft & final)
+     *             yang bisa diedit/hapus. Redirect demi SATU view pelaporan.
      */
     public function edit(SuratSpd $surat, SpdDailyReport $daily)
     {
-        $daily = SpdDailyReport::with('strukItems')
-            ->where('user_id', Auth::id())
-            ->draft()
-            ->findOrFail($daily->id);
-
-        $surat = $this->findSuratForUser($surat->id);
-
-        return view('pelaporan.spd.daily-form', compact('surat', 'daily'));
+        return redirect()->route('pelaporan.spd.validasi', $surat)
+            ->with('info', 'Edit & hapus item kini dilakukan dari satu halaman validasi.');
     }
 
     /**
      * POST /pelaporan/spd/{surat}/daily — kirim laporan harian baru.
+     *
+     * ⚠️ LEGACY (flow lama) — TIDAK dihapus, tetap berfungsi.
+     * FLOW BARU menggunakan uploadItems() + validasi(); namun method ini ditinggal
+     * agar tidak ada logic/migration yang terhapus dan test lama tetap hijau.
      */
     public function store(Request $request, SuratSpd $surat)
     {
@@ -134,6 +152,9 @@ class SpdDailyReportController extends Controller
 
     /**
      * PUT /pelaporan/spd/{surat}/daily/{daily} — update draft & kirim.
+     *
+     * ⚠️ LEGACY (flow lama) — TIDAK dihapus, tetap berfungsi.
+     * Digantikan oleh segmentasi draft/final di satu halaman validasi.
      */
     public function update(Request $request, SuratSpd $surat, SpdDailyReport $daily)
     {
@@ -156,6 +177,15 @@ class SpdDailyReportController extends Controller
             ->with('success', 'Laporan harian berhasil diperbarui & dikirim.');
     }
 
+    /**
+     * Submit laporan harian (status draft → submitted).
+     *
+     * ⚠️ SEGMENTASI FLOW BARU: pada alur baru, status per-hari tidak lagi
+     * diharuskan. Item yang di-upload (uploadItem/uploadItems) tetap berstatus
+     * DRAFT sampai driver menekan "Submit sebagai LPJ" (finalize) pada halaman
+     * validasi yang mengumpulkan draft + submitted. Method ini hanya dipakai
+     * alur legacy.
+     */
     private function submitDaily(SpdDailyReport $daily, Request $request): void
     {
         DB::transaction(function () use ($daily, $request) {
@@ -189,6 +219,10 @@ class SpdDailyReportController extends Controller
     /**
      * POST /pelaporan/spd/{surat}/daily/item — AJAX upload 1 struk ke draft.
      * Membuat draft otomatis bila belum ada → refresh tidak menghilangkan data.
+     *
+     * ⚠️ LEGACY (flow lama) — upload SATU file per request.
+     * FLOW BARU memakai uploadItems() (bulk, maks 5 gambar/kirim) pada halaman
+     * validasi. Method ini ditinggal agar logic lama tidak terhapus.
      */
     public function uploadItem(Request $request, SuratSpd $surat)
     {
@@ -224,7 +258,10 @@ class SpdDailyReportController extends Controller
         $nominal = (float) ($metadata['nominal'] ?? 0);
 
         $path = $this->storeStrukImage($request->file('struk'), $surat->nomor_surat);
-        $itemDate = $request->tanggal ?? $daily->tanggal;
+        // FLOW BARU (seamless): tanggal transaksi diambil dari hasil AI bila terbaca;
+        // fallback ke tanggal request, lalu ke tanggal laporan draft.
+        $aiTanggal = $this->parseAiTanggal($metadata['tanggal'] ?? null);
+        $itemDate = $aiTanggal ?? ($request->tanggal ?? $daily->tanggal->format('Y-m-d'));
         $itemCode = StrukItem::generateItemCode($kategori, $surat->nomor_surat, $itemDate);
 
         $item = StrukItem::create([
@@ -256,6 +293,141 @@ class SpdDailyReportController extends Controller
                 'keterangan' => $item->keterangan,
             ],
             'daily_report_id' => $daily->id,
+        ]);
+    }
+
+    /**
+     * POST /pelaporan/spd/{surat}/daily/items — FLOW BARU: BULK UPLOAD.
+     *
+     * Upload beberapa gambar struk sekaligus dari SATU halaman validasi.
+     * Maksimal self::MAX_BULK_UPLOAD (5) gambar per kirim — driver boleh kirim
+     * berulang (5 lagi, 5 lagi, dst) sesuai kebutuhan lapangan sehingga AI VLM
+     * tidak kewalahan saat menganalisis satu batch.
+     *
+     * SEGMENTASI:
+     *  ▶ Bila periode SPD masih BERJALAN (tanggal_kembali belum lewat) → item
+     *    disimpan sebagai DRAFT (belum tervalidasi / belum finalisasi).
+     *  ▶ Bila SPD sudah selesai & driver mau langsung final → item tetap draft,
+     *    kemudian driver menekan "Submit sebagai LPJ" (finalize) yang mengumpulkan
+     *    seluruh draft + submitted.
+     *
+     * Setiap gambar dianalisis AI → kategori & nominal otomatis.
+     */
+    public function uploadItems(Request $request, SuratSpd $surat)
+    {
+        $validator = Validator::make($request->all(), [
+            'tanggal'   => 'nullable|date',
+            'images'    => 'required|array|min:1|max:' . self::MAX_BULK_UPLOAD,
+            'images.*'  => 'required|image|mimes:jpeg,png,jpg,webp|max:10240',
+        ], [
+            'images.required'   => 'Minimal 1 gambar wajib diupload.',
+            'images.max'        => 'Maksimal ' . self::MAX_BULK_UPLOAD . ' gambar per kirim. Upload lagi ' . self::MAX_BULK_UPLOAD . ' gambar berikutnya untuk lanjut.',
+            'images.*.image'    => 'File harus berupa gambar.',
+            'images.*.mimes'    => 'Format gambar harus jpeg, png, jpg, atau webp.',
+            'images.*.max'      => 'Ukuran gambar maksimal 10MB.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
+        }
+
+        $surat = $this->findSuratForUser($surat->id);
+
+        $daily = $surat->dailyReports->first(fn ($r) => $r->isDraft());
+        if (! $daily) {
+            $daily = SpdDailyReport::create([
+                'surat_spd_id' => $surat->id,
+                'user_id'      => Auth::id(),
+                'tanggal'      => $request->tanggal ?? now()->toDateString(),
+            ]);
+        }
+
+        $created = [];
+        $failed = [];
+        $urutan = $daily->strukItems()->count();
+
+        // Setiap gambar dianalisis & disimpan server-side (draft) PER FILE.
+        // Bila satu file gagal, file lain dalam batch TETAP diproses — tidak ada
+        // data yang hilang; failure dilaporkan terpisah ke frontend.
+        foreach ($request->file('images') as $index => $file) {
+            try {
+                $urutan++;
+
+                // AI/OCR — dianalisis per gambar dalam batch
+                $tmpPath = $file->store('temp/struk-ocr', 'local');
+                $absolute = Storage::disk('local')->path($tmpPath);
+                try {
+                    $result = $this->analysis->analyzeImage($absolute);
+                } finally {
+                    Storage::disk('local')->delete($tmpPath);
+                }
+
+                $kategori = StrukItem::normalizeKategori($result['kategori'] ?? 'Lainnya');
+                $metadata = $result['metadata'] ?? [];
+                $text = $result['text'] ?? '';
+                $nominal = (float) ($metadata['nominal'] ?? 0);
+
+                // FLOW BARU (seamless): tanggal transaksi otomatis dari AI (metadata tanggal),
+                // bukan pilih manual — item dikelompokkan per tanggal struk.
+                $aiTanggal = $this->parseAiTanggal($metadata['tanggal'] ?? null);
+                $itemDate = $aiTanggal ?? ($request->tanggal ?? $daily->tanggal->format('Y-m-d'));
+
+                $path = $this->storeStrukImage($file, $surat->nomor_surat);
+                $itemCode = StrukItem::generateItemCode($kategori, $surat->nomor_surat, $itemDate);
+
+                $item = StrukItem::create([
+                    'spd_id'              => $surat->id,
+                    'spd_daily_report_id' => $daily->id,
+                    'nomor_surat_spd'     => $surat->nomor_surat,
+                    'item_code'           => $itemCode,
+                    'path_image'          => $path,
+                    'struk_kategori'      => $kategori,
+                    'kategori_source'     => 'ai',
+                    'metadata_json'       => ! empty($metadata) ? $metadata : null,
+                    'nominal'             => $nominal,
+                    'tanggal'             => $itemDate,
+                    'keterangan'          => self::defaultKeterangan($kategori),
+                    'ocr_text'            => $text ?: null,
+                    'urutan'              => $urutan,
+                ]);
+
+                $created[] = [
+                    'id'         => $item->id,
+                    'slug'       => $item->slug,
+                    'item_code'  => $item->item_code,
+                    'kategori'   => $item->struk_kategori,
+                    'nominal'    => $nominal,
+                    'tanggal'    => $item->tanggal ? $item->tanggal->format('Y-m-d') : null,
+                    'url'        => \Storage::disk('public')->url($item->path_image),
+                    'keterangan' => $item->keterangan,
+                ];
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('uploadItems: file #' . $index . ' gagal diproses.', [
+                    'error' => $e->getMessage(),
+                ]);
+                $failed[] = $index + 1;
+            }
+        }
+
+        if (empty($created)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Semua ' . count($request->file('images')) . ' gambar gagal diproses. Silakan coba lagi.',
+            ], 422);
+        }
+
+        $message = count($created) . ' struk berhasil disimpan sebagai draft.';
+        if (! empty($failed)) {
+            $message .= ' ' . count($failed) . ' gagal (urutan #' . implode(', #', $failed) . ') — silakan upload ulang.';
+        }
+
+        return response()->json([
+            'success'           => true,
+            'items'             => $created,
+            'failed'            => $failed,
+            'daily_report_id'   => $daily->id,
+            'max_bulk_upload'   => self::MAX_BULK_UPLOAD,
+            'message'           => $message,
         ]);
     }
 
@@ -329,9 +501,21 @@ class SpdDailyReportController extends Controller
     }
 
     /**
-     * GET /pelaporan/spd/{surat}/validasi — halaman validasi seluruh laporan harian.
-     * Menampilkan SEMUA file yang dikirim driver; item bisa dihapus/diubah
-     * sebelum dibuat menjadi LPJ.
+     * GET /pelaporan/spd/{surat}/validasi — SATU HALAMAN PELAPORAN SPD (FLOW BARU).
+     *
+     * ============ FLOW BARU / SEGMENTASI ============
+     * View ini menjadi satu-satunya tampilan yang dipakai driver:
+     *  - Input struk (bulk, maks 5 gambar per kirim → uploadItems route).
+     *  - Menampilkan SEMUA item ter-SEGMENTASI:
+     *      ▶ DRAFT  : item yang diinput saat periode SPD berjalan, atau bulk input
+     *                 yang belum di-finalisasi. Masih bisa diubah/dihapus.
+     *      ▶ FINAL  : item dari laporan harian yang sudah dikirim (flow lama,
+     *                 status submitted) — menunggu digabung menjadi LPJ.
+     *  - Edit nominal/kategori/keterangan & hapus item (update-item/delete-item).
+     *  - Form "Submit sebagai LPJ" (finalize) menggabungkan draft + submitted.
+     *
+     * Sebelumnya (FLOW LAMA): halaman ini hanya menampilkan laporan SUBMITTED
+     * (hasil input per hari) untuk divalidasi di akhir periode.
      */
     public function validasi(SuratSpd $surat)
     {
@@ -340,20 +524,37 @@ class SpdDailyReportController extends Controller
             ->whereDoesntHave('lpjPenggantian')
             ->with([
                 'vehicle',
-                'dailyReports' => fn ($q) => $q->submitted()->orderBy('tanggal'),
+                // FLOW BARU: tampilkan SEMUA daily report (draft + submitted),
+                // bukan hanya yang submitted — agar draft tetap terlihat & diedit.
+                'dailyReports' => fn ($q) => $q->orderBy('tanggal'),
                 'dailyReports.strukItems',
             ])
             ->findOrFail($surat->id);
 
-        $submitted = $surat->dailyReports;
-        $items = $submitted->flatMap(fn ($r) => $r->strukItems);
+        // Segmentasi draft (belum final) vs submitted (siap finalisasi)
+        $drafts = $surat->dailyReports->filter(fn ($r) => $r->isDraft())->values();
+        $submitted = $surat->dailyReports->filter(fn ($r) => $r->isSubmitted())->values();
 
-        return view('pelaporan.spd.validasi', compact('surat', 'submitted', 'items'));
+        $draftItems = $drafts->flatMap(fn ($r) => $r->strukItems);
+        $submittedItems = $submitted->flatMap(fn ($r) => $r->strukItems);
+
+        // Menandakan apakah periode SPD masih berjalan → finalisasi diblokir.
+        $spdActive = ! $surat->tanggal_kembali->isPast();
+
+        return view('pelaporan.spd.validasi', compact(
+            'surat', 'drafts', 'submitted', 'draftItems', 'submittedItems', 'spdActive'
+        ));
     }
 
     /**
-     * POST /pelaporan/spd/{surat}/finalize — gabung seluruh laporan harian
+     * POST /pelaporan/spd/{surat}/finalize — gabung seluruh laporan
      * menjadi satu LPJ (fixed report) berstatus pending.
+     *
+     * ============ FLOW BARU / SEGMENTASI ============
+     * Kini mengumpulkan SELURUH item — baik dari laporan DRAFT maupun SUBMITTED.
+     * Alasannya: bulk input pasca-SPD (flow baru) menyimpan item dalam status
+     * DRAFT; ketika driver menekan "Submit sebagai LPJ", seluruh draft tersebut
+     * ikut digabung sehingga tidak perlu lagi lewat submit per hari.
      */
     public function finalize(Request $request, SuratSpd $surat)
     {
@@ -362,7 +563,8 @@ class SpdDailyReportController extends Controller
             ->whereDoesntHave('lpjPenggantian')
             ->with([
                 'vehicle',
-                'dailyReports' => fn ($q) => $q->submitted()->orderBy('tanggal'),
+                // FLOW BARU: muat SEMUA daily report (draft + submitted).
+                'dailyReports' => fn ($q) => $q->orderBy('tanggal'),
                 'dailyReports.strukItems',
             ])
             ->findOrFail($surat->id);
@@ -372,9 +574,9 @@ class SpdDailyReportController extends Controller
                 ->with('error', 'SPD belum selesai — tunggu hingga tanggal kembali lewat sebelum membuat LPJ.');
         }
 
-        $submitted = $surat->dailyReports;
-        if ($submitted->isEmpty()) {
-            return redirect()->back()->with('error', 'Belum ada laporan harian yang dikirim.');
+        $reports = $surat->dailyReports;
+        if ($reports->isEmpty()) {
+            return redirect()->back()->with('error', 'Belum ada laporan yang dikirim.');
         }
 
         $validator = Validator::make($request->all(), [
@@ -390,7 +592,8 @@ class SpdDailyReportController extends Controller
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        $allItems = $submitted->flatMap(fn ($r) => $r->strukItems);
+        // Gabungkan item dari seluruh laporan (draft + submitted) — SEGMENTASI FLOW BARU.
+        $allItems = $reports->flatMap(fn ($r) => $r->strukItems);
         $financialItems = $allItems->whereIn('struk_kategori', ['BBM', 'Tol', 'Parkir', 'Lainnya']);
 
         if ($financialItems->isEmpty()) {
@@ -400,7 +603,7 @@ class SpdDailyReportController extends Controller
 
         $totalPengeluaran = (float) $financialItems->sum('nominal');
 
-        $lpj = DB::transaction(function () use ($surat, $submitted, $allItems, $financialItems, $totalPengeluaran, $request) {
+        $lpj = DB::transaction(function () use ($surat, $allItems, $financialItems, $totalPengeluaran, $request) {
             $lpj = LpjPenggantian::create([
                 'surat_spd_id'        => $surat->id,
                 'user_id'             => Auth::id(),
@@ -448,7 +651,68 @@ class SpdDailyReportController extends Controller
         });
 
         return redirect()->route('requester.lpj.show', $lpj)
-            ->with('success', 'LPJ berhasil dibuat dari ' . $submitted->count() . ' laporan harian.');
+            ->with('success', 'LPJ berhasil dibuat dari ' . $reports->count() . ' laporan.');
+    }
+
+    /**
+     * Normalisasi tanggal transaksi hasil AI (metadata['tanggal']) → 'Y-m-d'.
+     *
+     * AI bisa mengembalikan beragam format: "2026-08-05", "05/08/2026",
+     * "08.05.2026", "5 Agustus 2026", dst. Bila tidak terbaca → null sehingga
+     * caller memakai fallback (tanggal request / laporan draft).
+     */
+    protected function parseAiTanggal(mixed $value): ?string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        $raw = trim($value);
+
+        // Terjemahkan nama bulan Indonesia (dan singkatan) ke angka agar bisa di-parse.
+        $bulanId = [
+            'januari' => '01', 'februari' => '02', 'maret' => '03',
+            'april' => '04', 'mei' => '05', 'juni' => '06',
+            'juli' => '07', 'agustus' => '08', 'september' => '09',
+            'oktober' => '10', 'november' => '11', 'desember' => '12',
+            'jan' => '01', 'feb' => '02', 'mar' => '03', 'apr' => '04',
+            'mei' => '05', 'jun' => '06', 'jul' => '07', 'agu' => '08', 'ags' => '08',
+            'sep' => '09', 'okt' => '10', 'nov' => '11', 'des' => '12',
+        ];
+        $normalized = preg_replace_callback('/\b(' . implode('|', array_keys($bulanId)) . ')\b/i', function ($m) use ($bulanId) {
+            return $bulanId[strtolower($m[1])];
+        }, $raw);
+
+        // Tahun pendek ("5-8-26") → lengkapi jadi 2026.
+        if (preg_match('/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2})\b/', $normalized, $m)) {
+            $year = ($m[3] <= 80 ? '20' : '19') . $m[3];
+            $normalized = sprintf('%s-%s-%s', $m[1], $m[2], $year);
+        }
+
+        $digits = preg_replace('/[\/\.]/', '-', $normalized);
+        $digits = preg_replace('/\s+/', ' ', $digits);
+
+        foreach (['Y-m-d', 'd-m-Y', 'j-n-Y', 'n-j-Y'] as $format) {
+            try {
+                $date = \Carbon\Carbon::createFromFormat($format, $digits);
+                if ($date && $date->format('Y') > 1970) {
+                    return $date->format('Y-m-d');
+                }
+            } catch (\Throwable $e) {
+                // lanjut format berikutnya
+            }
+        }
+
+        try {
+            $ts = strtotime($digits);
+            if ($ts !== false) {
+                return date('Y-m-d', $ts);
+            }
+        } catch (\Throwable $e) {
+            // fallback null
+        }
+
+        return null;
     }
 
     /**

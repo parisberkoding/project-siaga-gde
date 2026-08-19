@@ -84,8 +84,30 @@ Route::middleware(['auth', 'role:requester,general_affairs,dispatcher,manager'])
     Route::post('/spd', [ReportingController::class, 'storeSpd'])->name('spd.store');
     Route::post('/operational', [ReportingController::class, 'storeOperational'])->name('operational.store');
 
-    // ── Laporan harian SPD (pre-fixed report) ──
-    // Semua rute pakai route model binding (slug/kode surat) — tanpa ID.
+    // ═════════════════════════════════════════════════════════════════════════
+    //  PELAPORAN SPD — FLOW BARU: SATU HALAMAN VALIDASI (/validasi) + SEGMENTASI.
+    // ═════════════════════════════════════════════════════════════════════════
+    //
+    //  FLOW LAMA (dihide): driver wajib input struk PER HARI di halaman
+    //  /spd/{surat}/daily (+ /create /{daily}/edit), lalu submit per hari
+    //  (status submitted) dan baru bisa divalidasi menjadi LPJ di akhir periode.
+    //
+    //  FLOW BARU: laporan dipecah menjadi 2 SEGMENTASI —
+    //    ▶ DRAFT   : input struk selama periode SPD berjalan, ATAU bulk input
+    //                setelah SPD selesai tapi driver belum mau finalisasi.
+    //                Semua item tersimpan otomatis server-side dalam status draft.
+    //    ▶ FINAL   : setelah tanggal_kembali lewat, driver buka SATU halaman
+    //                validasi, bulk-upload (maks 5 gambar per kirim, bisa 5 lagi
+    //                dst), lalu langsung "Submit sebagai LPJ".
+    //
+    //  VIEW LAMA (/daily*) DIHIDE: controller pada index/create/edit kini
+    //  redirect ke pelaporan.spd.validasi. Route & logic lama TIDAK dihapus
+    //  (tetap fungsional via store/update/destroy) agar tidak ada yang rusak.
+    //
+    // ── (HIDE) Laporan harian SPD — digantikan SATU view validasi ──
+    // Route GET di bawah dialihkan (redirect) ke spd.validasi — lihat controller.
+    // Route POST/PUT/DELETE tetap dipakai sebagai cadangan/legacy.
+    // Semua rute memakai route model binding (slug/kode surat) — tanpa ID.
     Route::get('/spd/{surat}/daily', [SpdDailyReportController::class, 'index'])->name('spd.daily.index');
     Route::get('/spd/{surat}/daily/create', [SpdDailyReportController::class, 'create'])->name('spd.daily.create');
     Route::get('/spd/{surat}/daily/{daily}/edit', [SpdDailyReportController::class, 'edit'])->name('spd.daily.edit');
@@ -94,11 +116,13 @@ Route::middleware(['auth', 'role:requester,general_affairs,dispatcher,manager'])
     Route::delete('/spd/{surat}/daily/{daily}', [SpdDailyReportController::class, 'destroy'])->name('spd.daily.destroy');
 
     // AJAX item laporan harian (draft server-side, tahan refresh)
+    // upload-item = legacy 1-file; upload-items = FLOW BARU bulk (maks 5/kirim).
     Route::post('/spd/{surat}/daily/item', [SpdDailyReportController::class, 'uploadItem'])->name('spd.daily.upload-item');
+    Route::post('/spd/{surat}/daily/items', [SpdDailyReportController::class, 'uploadItems'])->name('spd.daily.upload-items');
     Route::patch('/spd/{surat}/daily/item/{item}', [SpdDailyReportController::class, 'updateItem'])->name('spd.daily.update-item');
     Route::delete('/spd/{surat}/daily/item/{item}', [SpdDailyReportController::class, 'deleteItem'])->name('spd.daily.delete-item');
 
-    // Validasi seluruh laporan harian → LPJ final
+    // SATU halaman validasi (FLOW BARU) → input struk + segmentasi draft/final → LPJ
     Route::get('/spd/{surat}/validasi', [SpdDailyReportController::class, 'validasi'])->name('spd.validasi');
     Route::post('/spd/{surat}/finalize', [SpdDailyReportController::class, 'finalize'])->name('spd.finalize');
 });

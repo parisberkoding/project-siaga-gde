@@ -59,7 +59,7 @@
                     </div>
                     <div>
                         <h5 class="mb-1 fw-bold">Laporan SPD (LPJ)</h5>
-                        <small class="text-muted">Laporkan pengeluaran per hari selama perjalanan dinas, lalu validasi untuk membuat LPJ</small>
+                        <small class="text-muted">Laporkan pengeluaran dalam satu halaman: input struk (maks 5 gambar/kirim) → segmentasi draft/final → validasi untuk membuat LPJ</small>
                     </div>
                     <i class="bi bi-chevron-right ms-auto text-muted"></i>
                 </div>
@@ -98,7 +98,7 @@
 
                 <div class="alert alert-info py-2">
                     <i class="bi bi-info-circle me-1"></i>
-                    <small>Laporkan pengeluaran <strong>per hari</strong> selama perjalanan dinas (laporan harian tersimpan otomatis, tidak hilang saat refresh). Setelah SPD selesai, klik <strong>"Validasi Seluruh Laporan untuk Membuat LPJ"</strong> untuk direview & dikirim sebagai LPJ.</small>
+                    <small>Laporkan pengeluaran lewat <strong>satu halaman validasi</strong>: struk selama SPD berjalan tersimpan otomatis sebagai <strong>draft</strong>; setelah SPD selesai cukup bulk-upload sisa struk (maks 5 gambar per kirim, bisa 5 lagi dst) lalu <strong>"Submit sebagai LPJ"</strong>.</small>
                 </div>
 
                 <div class="table-responsive">
@@ -142,16 +142,9 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <a href="{{ route('pelaporan.spd.daily.index', $surat) }}" class="btn btn-sm btn-outline-primary mb-1">
-                                        <i class="bi bi-calendar3"></i> Kelola Laporan Harian
+                                    <a href="{{ route('pelaporan.spd.validasi', $surat) }}" class="btn btn-sm btn-outline-primary mb-1">
+                                        <i class="bi bi-calendar3"></i> Lapor & Validasi SPD
                                     </a>
-                                    @if($surat->can_finalize)
-                                        <div>
-                                            <a href="{{ route('pelaporan.spd.validasi', $surat) }}" class="btn btn-sm btn-success">
-                                                <i class="bi bi-check2-square"></i> Validasi Seluruh Laporan untuk Membuat LPJ
-                                            </a>
-                                        </div>
-                                    @endif
                                 </td>
                             </tr>
                             @empty

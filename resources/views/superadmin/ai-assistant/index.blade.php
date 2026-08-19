@@ -425,7 +425,7 @@
         </div>
         <div class="ai-history-list">
             @forelse ($sessions as $s)
-                <a href="{{ route('ai-assistant.index', ['session' => $s->id]) }}"
+                <a href="{{ route('ai-assistant.index', ['session' => $s->session_key]) }}"
                    class="ai-hist-card {{ $activeSession && $activeSession->id === $s->id ? 'active' : '' }}"
                    data-session-id="{{ $s->id }}">
                     <div class="title"><i class="bi bi-chat-dots text-primary me-1"></i>{{ Str::limit($s->title ?? 'Sesi baru', 40) }}</div>
@@ -468,6 +468,8 @@
         const btnSend     = document.getElementById('btnSend');
         const sessionIdEl = document.getElementById('aiSessionId');
         const sessionLabel= document.getElementById('sessionLabel');
+
+        const chartPalette = ['#0d754b', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6', '#f97316', '#64748b'];
 
         function scrollToBottom() {
             messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -531,8 +533,6 @@
             el.textContent = text;
             return el.innerHTML;
         }
-
-        const chartPalette = ['#0d754b', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6', '#f97316', '#64748b'];
 
         function formatChartValue(spec, value) {
             if (spec.currency) {
