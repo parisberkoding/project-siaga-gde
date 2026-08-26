@@ -126,6 +126,25 @@
                                 @method('PUT')
 
                                 <div class="row mb-3">
+                                    <label for="current_password" class="col-md-4 col-lg-3 col-form-label">
+                                        Password Lama <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="col-md-8 col-lg-9">
+                                        <div class="input-group">
+                                            <input name="current_password"
+                                                   type="password"
+                                                   class="form-control @error('current_password') is-invalid @enderror"
+                                                   id="current_password"
+                                                   placeholder="Masukkan password lama"
+                                                   required>
+                                            @error('current_password')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
                                     <label for="new_password" class="col-md-4 col-lg-3 col-form-label">
                                         Password Baru <span class="text-danger">*</span>
                                     </label>

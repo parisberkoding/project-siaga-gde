@@ -36,9 +36,13 @@ use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\WeeklyCheckingController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/files/storage/{path}', [StorageFileController::class, 'serve'])
-    ->where('path', '.*')
-    ->name('storage.serve');
+// File barcode/QR disajikan untuk sesi terautentikasi (admin/dispatcher).
+// Auth wajib: file ini bisa berisi data sensitif (struk, QR surat, barcode).
+Route::middleware(['auth'])->group(function () {
+    Route::get('/files/storage/{path}', [StorageFileController::class, 'serve'])
+        ->where('path', '.*')
+        ->name('storage.serve');
+});
 
 Route::get('/tentang', function () {
     return view('pages.about');
@@ -77,9 +81,10 @@ Route::middleware(['auth'])->group(function () {
 // Di bawah permission pelaporan baru. Menangani upload struk + AI/OCR,
 // mode SPD & mode operasional dalam satu halaman.
 // ────────────────────────────────────────────────────────────────────────
-Route::middleware(['auth', 'role:requester,general_affairs,dispatcher,manager'])->prefix('pelaporan')->name('pelaporan.')->group(function () {
+Route::middleware(['auth', 'role:superadmin,requester,general_affairs,manager'])->prefix('pelaporan')->name('pelaporan.')->group(function () {
     Route::get('/', [ReportingController::class, 'index'])->name('index');
-    Route::post('/analyze-struk', [ReportingController::class, 'analyzeStruk'])->name('analyze-struk');
+    Route::post('/analyze-struk', [ReportingController::class, 'analyzeStruk'])
+        ->middleware('throttle:10,1')->name('analyze-struk');
     Route::post('/vehicle-budget', [ReportingController::class, 'vehicleBudget'])->name('vehicle-budget');
     Route::post('/spd', [ReportingController::class, 'storeSpd'])->name('spd.store');
     Route::post('/operational', [ReportingController::class, 'storeOperational'])->name('operational.store');
@@ -621,6 +626,17 @@ Route::middleware(['auth', 'role:dispatcher,superadmin'])->prefix('dispatcher')-
 });
 
 // ────────────────────────────────────────────────────────────────────────
+// EXPORT EXCEL - FORM PENGECEKAN DISPATCHER
+// Bisa diakses oleh 3 role: Superadmin, Dispatcher, dan Driver (requester).
+// ────────────────────────────────────────────────────────────────────────
+Route::middleware(['auth', 'role:requester,driver,dispatcher,superadmin'])->prefix('dispatcher')->name('dispatcher.')->group(function () {
+    Route::get('/export-checking', [DispatcherAdministrationController::class, 'exportCheckingIndex'])
+        ->name('export-checking.index');
+    Route::post('/export-checking', [DispatcherAdministrationController::class, 'exportCheckingDownload'])
+        ->name('export-checking.download');
+});
+
+// ────────────────────────────────────────────────────────────────────────
 // LUNCH MANAGEMENT — QR Attendance (PUBLIK, tanpa login)
 // QR lokasi membuka halaman attendance; scan → cari nama → submit →
 // popup "Besok makan dimana?". Endpoint dibatasi throttle karena publik.
@@ -702,9 +718,11 @@ Route::middleware(['auth', 'permission:lunch.manage'])->prefix('lunch')->name('l
 });
 
 // Self-Booking untuk semua pegawai (public — cukup masuk tanpa login)
+// Endpoint write dibatasi throttle untuk mencegah penyalahgunaan.
 Route::prefix('my')->name('my.')->group(function () {
     Route::get('/lunch-plan', [SelfBookingController::class, 'index'])->name('lunch-plan');
-    Route::post('/lunch-plan/store', [SelfBookingController::class, 'store'])->name('lunch-plan.store');
+    Route::post('/lunch-plan/store', [SelfBookingController::class, 'store'])
+        ->middleware('throttle:20,1')->name('lunch-plan.store');
 });
 
 // ────────────────────────────────────────────────────────────────────────

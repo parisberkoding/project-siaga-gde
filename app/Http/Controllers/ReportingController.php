@@ -100,6 +100,8 @@ class ReportingController extends Controller
     /**
      * POST /pelaporan/analyze-struk — AJAX OCR.
      * Mendukung 1 file (image) atau banyak file (images[]).
+     * Batasan keamanan: max 10 file x 10MB, total agregat 30MB,
+     * dan verifikasi konten gambar asli (bukan sekadar MIME header).
      */
     public function analyzeStruk(Request $request)
     {
@@ -123,8 +125,27 @@ class ReportingController extends Controller
                 ], 422);
             }
 
+            // Batasan ukuran agregat: cegah 10 x 10MB = 100MB masuk ke
+            // memori/kompresi dalam satu request (DoS).
+            $totalBytes = collect($request->file('images'))->sum(fn ($f) => $f->getSize());
+            if ($totalBytes > 30 * 1024 * 1024) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Total ukuran seluruh gambar maksimal 30MB.',
+                ], 422);
+            }
+
             $results = [];
             foreach ($request->file('images') as $index => $file) {
+                // Verifikasi konten gambar asli via GD (bukan sekadar MIME header).
+                $info = @getimagesize($file->getRealPath());
+                if ($info === false || !in_array($info[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP], true)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'File ke-' . ($index + 1) . ' bukan gambar yang valid.',
+                    ], 422);
+                }
+
                 $tmpPath = $file->store('temp/struk-ocr', 'local');
                 $absolute = Storage::disk('local')->path($tmpPath);
                 $result = $this->analysis->analyzeImage($absolute);
@@ -163,6 +184,16 @@ class ReportingController extends Controller
 
         try {
             $file = $request->file('image');
+
+            // Verifikasi konten gambar asli (anti poliglot/webp-bomb).
+            $info = @getimagesize($file->getRealPath());
+            if ($info === false || !in_array($info[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP], true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File bukan gambar yang valid.',
+                ], 422);
+            }
+
             $tmpPath = $file->store('temp/struk-ocr', 'local');
 
             $absolute = Storage::disk('local')->path($tmpPath);

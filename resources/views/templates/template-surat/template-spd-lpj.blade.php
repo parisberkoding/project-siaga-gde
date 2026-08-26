@@ -73,7 +73,6 @@
             align-items: center;
             gap: 24px;
             padding: 6px 0 10px;
-            border-bottom: 4px solid #E4222C;
         }
 
         .kop-logo { width: 82px; flex-shrink: 0; }
@@ -513,9 +512,8 @@
             @endif
         </div>
         <div class="kop-text">
-            <div class="company">GEO DIPA ENERGI</div>
-            <div class="unit">UNIT {{ strtoupper($surat->user?->defaultSite?->name ?: 'PATUHA') }}</div>
-            <div class="address"></div>
+            <div class="company">Geo Dipa Energi</div>
+            <div class="unit">{{ $surat->user?->unit?->name ?: ('Unit '.($surat->user?->defaultSite?->name ?: 'Patuha')) }}</div>
         </div>
     </div>
 
@@ -523,7 +521,7 @@
     <div class="page-subtitle">Nomor: <strong>{{ $surat->nomor_surat }}</strong></div>
 
     <p class="intro">Yang bertanda tangan dibawah ini,</p>
-x
+
     <table class="info">
         <tr>
             <td class="label">Nama</td>

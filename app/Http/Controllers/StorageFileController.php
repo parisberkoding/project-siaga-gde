@@ -8,13 +8,23 @@ class StorageFileController extends Controller
 {
     public function serve($path)
     {
-        // Sanitize path
-        $path = str_replace(['../', '..\\'], '', $path);
+        // Base directory yang boleh dilayani.
+        $base = realpath(storage_path('app/public'));
+        if ($base === false) {
+            abort(404);
+        }
 
-        // Full path
-        $fullPath = storage_path('app/public/' . $path);
+        // Resolve path ke bentuk absolut (normalisasi '..', '....//', dll).
+        $fullPath = realpath($base . DIRECTORY_SEPARATOR . $path);
 
-        if (!File::exists($fullPath)) {
+        // Path traversal: file di luar base ditolak. realpath() gagal bila
+        // segmen '..'/'....' tidak valid, dan containment check di bawah
+        // memastikan file selalu berada di dalam storage/app/public.
+        if ($fullPath === false || !str_starts_with($fullPath, $base . DIRECTORY_SEPARATOR)) {
+            abort(404);
+        }
+
+        if (!is_file($fullPath)) {
             abort(404);
         }
 

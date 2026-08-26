@@ -18,10 +18,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'csp' => \Spatie\Csp\Nonce\AddCspNonceToViews::class,
             ]);
 
-     $middleware->validateCsrfTokens(except: [
-            'api/*', // Exclude semua API routes dari CSRF
-            // atau spesifik:
-            'api/thermer-print'
+        $middleware->web(append: [
+            \App\Http\Middleware\VerifyDeviceFingerprint::class,
+            \Spatie\Csp\AddCspHeaders::class,
+            \App\Http\Middleware\SecurityHeaders::class,
+        ]);
+
+        $middleware->validateCsrfTokens(except: [
+            // Cetak thermal via window.print() tetap butuh POST tanpa token dari halaman terpisah.
+            'api/thermer-print',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -2,23 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
+use App\Exports\DispatcherCheckingExport;
+use App\Models\User;
+use App\Models\VehicleAndToolsConsumers;
 use App\Models\VehicleChecking;
 use App\Models\VehicleCheckingDetail;
 use App\Models\VehicleCheckingItemResult;
 use App\Models\VehicleCheckingSchedule;
-use App\Models\VehiclePart;
 use App\Models\VehiclePartsReplacement;
 use App\Models\VehiclePartsReplacementDetail;
 use App\Models\VehiclePartsReplacementTransaction;
-use App\Models\VehiclePartsReplacementTransactionDetail;
-use App\Models\VehicleAndToolsConsumers;
-use App\Models\DamagePhoto;
-use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DispatcherAdministrationController extends Controller
 {
@@ -122,7 +120,7 @@ class DispatcherAdministrationController extends Controller
         if ($existingCount >= $activeVehicles->count()) {
             return redirect()
                 ->route('dispatcher.dispatcher-dashboard')
-                ->with('info', 'Periode ' . $now->translatedFormat('F Y') . ' sudah di-generate untuk semua kendaraan.');
+                ->with('info', 'Periode '.$now->translatedFormat('F Y').' sudah di-generate untuk semua kendaraan.');
         }
 
         try {
@@ -183,9 +181,10 @@ class DispatcherAdministrationController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()
                 ->route('dispatcher.dispatcher-dashboard')
-                ->with('error', 'Gagal generate periode: ' . $e->getMessage());
+                ->with('error', 'Gagal generate periode: '.$e->getMessage());
         }
     }
 
@@ -240,9 +239,10 @@ class DispatcherAdministrationController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()
                 ->back()
-                ->with('error', 'Gagal memperbarui assignment: ' . $e->getMessage());
+                ->with('error', 'Gagal memperbarui assignment: '.$e->getMessage());
         }
     }
 
@@ -366,7 +366,7 @@ class DispatcherAdministrationController extends Controller
                 $q->where('needs_replacement', true)->with('vehiclePart');
             },
         ])->where('checking_detail_code', $checkingDetailCode)
-          ->firstOrFail();
+            ->firstOrFail();
 
         // Cek apakah sudah ada VPR dari pengecekan ini
         $existingVpr = VehiclePartsReplacement::where('vehicle_checking_detail_id', $detail->id)->first();
@@ -458,14 +458,15 @@ class DispatcherAdministrationController extends Controller
 
             return redirect()
                 ->route('dispatcher.replacement.show', $vpr->vpr_code)
-                ->with('success', 'Permohonan penggantian sparepart berhasil diajukan dengan ' . $selectedResults->count() . ' item.');
+                ->with('success', 'Permohonan penggantian sparepart berhasil diajukan dengan '.$selectedResults->count().' item.');
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Gagal mengajukan permohonan: ' . $e->getMessage());
+                ->with('error', 'Gagal mengajukan permohonan: '.$e->getMessage());
         }
     }
 
@@ -485,7 +486,7 @@ class DispatcherAdministrationController extends Controller
             'transaction.details',
             'transaction.driver',
         ])->where('vpr_code', $vprCode)
-          ->firstOrFail();
+            ->firstOrFail();
 
         return view('dispatcher.replacement.show', compact('replacement'));
     }
@@ -501,7 +502,7 @@ class DispatcherAdministrationController extends Controller
             'currentDriver',
             'itemResults' => fn ($q) => $q->where('needs_replacement', true)->with('vehiclePart'),
         ])->where('checking_detail_code', $checkingDetailCode)
-          ->firstOrFail();
+            ->firstOrFail();
 
         if ($detail->itemResults->isEmpty()) {
             return redirect()
@@ -522,25 +523,25 @@ class DispatcherAdministrationController extends Controller
             $nopol = $vehicle->consumerial_code;
 
             $vpr = VehiclePartsReplacement::create([
-                'vpr_code'                => VehiclePartsReplacement::generateCode($nopol),
+                'vpr_code' => VehiclePartsReplacement::generateCode($nopol),
                 'vehicle_checking_detail_id' => $detail->id,
-                'vehicle_id'              => $vehicle->id,
-                'nopol'                   => $nopol,
-                'dispatcher_id'           => Auth::id(),
-                'last_driver_id'          => $detail->current_driver_id,
-                'desired_driver_id'       => null,
-                'status'                  => 'pending',
+                'vehicle_id' => $vehicle->id,
+                'nopol' => $nopol,
+                'dispatcher_id' => Auth::id(),
+                'last_driver_id' => $detail->current_driver_id,
+                'desired_driver_id' => null,
+                'status' => 'pending',
             ]);
 
             $seq = 1;
             foreach ($detail->itemResults as $result) {
                 VehiclePartsReplacementDetail::create([
-                    'vprd_code'                    => VehiclePartsReplacementDetail::generateCode($vpr->id, $seq),
-                    'vehicle_parts_replacement_id'  => $vpr->id,
-                    'vehicle_part_id'              => $result->vehicle_part_id,
-                    'item_name'                    => $result->vehiclePart->name,
-                    'condition_status'             => $result->status,
-                    'dispatcher_notes'             => $result->notes,
+                    'vprd_code' => VehiclePartsReplacementDetail::generateCode($vpr->id, $seq),
+                    'vehicle_parts_replacement_id' => $vpr->id,
+                    'vehicle_part_id' => $result->vehicle_part_id,
+                    'item_name' => $result->vehiclePart->name,
+                    'condition_status' => $result->status,
+                    'dispatcher_notes' => $result->notes,
                 ]);
                 $seq++;
             }
@@ -549,13 +550,14 @@ class DispatcherAdministrationController extends Controller
 
             return redirect()
                 ->route('dispatcher.replacement.show', $vpr->vpr_code)
-                ->with('success', 'Permohonan penggantian sparepart berhasil diajukan otomatis dengan ' . $detail->itemResults->count() . ' item.');
+                ->with('success', 'Permohonan penggantian sparepart berhasil diajukan otomatis dengan '.$detail->itemResults->count().' item.');
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()
                 ->back()
-                ->with('error', 'Gagal mengajukan permohonan: ' . $e->getMessage());
+                ->with('error', 'Gagal mengajukan permohonan: '.$e->getMessage());
         }
     }
 
@@ -586,22 +588,23 @@ class DispatcherAdministrationController extends Controller
             'currentDriver',
             'itemResults.vehiclePart',
         ])
-        ->whereBetween('checked_at', [$dateFrom, $dateTo])
-        ->orderBy('checked_at', 'desc')
-        ->get();
+            ->whereBetween('checked_at', [$dateFrom, $dateTo])
+            ->orderBy('checked_at', 'desc')
+            ->get();
 
         // Group by vehicle
         $groupedByVehicle = $checkings->groupBy(function ($c) {
             return $c->vehicleChecking->vehicle_id ?? 0;
         });
 
-        $periodLabel = $dateFrom->translatedFormat('d M Y') . ' - ' . $dateTo->translatedFormat('d M Y');
+        $periodLabel = $dateFrom->translatedFormat('d M Y').' - '.$dateTo->translatedFormat('d M Y');
 
         $pdf = Pdf::loadView('dispatcher.export-templates.vehicle-checklist', compact(
             'vehicles', 'checkings', 'groupedByVehicle', 'periodLabel', 'dateFrom', 'dateTo'
         ))->setPaper('a4', 'landscape');
 
-        $filename = 'vehicle-checklist-' . $dateFrom->format('Ym') . '-' . $dateTo->format('Ym') . '.pdf';
+        $filename = 'vehicle-checklist-'.$dateFrom->format('Ym').'-'.$dateTo->format('Ym').'.pdf';
+
         return $pdf->download($filename);
     }
 
@@ -624,18 +627,19 @@ class DispatcherAdministrationController extends Controller
             'currentDriver',
             'itemResults.vehiclePart',
         ])
-        ->where('type', 'routine')
-        ->whereBetween('checked_at', [$dateFrom, $dateTo])
-        ->orderBy('checked_at', 'desc')
-        ->get();
+            ->where('type', 'routine')
+            ->whereBetween('checked_at', [$dateFrom, $dateTo])
+            ->orderBy('checked_at', 'desc')
+            ->get();
 
-        $periodLabel = $dateFrom->translatedFormat('d M Y') . ' - ' . $dateTo->translatedFormat('d M Y');
+        $periodLabel = $dateFrom->translatedFormat('d M Y').' - '.$dateTo->translatedFormat('d M Y');
 
         $pdf = Pdf::loadView('dispatcher.export-templates.routine-check-report', compact(
             'checkings', 'periodLabel', 'dateFrom', 'dateTo'
         ))->setPaper('a4', 'landscape');
 
-        $filename = 'routine-check-report-' . $dateFrom->format('Ym') . '-' . $dateTo->format('Ym') . '.pdf';
+        $filename = 'routine-check-report-'.$dateFrom->format('Ym').'-'.$dateTo->format('Ym').'.pdf';
+
         return $pdf->download($filename);
     }
 
@@ -659,18 +663,77 @@ class DispatcherAdministrationController extends Controller
             'itemResults.vehiclePart',
             'damagePhotos',
         ])
-        ->where('type', 'body')
-        ->whereBetween('checked_at', [$dateFrom, $dateTo])
-        ->orderBy('checked_at', 'desc')
-        ->get();
+            ->where('type', 'body')
+            ->whereBetween('checked_at', [$dateFrom, $dateTo])
+            ->orderBy('checked_at', 'desc')
+            ->get();
 
-        $periodLabel = $dateFrom->translatedFormat('d M Y') . ' - ' . $dateTo->translatedFormat('d M Y');
+        $periodLabel = $dateFrom->translatedFormat('d M Y').' - '.$dateTo->translatedFormat('d M Y');
 
         $pdf = Pdf::loadView('dispatcher.export-templates.body-check-report', compact(
             'checkings', 'periodLabel', 'dateFrom', 'dateTo'
         ))->setPaper('a4', 'landscape');
 
-        $filename = 'body-check-report-' . $dateFrom->format('Ym') . '-' . $dateTo->format('Ym') . '.pdf';
+        $filename = 'body-check-report-'.$dateFrom->format('Ym').'-'.$dateTo->format('Ym').'.pdf';
+
         return $pdf->download($filename);
+    }
+
+    // ╔═══════════════════════════════════════════════════════════════╗
+    // ║  EXPORT EXCEL - Form Pengecekan Dispatcher per Kendaraan     ║
+    // ║  Dapat diakses oleh: Superadmin, Dispatcher, dan Driver       ║
+    // ╚═══════════════════════════════════════════════════════════════╝
+
+    /**
+     * Halaman form export Excel format pengecekan dispatcher.
+     * Header/kop (nama perusahaan, unit, logo) bisa dicustom di sini.
+     */
+    public function exportCheckingIndex()
+    {
+        $vehicles = VehicleAndToolsConsumers::where('is_active', true)
+            ->orderBy('consumerial_code')
+            ->get();
+
+        $months = collect(range(1, 12))->map(fn ($m) => Carbon::create()->month($m));
+        $years = range(Carbon::now()->year - 1, Carbon::now()->year + 1);
+
+        $unitName = auth()->user()->unit?->name ?? config('siaga.report.unit_name');
+
+        return view('dispatcher.export-checking.index', compact('vehicles', 'months', 'years', 'unitName'));
+    }
+
+    /**
+     * Generate & unduh Excel format pengecekan dispatcher.
+     */
+    public function exportCheckingDownload(Request $request)
+    {
+        $request->validate([
+            'vehicle_id' => 'required|exists:vehicle_and_tools_consumers,id',
+            'month' => 'required|integer|between:1,12',
+            'year' => 'required|integer|min:2000|max:2100',
+            'logo' => 'nullable|image|mimes:png,jpg,jpeg|max:2048',
+        ], [
+            'vehicle_id.required' => 'Pilih kendaraan terlebih dahulu.',
+            'month.required' => 'Pilih bulan periode.',
+            'year.required' => 'Tahun periode wajib diisi.',
+        ]);
+
+        $vehicle = VehicleAndToolsConsumers::findOrFail($request->vehicle_id);
+        $month = Carbon::create((int) $request->year, (int) $request->month, 1);
+
+        $header = [
+            'company_name' => config('siaga.report.company_name'),
+            'unit_name' => auth()->user()->unit?->name ?? config('siaga.report.unit_name'),
+        ];
+
+        // Logo custom per-export (opsional) — fallback ke logo default/config.
+        if ($request->hasFile('logo')) {
+            $header['logo_path'] = $request->file('logo')->getRealPath();
+        }
+
+        $export = new DispatcherCheckingExport($vehicle, $month, $header);
+        $nopol = str_replace(' ', '', $vehicle->consumerial_code);
+
+        return $export->download("form-pengecekan-{$nopol}-{$month->format('Y-m')}.xlsx");
     }
 }

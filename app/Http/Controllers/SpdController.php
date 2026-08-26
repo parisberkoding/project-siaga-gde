@@ -495,7 +495,7 @@ class SpdController extends Controller
 
     public function printSurat(SuratSpd $surat)
     {
-        $surat = SuratSpd::with(['details', 'vehicle', 'user', 'approver', 'budgets'])
+        $surat = SuratSpd::with(['details', 'vehicle', 'user.unit', 'user.defaultSite', 'approver', 'budgets'])
             ->where('status', 'approved')
             ->findOrFail($surat->id);
 

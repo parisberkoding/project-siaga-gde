@@ -222,14 +222,14 @@
                         <div class="alert {{ $surat->status == 'approved' || $surat->status == 'completed' ? 'alert-success' : 'alert-danger' }} mb-0">
                             @if($surat->status == 'approved' || $surat->status == 'completed')
                                 <strong><i class="bi bi-check-circle"></i> Disetujui</strong> oleh
-                                <strong>{{ $surat->approver->nama_lengkap ?? $surat->approver->name ?? '-' }}</strong><br>
+                                <strong>{{ $surat->approver->nama_lengkap ?? $surat->approver->nama_lengkap ?? '-' }}</strong><br>
                                 <small>{{ \Carbon\Carbon::parse($surat->approved_at)->locale('id')->translatedFormat('l, d F Y') }}</small>
                                 @if($surat->lpj_deadline)
                                     <br><small class="text-muted">Deadline LPJ: {{ \Carbon\Carbon::parse($surat->lpj_deadline)->locale('id')->translatedFormat('l, d F Y') }}</small>
                                 @endif
                             @else
                                 <strong><i class="bi bi-x-circle"></i> Ditolak</strong> oleh
-                                <strong>{{ $surat->rejector->nama_lengkap ?? $surat->rejector->name ?? '-' }}</strong><br>
+                                <strong>{{ $surat->rejector->nama_lengkap ?? $surat->rejector->nama_lengkap ?? '-' }}</strong><br>
                                 <small>{{ \Carbon\Carbon::parse($surat->rejected_at)->locale('id')->translatedFormat('l, d F Y') }}</small><br>
                                 <strong>Alasan:</strong> {{ $surat->rejection_reason }}
                             @endif
@@ -332,7 +332,7 @@
 
                     <div class="mb-2">
                         <small class="text-muted">Diajukan oleh:</small><br>
-                        <strong>{{ $surat->user->nama_lengkap ?? $surat->user->name }}</strong>
+                        <strong>{{ $surat->user->nama_lengkap ?? $surat->user->nama_lengkap ?? '-' }}</strong>
                     </div>
 
                     <div class="mb-2">

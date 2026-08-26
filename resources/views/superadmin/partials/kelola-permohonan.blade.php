@@ -48,7 +48,7 @@
     </div>
     <div class="card-body">
         <!-- Sub Tabs -->
-        <ul class="nav nav-tabs sub-tabs mb-3">
+        <ul class="nav nav-tabs nav-tabs-bordered mb-3">
             <li class="nav-item">
                 <a class="nav-link {{ $tab == 'permohonan' ? 'active' : '' }}"
                    href="{{ route('superadmin.permohonan', ['tab' => 'permohonan']) }}">
@@ -112,7 +112,7 @@
 
             <!-- Table Permohonan -->
             <div class="table-responsive">
-                <table class="table table-hover table-sm">
+                <table class="table table-hover align-middle">
                     <thead class="table-light">
                         <tr>
                             <th width="100">No. Permohonan</th>
@@ -277,7 +277,7 @@
 
             <!-- Table Laporan -->
             <div class="table-responsive">
-                <table class="table table-hover table-sm">
+                <table class="table table-hover align-middle">
                     <thead class="table-light">
                         <tr>
                             <th>ID Transaksi</th>
@@ -985,24 +985,6 @@
 </script>
 
 <style>
-.sub-tabs .nav-link {
-    border: 2px solid #e9ecef;
-    color: #6c757d;
-    font-weight: 500;
-    padding: 8px 16px;
-    margin-right: 5px;
-}
-
-.sub-tabs .nav-link.active {
-    background: #ffc107;
-    border-color: #ffc107;
-    color: #000;
-}
-
-.table-sm th, .table-sm td {
-    vertical-align: middle;
-}
-
 .btn-group-sm .btn {
     padding: 0.25rem 0.5rem;
     font-size: 0.75rem;

@@ -180,13 +180,18 @@
                                         <td class="text-end">Rp {{ number_format($detail->nominal, 0, ',', '.') }}</td>
                                         <td>
                                             @if($detail->strukItem && $detail->strukItem->path_image)
-                                                <div class="d-flex align-items-center gap-2">
+                                                <div>
                                                     <a href="{{ asset('storage/' . $detail->strukItem->path_image) }}"
-                                                       target="_blank" class="btn btn-sm btn-outline-primary"
-                                                       title="Lihat struk">
-                                                        <i class="bi bi-image"></i>
+                                                       target="_blank" title="Klik untuk perbesar">
+                                                        <img src="{{ asset('storage/' . $detail->strukItem->path_image) }}"
+                                                             alt="{{ $detail->strukItem->item_code }}"
+                                                             style="height: 60px; width: auto; max-width: 120px; object-fit: cover; border: 1px solid #dee2e6; border-radius: 6px; cursor: zoom-in;"
+                                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
+                                                        <span class="d-none btn btn-sm btn-outline-primary">
+                                                            <i class="bi bi-image"></i> Lihat struk
+                                                        </span>
                                                     </a>
-                                                    <small class="text-muted font-monospace"
+                                                    <small class="d-block text-muted font-monospace mt-1"
                                                            style="font-size: 0.7rem;">{{ $detail->strukItem->item_code }}</small>
                                                 </div>
                                             @else

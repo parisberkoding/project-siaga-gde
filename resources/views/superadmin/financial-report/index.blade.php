@@ -426,7 +426,9 @@
 </section>
 
 {{-- Chart.js --}}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
+     integrity="sha384-bs/nf9FbdNouRbMiFcrcZfLXYPKiPaGVGplVbv7dLGECccEXDW+S3zjqSKR5ZEaD"
+     crossorigin="anonymous"></script>
 <script>
 // ══════════════════════════════════════════
 // Cost Trend (6 bulan)

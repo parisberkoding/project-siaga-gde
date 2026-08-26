@@ -155,7 +155,7 @@
                             </div>
                             <div class="info-pair">
                                 <div class="info-label">Diajukan Oleh</div>
-                                <div class="info-value">{{ $replacement->dispatcher->name ?? '-' }}</div>
+                                <div class="info-value">{{ $replacement->dispatcher->nama_lengkap ?? '-' }}</div>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -165,7 +165,7 @@
                             </div>
                             <div class="info-pair">
                                 <div class="info-label">Driver Terakhir</div>
-                                <div class="info-value">{{ $replacement->lastDriver->name ?? '-' }}</div>
+                                <div class="info-value">{{ $replacement->lastDriver->nama_lengkap ?? '-' }}</div>
                             </div>
                             <div class="info-pair">
                                 <div class="info-label">Dari Pengecekan</div>
@@ -187,7 +187,7 @@
                         <div class="col-md-6">
                             <div class="info-pair">
                                 <div class="info-label">Di-approve/reject Oleh</div>
-                                <div class="info-value">{{ $replacement->approver->name ?? '-' }}</div>
+                                <div class="info-value">{{ $replacement->approver->nama_lengkap ?? '-' }}</div>
                             </div>
                         </div>
                         <div class="col-md-6">

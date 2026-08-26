@@ -102,6 +102,7 @@
       <h4 class="fw-bold mb-1">Booking Mandiri Makan Siang</h4>
       <p class="text-muted mb-0">Atur jadwal makan siang untuk beberapa hari ke depan.</p>
     </div>
+    @auth
     <div class="card shadow-sm">
       <div class="card-body p-4">
         <form method="GET" id="searchForm" autocomplete="off">
@@ -120,6 +121,20 @@
         </form>
       </div>
     </div>
+    @endauth
+    @guest
+    <div class="card shadow-sm">
+      <div class="card-body p-4 text-center">
+        <i class="bi bi-qr-code text-primary" style="font-size: 3rem;"></i>
+        <h5 class="fw-bold mt-3">Gunakan link pribadi Anda</h5>
+        <p class="text-muted mb-0">
+          Untuk membuka kalender booking, gunakan link/QR pribadi yang dibagikan.
+          Link tersebut berisi identitas Anda sehingga hanya Anda yang bisa
+          melihat dan mengatur jadwal makan siang sendiri.
+        </p>
+      </div>
+    </div>
+    @endguest
   </div>
   @else
   <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">

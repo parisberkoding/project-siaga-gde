@@ -74,7 +74,7 @@
         ]],
 
         // ── Pelaporan ──
-        ['label' => 'Pelaporan BBM & SPD', 'icon' => 'bi bi-journal-text', 'route' => 'pelaporan.index', 'active' => ['pelaporan.*'], 'roles' => ['requester', 'general_affairs', 'dispatcher', 'manager']],
+        ['label' => 'Pelaporan BBM & SPD', 'icon' => 'bi bi-journal-text', 'route' => 'pelaporan.index', 'active' => ['pelaporan.*'], 'roles' => ['requester', 'general_affairs', 'manager']],
 
         // ── Master Data - Kendaraan & Alat ──
         ['label' => 'Kendaraan & Alat', 'icon' => 'bi bi-truck', 'id' => 'vehicles-nav', 'active' => ['vehicles', 'vehicles.create', 'superadmin.vehicle-activation*'], 'children' => [
@@ -127,6 +127,9 @@
 
         // ── Laporan (dispatcher) ──
         ['label' => 'Riwayat & Laporan', 'icon' => 'bi bi-clock-history', 'route' => 'dispatcher.history', 'active' => ['dispatcher.history'], 'roles' => ['dispatcher']],
+
+        // ── Export Form Pengecekan (superadmin, dispatcher, driver) ──
+        ['label' => 'Export Form Pengecekan', 'icon' => 'bi bi-file-earmark-excel', 'route' => 'dispatcher.export-checking.index', 'active' => ['dispatcher.export-checking.*'], 'roles' => ['requester', 'driver', 'dispatcher', 'superadmin']],
 
         // ── Pengecekan & Sparepart (admin/superadmin) ──
         ['label' => 'Pengecekan & Service', 'icon' => 'bi bi-wrench-adjustable', 'id' => 'staff-check-nav', 'active' => ['dispatcher.scan-vehicle*', 'dispatcher.dispatcher-scanner*', 'admin.sparepart-request.*', 'admin.service-scheduling.*', 'admin.transaction-monitoring.*', 'superadmin.vehicle-health.*'], 'children' => [

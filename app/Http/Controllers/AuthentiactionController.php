@@ -38,12 +38,11 @@ class AuthentiactionController extends Controller
 
         $validated = $request->validate([
             'username' => 'required|string|max:30|alpha_dash',
-            'password' => 'required|string|min:3|max:25'
+            'password' => 'required|string|min:1|max:100'
         ], [
             'username.required'   => 'Username harus diisi.',
             'username.alpha_dash' => 'Username tidak valid.',
-            'password.required'   => 'Password harus diisi.',
-            'password.min'        => 'Password minimal 3 karakter.'
+            'password.required'   => 'Password harus diisi.'
         ]);
 
         $user = User::where('username', strip_tags($validated['username']))->first();

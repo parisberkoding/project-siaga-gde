@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Surat Tugas - {{ $surat->nomor_surat }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
     <style>
         /* Reset & General */
         * {
@@ -14,7 +14,7 @@
         }
 
         body {
-            font-family: 'Times New Roman', Times, serif;
+            font-family: Arial, Helvetica, sans-serif;
             font-size: 11pt;
             line-height: 1.25;  /* Compressed */
             color: #000;
@@ -312,8 +312,6 @@
     .container {
         padding: 2cm 2cm;
         max-width: 100%;
-        border-top: 4px solid #E4222C;
-        border-bottom: 4px solid #62A734;
         color-adjust: exact;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
@@ -358,8 +356,6 @@
                 margin: 0 auto;
                 background: white;
                 padding: 1.5cm 2cm;
-                border-top: 4px solid #E4222C;
-                border-bottom: 4px solid #62A734;
                 box-shadow: 0 0 15px rgba(0,0,0,0.2);
             }
         }
@@ -474,10 +470,7 @@
 
                 <div class="header-text">
                     <div class="company-name">Geo Dipa Energi</div>
-                    <div class="company-unit">Unit {{ $surat->user?->defaultSite?->name ?: 'Patuha' }}</div>
-                    <div class="address">
-                        Jl. Raya Rancabolang KM. 14, Kp. Kendeng - Ds. Sugihmukti, Kec. Pasir Jambu - Kab. Bandung 40973
-                    </div>
+                    <div class="company-unit">{{ $surat->user?->unit?->name ?: ('Unit '.($surat->user?->defaultSite?->name ?: 'Patuha')) }}</div>
                 </div>
             </div>
         </div>
@@ -582,7 +575,7 @@
         <div class="signature-section">
             <div class="signature-location">{{ $surat->tanggal_surat }}</div>
             <div class="signature-title">Yang Memberi Perintah,</div>
-            <div class="signature-name" style="margin-top: 25mm">Wenny Kusumaningrum</div>
+            <div class="signature-name" style="margin-top: 25mm">{{ $surat->pemberi_tugas_nama }}</div>
             <div style="margin-top: 2px; font-size: 10pt;">{{ $surat->pemberi_tugas_jabatan }}</div>
         </div>
     </div>
@@ -597,10 +590,7 @@
             <div class="header">
 
                 <div class="company-name">Geo Dipa Energi</div>
-                <div class="company-unit">Unit {{ $surat->user?->defaultSite?->name ?: 'Patuha' }}</div>
-                <div class="address">
-                    Jl. Raya Rancabolang KM. 14, Kp. Kendeng - Ds. Sugihmukti, Kec. Pasir Jambu - Kab. Bandung 40973
-                </div>
+                <div class="company-unit">{{ $surat->user?->unit?->name ?: ('Unit '.($surat->user?->defaultSite?->name ?: 'Patuha')) }}</div>
             </div>
 
             <div class="title">Perpanjangan Surat Tugas</div>
@@ -654,7 +644,7 @@
     <div style="margin-bottom: 4px; color: #888; font-size: 7pt;">QR Code belum tersedia</div>
     @endif
 
-    <div class="signature-name">Genny Muteni Yudawinata"</div>
+    <div class="signature-name">{{ $surat->pemberi_tugas_nama }}</div>
     <div style="margin-top: 2px; font-size: 10pt;">{{ $surat->pemberi_tugas_jabatan }}</div>
 </div>
         </div>

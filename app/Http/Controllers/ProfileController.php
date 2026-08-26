@@ -18,11 +18,13 @@ class ProfileController extends Controller
     }
 
     /**
-     * Change password - versi simple (langsung ubah aja)
+     * Change password - wajib verifikasi password lama untuk mencegah
+     * pengambilalihan sesi, lalu regenerate session (anti session-fixation).
      */
     public function changePassword(Request $request)
     {
         $request->validate([
+            'current_password' => ['required', 'string'],
             'new_password' => [
                 'required',
                 'string',
@@ -30,6 +32,7 @@ class ProfileController extends Controller
                 'min:8'
             ],
         ], [
+            'current_password.required' => 'Password lama harus diisi',
             'new_password.required' => 'Password baru harus diisi',
             'new_password.confirmed' => 'Konfirmasi password tidak cocok',
             'new_password.min' => 'Password minimal 8 karakter',
@@ -37,9 +40,18 @@ class ProfileController extends Controller
 
         $user = Auth::user();
 
-        // Langsung update password aja, tanpa cek password lama
+        if (! Hash::check($request->current_password, $user->password)) {
+            return back()->withErrors([
+                'current_password' => 'Password lama tidak sesuai.',
+            ])->withInput();
+        }
+
         $user->password = Hash::make($request->new_password);
         $user->save();
+
+        // Regenerate session agar sesi lama (yang mungkin bocor) tidak berlaku lagi
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return back()->with('success', 'Password berhasil diubah!');
     }

@@ -90,11 +90,15 @@
   <script src="{{ asset('DashboardTemplates/assets/js/main.js') }}"></script>
 
   {{-- sweet alert --}}
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.23.0/dist/sweetalert2.all.min.js"
+     integrity="sha384-ms4yaO2qHEUIRbq8CXAqtz3qhnO7nYo/xAWv23Zx/iX9tT+nvVZP66kSXwT/7a0J"
+     crossorigin="anonymous"></script>
 
 
     <!-- jsPDF for PDF Generation -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+     integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk"
+     crossorigin="anonymous"></script>
 
     <!-- Epson ePOS SDK for Thermal Printer -->
     <script src="https://epson.github.io/ePOS_SDK/epos-dev.js"></script>

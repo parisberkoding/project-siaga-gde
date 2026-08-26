@@ -4,7 +4,7 @@
 
 @section('content')
 
-<link href="https://cdn.jsdelivr.net/npm/simple-datatables@latest/dist/style.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/simple-datatables@10.3.0/dist/style.css" rel="stylesheet" integrity="sha384-CinX6s1UC1GpaQwL9eKshF7JhtC8H2xchDD0dWqlCgZ8t+GCCcjluxCgmsbVpdEh" crossorigin="anonymous">
 <style>
   /* NiceAdmin Info Card Style */
   .info-card {
@@ -477,6 +477,6 @@
     document.getElementById('bulkApprovalForm').submit();
   }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/simple-datatables@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/simple-datatables@10.3.0/dist/umd/simple-datatables.min.js" integrity="sha384-BEpG7sFvcL57u3OEtietm61i9CEIOFR3zR2mlbaAtw+CyHWKNNMEJ7lb852F1iNb" crossorigin="anonymous"></script>
 
 @endsection

@@ -165,6 +165,9 @@
                             <a href="{{ route('dispatcher.replacement.index') }}" class="btn btn-outline-warning btn-sm">
                                 <i class="bi bi-tools me-1"></i> Permohonan
                             </a>
+                            <a href="{{ route('dispatcher.export-checking.index') }}" class="btn btn-outline-success btn-sm">
+                                <i class="bi bi-file-earmark-excel me-1"></i> Export Excel
+                            </a>
                         </div>
 
                     </div>
