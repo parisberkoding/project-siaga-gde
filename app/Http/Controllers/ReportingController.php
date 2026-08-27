@@ -136,6 +136,7 @@ class ReportingController extends Controller
             }
 
             $results = [];
+            $statuses = [];
             foreach ($request->file('images') as $index => $file) {
                 // Verifikasi konten gambar asli via GD (bukan sekadar MIME header).
                 $info = @getimagesize($file->getRealPath());
@@ -151,8 +152,11 @@ class ReportingController extends Controller
                 $result = $this->analysis->analyzeImage($absolute);
                 Storage::disk('local')->delete($tmpPath);
 
+                $statuses[] = $result['status'];
+
                 $results[] = [
                     'index'    => $index,
+                    'status'   => $result['status'],
                     'kategori' => $result['kategori'],
                     'metadata' => $result['metadata'],
                     'text'     => $result['text'],
@@ -160,8 +164,9 @@ class ReportingController extends Controller
             }
 
             return response()->json([
-                'success' => true,
-                'results' => $results,
+                'success'      => true,
+                'results'      => $results,
+                'has_api_limit' => in_array(ImageAnalysisService::STATUS_API_LIMIT, $statuses, true),
             ]);
         }
 
@@ -202,6 +207,7 @@ class ReportingController extends Controller
 
             return response()->json([
                 'success'  => true,
+                'status'   => $result['status'],
                 'kategori' => $result['kategori'],
                 'metadata' => $result['metadata'],
                 'text'     => $result['text'],
@@ -389,6 +395,8 @@ class ReportingController extends Controller
             'foto_files.*'     => 'required|image|mimes:jpeg,png,jpg,webp|max:10240',
             'struk_kategoris'  => 'nullable|array',
             'struk_kategoris.*' => 'nullable|string',
+            'kategori_sources' => 'nullable|array',
+            'kategori_sources.*' => 'nullable|in:ai,manual',
             'nominals'         => 'nullable|array',
             'nominals.*'       => 'nullable|numeric|min:0',
             'keterangan_s'     => 'nullable|array',
@@ -435,6 +443,7 @@ class ReportingController extends Controller
             $allNominals = $request->input('nominals', []);
             $allKeterangan = $request->input('keterangan_s', []);
             $allMetadata = $request->input('metadata_s', []);
+            $allSources = $request->input('kategori_sources', []);
             $paths = [];
 
             foreach ($allFiles as $idx => $file) {
@@ -443,6 +452,7 @@ class ReportingController extends Controller
                 $keterangan = $allKeterangan[$idx] ?? '';
                 $metadataRaw = $allMetadata[$idx] ?? '';
                 $metadata = ! empty($metadataRaw) ? json_decode($metadataRaw, true) : null;
+                $source = ($allSources[$idx] ?? 'ai') === 'manual' ? 'manual' : 'ai';
 
                 $path = $this->storeStrukImage($file, 'OPRS-' . $requestNumber);
                 $paths[] = $path;
@@ -456,7 +466,7 @@ class ReportingController extends Controller
                     'item_code'        => $itemCode,
                     'path_image'       => $path,
                     'struk_kategori'   => $kategori,
-                    'kategori_source'  => 'ai',
+                    'kategori_source'  => $source,
                     'metadata_json'    => $metadata,
                     'nominal'          => $nominal,
                     'tanggal'          => $validated['purchase_date'],

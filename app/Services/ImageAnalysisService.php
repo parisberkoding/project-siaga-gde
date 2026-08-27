@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\StrukItem;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Services\GeminiStatusService;
 
 /**
  * ImageAnalysisService
@@ -14,6 +15,10 @@ use Illuminate\Support\Facades\Log;
  * boleh mengoreksi semua field sebelum submit.
  *
  * Kontrak JSON yang dikembalikan (setiap kategori):
+ *  - status   : ok | api_limit | api_error
+ *               ok        = analisis berhasil
+ *               api_limit = kuota/rate-limit provider habis (mis. Gemini 429)
+ *               api_error = error lain (jaringan, respons tak terparse, dll.)
  *  - kategori : BBM | Tol | Parkir | Lainnya
  *  - metadata : field relevan per kategori
  *      BBM    : tanggal, nominal, volume, harga_per_liter (opsional)
@@ -24,6 +29,10 @@ use Illuminate\Support\Facades\Log;
  */
 class ImageAnalysisService
 {
+    public const STATUS_OK        = 'ok';
+    public const STATUS_API_LIMIT = 'api_limit';
+    public const STATUS_API_ERROR = 'api_error';
+
     private const SYSTEM_PROMPT = <<<'PROMPT'
 Anda adalah asisten pengolah struk/bon (receipt) untuk pelaporan operasional & SPD.
 Baca gambar dengan teliti, lalu kembalikan HANYA JSON valid tanpa teks lain:
@@ -56,19 +65,13 @@ PROMPT;
      * Analisis gambar struk.
      *
      * @param string $path Absolute path ke file gambar
-     * @return array{kategori: string, metadata: array, text: string}
+     * @return array{status: string, kategori: string, metadata: array, text: string}
      */
     public function analyzeImage(string $path): array
     {
-        $fallback = [
-            'kategori' => 'Lainnya',
-            'metadata' => ['tanggal' => null, 'nominal' => null, 'volume' => null, 'harga_per_liter' => null],
-            'text'     => '',
-        ];
-
         if (! file_exists($path)) {
             Log::warning('ImageAnalysisService: file tidak ditemukan.', ['path' => $path]);
-            return $fallback;
+            return $this->emptyResult(self::STATUS_API_ERROR);
         }
 
         $apiKey = config('imageanalysis.api_key');
@@ -77,7 +80,7 @@ PROMPT;
         if (empty($apiKey)) {
             if (config('imageanalysis.fallback_enabled')) {
                 Log::info('ImageAnalysisService: API key kosong, memakai fallback manual.');
-                return $fallback;
+                return $this->emptyResult(self::STATUS_API_ERROR);
             }
 
             throw new \RuntimeException('IMAGE_ANALYSIS_API_KEY belum dikonfigurasi di .env.');
@@ -95,11 +98,19 @@ PROMPT;
                 : $this->callOpenAiCompat($path, $apiKey);
 
             if (! $response->successful()) {
+                $limited = $this->isRateLimited($response->status(), $response->body());
+
                 Log::error('ImageAnalysisService: HTTP error.', [
-                    'status' => $response->status(),
-                    'body'   => substr($response->body(), 0, 500),
+                    'status'    => $response->status(),
+                    'api_limit' => $limited,
+                    'body'      => substr($response->body(), 0, 500),
                 ]);
-                return $fallback;
+
+                if ($limited) {
+                    GeminiStatusService::markRateLimited();
+                }
+
+                return $this->emptyResult($limited ? self::STATUS_API_LIMIT : self::STATUS_API_ERROR);
             }
 
             // Path respons berbeda: native → candidates[].content.parts[].text
@@ -110,9 +121,15 @@ PROMPT;
 
             $parsed = $this->parseContent($content);
 
-            Log::info('ImageAnalysisService: berhasil dalam ' . round(microtime(true) - $start, 2) . 's.', [
-                'kategori' => $parsed['kategori'],
-            ]);
+            if (($parsed['status']) === self::STATUS_OK) {
+                GeminiStatusService::markHealthy();
+
+                Log::info('ImageAnalysisService: berhasil dalam ' . round(microtime(true) - $start, 2) . 's.', [
+                    'kategori' => $parsed['kategori'],
+                ]);
+            } else {
+                Log::warning('ImageAnalysisService: respons model tidak dapat diparse sebagai JSON struk.');
+            }
 
             return $parsed;
 
@@ -120,8 +137,34 @@ PROMPT;
             Log::error('ImageAnalysisService: gagal. ' . $e->getMessage(), [
                 'time_ms' => round((microtime(true) - $start) * 1000),
             ]);
-            return $fallback;
+            return $this->emptyResult(self::STATUS_API_ERROR);
         }
+    }
+
+    /**
+     * Hasil kosong (prefill manual) dengan status kegagalan yang eksplisit.
+     */
+    private function emptyResult(string $status): array
+    {
+        return [
+            'status'   => $status,
+            'kategori' => 'Lainnya',
+            'metadata' => ['tanggal' => null, 'nominal' => null, 'volume' => null, 'harga_per_liter' => null],
+            'text'     => '',
+        ];
+    }
+
+    /**
+     * Deteksi rate-limit / kuota habis pada provider (mis. Gemini):
+     * HTTP 429, atau body berisi RESOURCE_EXHAUSTED / quota (bisa juga 403).
+     */
+    private function isRateLimited(int $httpStatus, string $body): bool
+    {
+        if ($httpStatus === 429) {
+            return true;
+        }
+
+        return (bool) preg_match('/RESOURCE_EXHAUSTED|quota/i', $body);
     }
 
     /**
@@ -209,10 +252,12 @@ PROMPT;
 
     /**
      * Parse teks JSON dari response model (robust terhadap backticks).
+     * @return array{status: string, kategori: string, metadata: array, text: string}
      */
     private function parseContent(string $content): array
     {
         $fallback = [
+            'status'   => self::STATUS_API_ERROR,
             'kategori' => 'Lainnya',
             'metadata' => ['tanggal' => null, 'nominal' => null, 'volume' => null, 'harga_per_liter' => null],
             'text'     => $content,
@@ -242,6 +287,7 @@ PROMPT;
         $metadata = is_array($decoded['metadata'] ?? null) ? $decoded['metadata'] : [];
 
         return [
+            'status'   => self::STATUS_OK,
             'kategori' => $kategori,
             'metadata' => [
                 'tanggal'          => $metadata['tanggal'] ?? null,

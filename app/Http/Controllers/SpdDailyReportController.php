@@ -252,9 +252,22 @@ class SpdDailyReportController extends Controller
         $result = $this->analysis->analyzeImage($absolute);
         Storage::disk('local')->delete($tmpPath);
 
-        $kategori = StrukItem::normalizeKategori($result['kategori'] ?? 'Lainnya');
-        $metadata = $result['metadata'] ?? [];
-        $text = $result['text'] ?? '';
+        // Analisis gagal (rate-limit/error): jangan buat draft dgn data kosong.
+        $status = $result['status'];
+        if ($status !== ImageAnalysisService::STATUS_OK) {
+            return response()->json([
+                'success'       => false,
+                'reason'        => $status,
+                'has_api_limit' => $status === ImageAnalysisService::STATUS_API_LIMIT,
+                'message'       => $status === ImageAnalysisService::STATUS_API_LIMIT
+                    ? 'Kuota AI (Gemini) habis sementara — silakan coba lagi nanti atau isi manual.'
+                    : 'Analisis AI gagal — silakan coba lagi atau isi manual.',
+            ], 422);
+        }
+
+        $kategori = StrukItem::normalizeKategori($result['kategori']);
+        $metadata = $result['metadata'];
+        $text = $result['text'];
         $nominal = (float) ($metadata['nominal'] ?? 0);
 
         $path = $this->storeStrukImage($request->file('struk'), $surat->nomor_surat);
@@ -319,6 +332,14 @@ class SpdDailyReportController extends Controller
             'tanggal'   => 'nullable|date',
             'images'    => 'required|array|min:1|max:' . self::MAX_BULK_UPLOAD,
             'images.*'  => 'required|image|mimes:jpeg,png,jpg,webp|max:10240',
+
+            // Data isi-manual per indeks gambar (frontend mengirim ini untuk foto
+            // yang gagal dianalisis AI, mis. karena rate-limit) — dilewati OCR.
+            'manual_data'              => 'nullable|array',
+            'manual_data.*.kategori'   => 'required|in:BBM,Tol,Parkir,Lainnya,Tambahan',
+            'manual_data.*.nominal'    => 'nullable|numeric|min:0',
+            'manual_data.*.tanggal'    => 'nullable|date',
+            'manual_data.*.keterangan' => 'nullable|string|max:500',
         ], [
             'images.required'   => 'Minimal 1 gambar wajib diupload.',
             'images.max'        => 'Maksimal ' . self::MAX_BULK_UPLOAD . ' gambar per kirim. Upload lagi ' . self::MAX_BULK_UPLOAD . ' gambar berikutnya untuk lanjut.',
@@ -329,6 +350,17 @@ class SpdDailyReportController extends Controller
 
         if ($validator->fails()) {
             return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
+        }
+
+        // Nominal wajib untuk semua kategori kecuali Tambahan (foto pendukung).
+        foreach ((array) $request->input('manual_data', []) as $i => $md) {
+            $isTambahan = ($md['kategori'] ?? '') === 'Tambahan';
+            if (! $isTambahan && (! isset($md['nominal']) || $md['nominal'] === '')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Nominal wajib diisi untuk foto #' . ((int) $i + 1) . ' (kategori ' . $md['kategori'] . ').',
+                ], 422);
+            }
         }
 
         $surat = $this->findSuratForUser($surat->id);
@@ -344,33 +376,68 @@ class SpdDailyReportController extends Controller
 
         $created = [];
         $failed = [];
+        $hasApiLimit = false;
         $urutan = $daily->strukItems()->count();
 
         // Setiap gambar dianalisis & disimpan server-side (draft) PER FILE.
         // Bila satu file gagal, file lain dalam batch TETAP diproses — tidak ada
-        // data yang hilang; failure dilaporkan terpisah ke frontend.
+        // data yang hilang; failure dilaporkan terpisah ke frontend beserta alasannya.
         foreach ($request->file('images') as $index => $file) {
             try {
                 $urutan++;
 
-                // AI/OCR — dianalisis per gambar dalam batch
-                $tmpPath = $file->store('temp/struk-ocr', 'local');
-                $absolute = Storage::disk('local')->path($tmpPath);
-                try {
-                    $result = $this->analysis->analyzeImage($absolute);
-                } finally {
-                    Storage::disk('local')->delete($tmpPath);
+                // Isi-manual (mis. setelah API limit): lewati OCR, pakai input user.
+                $manual = $request->input("manual_data.{$index}");
+                $source = 'ai';
+
+                if (is_array($manual)) {
+                    $kategori = StrukItem::normalizeKategori($manual['kategori'] ?? null);
+                    $metadata = [
+                        'nominal' => isset($manual['nominal']) && $manual['nominal'] !== '' ? (float) $manual['nominal'] : null,
+                        'volume'  => null,
+                        'tanggal' => $manual['tanggal'] ?? null,
+                    ];
+                    $text = trim((string) ($manual['keterangan'] ?? ''));
+                    $source = 'manual';
+                    $itemDate = $manual['tanggal'] ?? ($request->tanggal ?? $daily->tanggal->format('Y-m-d'));
+                } else {
+                    // AI/OCR — dianalisis per gambar dalam batch
+                    $tmpPath = $file->store('temp/struk-ocr', 'local');
+                    $absolute = Storage::disk('local')->path($tmpPath);
+                    try {
+                        $result = $this->analysis->analyzeImage($absolute);
+                    } finally {
+                        Storage::disk('local')->delete($tmpPath);
+                    }
+
+                    $status = $result['status'];
+
+                    // Analisis gagal (rate-limit/error): JANGAN buat draft dengan data kosong.
+                    // Laporkan ke frontend supaya foto ini diisi manual.
+                    if ($status !== ImageAnalysisService::STATUS_OK) {
+                        $hasApiLimit = $hasApiLimit || $status === ImageAnalysisService::STATUS_API_LIMIT;
+                        $failed[] = [
+                            'index'  => $index + 1,
+                            'reason' => $status,
+                            'message' => $status === ImageAnalysisService::STATUS_API_LIMIT
+                                ? 'Kuota AI (Gemini) habis sementara.'
+                                : 'Analisis AI gagal.',
+                        ];
+                        $urutan--;
+                        continue;
+                    }
+
+                    $kategori = StrukItem::normalizeKategori($result['kategori']);
+                    $metadata = $result['metadata'];
+                    $text = $result['text'];
+
+                    // FLOW BARU (seamless): tanggal transaksi otomatis dari AI (metadata tanggal),
+                    // bukan pilih manual — item dikelompokkan per tanggal struk.
+                    $aiTanggal = $this->parseAiTanggal($metadata['tanggal'] ?? null);
+                    $itemDate = $aiTanggal ?? ($request->tanggal ?? $daily->tanggal->format('Y-m-d'));
                 }
 
-                $kategori = StrukItem::normalizeKategori($result['kategori'] ?? 'Lainnya');
-                $metadata = $result['metadata'] ?? [];
-                $text = $result['text'] ?? '';
                 $nominal = (float) ($metadata['nominal'] ?? 0);
-
-                // FLOW BARU (seamless): tanggal transaksi otomatis dari AI (metadata tanggal),
-                // bukan pilih manual — item dikelompokkan per tanggal struk.
-                $aiTanggal = $this->parseAiTanggal($metadata['tanggal'] ?? null);
-                $itemDate = $aiTanggal ?? ($request->tanggal ?? $daily->tanggal->format('Y-m-d'));
 
                 $path = $this->storeStrukImage($file, $surat->nomor_surat);
                 $itemCode = StrukItem::generateItemCode($kategori, $surat->nomor_surat, $itemDate);
@@ -382,12 +449,12 @@ class SpdDailyReportController extends Controller
                     'item_code'           => $itemCode,
                     'path_image'          => $path,
                     'struk_kategori'      => $kategori,
-                    'kategori_source'     => 'ai',
+                    'kategori_source'     => $source,
                     'metadata_json'       => ! empty($metadata) ? $metadata : null,
                     'nominal'             => $nominal,
                     'tanggal'             => $itemDate,
-                    'keterangan'          => self::defaultKeterangan($kategori),
-                    'ocr_text'            => $text ?: null,
+                    'keterangan'          => $text !== '' ? mb_substr($text, 0, 500) : self::defaultKeterangan($kategori),
+                    'ocr_text'            => ($source === 'ai' && $text) ? $text : null,
                     'urutan'              => $urutan,
                 ]);
 
@@ -405,26 +472,28 @@ class SpdDailyReportController extends Controller
                 \Illuminate\Support\Facades\Log::warning('uploadItems: file #' . $index . ' gagal diproses.', [
                     'error' => $e->getMessage(),
                 ]);
-                $failed[] = $index + 1;
+                $failed[] = [
+                    'index'   => $index + 1,
+                    'reason'  => ImageAnalysisService::STATUS_API_ERROR,
+                    'message' => 'Gagal memproses file: ' . $e->getMessage(),
+                ];
             }
-        }
-
-        if (empty($created)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Semua ' . count($request->file('images')) . ' gambar gagal diproses. Silakan coba lagi.',
-            ], 422);
         }
 
         $message = count($created) . ' struk berhasil disimpan sebagai draft.';
         if (! empty($failed)) {
-            $message .= ' ' . count($failed) . ' gagal (urutan #' . implode(', #', $failed) . ') — silakan upload ulang.';
+            $message .= ' ' . count($failed) . ' gagal (urutan #' . implode(', #', array_column($failed, 'index')) . ').';
+            if ($hasApiLimit) {
+                $message .= ' Kuota AI terbatas — silakan isi data struk secara manual.';
+            }
         }
 
         return response()->json([
-            'success'           => true,
+            'success'           => count($created) > 0 || empty($failed),
             'items'             => $created,
-            'failed'            => $failed,
+            'failed'            => array_column($failed, 'index'),
+            'failed_details'    => $failed,
+            'has_api_limit'     => $hasApiLimit,
             'daily_report_id'   => $daily->id,
             'max_bulk_upload'   => self::MAX_BULK_UPLOAD,
             'message'           => $message,

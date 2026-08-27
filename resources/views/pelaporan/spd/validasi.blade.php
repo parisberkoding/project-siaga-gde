@@ -126,6 +126,15 @@
                         <span id="bulkFileCount" class="small text-muted"></span>
                         <div id="uploadStatus" class="small ms-auto"></div>
                     </div>
+
+                    {{-- Foto gagal dianalisis AI (mis. kuota Gemini habis) → isi manual --}}
+                    <div id="manualPendingWrap" class="mt-3 d-none">
+                        <div class="alert alert-warning py-2 small mb-2">
+                            <strong><i class="bi bi-exclamation-triangle"></i> Beberapa foto gagal dianalisis AI.</strong>
+                            Lengkapi datanya secara manual di bawah, lalu klik <em>Simpan Manual</em> — foto tetap masuk draft.
+                        </div>
+                        <div id="manualPendingList" class="d-flex flex-column gap-2"></div>
+                    </div>
                 </div>
             </div>
 
@@ -533,55 +542,211 @@
             }
         });
 
-        btnBulkUpload.addEventListener('click', async () => {
-            const files = Array.from(bulkFile.files);
-            if (!files.length) {
-                alert('Pilih minimal 1 gambar struk terlebih dahulu.');
-                return;
+    // ── Foto gagal analisis AI → kartu isi-manual (tetap tersimpan sbg draft) ──
+    let manualSeq = 0;
+
+    async function postStrukBatch(formData) {
+        const res = await fetch(bulkUploadUrl, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            body: formData
+        });
+        if (res.status === 429) return { error: 'Terlalu banyak permintaan — tunggu ±1 menit lalu coba lagi.' };
+        try { return await res.json(); } catch (e) { return { error: 'Respons server tidak valid.' }; }
+    }
+
+    function refreshManualWrap() {
+        const wrap = document.getElementById('manualPendingWrap');
+        const list = document.getElementById('manualPendingList');
+        if (wrap && list && !list.children.length) wrap.classList.add('d-none');
+    }
+
+    function queueManualEntry(file, detail) {
+        const wrap = document.getElementById('manualPendingWrap');
+        const list = document.getElementById('manualPendingList');
+        if (!wrap || !list) return;
+        wrap.classList.remove('d-none');
+
+        const card = document.createElement('div');
+        card.className = 'card border-warning shadow-sm';
+        const reasonBadge = detail.reason === 'api_limit' ? 'AI Limit — Isi Manual' : 'Gagal Analisis — Isi Manual';
+        card.innerHTML = `
+            <div class="card-body p-2 d-flex gap-2">
+                <div class="flex-shrink-0">
+                    <img class="mp-preview" alt="Preview" style="max-height:70px; max-width:90px; border-radius:4px; object-fit:cover; background:#f8f9fa;">
+                </div>
+                <div class="flex-grow-1 small">
+                    <span class="badge bg-warning text-dark">${reasonBadge}</span>
+                    <span class="text-muted" style="font-size:0.7rem;">${detail.message || ''}</span>
+                    <div class="row g-1 mt-1">
+                        <div class="col-6 col-md-3">
+                            <select class="form-select form-select-sm mp-kategori">
+                                <option value="">-- Kategori --</option>
+                                ${kategoriOptions.map(k => `<option value="${k}">${k}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <input type="number" min="0" step="1" class="form-control form-control-sm mp-nominal" placeholder="Nominal (Rp)">
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <input type="date" class="form-control form-control-sm mp-tanggal">
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <input type="text" maxlength="500" class="form-control form-control-sm mp-keterangan" placeholder="Keterangan (opsional)">
+                        </div>
+                    </div>
+                    <div class="d-flex gap-1 mt-2 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-warning mp-save"><i class="bi bi-check2"></i> Simpan Manual</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary mp-retry"><i class="bi bi-arrow-clockwise"></i> Coba Analisis Ulang</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary mp-discard">Buang</button>
+                    </div>
+                </div>
+            </div>`;
+        list.appendChild(card);
+
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = e => { const im = card.querySelector('.mp-preview'); if (im) im.src = e.target.result; };
+            reader.readAsDataURL(file);
+        }
+
+        card.querySelector('.mp-save').addEventListener('click', async () => {
+            if (!file) { alert('File tidak tersedia untuk dikirim ulang.'); return; }
+            const kategori = card.querySelector('.mp-kategori').value;
+            const nominalEl = card.querySelector('.mp-nominal');
+            if (!kategori) { alert('Pilih kategori terlebih dahulu.'); return; }
+            if (kategori !== 'Tambahan' && nominalEl.value === '') { alert('Isi nominal terlebih dahulu.'); return; }
+
+            const fd = new FormData();
+            fd.append('images[]', file);
+            fd.append('manual_data[0][kategori]', kategori);
+            if (nominalEl.value !== '') fd.append('manual_data[0][nominal]', nominalEl.value);
+            const tgl = card.querySelector('.mp-tanggal').value;
+            if (tgl) fd.append('manual_data[0][tanggal]', tgl);
+            const ket = card.querySelector('.mp-keterangan').value.trim();
+            if (ket) fd.append('manual_data[0][keterangan]', ket);
+
+            card.querySelector('.mp-save').disabled = true;
+            const data = await postStrukBatch(fd);
+            card.querySelector('.mp-save').disabled = false;
+
+            if (data.error) { alert(data.error); return; }
+            if (data.items && data.items.length) {
+                (data.items || []).forEach(item => appendItemCard(item));
+                card.remove();
+                refreshManualWrap();
+                uploadStatus.textContent = '✓ Foto disimpan manual sebagai draft.';
+                uploadStatus.className = 'small text-success';
+            } else {
+                alert(data.message || 'Gagal menyimpan. Coba lagi.');
             }
+        });
 
-            // Tanggal transaksi dibaca otomatis oleh AI — tidak dikirim manual lagi.
-            const batches = [];
-            for (let i = 0; i < files.length; i += maxBulkUpload) {
-                batches.push(files.slice(i, i + maxBulkUpload));
+        card.querySelector('.mp-retry').addEventListener('click', async () => {
+            if (!file) { alert('File tidak tersedia.'); return; }
+            const fd = new FormData();
+            fd.append('images[]', file);
+
+            const btn = card.querySelector('.mp-retry');
+            btn.disabled = true;
+            uploadStatus.textContent = 'Menganalisis ulang 1 foto...';
+            uploadStatus.className = 'small text-primary';
+
+            const data = await postStrukBatch(fd);
+            btn.disabled = false;
+
+            if (data.error) { uploadStatus.textContent = data.error; uploadStatus.className = 'small text-danger'; return; }
+            if (data.items && data.items.length) {
+                (data.items || []).forEach(item => appendItemCard(item));
+                card.remove();
+                refreshManualWrap();
+                uploadStatus.textContent = '✓ Analisis ulang berhasil.';
+                uploadStatus.className = 'small text-success';
+            } else {
+                uploadStatus.textContent = 'Analisis masih gagal — silakan isi manual.';
+                uploadStatus.className = 'small text-warning';
             }
+        });
 
-            btnBulkUpload.disabled = true;
-            for (let b = 0; b < batches.length; b++) {
-                const batch = batches[b];
-                const fd = new FormData();
-                batch.forEach((f, i) => fd.append('images[]', f));
+        card.querySelector('.mp-discard').addEventListener('click', () => {
+            card.remove();
+            refreshManualWrap();
+        });
+    }
 
-                uploadStatus.textContent = 'Mengupload batch ' + (b + 1) + '/' + batches.length + ' & menganalisis ' + batch.length + ' foto...';
-                uploadStatus.className = 'small text-primary';
+    btnBulkUpload.addEventListener('click', async () => {
+        const files = Array.from(bulkFile.files);
+        if (!files.length) {
+            alert('Pilih minimal 1 gambar struk terlebih dahulu.');
+            return;
+        }
 
-                try {
-                    const res = await fetch(bulkUploadUrl, {
-                        method: 'POST',
-                        headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-                        body: fd
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        (data.items || []).forEach(item => appendItemCard(item));
-                        const hasFailed = data.failed && data.failed.length;
-                        uploadStatus.textContent = '✓ ' + (data.message || ('Batch ' + (b + 1) + ' berhasil.'));
-                        uploadStatus.className = 'small ' + (hasFailed ? 'text-warning' : 'text-success');
-                    } else {
-                        uploadStatus.textContent = 'Batch ' + (b + 1) + ' gagal: ' + (data.message || 'terjadi kesalahan.');
-                        uploadStatus.className = 'small text-danger';
-                        break;
-                    }
-                } catch (e) {
-                    uploadStatus.textContent = 'Error koneksi saat batch ' + (b + 1) + '.';
+        // Tanggal transaksi dibaca otomatis oleh AI — tidak dikirim manual lagi.
+        const batches = [];
+        for (let i = 0; i < files.length; i += maxBulkUpload) {
+            batches.push(files.slice(i, i + maxBulkUpload));
+        }
+
+        btnBulkUpload.disabled = true;
+        for (let b = 0; b < batches.length; b++) {
+            const batch = batches[b];
+            const fd = new FormData();
+            batch.forEach((f, i) => fd.append('images[]', f));
+
+            uploadStatus.textContent = 'Mengupload batch ' + (b + 1) + '/' + batches.length + ' & menganalisis ' + batch.length + ' foto...';
+            uploadStatus.className = 'small text-primary';
+
+            try {
+                const res = await fetch(bulkUploadUrl, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    body: fd
+                });
+
+                if (res.status === 429) {
+                    uploadStatus.textContent = 'Terlalu banyak permintaan (rate limit). Tunggu ±1 menit lalu kirim ulang batch ini.';
                     uploadStatus.className = 'small text-danger';
                     break;
                 }
+
+                let data;
+                try { data = await res.json(); } catch (e) { data = null; }
+
+                if (!data) {
+                    uploadStatus.textContent = 'Batch ' + (b + 1) + ': respons server tidak valid.';
+                    uploadStatus.className = 'small text-danger';
+                    break;
+                }
+
+                (data.items || []).forEach(item => appendItemCard(item));
+
+                const failedDetails = data.failed_details || [];
+                failedDetails.forEach(det => {
+                    const fileIdx = (det.index || 1) - 1;
+                    queueManualEntry(batch[fileIdx] || null, det);
+                });
+
+                if (data.has_api_limit) {
+                    uploadStatus.textContent = '⚠ Kuota AI (Gemini) habis sementara — lengkapi foto yang gagal lewat form manual di atas.';
+                    uploadStatus.className = 'small text-warning';
+                } else if (data.success) {
+                    uploadStatus.textContent = '✓ ' + (data.message || ('Batch ' + (b + 1) + ' berhasil.'));
+                    uploadStatus.className = 'small ' + ((data.failed || []).length ? 'text-warning' : 'text-success');
+                } else {
+                    uploadStatus.textContent = 'Batch ' + (b + 1) + ' gagal: ' + (data.message || 'terjadi kesalahan.');
+                    uploadStatus.className = 'small text-danger';
+                    break;
+                }
+            } catch (e) {
+                uploadStatus.textContent = 'Error koneksi saat batch ' + (b + 1) + '.';
+                uploadStatus.className = 'small text-danger';
+                break;
             }
-            btnBulkUpload.disabled = false;
-            bulkFile.value = '';
-            document.getElementById('bulkFileCount').textContent = '';
-        });
+        }
+        btnBulkUpload.disabled = false;
+        bulkFile.value = '';
+        document.getElementById('bulkFileCount').textContent = '';
+    });
     }
 
     // Bind handler edit/hapus utk item yang sudah dirender server

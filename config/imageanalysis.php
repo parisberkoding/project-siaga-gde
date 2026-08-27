@@ -33,4 +33,11 @@ return [
     */
     'fallback_enabled' => (bool) env('IMAGE_ANALYSIS_FALLBACK', true),
 
+    /*
+    | Lama (menit) flag "Gemini kena rate-limit" bertahan di cache untuk
+    | ditampilkan sebagai banner peringatan ke superadmin/admin/GA. Flag
+    | hilang lebih cepat bila ada panggilan analisis yang berhasil lagi.
+    */
+    'rate_limit_flag_ttl' => (int) env('IMAGE_ANALYSIS_RATE_LIMIT_TTL', 60),
+
 ];

@@ -516,9 +516,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: fd
             });
+
+            if (res.status === 429) {
+                statusEl.textContent = '⚠ Terlalu banyak permintaan analisis (rate limit). Silakan isi kategori & nominal secara manual.';
+                statusEl.className = 'item-ai-status small text-warning';
+                return;
+            }
+
             const data = await res.json();
 
-            if (data.success) {
+            if (data.success && data.status === 'ok') {
                 const kategori = data.kategori;
                 const metadata = data.metadata || {};
                 const nominal = metadata.nominal;
@@ -542,12 +549,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 statusEl.textContent = '✓ AI mendeteksi: ' + kategoriLabel(kategori) + '. Periksa hasil lalu simpan.';
                 statusEl.className = 'item-ai-status small text-success';
                 calculateTotal();
+            } else if (data.success && data.status === 'api_limit') {
+                card.querySelector('.item-kategori-source').value = 'manual';
+                statusEl.textContent = '⚠ Kuota AI (Gemini) habis sementara — silakan isi kategori & nominal secara manual di atas.';
+                statusEl.className = 'item-ai-status small text-warning';
+            } else if (data.success) {
+                card.querySelector('.item-kategori-source').value = 'manual';
+                statusEl.textContent = '⚠ Analisis AI gagal membaca struk — silakan isi kategori & nominal secara manual di atas.';
+                statusEl.className = 'item-ai-status small text-warning';
             } else {
                 statusEl.textContent = 'Gagal: ' + (data.message || 'analisis tidak tersedia');
                 statusEl.className = 'item-ai-status small text-danger';
             }
         } catch (err) {
-            statusEl.textContent = 'Error koneksi';
+            statusEl.textContent = 'Error koneksi — coba analisis ulang, atau isi kategori & nominal secara manual.';
             statusEl.className = 'item-ai-status small text-danger';
         }
     }

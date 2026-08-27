@@ -205,6 +205,18 @@
                             {{-- Preview & hasil AI per file --}}
                             <div id="aiResultsOp" class="d-flex flex-column gap-2 mb-3"></div>
 
+                            {{-- Peringatan API limit --}}
+                            <div id="aiLimitAlertOp" class="alert alert-warning py-2 small d-none">
+                                <strong><i class="bi bi-exclamation-triangle"></i> Layanan AI (Gemini) sedang mencapai batas kuota.</strong>
+                                Silakan isi data struk secara manual pada foto yang ditandai, lalu kirim laporan seperti biasa.
+                            </div>
+
+                            {{-- Panel rekap manual (muncul hanya saat ada foto yang perlu diisi manual) --}}
+                            <div id="manualRekapOp" class="border border-warning rounded p-2 mb-3 d-none bg-warning-subtle">
+                                <div class="small fw-semibold mb-1"><i class="bi bi-pencil-square"></i> Rekap Laporan — koreksi/isi manual</div>
+                                <div class="row g-2" id="manualRekapFieldsOp"></div>
+                            </div>
+
                             {{-- Field auto-filled (hidden, dari AI) --}}
                             <input type="hidden" name="purchase_date" id="purchaseDateOp"
                                    value="{{ old('purchase_date', now()->format('Y-m-d')) }}">
@@ -233,6 +245,7 @@
                             <li>Upload foto struk & tambahan (odometer, dashboard) — AI otomatis mengkategorikan</li>
                             <li>Foto odometer/dashboard = <span class="badge bg-warning text-dark">Tambahan</span> (bukan struk)</li>
                             <li>Periksa hasil AI, lalu klik <strong>Kirim Laporan</strong></li>
+                            <li>Bila AI limit/gagal analisis, <strong>isi manual</strong> pada foto yang ditandai kuning — laporan tetap bisa dikirim</li>
                             <li>1 permohonan = 1 laporan BBM</li>
                         </ul>
                     </div>
@@ -320,6 +333,145 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ── Operasional: multi-file upload + batch AI analysis ──
     const fotoFilesOp = document.getElementById('fotoFilesOp');
+    // State per indeks file:
+    // { status:'ai_ok'|'manual', kategori, nominal, volume, tanggal, el:{...} }
+    let fileState = {};
+
+    function num(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+
+    function effKategori(s) { return s.status === 'ai_ok' ? (s.kategori || 'Lainnya') : (s.kategori || ''); }
+
+    function setMainField(id, value) {
+        const el = document.getElementById(id);
+        if (!el || el.dataset.userEdited === '1') return;
+        el.value = value;
+    }
+
+    function recomputeTotals() {
+        let totalNominal = 0, totalVolume = 0, mainTanggal = null;
+
+        Object.values(fileState).forEach(s => {
+            if (!s) return;
+            const kat = effKategori(s);
+            if (!kat) return;
+            if (kat === 'BBM') {
+                totalNominal += num(s.nominal);
+                totalVolume += num(s.volume);
+                if (!mainTanggal && s.tanggal) mainTanggal = s.tanggal;
+            } else if (kat !== 'Tambahan') {
+                totalNominal += num(s.nominal);
+            }
+        });
+
+        setMainField('nominalOp', totalNominal > 0 ? totalNominal : '');
+        setMainField('volumeOp', totalVolume > 0 ? totalVolume : '');
+
+        if (mainTanggal) {
+            const d = new Date(mainTanggal);
+            if (!isNaN(d)) setMainField('purchaseDateOp', d.toISOString().slice(0, 10));
+        }
+    }
+
+    // Pindahkan field utama (tanggal/volume/nominal) dari hidden ke panel rekap
+    // yang terlihat — hanya saat ada foto yang harus diisi manual.
+    function buildManualRekap() {
+        const panel = document.getElementById('manualRekapOp');
+        const wrap = document.getElementById('manualRekapFieldsOp');
+        if (!panel || !wrap || wrap.childElementCount > 0) return;
+        panel.classList.remove('d-none');
+
+        const specs = [
+            { id: 'purchaseDateOp', label: 'Tanggal Pengisian', type: 'date', required: true },
+            { id: 'volumeOp', label: 'Volume BBM (liter)', type: 'number', step: '0.01', min: '0', required: true },
+            { id: 'nominalOp', label: 'Nominal Total (Rp)', type: 'number', min: '0', step: '1', required: false },
+        ];
+        specs.forEach(sp => {
+            const el = document.getElementById(sp.id);
+            el.type = sp.type;
+            el.className = 'form-control form-control-sm';
+            if (sp.step) el.step = sp.step;
+            if (sp.min !== undefined) el.min = sp.min;
+            const col = document.createElement('div');
+            col.className = 'col-12 col-md-4';
+            col.innerHTML = `<label class="form-label small mb-1">${sp.label} ${sp.required ? '<span class="text-danger">*</span>' : ''}</label>`;
+            col.appendChild(el);
+            wrap.appendChild(col);
+
+            el.addEventListener('input', () => { el.dataset.userEdited = '1'; });
+        });
+    }
+
+    function syncHiddenFields(fieldsWrap) {
+        fieldsWrap.innerHTML = '';
+        Object.keys(fileState).sort((a, b) => a - b).forEach(i => {
+            const s = fileState[i];
+            if (!s) return;
+            const kat = effKategori(s);
+            const nom = s.status === 'ai_ok' ? (s.nominal || 0) : (s.nominal === '' ? '' : s.nominal);
+            const ket = s.status === 'ai_ok' ? (s.text || '').substring(0, 200) : '';
+            const meta = JSON.stringify({
+                kategori: kat,
+                metadata: { tanggal: s.tanggal || null, nominal: nom === '' ? null : num(nom), volume: num(s.volume) || null },
+                text: s.status === 'ai_ok' ? (s.text || '') : '',
+                source: s.status,
+            });
+            const div = document.createElement('div');
+            div.innerHTML =
+                `<input type="hidden" name="struk_kategoris[${i}]" value="${kat}">` +
+                `<input type="hidden" name="nominals[${i}]" value="${nom}">` +
+                `<input type="hidden" name="keterangan_s[${i}]" value="${ket.replace(/"/g, '&quot;')}">` +
+                `<input type="hidden" name="kategori_sources[${i}]" value="${s.status === 'ai_ok' ? 'ai' : 'manual'}">` +
+                `<input type="hidden" name="metadata_s[${i}]" value='${meta.replace(/'/g, '&#39;')}'>`;
+            fieldsWrap.appendChild(div);
+        });
+    }
+
+    function renderManualInputs(card, idx) {
+        const detailEl = card.querySelector('.file-ai-detail');
+        detailEl.innerHTML = `
+            <div class="row g-1 mt-1">
+                <div class="col-12 col-md-5">
+                    <select class="form-select form-select-sm m-kategori">
+                        <option value="">-- Pilih Kategori --</option>
+                        <option value="BBM">Struk BBM</option>
+                        <option value="Tol">Struk Tol</option>
+                        <option value="Parkir">Struk Parkir</option>
+                        <option value="Lainnya">Struk Lainnya</option>
+                        <option value="Tambahan">Tambahan (bukan struk)</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <input type="number" min="0" step="1" class="form-control form-control-sm m-nominal" placeholder="Nominal (Rp)">
+                </div>
+                <div class="col-6 col-md-2 m-volume-wrap d-none">
+                    <input type="number" min="0" step="0.01" class="form-control form-control-sm m-volume" placeholder="Liter">
+                </div>
+                <div class="col-6 offset-md-2 col-md-2">
+                    <input type="date" class="form-control form-control-sm m-tanggal" title="Tanggal transaksi">
+                </div>
+            </div>`;
+
+        const st = fileState[idx];
+        st.el = {
+            kategori: detailEl.querySelector('.m-kategori'),
+            nominal: detailEl.querySelector('.m-nominal'),
+            volume: detailEl.querySelector('.m-volume'),
+            tanggal: detailEl.querySelector('.m-tanggal'),
+            volWrap: detailEl.querySelector('.m-volume-wrap'),
+        };
+
+        st.el.kategori.addEventListener('change', function() {
+            st.kategori = this.value;
+            const isBbm = this.value === 'BBM';
+            st.el.volWrap.classList.toggle('d-none', !isBbm);
+            if (!isBbm) st.volume = '';
+            recomputeTotals();
+        });
+        st.el.nominal.addEventListener('input', function() { st.nominal = this.value; recomputeTotals(); });
+        st.el.volume.addEventListener('input', function() { st.volume = this.value; recomputeTotals(); });
+        st.el.tanggal.addEventListener('change', function() { st.tanggal = this.value; recomputeTotals(); });
+    }
+
     if (fotoFilesOp) {
         fotoFilesOp.addEventListener('change', async function() {
             const files = Array.from(this.files);
@@ -332,11 +484,12 @@ document.addEventListener('DOMContentLoaded', function() {
             fieldsWrap.innerHTML = '';
             status.textContent = '';
             status.className = 'small';
+            fileState = {};
+            document.getElementById('aiLimitAlertOp').classList.add('d-none');
 
             if (files.length === 0) return;
 
             // Buat card preview untuk setiap file
-            const results = [];
             files.forEach((file, idx) => {
                 const card = document.createElement('div');
                 card.className = 'card border-light shadow-sm';
@@ -380,20 +533,51 @@ document.addEventListener('DOMContentLoaded', function() {
 
             try {
                 const res = await fetch(analyzeUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }, body: fd });
-                const data = await res.json();
 
-                if (data.success && data.results) {
-                    // Isi total nominal dari struk BBM
-                    let totalNominal = 0;
-                    let totalVolume = 0;
-                    let mainTanggal = null;
+                if (res.status === 429) {
+                    status.textContent = 'Terlalu banyak permintaan analisis (rate limit). Tunggu ±1 menit lalu upload ulang, atau lanjutkan dengan pengisian manual.';
+                    status.className = 'small text-danger';
+                    return;
+                }
 
-                    data.results.forEach((r, idx) => {
-                        const card = document.getElementById('fileCard' + idx);
-                        if (!card) return;
+                let data;
+                try {
+                    data = await res.json();
+                } catch (e) {
+                    status.textContent = 'Respons server tidak valid. Coba lagi.';
+                    status.className = 'small text-danger';
+                    return;
+                }
+
+                if (!(data.success && data.results)) {
+                    status.textContent = 'Gagal: ' + (data.message || 'analisis tidak tersedia');
+                    status.className = 'small text-danger';
+                    return;
+                }
+
+                let hasApiLimit = !!data.has_api_limit;
+                let hasApiError = false;
+
+                data.results.forEach((r, idx) => {
+                    const card = document.getElementById('fileCard' + idx);
+                    if (!card) return;
+
+                    const statusOk = r.status === 'ok';
+
+                    if (statusOk) {
                         const kategori = r.kategori || 'Lainnya';
                         const metadata = r.metadata || {};
                         const text = r.text || '';
+
+                        fileState[idx] = {
+                            status: 'ai_ok',
+                            kategori,
+                            nominal: metadata.nominal || 0,
+                            volume: metadata.volume || 0,
+                            tanggal: metadata.tanggal || '',
+                            text,
+                            el: null,
+                        };
 
                         // Badge & nominal
                         const badge = card.querySelector('.file-ai-badge');
@@ -415,49 +599,104 @@ document.addEventListener('DOMContentLoaded', function() {
                         const statusEl = card.querySelector('.file-ai-status');
                         statusEl.textContent = '✓';
                         statusEl.className = 'file-ai-status text-success ms-1';
+                    } else {
+                        // api_limit / api_error → mode isi manual untuk foto ini
+                        if (r.status === 'api_limit') hasApiLimit = true; else hasApiError = true;
 
-                        // Hidden fields
-                        const idxStr = idx.toString();
-                        fieldsWrap.innerHTML += `
-                            <input type="hidden" name="struk_kategoris[${idxStr}]" value="${kategori}">
-                            <input type="hidden" name="nominals[${idxStr}]" value="${metadata.nominal || 0}">
-                            <input type="hidden" name="keterangan_s[${idxStr}]" value="${text ? text.substring(0, 200) : ''}">
-                            <input type="hidden" name="metadata_s[${idxStr}]" value='${JSON.stringify({ kategori, metadata, text })}'>
-                        `;
+                        fileState[idx] = { status: 'manual', kategori: '', nominal: '', volume: '', tanggal: '', text: '', el: null };
 
-                        // Accumulate
-                        if (kategori === 'BBM') {
-                            totalNominal += metadata.nominal || 0;
-                            totalVolume += metadata.volume || 0;
-                            if (metadata.tanggal && !mainTanggal) mainTanggal = metadata.tanggal;
-                        } else if (kategori !== 'Tambahan') {
-                            totalNominal += metadata.nominal || 0;
-                        }
-                    });
+                        card.classList.remove('border-light');
+                        card.classList.add('needs-manual', 'border-warning');
 
-                    // Auto-fill main hidden fields (BBM pertama)
-                    if (totalNominal > 0) {
-                        document.getElementById('nominalOp').value = totalNominal;
+                        const badge = card.querySelector('.file-ai-badge');
+                        badge.textContent = r.status === 'api_limit' ? 'AI Limit — Isi Manual' : 'Gagal Analisis — Isi Manual';
+                        badge.className = 'badge file-ai-badge bg-warning text-dark';
+                        card.querySelector('.file-ai-nominal').textContent = '';
+                        card.querySelector('.file-ai-text').textContent = '';
+
+                        const statusEl = card.querySelector('.file-ai-status');
+                        statusEl.textContent = '⚠';
+                        statusEl.className = 'file-ai-status text-warning ms-1';
+
+                        renderManualInputs(card, idx);
                     }
-                    if (totalVolume > 0) {
-                        document.getElementById('volumeOp').value = totalVolume;
-                    }
-                    if (mainTanggal) {
-                        const d = new Date(mainTanggal);
-                        if (!isNaN(d)) {
-                            document.getElementById('purchaseDateOp').value = d.toISOString().slice(0, 10);
-                        }
-                    }
+                });
 
+                syncHiddenFields(fieldsWrap);
+                recomputeTotals();
+
+                if (hasApiLimit || hasApiError) {
+                    const alertEl = document.getElementById('aiLimitAlertOp');
+                    alertEl.innerHTML = hasApiLimit
+                        ? '<strong><i class="bi bi-exclamation-triangle"></i> Layanan AI (Gemini) sedang mencapai batas kuota.</strong> Silakan isi data secara manual pada foto yang ditandai kuning, lalu kirim laporan seperti biasa.'
+                        : '<strong><i class="bi bi-exclamation-triangle"></i> Sebagian foto gagal dianalisis AI.</strong> Silakan lengkapi data secara manual pada foto yang ditandai.';
+                    alertEl.classList.remove('d-none');
+                    buildManualRekap();
+                }
+
+                const manualCount = Object.values(fileState).filter(s => s.status === 'manual').length;
+                if (manualCount > 0) {
+                    status.textContent = `${data.results.length - manualCount}/${data.results.length} foto dianalisis AI • ${manualCount} foto perlu diisi manual.`;
+                    status.className = 'small text-warning';
+                } else {
                     status.textContent = `✓ ${data.results.length} foto dianalisis. Periksa hasil lalu kirim laporan.`;
                     status.className = 'small text-success';
-                } else {
-                    status.textContent = 'Gagal: ' + (data.message || 'analisis tidak tersedia');
-                    status.className = 'small text-danger';
                 }
             } catch (e) {
-                status.textContent = 'Error koneksi';
+                status.textContent = 'Error koneksi — periksa jaringan lalu coba lagi.';
                 status.className = 'small text-danger';
+            }
+        });
+    }
+
+    // ── Operasional: blokir submit bila ada foto yang belum diisi manual ──
+    const formOperational = document.getElementById('formOperational');
+    if (formOperational) {
+        formOperational.addEventListener('submit', function(e) {
+            const problems = [];
+
+            Object.entries(fileState).forEach(([idx, s]) => {
+                if (!s || s.status !== 'manual') return;
+                const n = parseInt(idx, 10) + 1;
+                if (!s.kategori) {
+                    problems.push(`Foto ${n}: pilih kategori struk.`);
+                    if (s.el && s.el.kategori) s.el.kategori.classList.add('is-invalid');
+                } else {
+                    if (s.el && s.el.kategori) s.el.kategori.classList.remove('is-invalid');
+                }
+                if (s.kategori && s.kategori !== 'Tambahan' && (s.nominal === '' || s.nominal === null)) {
+                    problems.push(`Foto ${n}: isi nominal.`);
+                    if (s.el && s.el.nominal) s.el.nominal.classList.add('is-invalid');
+                } else {
+                    if (s.el && s.el.nominal) s.el.nominal.classList.remove('is-invalid');
+                }
+            });
+
+            const volumeOp = document.getElementById('volumeOp');
+            const purchaseDateOp = document.getElementById('purchaseDateOp');
+            if (!((parseFloat(volumeOp && volumeOp.value) || 0) > 0)) {
+                problems.push('Volume BBM wajib diisi (minimal 0.01 liter).');
+                if (volumeOp) volumeOp.classList.add('is-invalid');
+            } else if (volumeOp) {
+                volumeOp.classList.remove('is-invalid');
+            }
+            if (!purchaseDateOp || !purchaseDateOp.value) {
+                problems.push('Tanggal pengisian wajib diisi.');
+                if (purchaseDateOp) purchaseDateOp.classList.add('is-invalid');
+            } else if (purchaseDateOp) {
+                purchaseDateOp.classList.remove('is-invalid');
+            }
+
+            if (problems.length > 0) {
+                e.preventDefault();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Lengkapi Data Manual',
+                        html: '<div style="text-align:left">' + problems.map(p => '&bull; ' + p).join('<br>') + '</div>',
+                        confirmButtonText: 'OK, saya isi',
+                    });
+                }
             }
         });
     }

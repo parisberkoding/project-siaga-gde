@@ -262,14 +262,23 @@
                     headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
                     body: fd
                 });
-                const data = await res.json();
-                if (data.success) {
-                    appendItemCard(data.item);
-                    status.textContent = '✓ Foto tersimpan (draft server-side).';
-                    status.className = 'small text-success';
+                let data = null;
+                if (res.status === 429) {
+                    status.textContent = 'Terlalu banyak permintaan (rate limit) — tunggu sebentar lalu coba lagi.';
+                    status.className = 'small text-warning';
                 } else {
-                    status.textContent = 'Gagal: ' + (data.message || 'terjadi kesalahan.');
-                    status.className = 'small text-danger';
+                    try { data = await res.json(); } catch (e) { data = null; }
+                    if (data && data.success) {
+                        appendItemCard(data.item);
+                        status.textContent = '✓ Foto tersimpan (draft server-side).';
+                        status.className = 'small text-success';
+                    } else if (data && data.has_api_limit) {
+                        status.textContent = '⚠ Kuota AI (Gemini) habis sementara — coba lagi nanti atau lanjutkan lewat halaman validasi (isi manual).';
+                        status.className = 'small text-warning';
+                    } else {
+                        status.textContent = 'Gagal: ' + ((data && data.message) || 'terjadi kesalahan.');
+                        status.className = 'small text-danger';
+                    }
                 }
             } catch (e) {
                 status.textContent = 'Error koneksi.';

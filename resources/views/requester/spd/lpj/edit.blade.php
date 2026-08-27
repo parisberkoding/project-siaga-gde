@@ -460,8 +460,15 @@ document.addEventListener('DOMContentLoaded', function() {
         fd.append('image', file);
         try {
             const res = await fetch(analyzeUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }, body: fd });
+
+            if (res.status === 429) {
+                status.textContent = '⚠ Terlalu banyak permintaan analisis (rate limit). Silakan isi data secara manual.';
+                status.className = 'item-ai-status small text-warning';
+                return;
+            }
+
             const data = await res.json();
-            if (data.success) {
+            if (data.success && data.status === 'ok') {
                 const kategori = data.kategori;
                 const metadata = data.metadata || {};
                 const text = data.text || '';
@@ -484,12 +491,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 status.textContent = '✓ ' + kategori + (metadata.nominal ? ' • ' + formatRupiah(metadata.nominal) : '');
                 status.className = 'item-ai-status small text-success';
                 calculateTotal();
+            } else if (data.success && data.status === 'api_limit') {
+                card.querySelector('.item-kategori-source').value = 'manual';
+                status.textContent = '⚠ Kuota AI (Gemini) habis sementara — silakan isi data secara manual.';
+                status.className = 'item-ai-status small text-warning';
+            } else if (data.success) {
+                card.querySelector('.item-kategori-source').value = 'manual';
+                status.textContent = '⚠ Analisis AI gagal membaca struk — silakan isi data secara manual.';
+                status.className = 'item-ai-status small text-warning';
             } else {
-                status.textContent = 'Gagal: ' + (data.message || 'tersedia');
+                status.textContent = 'Gagal: ' + (data.message || 'analisis tidak tersedia');
                 status.className = 'item-ai-status small text-danger';
             }
         } catch (e) {
-            status.textContent = 'Error koneksi';
+            status.textContent = 'Error koneksi — coba analisis ulang, atau isi data secara manual.';
             status.className = 'item-ai-status small text-danger';
         } finally {
             btn.disabled = false;

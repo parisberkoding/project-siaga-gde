@@ -64,8 +64,9 @@
   )
     @include('partials.navbar')
     @include('partials.sidebar')
+    @include('partials.gemini-status-banner')
     @else
-  
+   
     @endif
 
 
