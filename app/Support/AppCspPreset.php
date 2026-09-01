@@ -33,6 +33,7 @@ class AppCspPreset implements Preset
             ->add(Directive::SCRIPT, [
                 Keyword::SELF,
                 Keyword::UNSAFE_INLINE,
+                Keyword::UNSAFE_EVAL,
                 'https://cdn.jsdelivr.net',
                 'https://cdnjs.cloudflare.com',
                 'https://unpkg.com',

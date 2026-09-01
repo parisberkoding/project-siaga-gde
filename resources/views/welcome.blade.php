@@ -1,4 +1,4 @@
-「<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -37,8 +37,8 @@
         .navbar-gde { background: #fff; border-bottom: 1px solid var(--border); }
         .navbar-brand-img { width: 34px; height: 34px; flex-shrink: 0; }
         .navbar-brand-text { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--gde-blue); line-height: 1.1; }
-        .navbar-brand-sub { font-size: .58rem; font-weight: 600; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
-        .navbar-brand-wrap { display: flex; align-items: center; gap: 8px; text-decoration: none; min-width: 0; }
+        .navbar-brand-sub { font-size: .58rem; font-weight: 600; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .navbar-brand-wrap { display: flex; align-items: center; gap: 8px; text-decoration: none; min-width: 0; overflow: hidden; }
 
         .nav-link-custom {
             font-size: .85rem; font-weight: 500; color: var(--muted);
@@ -203,7 +203,7 @@
             .section-py { padding: 60px 0; }
             .stat-card-item { padding: 18px 8px; }
             .stat-number { font-size: 1.6rem; }
-            .navbar-brand-sub { font-size: .52rem; }
+            .navbar-brand-sub { font-size: .5rem; display: none; }
             .navbar-brand-text { font-size: .9rem; }
             .navbar-brand-img { width: 28px; height: 28px; }
             .hero-section { min-height: 400px; }
@@ -486,4 +486,4 @@
         fadeEls.forEach(el => io.observe(el));
     </script>
 </body>
-</html>」
+</html>

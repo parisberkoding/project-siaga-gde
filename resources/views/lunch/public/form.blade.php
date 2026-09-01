@@ -143,7 +143,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script nonce="{{ csp_nonce() }}">
   const lookupUrl     = @json(route('lunch.attendance.lookup'));
   const submitUrl     = @json(route('lunch.attendance.submit'));
   const chooseSiteUrl = @json(url('lunch-attendance'));
