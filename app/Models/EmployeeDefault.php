@@ -14,6 +14,7 @@ class EmployeeDefault extends Model
         'user_id',
         'employee_code',
         'employee_name',
+        'slug',
         'division',
         'position',
         'default_site_id',

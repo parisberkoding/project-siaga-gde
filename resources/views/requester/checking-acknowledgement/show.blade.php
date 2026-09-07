@@ -149,7 +149,7 @@
                     </div>
                     <div class="info-pair">
                         <div class="info-label">Diperiksa Oleh</div>
-                        <div class="info-value">{{ $detail->dispatcher->name ?? '-' }}</div>
+                        <div class="info-value">{{ $detail->dispatcher->nama_lengkap ?? '-' }}</div>
                     </div>
                     <div class="info-pair">
                         <div class="info-label">Tanggal Periksa</div>

@@ -12,7 +12,6 @@ use Carbon\Carbon;
 use Database\Seeders\RbacSeeder;
 use Database\Seeders\VehiclePartSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -83,9 +82,8 @@ it('mengekspor layout pengecekan untuk dispatcher dan driver', function () {
     }
 });
 
-it('mendukung kop kustom (nama perusahaan & logo) saat export', function () {
+it('mendukung kop kustom (nama perusahaan) saat export', function () {
     $superadmin = ($this->actor)('superadmin');
-    $logo = UploadedFile::fake()->image('kop-logo.png', 120, 120);
 
     $this->actingAs($superadmin)
         ->post(route('dispatcher.export-checking.download'), [
@@ -94,7 +92,6 @@ it('mendukung kop kustom (nama perusahaan & logo) saat export', function () {
             'year' => now()->year,
             'company_name' => 'PT. Perusahaan Contoh',
             'unit_name' => 'Divisi Operasional',
-            'logo' => $logo,
         ])
         ->assertStatus(200)
         ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

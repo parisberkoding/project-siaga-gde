@@ -54,11 +54,11 @@
         $dashboardItem ? ['label' => $dashboardItem['label'], 'icon' => $dashboardItem['icon'], 'route' => $dashboardItem['route'], 'active' => $dashboardItem['active']] : null,
 
         // ── BBM / Permohonan ──
-        ['label' => 'BBM / Permohonan', 'icon' => 'bi bi-fuel-pump', 'id' => 'bbm-nav', 'active' => ['requester-index', 'requester-history', 'admin-approval', 'superadmin.permohonan*'], 'children' => [
+        ['label' => 'BBM / Permohonan', 'icon' => 'bi bi-fuel-pump', 'id' => 'bbm-nav', 'active' => ['requester-index', 'requester-history', 'admin-dashboard', 'superadmin.permohonan*'], 'children' => [
             ['label' => 'Permohonan Baru', 'icon' => 'bi bi-circle', 'route' => 'requester-index', 'active' => ['requester-index'], 'roles' => ['requester', 'driver'], 'perms' => ['bbm.request']],
             ['label' => 'Riwayat Permohonan', 'icon' => 'bi bi-circle', 'route' => 'requester-history', 'active' => ['requester-history'], 'roles' => ['requester', 'driver'], 'perms' => ['bbm.report']],
-            ['label' => 'Approval BBM', 'icon' => 'bi bi-circle', 'route' => 'admin-approval', 'active' => ['admin-approval'], 'roles' => ['general_affairs'], 'perms' => ['bbm.approve']],
-            ['label' => 'Manajemen Permohonan', 'icon' => 'bi bi-circle', 'route' => 'superadmin.permohonan', 'active' => ['superadmin.permohonan*'], 'roles' => ['superadmin'], 'perms' => ['bbm.approve']],
+            ['label' => 'Approval Permohonan', 'icon' => 'bi bi-circle', 'route' => 'admin-dashboard', 'active' => ['admin-dashboard'], 'roles' => ['superadmin'], 'perms' => ['bbm.approve']],
+            ['label' => 'Kelola Permohonan', 'icon' => 'bi bi-circle', 'route' => 'superadmin.permohonan', 'active' => ['superadmin.permohonan*'], 'roles' => ['superadmin'], 'perms' => ['bbm.approve']],
         ]],
 
         // ── SPD Management (satu modul untuk semua role; anak di-filter per role) ──
@@ -74,7 +74,7 @@
         ]],
 
         // ── Pelaporan ──
-        ['label' => 'Pelaporan BBM & SPD', 'icon' => 'bi bi-journal-text', 'route' => 'pelaporan.index', 'active' => ['pelaporan.*'], 'roles' => ['requester', 'general_affairs', 'manager']],
+        ['label' => 'Pelaporan BBM & SPD', 'icon' => 'bi bi-journal-text', 'route' => 'pelaporan.index', 'active' => ['pelaporan.*'], 'roles' => ['requester', 'manager']],
 
         // ── Master Data - Kendaraan & Alat ──
         ['label' => 'Kendaraan & Alat', 'icon' => 'bi bi-truck', 'id' => 'vehicles-nav', 'active' => ['vehicles', 'vehicles.create', 'superadmin.vehicle-activation*'], 'children' => [

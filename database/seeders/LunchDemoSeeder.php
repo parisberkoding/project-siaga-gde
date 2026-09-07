@@ -9,6 +9,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class LunchDemoSeeder extends Seeder
 {
@@ -93,6 +94,7 @@ class LunchDemoSeeder extends Seeder
         $createdIds = [];
         foreach ($employees as $data) {
             $data['is_active'] = true;
+            $data['slug'] = Str::slug($data['employee_name']);
             $emp = EmployeeDefault::firstOrCreate(
                 ['employee_code' => $data['employee_code']],
                 $data

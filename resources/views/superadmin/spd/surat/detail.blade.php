@@ -55,6 +55,11 @@
                         @endif
                     </h5>
 
+                    @if($surat->status == 'pending')
+                    <form action="{{ route('surat.superadmin.approve', $surat) }}" method="POST" id="approveForm">
+                        @csrf
+                    @endif
+
                     {{-- Extension Badge --}}
                     @if($surat->is_extension)
                         <div class="alert alert-info py-2 mb-3">
@@ -78,14 +83,32 @@
 
                     {{-- Informasi Pemberi Tugas --}}
                     <h6 class="text-primary mb-3"><i class="bi bi-person-badge"></i> Pemberi Tugas</h6>
-                    <div class="row mb-2">
-                        <div class="col-md-4">Nama:</div>
-                        <div class="col-md-8"><strong>{{ $surat->pemberi_tugas_nama }}</strong></div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-4">Jabatan:</div>
-                        <div class="col-md-8">{{ $surat->pemberi_tugas_jabatan }}</div>
-                    </div>
+                    @if($surat->status == 'pending' && empty($surat->pemberi_tugas_nama))
+                        <div class="alert alert-warning py-2 mb-3">
+                            <i class="bi bi-info-circle"></i> Data pemberi tugas belum diisi. Silakan isi sebelum menyetujui.
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-md-4">
+                                <label class="form-label">Nama <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control form-control-sm" name="pemberi_tugas_nama"
+                                       value="{{ old('pemberi_tugas_nama') }}" required placeholder="Nama lengkap pemberi tugas">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Jabatan <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control form-control-sm" name="pemberi_tugas_jabatan"
+                                       value="{{ old('pemberi_tugas_jabatan') }}" required placeholder="Contoh: HC, GA, & Finance Manager">
+                            </div>
+                        </div>
+                    @else
+                        <div class="row mb-2">
+                            <div class="col-md-4">Nama:</div>
+                            <div class="col-md-8"><strong>{{ $surat->pemberi_tugas_nama }}</strong></div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">Jabatan:</div>
+                            <div class="col-md-8">{{ $surat->pemberi_tugas_jabatan }}</div>
+                        </div>
+                    @endif
 
                     <hr>
 
@@ -147,8 +170,6 @@
                     </div>
 
                     <hr>
-                     <form action="{{ route('surat.superadmin.approve', $surat) }}" method="POST" id="approveForm">
-                        @csrf
                         {{-- Alur sementara: budgeting per hari di-skip, cukup persetujuan --}}
                         <div class="alert alert-info py-2 mb-3">
                             <i class="bi bi-info-circle"></i>
@@ -235,6 +256,10 @@
                             @endif
                         </div>
                     @endif
+
+                    @if($surat->status == 'pending')
+                        </form>
+                    @endif
                 </div>
             </div>
 
@@ -300,7 +325,6 @@
                             <button type="button" class="btn btn-success w-100 mb-2" data-bs-toggle="modal" data-bs-target="#approveModalSurat">
                                 <i class="bi bi-check-circle"></i> Setujui Surat Tugas
                             </button>
-                        </form>
 
                         <hr>
 

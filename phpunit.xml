@@ -32,5 +32,9 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="SHEET_API_URL" value="https://script.google.com/macros/s/d-test-id/exec"/>
+        <env name="SHEET_API_TOKEN" value="test-token"/>
+        <env name="SHEET_API_TIMEOUT" value="5"/>
+        <env name="SHEET_API_LIMIT" value="500"/>
     </php>
 </phpunit>

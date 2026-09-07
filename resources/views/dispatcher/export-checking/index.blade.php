@@ -49,11 +49,11 @@
                     </div>
 
                     <p class="text-muted small mb-3">
-                        Buat format pengecekan dispatcher per kendaraan per bulan. Logo perusahaan
-                        bisa diganti di bawah (kolom Pengemudi sengaja dikosongkan untuk diisi tulis tangan).
+                        Buat format pengecekan dispatcher per kendaraan per bulan.
+                        Logo perusahaan otomatis diambil dari pengaturan sistem.
                     </p>
 
-                    <form action="{{ route('dispatcher.export-checking.download') }}" method="POST" enctype="multipart/form-data">
+                    <form action="{{ route('dispatcher.export-checking.download') }}" method="POST">
                         @csrf
 
                         {{-- Kendaraan --}}
@@ -96,33 +96,8 @@
 
                         <hr>
 
-                        {{-- Kop laporan --}}
-                        <h6 class="fw-bold text-secondary mb-2">
-                            <i class="bi bi-shop me-1"></i> Kop Laporan
-                        </h6>
-
                         <input type="hidden" name="company_name" value="{{ config('siaga.report.company_name') }}">
                         <input type="hidden" name="unit_name" value="{{ $unitName }}">
-
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Nama Perusahaan</label>
-                                <input type="text" class="form-control" value="{{ config('siaga.report.company_name') }}" disabled>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Unit / Divisi</label>
-                                <input type="text" class="form-control" value="{{ $unitName }}" disabled>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Logo Perusahaan <small class="text-muted">(opsional, ganti logo default)</small></label>
-                            <input type="file" name="logo" class="form-control" accept="image/png,image/jpeg"
-                                   aria-describedby="logoHelp">
-                            <div id="logoHelp" class="form-text">
-                                PNG/JPG maks 2 MB. Kosongkan jika ingin memakai logo default.
-                            </div>
-                        </div>
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-success">

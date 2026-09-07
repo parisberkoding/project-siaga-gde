@@ -123,6 +123,13 @@ return [
             'handler' => NullHandler::class,
         ],
 
+        'sheet-sync' => [
+            'driver' => 'single',
+            'path'   => storage_path('logs/sheet-sync.log'),
+            'level'  => env('LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,
+        ],
+
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],

@@ -39,52 +39,6 @@
         <div class="row">
             {{-- Form Utama (Left Column) --}}
             <div class="col-lg-8">
-                {{-- Pemberi Tugas (Hibrid: dari Master Pekerja / manual, level AM/Manager) --}}
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-person-badge"></i> Pemberi Tugas</h5>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Level Pemberi Tugas <span class="text-danger">*</span></label>
-                                <select class="form-select @error('pemberi_tugas_level') is-invalid @enderror" name="pemberi_tugas_level" id="pemberiLevel" required>
-                                    <option value="">-- Pilih Level --</option>
-                                    <option value="manager" {{ old('pemberi_tugas_level') == 'manager' ? 'selected' : '' }}>Manager</option>
-                                    <option value="assistant_manager" {{ old('pemberi_tugas_level') == 'assistant_manager' ? 'selected' : '' }}>Assistant Manager</option>
-                                </select>
-                                @error('pemberi_tugas_level')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Ambil dari Master Pekerja <small class="text-muted fw-normal">(opsional)</small></label>
-                                <select class="form-select" name="pemberi_employee_id" id="pemberiEmployee">
-                                    <option value="">— Input manual —</option>
-                                    @foreach($pejabatOptions as $pejabat)
-                                        <option value="{{ $pejabat->id }}"
-                                                data-nama="{{ $pejabat->employee_name }}"
-                                                data-jabatan="{{ $pejabat->position ?? '' }}"
-                                                {{ old('pemberi_employee_id') == $pejabat->id ? 'selected' : '' }}>
-                                            {{ $pejabat->employee_name }} · {{ $pejabat->position ?? 'Tanpa jabatan' }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Nama Pemberi Tugas <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control @error('pemberi_tugas_nama') is-invalid @enderror"
-                                       name="pemberi_tugas_nama" id="pemberiNama"
-                                       value="{{ old('pemberi_tugas_nama') }}" required placeholder="Nama lengkap pemberi tugas">
-                                @error('pemberi_tugas_nama')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Jabatan <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control @error('pemberi_tugas_jabatan') is-invalid @enderror"
-                                       name="pemberi_tugas_jabatan" id="pemberiJabatan"
-                                       value="{{ old('pemberi_tugas_jabatan') }}" required placeholder="Contoh: HC, GA, & Finance Manager">
-                                @error('pemberi_tugas_jabatan')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 {{-- Informasi Perjalanan --}}
                 <div class="card">
                     <div class="card-body">
@@ -311,20 +265,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize
     updateNamaRows();
     calculate();
-
-    // Autofill Pemberi Tugas dari Master Pekerja
-    const pemberiEmployee = document.getElementById('pemberiEmployee');
-    const pemberiNama = document.getElementById('pemberiNama');
-    const pemberiJabatan = document.getElementById('pemberiJabatan');
-    if (pemberiEmployee) {
-        pemberiEmployee.addEventListener('change', function () {
-            const opt = this.options[this.selectedIndex];
-            if (this.value && opt.dataset.nama) {
-                if (pemberiNama) pemberiNama.value = opt.dataset.nama;
-                if (pemberiJabatan) pemberiJabatan.value = opt.dataset.jabatan || '';
-            }
-        });
-    }
 });
 </script>
 @endsection

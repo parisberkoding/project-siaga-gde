@@ -81,7 +81,7 @@ Route::middleware(['auth'])->group(function () {
 // Di bawah permission pelaporan baru. Menangani upload struk + AI/OCR,
 // mode SPD & mode operasional dalam satu halaman.
 // ────────────────────────────────────────────────────────────────────────
-Route::middleware(['auth', 'role:superadmin,requester,general_affairs,manager'])->prefix('pelaporan')->name('pelaporan.')->group(function () {
+Route::middleware(['auth', 'role:superadmin,requester,manager'])->prefix('pelaporan')->name('pelaporan.')->group(function () {
     Route::get('/', [ReportingController::class, 'index'])->name('index');
     Route::post('/analyze-struk', [ReportingController::class, 'analyzeStruk'])
         ->middleware('throttle:10,1')->name('analyze-struk');

@@ -711,7 +711,6 @@ class DispatcherAdministrationController extends Controller
             'vehicle_id' => 'required|exists:vehicle_and_tools_consumers,id',
             'month' => 'required|integer|between:1,12',
             'year' => 'required|integer|min:2000|max:2100',
-            'logo' => 'nullable|image|mimes:png,jpg,jpeg|max:2048',
         ], [
             'vehicle_id.required' => 'Pilih kendaraan terlebih dahulu.',
             'month.required' => 'Pilih bulan periode.',
@@ -725,11 +724,6 @@ class DispatcherAdministrationController extends Controller
             'company_name' => config('siaga.report.company_name'),
             'unit_name' => auth()->user()->unit?->name ?? config('siaga.report.unit_name'),
         ];
-
-        // Logo custom per-export (opsional) — fallback ke logo default/config.
-        if ($request->hasFile('logo')) {
-            $header['logo_path'] = $request->file('logo')->getRealPath();
-        }
 
         $export = new DispatcherCheckingExport($vehicle, $month, $header);
         $nopol = str_replace(' ', '', $vehicle->consumerial_code);

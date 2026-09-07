@@ -44,19 +44,7 @@ class SpdController extends Controller
             ->orderBy('consumerial_name')
             ->get();
 
-        // Pejabat pemberi tugas (level Assistant Manager / Manager) dari Master Pekerja.
-        // Hibrid: boleh dipilih dari daftar atau diisi manual di form.
-        $pejabatOptions = EmployeeDefault::active()
-            ->where(function ($q) {
-                $q->where('position', 'like', '%manager%')
-                    ->orWhere('position', 'like', '%Manager%')
-                    ->orWhere('position', 'like', '%assistant%')
-                    ->orWhere('position', 'like', '%Assistant%');
-            })
-            ->orderBy('employee_name')
-            ->get();
-
-        return view('requester.spd.surat.create', compact('vehicles', 'pejabatOptions'));
+        return view('requester.spd.surat.create', compact('vehicles'));
     }
 
     /**
@@ -68,8 +56,6 @@ class SpdController extends Controller
     public function storeSurat(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'pemberi_tugas_nama' => 'required|string|max:255',
-            'pemberi_tugas_jabatan' => 'required|string|max:255',
             'tempat_tujuan' => 'required|string',
             'melayani_bidang' => 'required|string|max:255',
             'jumlah_pemakai' => 'required|integer|min:1|max:7',
@@ -91,10 +77,8 @@ class SpdController extends Controller
             // Get vehicle untuk nomor polisi
             $vehicle = VehicleAndToolsConsumers::findOrFail($request->vehicle_id);
 
-            // Create surat SPD TANPA budget
+            // Create surat SPD TANPA budget & TANPA pemberi tugas
             $surat = SuratSpd::create([
-                'pemberi_tugas_nama' => $request->pemberi_tugas_nama,
-                'pemberi_tugas_jabatan' => $request->pemberi_tugas_jabatan,
                 'user_id' => Auth::id(),
                 'pengemudi_nama' => Auth::user()->nama_lengkap ?? Auth::user()->name,
                 'tempat_tujuan' => $request->tempat_tujuan,
@@ -256,10 +240,21 @@ class SpdController extends Controller
                 ->with('error', 'Surat ini sudah diproses sebelumnya.');
         }
 
+        // Jika pemberi tugas belum diisi, wajib diisi saat approve
+        if (empty($surat->pemberi_tugas_nama)) {
+            $request->validate([
+                'pemberi_tugas_nama' => 'required|string|max:255',
+                'pemberi_tugas_jabatan' => 'required|string|max:255',
+            ]);
+        }
+
         DB::beginTransaction();
         try {
-            // Alur sementara: budgeting per hari di-skip, cukup persetujuan.
-            // total_budget dibiarkan 0 (tidak diisi dari input budget).
+            // Set pemberi tugas jika diisi dari form approve
+            if ($request->filled('pemberi_tugas_nama')) {
+                $surat->pemberi_tugas_nama = $request->pemberi_tugas_nama;
+                $surat->pemberi_tugas_jabatan = $request->pemberi_tugas_jabatan;
+            }
 
             // Set approval fields
             $surat->status = 'approved';

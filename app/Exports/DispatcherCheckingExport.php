@@ -363,29 +363,40 @@ class DispatcherCheckingExport
 
     private function buildSignature($sheet, string $lastCol, int $r): void
     {
-        $r++; // baris kosong
+        $r++;
 
         $top = $r;
         $bottom = $top + 9;
 
-        // Kotak kiri: Tanda Tangan Driver
+        $checkings = $this->allCheckingDetails();
+        $acknowledged = $checkings->where('driver_acknowledged', true)->sortByDesc('driver_acknowledged_at')->first();
+        $anyChecked = $checkings->isNotEmpty();
+
         $leftEnd = Coordinate::stringFromColumnIndex((int) round(Coordinate::columnIndexFromString($lastCol) / 2));
+
+        // Kotak kiri: Driver
         $sheet->mergeCells("A{$top}:{$leftEnd}{$bottom}");
         $sheet->setCellValue("A{$top}", 'Tanda Tangan Driver');
         $sheet->getStyle("A{$top}")->getFont()->setBold(true);
         $sheet->getStyle("A{$top}")->getAlignment()
             ->setHorizontal(Alignment::HORIZONTAL_CENTER)
             ->setVertical(Alignment::VERTICAL_TOP);
-        $sheet->setCellValue("A{$bottom}", '(diisi manual / tulis tangan)');
-        $sheet->getStyle("A{$bottom}")->getFont()->setItalic(true)->setSize(9);
-        $sheet->getStyle("A{$bottom}")->getFont()->getColor()->setRGB('6C757D');
+        if ($acknowledged) {
+            $sheet->setCellValue("A{$bottom}", 'Sudah diketahui oleh '.$acknowledged->currentDriver?->nama_lengkap ?? '-');
+            $sheet->getStyle("A{$bottom}")->getFont()->setItalic(false)->setSize(9);
+            $sheet->getStyle("A{$bottom}")->getFont()->getColor()->setRGB('000000');
+        } else {
+            $sheet->setCellValue("A{$bottom}", '(diisi manual / tulis tangan)');
+            $sheet->getStyle("A{$bottom}")->getFont()->setItalic(true)->setSize(9);
+            $sheet->getStyle("A{$bottom}")->getFont()->getColor()->setRGB('6C757D');
+        }
         $sheet->getStyle("A{$bottom}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $sheet->getStyle("A{$top}:{$leftEnd}{$bottom}")->getBorders()->applyFromArray([
             'allBorders' => ['borderStyle' => Border::BORDER_THIN],
             'top' => ['borderStyle' => Border::BORDER_MEDIUM],
         ]);
 
-        // Kotak kanan: Tanda Tangan Dispatcher
+        // Kotak kanan: Dispatcher
         $rightStart = Coordinate::stringFromColumnIndex(Coordinate::columnIndexFromString($leftEnd) + 1);
         $sheet->mergeCells("{$rightStart}{$top}:{$lastCol}{$bottom}");
         $sheet->setCellValue("{$rightStart}{$top}", 'Tanda Tangan Dispatcher');
@@ -393,21 +404,50 @@ class DispatcherCheckingExport
         $sheet->getStyle("{$rightStart}{$top}")->getAlignment()
             ->setHorizontal(Alignment::HORIZONTAL_CENTER)
             ->setVertical(Alignment::VERTICAL_TOP);
-        $sheet->setCellValue("{$rightStart}{$bottom}", '(diisi manual / tulis tangan)');
-        $sheet->getStyle("{$rightStart}{$bottom}")->getFont()->setItalic(true)->setSize(9);
-        $sheet->getStyle("{$rightStart}{$bottom}")->getFont()->getColor()->setRGB('6C757D');
+        if ($anyChecked) {
+            $latest = $checkings->sortByDesc('checked_at')->first();
+            $sheet->setCellValue("{$rightStart}{$bottom}", 'Sudah diperiksa oleh '.$latest->dispatcher?->nama_lengkap ?? '-');
+            $sheet->getStyle("{$rightStart}{$bottom}")->getFont()->setItalic(false)->setSize(9);
+            $sheet->getStyle("{$rightStart}{$bottom}")->getFont()->getColor()->setRGB('000000');
+        } else {
+            $sheet->setCellValue("{$rightStart}{$bottom}", '(diisi manual / tulis tangan)');
+            $sheet->getStyle("{$rightStart}{$bottom}")->getFont()->setItalic(true)->setSize(9);
+            $sheet->getStyle("{$rightStart}{$bottom}")->getFont()->getColor()->setRGB('6C757D');
+        }
         $sheet->getStyle("{$rightStart}{$bottom}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $sheet->getStyle("{$rightStart}{$top}:{$lastCol}{$bottom}")->getBorders()->applyFromArray([
             'allBorders' => ['borderStyle' => Border::BORDER_THIN],
             'top' => ['borderStyle' => Border::BORDER_MEDIUM],
         ]);
 
-        // Baris nama di bawah masing-masing kotak
+        // Baris nama di bawah
         $nameRow = $bottom + 1;
-        $sheet->setCellValue("A{$nameRow}", 'Nama & Tanggal:');
+        if ($acknowledged) {
+            $sheet->setCellValue("A{$nameRow}", 'Tanggal: '.$acknowledged->driver_acknowledged_at->translatedFormat('d F Y'));
+        } else {
+            $sheet->setCellValue("A{$nameRow}", 'Nama & Tanggal:');
+        }
         $sheet->getStyle("A{$nameRow}")->getFont()->setSize(9);
-        $sheet->setCellValue("{$rightStart}{$nameRow}", 'Nama & Tanggal:');
+        if ($anyChecked) {
+            $latest = $checkings->sortByDesc('checked_at')->first();
+            $sheet->setCellValue("{$rightStart}{$nameRow}", 'Tanggal: '.$latest->checked_at->translatedFormat('d F Y'));
+        } else {
+            $sheet->setCellValue("{$rightStart}{$nameRow}", 'Nama & Tanggal:');
+        }
         $sheet->getStyle("{$rightStart}{$nameRow}")->getFont()->setSize(9);
+    }
+
+    private function allCheckingDetails()
+    {
+        return VehicleCheckingDetail::with(['dispatcher', 'currentDriver'])
+            ->where('type', 'routine')
+            ->whereHas('vehicleChecking', fn ($q) => $q->where('vehicle_id', $this->vehicle->id))
+            ->whereBetween('checked_at', [
+                $this->month->copy()->startOfMonth()->toDateString().' 00:00:00',
+                $this->month->copy()->endOfMonth()->toDateString().' 23:59:59',
+            ])
+            ->orderBy('checked_at')
+            ->get();
     }
 
     // ════════════════════════════════════════════════════════════════
