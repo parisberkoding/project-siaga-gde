@@ -213,6 +213,7 @@ class SpdController extends Controller
      */
     public function showSuratSuperadmin(SuratSpd $surat)
     {
+
         $surat = SuratSpd::with([
             'details',
             'vehicle',
@@ -731,12 +732,20 @@ class SpdController extends Controller
             'originalSurat.vehicle',
             'originalSurat.details',
             'extensionSurat',
+            'extensionSurat.vehicle',
+            'extensionSurat.user',
+            'extensionSurat.details',
+            'extensionSurat.approver',
+            'extensionSurat.rejector',
+            'extensionSurat.childExtensions',
             'approver',
             'rejector',
             'acknowledger',
         ])->findOrFail($perpanjangan->id);
 
-        return view('superadmin.spd.perpanjangan.detail', compact('extension'));
+        $surat = $extension->extensionSurat;
+
+        return view('superadmin.spd.perpanjangan.detail', compact('extension', 'surat'));
     }
 
     /**

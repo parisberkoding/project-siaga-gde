@@ -14,6 +14,7 @@ class SuratSpdExtension extends Model
 
     protected $fillable = [
         'slug',
+        'extension_number',
         'original_surat_id',
         'extension_surat_id',
         'nomor_surat_extension',
@@ -57,6 +58,10 @@ class SuratSpdExtension extends Model
         parent::boot();
 
         static::creating(function ($extension) {
+            if (empty($extension->extension_number) && $extension->nomor_surat_extension) {
+                $extension->extension_number = 'EXT-'.str_replace('/', '-', $extension->nomor_surat_extension);
+            }
+
             if (empty($extension->slug) && $extension->nomor_surat_extension) {
                 $extension->slug = str_replace('/', '-', $extension->nomor_surat_extension);
             }

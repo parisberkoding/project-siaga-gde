@@ -5,7 +5,7 @@
     <h1>Detail Surat Tugas</h1>
     <nav>
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('requester-dashboard') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('requester-index') }}">Home</a></li>
             <li class="breadcrumb-item">SPD</li>
             <li class="breadcrumb-item"><a href="{{ route('requester.surat.index') }}">Surat Tugas</a></li>
             <li class="breadcrumb-item active">Detail</li>

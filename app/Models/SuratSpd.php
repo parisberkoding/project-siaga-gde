@@ -105,6 +105,28 @@ class SuratSpd extends Model
     }
 
     /**
+     * Resolusi route binding: utamakan slug, fallback ke ID agar URL lama
+     * (mis. /surat/{id}) tidak memunculkan 404.
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        if ($field === null) {
+            $record = $this->where('slug', $value)->first();
+            if ($record) {
+                return $record;
+            }
+
+            if (ctype_digit((string) $value)) {
+                return $this->find((int) $value);
+            }
+
+            return null;
+        }
+
+        return parent::resolveRouteBinding($value, $field);
+    }
+
+    /**
      * Generate nomor surat otomatis
      * Format: [nomer].TGS/PTH1.30-GDE/[bulan_romawi]/[tahun]
      */

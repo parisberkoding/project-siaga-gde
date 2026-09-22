@@ -44,7 +44,7 @@
                     </h5>
 
                     {{-- Extension Badge --}}
-                    @if($surat->is_extension)
+                    @if($surat->is_extension && $surat->parentSurat)
                         <div class="alert alert-info py-2 mb-3">
                             <i class="bi bi-info-circle"></i>
                             Ini adalah <strong>Surat Perpanjangan</strong> dari:
