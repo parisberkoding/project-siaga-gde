@@ -64,7 +64,7 @@ Route::middleware(['auth'])->group(function () {
     Route::match(['get', 'post'], '/logout', [AuthentiactionController::class, 'logout'])->name('logout');
 });
 
-Route::middleware(['auth', 'role:requester,admin,superadmin,manager,dispatcher'])->prefix('spd')->name('spd.')->group(function () {
+Route::middleware(['auth', 'permission:spd.view'])->prefix('spd')->name('spd.')->group(function () {
     Route::get('/surat/{surat}/print', [SpdController::class, 'printSurat'])->name('surat.print');
     Route::get('/laporan/{laporan}/print', [SpdController::class, 'printLaporan'])->name('laporan.print');
 
@@ -81,7 +81,7 @@ Route::middleware(['auth'])->group(function () {
 // Di bawah permission pelaporan baru. Menangani upload struk + AI/OCR,
 // mode SPD & mode operasional dalam satu halaman.
 // ────────────────────────────────────────────────────────────────────────
-Route::middleware(['auth', 'role:superadmin,requester,manager'])->prefix('pelaporan')->name('pelaporan.')->group(function () {
+Route::middleware(['auth', 'permission:pelaporan.view,pelaporan.create'])->prefix('pelaporan')->name('pelaporan.')->group(function () {
     Route::get('/', [ReportingController::class, 'index'])->name('index');
     Route::post('/analyze-struk', [ReportingController::class, 'analyzeStruk'])
         ->middleware('throttle:10,1')->name('analyze-struk');
@@ -217,8 +217,8 @@ Route::middleware(['auth', 'permission:bbm.request,bbm.view,bbm.report'])->group
     });
 });
 
-// Admin Routes
-Route::middleware(['auth', 'role:admin,superadmin'])->group(function () {
+// Admin Routes — Approval BBM (permission-based)
+Route::middleware(['auth', 'permission:bbm.approve'])->group(function () {
     Route::get('/admin/dashboard', [RequestManagementController::class, 'admin_index'])->name('admin-dashboard');
     Route::get('/admin/approval', [RequestManagementController::class, 'admin_approval'])->name('admin-approval');
     Route::post('/admin/approval/{id}/process', [RequestManagementController::class, 'admin_process_request'])->name('admin-process');
@@ -232,7 +232,10 @@ Route::middleware(['auth', 'role:admin,superadmin'])->group(function () {
     // ────────────────────────────────────────────────────────────────────────
     Route::get('/vouchers/list', [RequestManagementController::class, 'voucherList'])->name('admin.vouchers.list');
     Route::post('/vouchers/export', [RequestManagementController::class, 'voucherExport'])->name('admin.vouchers.export');
+});
 
+// Admin Routes — Vehicle Service & Sparepart (permission-based)
+Route::middleware(['auth', 'permission:vehicle.sparepart'])->group(function () {
     Route::get('/admin/service-scheduling', [VehicleSparepartRequestRepairController::class, 'schedulingIndex'])
         ->name('admin.service-scheduling.index');
 
@@ -251,14 +254,12 @@ Route::middleware(['auth', 'role:admin,superadmin'])->group(function () {
 
     Route::get('/admin/transaction-monitoring', [VehicleSparepartRequestRepairController::class, 'transactionMonitoringIndex'])
         ->name('admin.transaction-monitoring.index');
+});
 
-    // ────────────────────────────────────────────────────────────────────────
-    // MASTER HARGA BBM (Master Gasoline) - Superadmin & Admin/GA
-    // ────────────────────────────────────────────────────────────────────────
-    Route::prefix('master-gasoline')->name('master-gasoline.')->group(function () {
-        Route::get('/', [MasterGasolineController::class, 'index'])->name('index');
-        Route::post('/sync', [MasterGasolineController::class, 'sync'])->name('sync');
-    });
+// MASTER HARGA BBM (Master Gasoline) — settings-based access
+Route::middleware(['auth', 'permission:settings.view'])->prefix('master-gasoline')->name('master-gasoline.')->group(function () {
+    Route::get('/', [MasterGasolineController::class, 'index'])->name('index');
+    Route::post('/sync', [MasterGasolineController::class, 'sync'])->name('sync');
 });
 
 // ────────────────────────────────────────────────────────────────────────
@@ -274,25 +275,50 @@ Route::middleware(['auth', 'permission:vehicle.sparepart'])->prefix('admin/spare
 });
 
 // export laporan transaksi bbm
-Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
+Route::middleware(['auth', 'permission:bbm.export,bbm.view'])->group(function () {
     // ==================== REPORTS & EXPORTS ====================
     Route::get('/print-report', [SuperadminController::class, 'printReport'])->name('superadmin.print-report');
     Route::get('/print-report/form', [SuperadminController::class, 'printReportPage'])->name('superadmin.print-report.form');
 });
-Route::middleware(['auth', 'role:superadmin,admin,admin_bbm,dispatcher,manager,non_ga_staff,general_affairs,view_only'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::get('/ai-assistant', [AiAssistantController::class, 'index'])->name('ai-assistant.index');
     Route::post('/ai-assistant/send', [AiAssistantController::class, 'send'])->name('ai-assistant.send');
     Route::delete('/ai-assistant/sessions/{session}', [AiAssistantController::class, 'destroySession'])->name('ai-assistant.sessions.destroy');
 });
 
+// ── SUPERADMIN DASHBOARD & API (tetap superadmin-only) ──
 Route::middleware(['auth', 'role:superadmin'])->group(function () {
-
-    // ==================== DASHBOARD ====================
     Route::get('/sa/dashboard', [SuperadminController::class, 'index'])->name('superadmin-dashboard');
     Route::get('/dashboard/stats', [SuperadminController::class, 'getDashboardStats'])->name('dashboard.stats');
     Route::get('/dashboard/driver-stats', [SuperadminController::class, 'getDetailedDriverStats'])->name('dashboard.driver-stats');
 
-    // ==================== USER MANAGEMENT ====================
+    Route::prefix('api')->name('superadmin.')->group(function () {
+        Route::get('/dashboard/stats', [SuperadminController::class, 'getDashboardStats'])->name('dashboard.stats');
+        Route::get('/dashboard/driver-statistics', [SuperadminController::class, 'getDriverStatistics'])->name('driver.statistics');
+        Route::get('/dashboard/detailed-driver-stats', [SuperadminController::class, 'getDetailedDriverStats'])->name('dashboard.detailed-driver-stats');
+        Route::get('/dashboard/vehicle-fuel-consumption', [SuperadminController::class, 'getVehicleFuelConsumption'])->name('dashboard.vehicle-fuel');
+        Route::get('/dashboard/vehicle-km-performance', [SuperadminController::class, 'getVehicleKmPerformance'])->name('dashboard.vehicle-km');
+        Route::get('/dashboard/pivot-table', [SuperadminController::class, 'getCompletePivotTable'])->name('pivot.data');
+    });
+
+    Route::middleware(['auth', 'role:superadmin'])->prefix('api/data-mart')->name('api.datamart.')->group(function () {
+        Route::get('/{unitId}', [App\Http\Controllers\Api\DataMartContextController::class, 'show'])->name('context');
+        Route::get('/{unitId}/refresh', [App\Http\Controllers\Api\DataMartContextController::class, 'refresh'])->name('refresh');
+    });
+
+    Route::prefix('analytics')->name('analytics.')->group(function () {
+        Route::get('/fuel-consumption', [SuperadminController::class, 'getVehicleFuelConsumption'])->name('fuel-consumption');
+        Route::get('/km-performance', [SuperadminController::class, 'getVehicleKmPerformance'])->name('km-performance');
+        Route::get('/pivot-table', [SuperadminController::class, 'getCompletePivotTable'])->name('pivot-table');
+    });
+
+    Route::get('/activity-log', [SuperadminController::class, 'getActivityLog'])->name('activity-log');
+});
+
+// ── PERMISSION-BASED ROUTES (ex-superadmin group) ──
+
+// User Management
+Route::middleware(['auth', 'permission:users.view,users.create'])->group(function () {
     Route::get('users', [SuperadminController::class, 'indexUsers'])->name('users');
     Route::get('users/create', [SuperadminController::class, 'createUser'])->name('users.create');
     Route::post('users/store', [SuperadminController::class, 'storeUser'])->name('users.store');
@@ -300,8 +326,10 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
     Route::post('users/{id}/delete', [SuperadminController::class, 'deleteUser'])->name('users.delete');
     Route::post('users/{id}/reset-password', [SuperadminController::class, 'resetPassword'])->name('users.reset-password');
     Route::post('users/{id}/restore', [SuperadminController::class, 'restoreUser'])->name('users.restore');
+});
 
-    // ==================== VEHICLE MANAGEMENT ====================
+// Vehicle Management
+Route::middleware(['auth', 'permission:vehicle.view,vehicle.create'])->group(function () {
     Route::get('vehicles', [SuperadminController::class, 'indexVehicles'])->name('vehicles');
     Route::get('vehicles/create', [SuperadminController::class, 'createVehicle'])->name('vehicles.create');
     Route::get('vehicles/{id}/edit', [SuperadminController::class, 'editVehicle'])->name('vehicles.edit');
@@ -310,24 +338,22 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
     Route::post('vehicles/{id}/delete', [SuperadminController::class, 'deleteVehicle'])->name('vehicles.delete');
     Route::post('vehicles/{id}/restore', [SuperadminController::class, 'restoreVehicle'])->name('vehicles.restore');
 
-    // Vehicle Approval — DISEMBUNYIKAN: route dibuat inactive (tidak diakses siapa pun).
-    // Route::get('/approval', [SuperadminController::class, 'approvalDashboard'])->name('superadmin.approval');
     Route::post('/vehicles/{id}/approve', [SuperadminController::class, 'approveVehicle'])->name('superadmin.vehicle.approve');
     Route::post('/vehicles/{id}/reject', [SuperadminController::class, 'rejectVehicle'])->name('superadmin.vehicle.reject');
 
-    // Vehicle Activation
     Route::get('/vehicle-activation', [SuperadminController::class, 'vehicleActivation'])->name('superadmin.vehicle-activation');
     Route::post('/vehicle/{id}/activate', [SuperadminController::class, 'activateVehicle'])->name('superadmin.vehicle.activate');
     Route::post('/vehicle/{id}/deactivate', [SuperadminController::class, 'deactivateVehicle'])->name('superadmin.vehicle.deactivate');
     Route::post('/vehicle/bulk-activate', [SuperadminController::class, 'bulkActivateVehicles'])->name('superadmin.vehicle.bulk-activate');
     Route::post('/vehicle/bulk-deactivate', [SuperadminController::class, 'bulkDeactivateVehicles'])->name('superadmin.vehicle.bulk-deactivate');
 
-    // ==================== VEHICLE DETAIL (DOKUMENTASI) ====================
     Route::get('/vehicles/{id}/detail', [SuperadminController::class, 'showVehicleDetail'])->name('superadmin.vehicle.detail');
     Route::get('/vehicles/{id}/detail/edit', [SuperadminController::class, 'editVehicleDetail'])->name('superadmin.vehicle.detail.edit');
     Route::post('/vehicles/{id}/detail/update', [SuperadminController::class, 'updateVehicleDetail'])->name('superadmin.vehicle.detail.update');
+});
 
-    // ==================== PERMOHONAN & LAPORAN ====================
+// Permohonan & Laporan (approval)
+Route::middleware(['auth', 'permission:bbm.approve'])->group(function () {
     Route::get('/kelola-permohonan', [SuperadminController::class, 'indexPermohonan'])->name('superadmin.permohonan');
     Route::post('/permohonan/{id}/update', [SuperadminController::class, 'updatePermohonan'])->name('superadmin.permohonan.update');
     Route::post('/permohonan/{id}/cancel', [SuperadminController::class, 'cancelPermohonan'])->name('superadmin.permohonan.cancel');
@@ -336,112 +362,71 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
 
     Route::post('/laporan/{id}/update', [SuperadminController::class, 'updateLaporan'])->name('superadmin.laporan.update');
     Route::post('/laporan/{id}/delete', [SuperadminController::class, 'deleteLaporan'])->name('superadmin.laporan.delete');
+});
 
-    // ==================== TRIP ANALYSIS & VALIDATION ====================
+// Trip Analysis & Validation
+Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
     Route::prefix('trip-analysis')->name('superadmin.trip-analysis.')->group(function () {
-        // Trip Analysis Dashboard (Main View)
         Route::get('/', [SuperadminController::class, 'indexTripAnalysis'])->name('index');
-
         Route::post('/recalculate-all', [SuperadminController::class, 'recalculateAllTripMetrics'])->name('superadmin.trip-validations.recalculate-all');
-
     });
 
-    // Trip Validations (di luar prefix karena beda resource)
     Route::post('/trip-validations/{id}/validate', [SuperadminController::class, 'validateTrip'])
         ->name('superadmin.trip-validations.validate');
-
     Route::post('/trip-validations/bulk-validate', [SuperadminController::class, 'bulkValidateTrips'])
         ->name('superadmin.trip-validations.bulk-validate');
+});
 
-    // ==================== API ENDPOINTS ====================
-    Route::prefix('api')->name('superadmin.')->group(function () {
-        Route::get('/dashboard/stats', [SuperadminController::class, 'getDashboardStats'])->name('dashboard.stats');
-        Route::get('/dashboard/driver-statistics', [SuperadminController::class, 'getDriverStatistics'])->name('driver.statistics');
-        Route::get('/dashboard/detailed-driver-stats', [SuperadminController::class, 'getDetailedDriverStats'])->name('dashboard.detailed-driver-stats');
-        Route::get('/dashboard/vehicle-fuel-consumption', [SuperadminController::class, 'getVehicleFuelConsumption'])->name('dashboard.vehicle-fuel');
-        Route::get('/dashboard/vehicle-km-performance', [SuperadminController::class, 'getVehicleKmPerformance'])->name('dashboard.vehicle-km');
-        Route::get('/dashboard/pivot-table', [SuperadminController::class, 'getCompletePivotTable'])->name('pivot.data');
-        // Route::get('/activity-log', [SuperadminController::class, 'getActivityLog'])->name('activity.log');
-    });
+// SPD Superadmin
+Route::middleware(['auth', 'permission:spd.view,spd.create'])->prefix('surat')->name('surat.superadmin.')->group(function () {
+    Route::get('/', [SpdController::class, 'indexSuratSuperadmin'])->name('index');
+    Route::get('/create-shortcut', [SpdController::class, 'createSuratSuperadmin'])->name('create-shortcut');
+    Route::post('/store-shortcut', [SpdController::class, 'storeSuratSuperadmin'])->name('store-shortcut');
+    Route::get('/{surat}', [SpdController::class, 'showSuratSuperadmin'])->name('show');
+    Route::post('/{surat}/approve', [SpdController::class, 'approveSurat'])->name('approve');
+    Route::post('/{surat}/reject', [SpdController::class, 'rejectSurat'])->name('reject');
+    Route::get('/{surat}/print', [SpdController::class, 'printSurat'])->name('print');
+    Route::post('/{surat}/save-mendadak-budget', [SpdController::class, 'saveMendadakBudget'])->name('save-mendadak-budget');
+    Route::get('/report/spending', [SpdController::class, 'reportSpending'])->name('report');
+});
 
-    // ==================== DATA MART CONTEXT API ====================
-    // Endpoint: GET /api/data-mart/{unitId}
-    // Menghasilkan JSON konteks per Unit untuk AI (overview/sub_overview/detailing).
-    // Cache harian 86400 detik via DataMartContextBuilder.
-    Route::middleware(['auth', 'role:superadmin'])->prefix('api/data-mart')->name('api.datamart.')->group(function () {
-        Route::get('/{unitId}', [App\Http\Controllers\Api\DataMartContextController::class, 'show'])
-            ->name('context');
-        Route::get('/{unitId}/refresh', [App\Http\Controllers\Api\DataMartContextController::class, 'refresh'])
-            ->name('refresh');
-    });
+// Perpanjangan Superadmin
+Route::middleware(['auth', 'permission:spd.view,spd.update'])->prefix('perpanjangan')->name('perpanjangan.superadmin.')->group(function () {
+    Route::get('/', [SpdController::class, 'indexPerpanjanganSuperadmin'])->name('index');
+    Route::get('/validate/{perpanjangan}', [SpdController::class, 'showPerpanjanganSuperadmin'])->name('show');
+    Route::post('/{perpanjangan}/approve', [SpdController::class, 'approvePerpanjangan'])->name('approve');
+    Route::post('/{perpanjangan}/reject', [SpdController::class, 'rejectPerpanjangan'])->name('reject');
+    Route::post('/{perpanjangan}/acknowledge', [SpdController::class, 'acknowledgePerpanjangan'])->name('acknowledge');
+});
 
-    // ==================== ANALYTICS ====================
-    Route::prefix('analytics')->name('analytics.')->group(function () {
-        Route::get('/fuel-consumption', [SuperadminController::class, 'getVehicleFuelConsumption'])->name('fuel-consumption');
-        Route::get('/km-performance', [SuperadminController::class, 'getVehicleKmPerformance'])->name('km-performance');
-        Route::get('/pivot-table', [SuperadminController::class, 'getCompletePivotTable'])->name('pivot-table');
-        // Route::get('/request-analysis', [SuperadminController::class, 'getRequestAnalysis'])->name('request-analysis');
-        // Route::get('/latest-odo', [SuperadminController::class, 'getLatestOdoPerVehicle'])->name('latest-odo');
-        // Route::get('/monthly-summary', [SuperadminController::class, 'getMonthlyReportSummary'])->name('monthly-summary');
-    });
+// LPJ Superadmin
+Route::middleware(['auth', 'permission:lpj.view,lpj.validate'])->prefix('lpj')->name('lpj.superadmin.')->group(function () {
+    Route::get('/', [SpdController::class, 'indexLaporanSuperadmin'])->name('index');
+    Route::get('/{laporan}', [SpdController::class, 'showLaporanSuperadmin'])->name('show');
+    Route::post('/{laporan}/approve', [SpdController::class, 'approveLaporan'])->name('approve');
+    Route::post('/{laporan}/reject', [SpdController::class, 'rejectLaporan'])->name('reject');
+    Route::get('/{laporan}/print', [SpdController::class, 'printLaporan'])->name('print');
+    Route::put('/{laporan}/keuangan', [SpdController::class, 'updateKeuanganLaporan'])->name('keuangan');
+});
 
-    // ────────────────────────────────────────────────────────────────────────
-    // SURAT SPD - Validasi & Shortcut Create
-    // ────────────────────────────────────────────────────────────────────────
-    Route::prefix('surat')->name('surat.superadmin.')->group(function () {
-        Route::get('/', [SpdController::class, 'indexSuratSuperadmin'])->name('index');
-        Route::get('/create-shortcut', [SpdController::class, 'createSuratSuperadmin'])->name('create-shortcut');
-        Route::post('/store-shortcut', [SpdController::class, 'storeSuratSuperadmin'])->name('store-shortcut');
-        Route::get('/{surat}', [SpdController::class, 'showSuratSuperadmin'])->name('show');
-        Route::post('/{surat}/approve', [SpdController::class, 'approveSurat'])->name('approve');
-        Route::post('/{surat}/reject', [SpdController::class, 'rejectSurat'])->name('reject');
-        Route::get('/{surat}/print', [SpdController::class, 'printSurat'])->name('print');
-        Route::post('/{surat}/save-mendadak-budget', [SpdController::class, 'saveMendadakBudget'])->name('save-mendadak-budget');
-        Route::get('/report/spending', [SpdController::class, 'reportSpending'])->name('report');
-    });
+// AJAX Superadmin (SPD dashboard stats)
+Route::middleware(['auth', 'permission:spd.view'])->prefix('ajax')->name('ajax.superadmin.')->group(function () {
+    Route::get('/dashboard-stats', [SpdController::class, 'getDashboardStats'])->name('dashboard.stats');
+});
 
-    // ────────────────────────────────────────────────────────────────────────
-    // PERPANJANGAN - Validasi & Acknowledge
-    // ────────────────────────────────────────────────────────────────────────
-    Route::prefix('perpanjangan')->name('perpanjangan.superadmin.')->group(function () {
-        Route::get('/', [SpdController::class, 'indexPerpanjanganSuperadmin'])->name('index');
-        Route::get('/validate/{perpanjangan}', [SpdController::class, 'showPerpanjanganSuperadmin'])->name('show');
-        Route::post('/{perpanjangan}/approve', [SpdController::class, 'approvePerpanjangan'])->name('approve');
-        Route::post('/{perpanjangan}/reject', [SpdController::class, 'rejectPerpanjangan'])->name('reject');
-        Route::post('/{perpanjangan}/acknowledge', [SpdController::class, 'acknowledgePerpanjangan'])->name('acknowledge');
-    });
+// RBAC — Role Management (sudah punya inner permission:rbac.roles)
+Route::middleware(['auth'])->prefix('sa/rbac')->name('superadmin.rbac.')->middleware('permission:rbac.roles')->group(function () {
+    Route::get('/', [RbacController::class, 'index'])->name('index');
+    Route::get('/create', [RbacController::class, 'create'])->name('create');
+    Route::post('/', [RbacController::class, 'store'])->name('store');
+    Route::get('/{id}/edit', [RbacController::class, 'edit'])->name('edit');
+    Route::post('/{id}/update', [RbacController::class, 'update'])->name('update');
+    Route::post('/{id}/delete', [RbacController::class, 'destroy'])->name('delete');
+});
 
-    // ────────────────────────────────────────────────────────────────────────
-    // LPJ - Validasi
-    // ────────────────────────────────────────────────────────────────────────
-    Route::prefix('lpj')->name('lpj.superadmin.')->group(function () {
-        Route::get('/', [SpdController::class, 'indexLaporanSuperadmin'])->name('index');
-        Route::get('/{laporan}', [SpdController::class, 'showLaporanSuperadmin'])->name('show');
-        Route::post('/{laporan}/approve', [SpdController::class, 'approveLaporan'])->name('approve');
-        Route::post('/{laporan}/reject', [SpdController::class, 'rejectLaporan'])->name('reject');
-        Route::get('/{laporan}/print', [SpdController::class, 'printLaporan'])->name('print');
-        Route::put('/{laporan}/keuangan', [SpdController::class, 'updateKeuanganLaporan'])->name('keuangan');
-    });
-
-    // ────────────────────────────────────────────────────────────────────────
-    // AJAX / API Endpoints
-    // ────────────────────────────────────────────────────────────────────────
-    Route::prefix('ajax')->name('ajax.superadmin.')->group(function () {
-        Route::get('/dashboard-stats', [SpdController::class, 'getDashboardStats'])->name('dashboard.stats');
-    });
-
-    // ==================== RBAC — ROLE MANAGEMENT ====================
-    Route::prefix('sa/rbac')->name('superadmin.rbac.')->middleware('permission:rbac.roles')->group(function () {
-        Route::get('/', [RbacController::class, 'index'])->name('index');
-        Route::get('/create', [RbacController::class, 'create'])->name('create');
-        Route::post('/', [RbacController::class, 'store'])->name('store');
-        Route::get('/{id}/edit', [RbacController::class, 'edit'])->name('edit');
-        Route::post('/{id}/update', [RbacController::class, 'update'])->name('update');
-        Route::post('/{id}/delete', [RbacController::class, 'destroy'])->name('delete');
-    });
-
-    // ==================== UNIT BISNIS & SITE MANAGEMENT ====================
-    Route::prefix('sa/units')->name('superadmin.units.')->group(function () {
+// Unit Bisnis & Site Management
+Route::middleware(['auth', 'permission:settings.view'])->prefix('sa')->name('superadmin.')->group(function () {
+    Route::prefix('units')->name('units.')->group(function () {
         Route::get('/', [UnitController::class, 'index'])->name('index');
         Route::get('/create', [UnitController::class, 'create'])->name('create');
         Route::post('/', [UnitController::class, 'store'])->name('store');
@@ -450,7 +435,7 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
         Route::post('/{unit}/delete', [UnitController::class, 'destroy'])->name('delete');
     });
 
-    Route::prefix('sa/sites')->name('superadmin.sites.')->group(function () {
+    Route::prefix('sites')->name('sites.')->group(function () {
         Route::get('/', [SiteController::class, 'index'])->name('index');
         Route::get('/create', [SiteController::class, 'create'])->name('create');
         Route::post('/', [SiteController::class, 'store'])->name('store');
@@ -458,40 +443,30 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
         Route::put('/{site}', [SiteController::class, 'update'])->name('update');
         Route::post('/{site}/delete', [SiteController::class, 'destroy'])->name('delete');
     });
-
-    // ==================== ACTIVITY LOG ====================
-    Route::get('/activity-log', [SuperadminController::class, 'getActivityLog'])->name('activity-log');
-
-    // ────────────────────────────────────────────────────────────────────────
-    // VEHICLE CHECKING SUPERADMIN - Health, Financial, Transaction Reports
-    // ────────────────────────────────────────────────────────────────────────
-    Route::prefix('vehicle-checking')->name('superadmin.')->group(function () {
-        // Vehicle Health Matrix
-        Route::get('/vehicle-health', [VehicleCheckingSuperadminController::class, 'vehicleHealthIndex'])
-            ->name('vehicle-health.index');
-        Route::get('/vehicle-health/{consumerialCode}', [VehicleCheckingSuperadminController::class, 'vehicleHealthShow'])
-            ->name('vehicle-health.show');
-
-        // Financial Report
-        Route::get('/financial-report', [VehicleCheckingSuperadminController::class, 'financialReportIndex'])
-            ->name('financial-report.index');
-        Route::get('/financial-report/export', [VehicleCheckingSuperadminController::class, 'financialReportExport'])
-            ->name('financial-report.export');
-
-        // Transaction Report
-        Route::get('/transaction-report', [VehicleCheckingSuperadminController::class, 'transactionReportIndex'])
-            ->name('transaction-report.index');
-
-        // Download barcode satu kendaraan (superadmin)
-        Route::get('/barcode/download/{vehicleId}', [VehicleHealthHistoryController::class, 'downloadBarcode'])
-            ->name('barcode.download');
-        // Download semua barcode sebagai ZIP (superadmin only)
-        Route::get('/barcode/download-all-zip', [VehicleHealthHistoryController::class, 'downloadAllBarcodesZip'])
-            ->name('barcode.download-zip');
-    });
 });
 
-Route::middleware(['auth', 'role:manager,superadmin'])->group(function () {
+// Vehicle Checking Superadmin — Health, Financial, Transaction Reports
+Route::middleware(['auth', 'permission:vehicle.view'])->prefix('vehicle-checking')->name('superadmin.')->group(function () {
+    Route::get('/vehicle-health', [VehicleCheckingSuperadminController::class, 'vehicleHealthIndex'])
+        ->name('vehicle-health.index');
+    Route::get('/vehicle-health/{consumerialCode}', [VehicleCheckingSuperadminController::class, 'vehicleHealthShow'])
+        ->name('vehicle-health.show');
+
+    Route::get('/financial-report', [VehicleCheckingSuperadminController::class, 'financialReportIndex'])
+        ->name('financial-report.index');
+    Route::get('/financial-report/export', [VehicleCheckingSuperadminController::class, 'financialReportExport'])
+        ->name('financial-report.export');
+
+    Route::get('/transaction-report', [VehicleCheckingSuperadminController::class, 'transactionReportIndex'])
+        ->name('transaction-report.index');
+
+    Route::get('/barcode/download/{vehicleId}', [VehicleHealthHistoryController::class, 'downloadBarcode'])
+        ->name('barcode.download');
+    Route::get('/barcode/download-all-zip', [VehicleHealthHistoryController::class, 'downloadAllBarcodesZip'])
+        ->name('barcode.download-zip');
+});
+
+Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
     Route::get('/dashboard-bisnis', [SuperadminController::class, 'dashboardBisnis'])
         ->name('superadmin.dashboard.bisnis');
 
@@ -521,8 +496,8 @@ Route::middleware(['auth', 'permission:vehicle.checking'])->prefix('dispatcher')
         ->name('barcode.download');
 });
 
-// Role Baru, Dispatcher Routes
-Route::middleware(['auth', 'role:dispatcher,superadmin'])->prefix('dispatcher')->name('dispatcher.')->group(function () {
+// Role Baru, Dispatcher Routes — Assign
+Route::middleware(['auth', 'permission:vehicle.checking,vehicle.approve,spd.view,spd.create'])->prefix('dispatcher')->name('dispatcher.')->group(function () {
     // ────────────────────────────────────────────────────────────────────────
     // ASSIGN DISPATCHER - Assign PIC ke kendaraan
     // ────────────────────────────────────────────────────────────────────────
@@ -534,7 +509,7 @@ Route::middleware(['auth', 'role:dispatcher,superadmin'])->prefix('dispatcher')-
     });
 });
 
-Route::middleware(['auth', 'role:dispatcher,superadmin'])->prefix('dispatcher')->name('dispatcher.')->group(function () {
+Route::middleware(['auth', 'permission:vehicle.checking,vehicle.approve,spd.view,spd.create'])->prefix('dispatcher')->name('dispatcher.')->group(function () {
 
     // ────────────────────────────────────────────────────────────────────────
     // DASHBOARD - Landing Page
@@ -629,11 +604,17 @@ Route::middleware(['auth', 'role:dispatcher,superadmin'])->prefix('dispatcher')-
 // EXPORT EXCEL - FORM PENGECEKAN DISPATCHER
 // Bisa diakses oleh 3 role: Superadmin, Dispatcher, dan Driver (requester).
 // ────────────────────────────────────────────────────────────────────────
-Route::middleware(['auth', 'role:requester,driver,dispatcher,superadmin'])->prefix('dispatcher')->name('dispatcher.')->group(function () {
+Route::middleware(['auth', 'permission:vehicle.checking,bbm.view,vehicle.view'])->prefix('dispatcher')->name('dispatcher.')->group(function () {
     Route::get('/export-checking', [DispatcherAdministrationController::class, 'exportCheckingIndex'])
         ->name('export-checking.index');
     Route::post('/export-checking', [DispatcherAdministrationController::class, 'exportCheckingDownload'])
         ->name('export-checking.download');
+
+    // Export Body Checking Excel
+    Route::get('/export-body-checking', [DispatcherAdministrationController::class, 'exportBodyCheckingIndex'])
+        ->name('export.body-checking-index');
+    Route::post('/export-body-checking', [DispatcherAdministrationController::class, 'exportBodyCheckingDownload'])
+        ->name('export.body-checking-download');
 });
 
 // ────────────────────────────────────────────────────────────────────────
@@ -664,7 +645,7 @@ Route::prefix('lunch-attendance')->name('lunch.attendance.')->group(function () 
 // Employee Default → Forecast → Distribution → QR Attendance →
 // Transaction → Learning → Forecast H+1
 // ────────────────────────────────────────────────────────────────────────
-Route::middleware(['auth', 'role:admin,superadmin'])->prefix('lunch')->name('lunch.')->group(function () {
+Route::middleware(['auth', 'permission:lunch.view,lunch.export'])->prefix('lunch')->name('lunch.')->group(function () {
     // Dashboard
     Route::get('/', [LunchDashboardController::class, 'index'])->name('dashboard');
 
@@ -730,6 +711,6 @@ Route::prefix('my')->name('my.')->group(function () {
 // Role vendor disiapkan; superadmin juga bisa mengakses. Menu sidebar
 // disembunyikan sementara hingga siap diaktifkan.
 // ────────────────────────────────────────────────────────────────────────
-Route::middleware(['auth', 'role:vendor,superadmin'])->prefix('vendor/lunch')->name('vendor.lunch.')->group(function () {
+Route::middleware(['auth', 'permission:lunch.view'])->prefix('vendor/lunch')->name('vendor.lunch.')->group(function () {
     Route::get('/today', [VendorLunchController::class, 'today'])->name('today');
 });

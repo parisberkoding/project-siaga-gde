@@ -105,12 +105,8 @@
 <header id="header" class="header fixed-top d-flex align-items-center">
 
   <div class="d-flex align-items-center">
-    @if(Auth::user()->role === 'superadmin' || Auth::user()->role === 'requester' || Auth::user()->role === 'driver' || Auth::user()->role === 'admin')
     <i class="bi bi-list toggle-sidebar-btn"></i>
     <a href="{{ url('/') }}" class="logo d-flex align-items-center ms-3">
-    @else
-    <a href="{{ url('/') }}" class="logo d-flex align-items-center">
-    @endif
       <img src="{{ asset('DashboardTemplates/assets/img/geodipa-logo.png') }}" alt="Logo">
       <span class="d-none d-lg-block ms-2">SIAGA</span>
     </a>

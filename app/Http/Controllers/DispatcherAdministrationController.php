@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\BodyCheckingExport;
 use App\Exports\DispatcherCheckingExport;
 use App\Models\User;
 use App\Models\VehicleAndToolsConsumers;
@@ -729,5 +730,51 @@ class DispatcherAdministrationController extends Controller
         $nopol = str_replace(' ', '', $vehicle->consumerial_code);
 
         return $export->download("form-pengecekan-{$nopol}-{$month->format('Y-m')}.xlsx");
+    }
+
+    /**
+     * Halaman form export Excel body checking.
+     */
+    public function exportBodyCheckingIndex()
+    {
+        $vehicles = VehicleAndToolsConsumers::where('is_active', true)
+            ->orderBy('consumerial_code')
+            ->get();
+
+        $months = collect(range(1, 12))->map(fn ($m) => Carbon::create()->month($m));
+        $years = range(Carbon::now()->year - 1, Carbon::now()->year + 1);
+
+        $unitName = auth()->user()->unit?->name ?? config('siaga.report.unit_name');
+
+        return view('dispatcher.export-checking.body-index', compact('vehicles', 'months', 'years', 'unitName'));
+    }
+
+    /**
+     * Generate & unduh Excel body checking per kendaraan per bulan.
+     */
+    public function exportBodyCheckingDownload(Request $request)
+    {
+        $request->validate([
+            'vehicle_id' => 'required|exists:vehicle_and_tools_consumers,id',
+            'month' => 'required|integer|between:1,12',
+            'year' => 'required|integer|min:2000|max:2100',
+        ], [
+            'vehicle_id.required' => 'Pilih kendaraan terlebih dahulu.',
+            'month.required' => 'Pilih bulan periode.',
+            'year.required' => 'Tahun periode wajib diisi.',
+        ]);
+
+        $vehicle = VehicleAndToolsConsumers::findOrFail($request->vehicle_id);
+        $month = Carbon::create((int) $request->year, (int) $request->month, 1);
+
+        $header = [
+            'company_name' => config('siaga.report.company_name'),
+            'unit_name' => auth()->user()->unit?->name ?? config('siaga.report.unit_name'),
+        ];
+
+        $export = new BodyCheckingExport($vehicle, $month, $header);
+        $nopol = str_replace(' ', '', $vehicle->consumerial_code);
+
+        return $export->download("body-checking-{$nopol}-{$month->format('Y-m')}.xlsx");
     }
 }
