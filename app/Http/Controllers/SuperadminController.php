@@ -1729,7 +1729,8 @@ class SuperadminController extends Controller
             $user->user_code = $rolePrefix.'.'.str_pad($user->id, 4, '0', STR_PAD_LEFT).'.'.$locationCode;
             $user->save();
 
-            $user->roles()->syncWithoutDetaching([$role->id => ['is_primary' => true]]);
+            // Satu user = satu role RBAC (source of truth permission).
+            $user->roles()->sync([$role->id => ['is_primary' => true]]);
 
             // Mode Aktivasi: link master pekerja → akun
             if ($employee) {
@@ -1803,7 +1804,8 @@ class SuperadminController extends Controller
             ]);
 
             $role = Role::where('code', $validated['role_code'])->firstOrFail();
-            $user->roles()->syncWithoutDetaching([$role->id => ['is_primary' => true]]);
+            // Ganti role (bukan menumpuk) supaya permission lama tidak tertinggal.
+            $user->roles()->sync([$role->id => ['is_primary' => true]]);
 
             DB::commit();
 

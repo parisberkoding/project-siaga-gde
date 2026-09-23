@@ -2,12 +2,12 @@
 <aside id="sidebar" class="sidebar">
 
   @php
-    $user       = Auth::user();
-    $pcodes     = $user->getPermissionCodes();
+    $user   = Auth::user();
+    $pcodes = $user->getPermissionCodes();
 
     // Role efektif: gabungkan legacy role column + RBAC roles.
-    // Catatan: 'driver' & 'requester' sengaja TIDAK digabung di sini (beda dengan
-    // CheckRole::LEGACY_TO_RBAC) supaya menu bisa membedakan keduanya saat render.
+    // Dipakai hanya untuk memilih dashboard default & membedakan varian
+    // menu yang memang berbagi permission sama (mis. driver vs dispatcher).
     $normalizeRole = function ($code) {
         return match ($code) {
             'admin', 'admin_bbm', 'general_affairs' => 'general_affairs',
@@ -20,168 +20,172 @@
     $roleCodes = collect(array_merge([$user->role], $user->roles()->pluck('code')->all()))
         ->map($normalizeRole)->unique()->values()->all();
 
-    // Item tampil jika: (role ada di whitelist ATAU permission cocok)
-    // Untuk item dengan role saja: wajib role match.
-    // Untuk item dengan permission saja: wajib perm match.
-    // Untuk item dengan keduanya: cukup SALAH SATU yang cocok (OR logic).
-    $showItem = function ($item) use ($roleCodes, $pcodes) {
-        $hasRoles = !empty($item['roles']);
-        $hasPerms = !empty($item['perms']);
-
-        if ($hasRoles && $hasPerms) {
-            // OR logic: cukup salah satu cocok
-            $roleMatch = !empty(array_intersect($item['roles'], $roleCodes));
-            $permMatch = !empty(array_intersect($item['perms'], $pcodes));
-            return $roleMatch || $permMatch;
+    // ── Sidebar sepenuhnya berbasis PERMISSION (dynamic RBAC) ──
+    // Item tampil HANYA jika user punya salah satu permission-nya. Tidak ada
+    // lagi whitelist role yang membuat role bawaan melihat menu di luar hak
+    // aksesnya. User custom yang dibuat superadmin akan otomatis melihat
+    // seluruh menu sesuai permission yang diberikan, dan tidak lebih.
+    $showItem = function ($item) use ($pcodes) {
+        if (empty($item['perms'])) {
+            return true;
         }
-
-        // Legacy: jika hanya roles, wajib cocok; jika hanya perms, wajib cocok
-        if ($hasRoles && empty(array_intersect($item['roles'], $roleCodes))) {
-            return false;
-        }
-        if ($hasPerms && empty(array_intersect($item['perms'], $pcodes))) {
-            return false;
-        }
-        return true;
+        return !empty(array_intersect($item['perms'], $pcodes));
     };
 
     $routeIsAny = function ($patterns) {
-        foreach ($patterns as $pat) {
+        foreach ((array) $patterns as $pat) {
             if (request()->routeIs($pat)) return true;
         }
         return false;
     };
 
-    // Dashboard: berbeda per role
+    // Active resolver untuk child: cocokkan route + (opsional) query filter.
+    // query value null berarti parameter HARUS kosong (dipakai item "semua").
+    $childIsActive = function ($item) use ($routeIsAny) {
+        if (! $routeIsAny($item['active'] ?? [])) {
+            return false;
+        }
+        if (array_key_exists('query', $item)) {
+            foreach ($item['query'] as $qk => $qv) {
+                if ($qv === null) {
+                    if (request()->filled($qk)) return false;
+                } elseif ((string) request($qk) !== (string) $qv) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    };
+
+    // Dashboard: berbeda per role (role-based agar user bawaan tidak bingung).
     $dashboardItem = match (true) {
         in_array('dispatcher', $roleCodes, true)      => ['label' => 'Dashboard', 'icon' => 'bi bi-speedometer2', 'route' => 'dispatcher.dispatcher-dashboard', 'active' => ['dispatcher.dispatcher-dashboard']],
         in_array('superadmin', $roleCodes, true)      => ['label' => 'Dashboard', 'icon' => 'bi bi-speedometer2', 'route' => 'superadmin.dashboard.bisnis', 'active' => ['admin-dashboard', 'superadmin.dashboard.bisnis']],
         in_array('manager', $roleCodes, true)         => ['label' => 'Dashboard Bisnis', 'icon' => 'bi bi-graph-up', 'route' => 'superadmin.dashboard.bisnis', 'active' => ['superadmin.dashboard.bisnis']],
         in_array('general_affairs', $roleCodes, true) => ['label' => 'Dashboard', 'icon' => 'bi bi-speedometer2', 'route' => 'admin-dashboard', 'active' => ['admin-dashboard']],
+        in_array('requester', $roleCodes, true),
+        in_array('driver', $roleCodes, true),
+        in_array('view_only', $roleCodes, true),
+        in_array('vendor', $roleCodes, true)          => null,
+        // Role custom: tampilkan dashboard bila punya permission dashboard.view.
+        in_array('dashboard.view', $pcodes, true)     => ['label' => 'Dashboard', 'icon' => 'bi bi-speedometer2', 'route' => 'superadmin.dashboard.bisnis', 'active' => ['superadmin.dashboard.bisnis']],
         default                                       => null,
     };
 
-    // Struktur menu: satu modul = satu item.
-    // - 'children' => collapsible dengan chevron (submenu). Dibuka otomatis bila route aktif.
-    // - tanpa 'children' => link langsung (tidak ada heading dobel / tumpang tindih).
     $menuDef = array_values(array_filter([
         $dashboardItem ? ['label' => $dashboardItem['label'], 'icon' => $dashboardItem['icon'], 'route' => $dashboardItem['route'], 'active' => $dashboardItem['active']] : null,
 
         // ── BBM / Permohonan ──
-        ['label' => 'BBM / Permohonan', 'icon' => 'bi bi-fuel-pump', 'id' => 'bbm-nav', 'active' => ['requester-index', 'requester-history', 'admin-dashboard', 'superadmin.permohonan*'], 'children' => [
-            ['label' => 'Permohonan Baru', 'icon' => 'bi bi-circle', 'route' => 'requester-index', 'active' => ['requester-index'], 'roles' => ['requester', 'driver'], 'perms' => ['bbm.request']],
-            ['label' => 'Riwayat Permohonan', 'icon' => 'bi bi-circle', 'route' => 'requester-history', 'active' => ['requester-history'], 'roles' => ['requester', 'driver'], 'perms' => ['bbm.report']],
-            ['label' => 'Approval Permohonan', 'icon' => 'bi bi-circle', 'route' => 'admin-dashboard', 'active' => ['admin-dashboard'], 'roles' => ['superadmin'], 'perms' => ['bbm.approve']],
-            ['label' => 'Kelola Permohonan', 'icon' => 'bi bi-circle', 'route' => 'superadmin.permohonan', 'active' => ['superadmin.permohonan*'], 'roles' => ['superadmin'], 'perms' => ['bbm.approve']],
+        ['label' => 'Permohonan BBM', 'icon' => 'bi bi-fuel-pump', 'id' => 'bbm-nav', 'active' => ['requester-index', 'requester-history', 'admin-dashboard', 'superadmin.permohonan*'], 'children' => [
+            ['label' => 'Permohonan Baru', 'icon' => 'bi bi-circle', 'route' => 'requester-index', 'active' => ['requester-index'], 'perms' => ['bbm.request']],
+            ['label' => 'Riwayat Permohonan', 'icon' => 'bi bi-circle', 'route' => 'requester-history', 'active' => ['requester-history'], 'perms' => ['bbm.report']],
+            ['label' => 'Approval BBM', 'icon' => 'bi bi-circle', 'route' => 'admin-dashboard', 'active' => ['admin-dashboard'], 'perms' => ['bbm.approve']],
+            ['label' => 'Kelola Permohonan', 'icon' => 'bi bi-circle', 'route' => 'superadmin.permohonan', 'active' => ['superadmin.permohonan*'], 'perms' => ['bbm.approve']],
         ]],
 
-        // ── SPD Management (satu modul untuk semua role; anak di-filter per role) ──
+        // ── Pelaporan BBM & SPD (driver → lapor pembelian / OCR struk) ──
+        ['label' => 'Pelaporan BBM & SPD', 'icon' => 'bi bi-journal-text', 'route' => 'pelaporan.index', 'active' => ['pelaporan.*'], 'perms' => ['pelaporan.view', 'pelaporan.create']],
+
+        // ── SPD Management (anak di-filter per permission) ──
         ['label' => 'SPD Management', 'icon' => 'bi bi-envelope-paper', 'id' => 'spd-nav', 'active' => ['requester.surat.*', 'requester.lpj.*', 'surat.superadmin.*', 'perpanjangan.superadmin.*', 'lpj.superadmin.*'], 'children' => [
-            ['label' => 'Daftar Surat Tugas', 'icon' => 'bi bi-circle', 'route' => 'requester.surat.index', 'active' => ['requester.surat.index', 'requester.surat.show'], 'roles' => ['requester', 'driver'], 'perms' => ['spd.view']],
-            ['label' => 'Buat Surat Tugas', 'icon' => 'bi bi-circle', 'route' => 'requester.surat.create', 'active' => ['requester.surat.create'], 'roles' => ['requester', 'driver'], 'perms' => ['spd.create']],
-            ['label' => 'Laporan Penggantian (LPJ)', 'icon' => 'bi bi-circle', 'route' => 'requester.lpj.index', 'active' => ['requester.lpj.*'], 'roles' => ['requester', 'driver'], 'perms' => ['lpj.create']],
-            ['label' => 'Daftar Surat SPD', 'icon' => 'bi bi-circle', 'route' => 'surat.superadmin.index', 'active' => ['surat.superadmin.index'], 'roles' => ['superadmin'], 'perms' => ['spd.view']],
-            ['label' => 'Buat Surat (Shortcut)', 'icon' => 'bi bi-circle', 'route' => 'surat.superadmin.create-shortcut', 'active' => ['surat.superadmin.create-shortcut', 'surat.superadmin.store-shortcut'], 'roles' => ['superadmin'], 'perms' => ['spd.create']],
-            ['label' => 'Perpanjangan (ETD)', 'icon' => 'bi bi-circle', 'route' => 'perpanjangan.superadmin.index', 'active' => ['perpanjangan.superadmin.*'], 'roles' => ['superadmin'], 'perms' => ['spd.update']],
-            ['label' => 'Validasi Laporan', 'icon' => 'bi bi-circle', 'route' => 'lpj.superadmin.index', 'active' => ['lpj.superadmin.*'], 'roles' => ['superadmin'], 'perms' => ['lpj.validate']],
-            ['label' => 'Laporan SPD', 'icon' => 'bi bi-circle', 'route' => 'surat.superadmin.report', 'active' => ['surat.superadmin.report'], 'roles' => ['superadmin'], 'perms' => ['spd.view']],
+            // Driver / Requester
+            ['label' => 'Buat Surat Tugas', 'icon' => 'bi bi-circle', 'route' => 'requester.surat.create', 'active' => ['requester.surat.create'], 'perms' => ['spd.create']],
+            ['label' => 'Daftar Surat Tugas', 'icon' => 'bi bi-circle', 'route' => 'requester.surat.index', 'active' => ['requester.surat.index', 'requester.surat.show'], 'perms' => ['spd.view']],
+            ['label' => 'Laporan SPD (LPJ)', 'icon' => 'bi bi-circle', 'route' => 'requester.lpj.index', 'active' => ['requester.lpj.*'], 'perms' => ['lpj.create', 'lpj.view']],
+            // Admin / Superadmin
+            ['label' => 'Buat Surat (Shortcut)', 'icon' => 'bi bi-circle', 'route' => 'surat.superadmin.create-shortcut', 'active' => ['surat.superadmin.create-shortcut', 'surat.superadmin.store-shortcut'], 'perms' => ['spd.manage']],
+            ['label' => 'Validasi Surat Tugas', 'icon' => 'bi bi-circle', 'route' => 'surat.superadmin.index', 'active' => ['surat.superadmin.index', 'surat.superadmin.show'], 'perms' => ['spd.manage']],
+            ['label' => 'Perpanjangan (ETD)', 'icon' => 'bi bi-circle', 'route' => 'perpanjangan.superadmin.index', 'active' => ['perpanjangan.superadmin.*'], 'perms' => ['spd.update']],
+            ['label' => 'Validasi Laporan', 'icon' => 'bi bi-circle', 'route' => 'lpj.superadmin.index', 'active' => ['lpj.superadmin.*'], 'perms' => ['lpj.validate']],
+            ['label' => 'Laporan SPD', 'icon' => 'bi bi-circle', 'route' => 'surat.superadmin.report', 'active' => ['surat.superadmin.report'], 'perms' => ['spd.manage']],
         ]],
-
-        // ── Pelaporan ──
-        ['label' => 'Pelaporan BBM & SPD', 'icon' => 'bi bi-journal-text', 'route' => 'pelaporan.index', 'active' => ['pelaporan.*'], 'roles' => ['requester', 'manager'], 'perms' => ['pelaporan.view', 'pelaporan.create']],
 
         // ── Master Data - Kendaraan & Alat ──
         ['label' => 'Kendaraan & Alat', 'icon' => 'bi bi-truck', 'id' => 'vehicles-nav', 'active' => ['vehicles', 'vehicles.create', 'superadmin.vehicle-activation*'], 'children' => [
-            ['label' => 'Daftar Kendaraan', 'icon' => 'bi bi-circle', 'route' => 'vehicles', 'params' => ['tab' => 'list'], 'active' => ['vehicles'], 'roles' => ['superadmin'], 'perms' => ['vehicle.view']],
-            ['label' => 'Tambah Kendaraan', 'icon' => 'bi bi-circle', 'route' => 'vehicles.create', 'active' => ['vehicles.create'], 'roles' => ['superadmin'], 'perms' => ['vehicle.create']],
-            ['label' => 'Aktivasi Kendaraan', 'icon' => 'bi bi-circle', 'route' => 'superadmin.vehicle-activation', 'active' => ['superadmin.vehicle-activation*'], 'roles' => ['superadmin'], 'perms' => ['vehicle.checking']],
+            ['label' => 'Daftar Kendaraan & Alat', 'icon' => 'bi bi-circle', 'route' => 'vehicles', 'params' => ['tab' => 'list'], 'active' => ['vehicles'], 'perms' => ['vehicle.view']],
+            ['label' => 'Tambah Kendaraan', 'icon' => 'bi bi-circle', 'route' => 'vehicles.create', 'active' => ['vehicles.create'], 'perms' => ['vehicle.create']],
+            ['label' => 'Aktivasi Kendaraan', 'icon' => 'bi bi-circle', 'route' => 'superadmin.vehicle-activation', 'active' => ['superadmin.vehicle-activation*'], 'perms' => ['vehicle.approve']],
         ]],
 
         // ── Manajemen User ──
         ['label' => 'Pengguna', 'icon' => 'bi bi-people', 'id' => 'users-nav', 'active' => ['users', 'users.create'], 'children' => [
-            ['label' => 'Daftar User', 'icon' => 'bi bi-circle', 'route' => 'users', 'params' => ['tab' => 'list'], 'active' => ['users'], 'roles' => ['superadmin'], 'perms' => ['users.view']],
-            ['label' => 'Tambah User', 'icon' => 'bi bi-circle', 'route' => 'users.create', 'active' => ['users.create'], 'roles' => ['superadmin'], 'perms' => ['users.create']],
+            ['label' => 'Daftar User', 'icon' => 'bi bi-circle', 'route' => 'users', 'params' => ['tab' => 'list'], 'active' => ['users'], 'perms' => ['users.view']],
+            ['label' => 'Tambah User', 'icon' => 'bi bi-circle', 'route' => 'users.create', 'active' => ['users.create'], 'perms' => ['users.create']],
         ]],
 
         // ── RBAC & Hak Akses ──
-        ['label' => 'Role & Permission', 'icon' => 'bi bi-shield-lock', 'route' => 'superadmin.rbac.index', 'active' => ['superadmin.rbac.*'], 'roles' => ['superadmin'], 'perms' => ['rbac.view']],
+        ['label' => 'Role & Permission', 'icon' => 'bi bi-shield-lock', 'route' => 'superadmin.rbac.index', 'active' => ['superadmin.rbac.*'], 'perms' => ['rbac.roles']],
 
         // ── Pengaturan & Data Master ──
         ['label' => 'Pengaturan & Data Master', 'icon' => 'bi bi-gear', 'id' => 'master-nav', 'active' => ['master-gasoline.*', 'superadmin.units.*', 'superadmin.sites.*'], 'children' => [
-            ['label' => 'Harga BBM (Master Gasoline)', 'icon' => 'bi bi-fuel-pump', 'route' => 'master-gasoline.index', 'active' => ['master-gasoline.*'], 'roles' => ['general_affairs', 'superadmin']],
-            ['label' => 'Unit Bisnis', 'icon' => 'bi bi-diagram-3', 'route' => 'superadmin.units.index', 'active' => ['superadmin.units.*'], 'roles' => ['superadmin']],
-            ['label' => 'Site / Lokasi', 'icon' => 'bi bi-geo-alt', 'route' => 'superadmin.sites.index', 'active' => ['superadmin.sites.*'], 'roles' => ['superadmin']],
+            ['label' => 'Harga BBM (Master Gasoline)', 'icon' => 'bi bi-fuel-pump', 'route' => 'master-gasoline.index', 'active' => ['master-gasoline.*'], 'perms' => ['settings.view']],
+            ['label' => 'Unit Bisnis', 'icon' => 'bi bi-diagram-3', 'route' => 'superadmin.units.index', 'active' => ['superadmin.units.*'], 'perms' => ['settings.manage']],
+            ['label' => 'Site / Lokasi', 'icon' => 'bi bi-geo-alt', 'route' => 'superadmin.sites.index', 'active' => ['superadmin.sites.*'], 'perms' => ['settings.manage']],
         ]],
 
-        // ── Pengecekan Kendaraan (requester) ──
-        ['label' => 'Pengecekan & Service', 'icon' => 'bi bi-clipboard-check', 'id' => 'requester-checking-nav', 'active' => ['requester.checking-acknowledgement.*', 'requester.replacement-schedule.*', 'requester.service-transaction.*'], 'children' => [
-            ['label' => 'Hasil Pengecekan', 'icon' => 'bi bi-circle', 'route' => 'requester.checking-acknowledgement.index', 'active' => ['requester.checking-acknowledgement.*'], 'roles' => ['requester', 'driver'], 'perms' => ['vehicle.checking'], 'badge' => fn () => \App\Models\VehicleCheckingDetail::forDriver($user->id)->unacknowledged()->count(), 'badgeClass' => 'bg-danger'],
-            ['label' => 'Jadwal Service', 'icon' => 'bi bi-circle', 'route' => 'requester.replacement-schedule.index', 'active' => ['requester.replacement-schedule.*'], 'roles' => ['requester', 'driver'], 'perms' => ['vehicle.checking'], 'badge' => fn () => \App\Models\VehiclePartsReplacement::where(function ($q) use ($user) {
-                $q->where('desired_driver_id', $user->id)->orWhere('last_driver_id', $user->id);
-            })->whereIn('status', ['approved', 'scheduled', 'in_service'])->doesntHave('transaction')->count(), 'badgeClass' => 'bg-warning text-dark'],
-            ['label' => 'Riwayat Transaksi Service', 'icon' => 'bi bi-circle', 'route' => 'requester.service-transaction.index', 'active' => ['requester.service-transaction.*'], 'roles' => ['requester'], 'perms' => ['vehicle.sparepart']],
-        ]],
-
-        // ── Scanner Kendaraan (dispatcher) ──
+        // ── Scanner Kendaraan (dispatcher + admin read-only) ──
         ['label' => 'Scanner Kendaraan', 'icon' => 'bi bi-upc-scan', 'id' => 'dispatcher-scanner-nav', 'active' => ['dispatcher.scan-vehicle*', 'dispatcher.dispatcher-scanner*'], 'children' => [
-            ['label' => 'Scan Riwayat Kendaraan', 'icon' => 'bi bi-circle', 'route' => 'dispatcher.scan-vehicle', 'active' => ['dispatcher.scan-vehicle*'], 'roles' => ['dispatcher'], 'perms' => ['vehicle.checking']],
-            ['label' => 'Scan untuk Periksa', 'icon' => 'bi bi-circle', 'route' => 'dispatcher.dispatcher-scanner', 'active' => ['dispatcher.dispatcher-scanner*'], 'roles' => ['dispatcher'], 'perms' => ['vehicle.checking']],
+            ['label' => 'Scan Riwayat Kendaraan', 'icon' => 'bi bi-circle', 'route' => 'dispatcher.scan-vehicle', 'active' => ['dispatcher.scan-vehicle*'], 'perms' => ['vehicle.scan', 'vehicle.checking']],
+            ['label' => 'Scan untuk Periksa', 'icon' => 'bi bi-circle', 'route' => 'dispatcher.dispatcher-scanner', 'active' => ['dispatcher.dispatcher-scanner*'], 'perms' => ['vehicle.checking']],
         ]],
 
         // ── Pemeriksaan Kendaraan (dispatcher) ──
         ['label' => 'Pemeriksaan Kendaraan', 'icon' => 'bi bi-calendar-check', 'id' => 'dispatcher-check-nav', 'active' => ['dispatcher.daily-check.*', 'dispatcher.weekly-check.*', 'dispatcher.monthly-check.*', 'dispatcher.body-check.*'], 'children' => [
-            ['label' => 'Periksa Harian', 'icon' => 'bi bi-circle', 'route' => 'dispatcher.daily-check.index', 'active' => ['dispatcher.daily-check.*'], 'roles' => ['dispatcher'], 'perms' => ['vehicle.checking']],
-            ['label' => 'Periksa Mingguan', 'icon' => 'bi bi-circle', 'route' => 'dispatcher.weekly-check.index', 'active' => ['dispatcher.weekly-check.*'], 'roles' => ['dispatcher'], 'perms' => ['vehicle.checking']],
-            ['label' => 'Periksa Bulanan', 'icon' => 'bi bi-circle', 'route' => 'dispatcher.monthly-check.index', 'active' => ['dispatcher.monthly-check.*'], 'roles' => ['dispatcher'], 'perms' => ['vehicle.checking']],
-            ['label' => 'Periksa Body', 'icon' => 'bi bi-circle', 'route' => 'dispatcher.body-check.index', 'active' => ['dispatcher.body-check.*'], 'roles' => ['dispatcher'], 'perms' => ['vehicle.checking']],
+            ['label' => 'Periksa Harian', 'icon' => 'bi bi-circle', 'route' => 'dispatcher.daily-check.index', 'active' => ['dispatcher.daily-check.*'], 'perms' => ['vehicle.checking']],
+            ['label' => 'Periksa Mingguan', 'icon' => 'bi bi-circle', 'route' => 'dispatcher.weekly-check.index', 'active' => ['dispatcher.weekly-check.*'], 'perms' => ['vehicle.checking']],
+            ['label' => 'Periksa Bulanan', 'icon' => 'bi bi-circle', 'route' => 'dispatcher.monthly-check.index', 'active' => ['dispatcher.monthly-check.*'], 'perms' => ['vehicle.checking']],
+            ['label' => 'Periksa Body', 'icon' => 'bi bi-circle', 'route' => 'dispatcher.body-check.index', 'active' => ['dispatcher.body-check.*'], 'perms' => ['vehicle.checking']],
         ]],
 
         // ── Penggantian & Perbaikan (dispatcher) ──
-        ['label' => 'Permohonan Penggantian', 'icon' => 'bi bi-tools', 'route' => 'dispatcher.replacement.index', 'active' => ['dispatcher.replacement.*'], 'roles' => ['dispatcher'], 'perms' => ['vehicle.sparepart'], 'badge' => fn () => \App\Models\VehiclePartsReplacement::forDispatcher($user->id)->pending()->count(), 'badgeClass' => 'bg-warning text-dark'],
+        ['label' => 'Permohonan Penggantian', 'icon' => 'bi bi-tools', 'route' => 'dispatcher.replacement.index', 'active' => ['dispatcher.replacement.*'], 'perms' => ['vehicle.checking'], 'badge' => fn () => \App\Models\VehiclePartsReplacement::forDispatcher($user->id)->pending()->count(), 'badgeClass' => 'bg-warning text-dark'],
 
-        // ── Laporan (dispatcher) ──
-        ['label' => 'Riwayat & Laporan', 'icon' => 'bi bi-clock-history', 'route' => 'dispatcher.history', 'active' => ['dispatcher.history'], 'roles' => ['dispatcher'], 'perms' => ['vehicle.checking']],
+        // ── Riwayat (dispatcher) ──
+        ['label' => 'Riwayat & Laporan', 'icon' => 'bi bi-clock-history', 'route' => 'dispatcher.history', 'active' => ['dispatcher.history'], 'perms' => ['vehicle.checking']],
 
-        // ── Export Form Pengecekan (superadmin, dispatcher, driver) ──
-        ['label' => 'Export Form Pengecekan', 'icon' => 'bi bi-file-earmark-excel', 'route' => 'dispatcher.export-checking.index', 'active' => ['dispatcher.export-checking.*'], 'roles' => ['requester', 'driver', 'dispatcher', 'superadmin'], 'perms' => ['vehicle.checking', 'bbm.view']],
-
-        // ── Export Body Checking (excel with photos) ──
-        ['label' => 'Export Body Checking', 'icon' => 'bi bi-file-earmark-excel', 'route' => 'dispatcher.export.body-checking-index', 'active' => ['dispatcher.export.body-checking-*'], 'roles' => ['requester', 'driver', 'dispatcher', 'superadmin'], 'perms' => ['vehicle.checking']],
-
-        // ── Pengecekan & Sparepart (admin/superadmin) ──
-        ['label' => 'Pengecekan & Service', 'icon' => 'bi bi-wrench-adjustable', 'id' => 'staff-check-nav', 'active' => ['dispatcher.scan-vehicle*', 'dispatcher.dispatcher-scanner*', 'admin.sparepart-request.*', 'admin.service-scheduling.*', 'admin.transaction-monitoring.*', 'superadmin.vehicle-health.*'], 'children' => [
-            ['label' => 'Scan Riwayat Kendaraan', 'icon' => 'bi bi-circle', 'route' => 'dispatcher.scan-vehicle', 'active' => ['dispatcher.scan-vehicle*'], 'perms' => ['vehicle.checking']],
-            ['label' => 'Scan untuk Periksa', 'icon' => 'bi bi-circle', 'route' => 'dispatcher.dispatcher-scanner', 'active' => ['dispatcher.dispatcher-scanner*'], 'perms' => ['vehicle.checking']],
-            ['label' => 'Permohonan Sparepart', 'icon' => 'bi bi-circle', 'route' => 'admin.sparepart-request.index', 'active' => ['admin.sparepart-request.*'], 'perms' => ['vehicle.sparepart'], 'badge' => fn () => \App\Models\VehiclePartsReplacement::pending()->count(), 'badgeClass' => 'bg-danger'],
-            ['label' => 'Jadwal Service', 'icon' => 'bi bi-circle', 'route' => 'admin.service-scheduling.index', 'active' => ['admin.service-scheduling.*'], 'roles' => ['general_affairs', 'superadmin'], 'perms' => ['vehicle.sparepart']],
-            ['label' => 'Monitoring Transaksi', 'icon' => 'bi bi-circle', 'route' => 'admin.transaction-monitoring.index', 'active' => ['admin.transaction-monitoring.*'], 'roles' => ['general_affairs', 'superadmin'], 'perms' => ['vehicle.view']],
-            ['label' => 'Vehicle Health', 'icon' => 'bi bi-circle', 'route' => 'superadmin.vehicle-health.index', 'active' => ['superadmin.vehicle-health.*'], 'roles' => ['superadmin']],
+        // ── Pengecekan Kendaraan (driver): hasil + filter acknowledge ──
+        ['label' => 'Pemeriksaan Kendaraan', 'icon' => 'bi bi-clipboard-check', 'id' => 'requester-checking-nav', 'active' => ['requester.checking-acknowledgement.*'], 'children' => [
+            ['label' => 'Hasil Pemeriksaan', 'icon' => 'bi bi-circle', 'route' => 'requester.checking-acknowledgement.index', 'active' => ['requester.checking-acknowledgement.*'], 'query' => ['type' => null], 'perms' => ['vehicle.acknowledge'], 'badge' => fn () => \App\Models\VehicleCheckingDetail::forDriver($user->id)->unacknowledged()->count(), 'badgeClass' => 'bg-danger'],
+            ['label' => 'Pemeriksaan Rutin', 'icon' => 'bi bi-circle', 'route' => 'requester.checking-acknowledgement.index', 'params' => ['type' => 'routine'], 'active' => ['requester.checking-acknowledgement.*'], 'query' => ['type' => 'routine'], 'perms' => ['vehicle.acknowledge']],
+            ['label' => 'Body Checking', 'icon' => 'bi bi-circle', 'route' => 'requester.checking-acknowledgement.index', 'params' => ['type' => 'body'], 'active' => ['requester.checking-acknowledgement.*'], 'query' => ['type' => 'body'], 'perms' => ['vehicle.acknowledge']],
         ]],
 
-        // ── Lunch Management (satu modul, dropdown) ──
+        // ── Export Form Pengecekan (driver, dispatcher, superadmin) ──
+        ['label' => 'Export Form Pengecekan', 'icon' => 'bi bi-file-earmark-excel', 'id' => 'export-check-nav', 'active' => ['dispatcher.export-checking.*', 'dispatcher.export.body-checking-*'], 'children' => [
+            ['label' => 'Ekspor Hasil Pemeriksaan', 'icon' => 'bi bi-circle', 'route' => 'dispatcher.export-checking.index', 'active' => ['dispatcher.export-checking.*'], 'perms' => ['vehicle.export']],
+            ['label' => 'Export Body Checking', 'icon' => 'bi bi-circle', 'route' => 'dispatcher.export.body-checking-index', 'active' => ['dispatcher.export.body-checking-*'], 'perms' => ['vehicle.export']],
+        ]],
+
+        // ── Pengecekan & Service (admin/superadmin: VPR, service, monitoring) ──
+        ['label' => 'Pengecekan & Service', 'icon' => 'bi bi-wrench-adjustable', 'id' => 'staff-check-nav', 'active' => ['admin.replacement-approval.*', 'admin.service-scheduling.*', 'admin.transaction-monitoring.*'], 'children' => [
+            ['label' => 'Permohonan VPR', 'icon' => 'bi bi-circle', 'route' => 'admin.replacement-approval.index', 'active' => ['admin.replacement-approval.*'], 'perms' => ['vehicle.sparepart'], 'badge' => fn () => \App\Models\VehiclePartsReplacement::pending()->count(), 'badgeClass' => 'bg-danger'],
+            ['label' => 'Jadwal Service', 'icon' => 'bi bi-circle', 'route' => 'admin.service-scheduling.index', 'active' => ['admin.service-scheduling.*'], 'perms' => ['vehicle.sparepart']],
+            ['label' => 'Monitoring Transaksi', 'icon' => 'bi bi-circle', 'route' => 'admin.transaction-monitoring.index', 'active' => ['admin.transaction-monitoring.*'], 'perms' => ['vehicle.sparepart']],
+        ]],
+
+        // ── Lunch Management ──
         ['label' => 'Lunch Management', 'icon' => 'bi bi-egg-fried', 'id' => 'lunch-nav', 'active' => ['lunch.*'], 'children' => [
-            ['label' => 'Dashboard Lunch', 'icon' => 'bi bi-circle', 'route' => 'lunch.dashboard', 'active' => ['lunch.dashboard'], 'roles' => ['general_affairs', 'superadmin'], 'perms' => ['lunch.view']],
+            ['label' => 'Dashboard Lunch', 'icon' => 'bi bi-circle', 'route' => 'lunch.dashboard', 'active' => ['lunch.dashboard'], 'perms' => ['lunch.view']],
             ['label' => 'Employee Default', 'icon' => 'bi bi-circle', 'route' => 'lunch.employee-defaults.index', 'active' => ['lunch.employee-defaults.*'], 'perms' => ['lunch.manage']],
-            ['label' => 'Guest Reservation', 'icon' => 'bi bi-circle', 'route' => 'lunch.guests.calendar', 'active' => ['lunch.guests.*'], 'roles' => ['general_affairs', 'superadmin'], 'perms' => ['lunch.view']],
-            ['label' => 'Lunch Forecast', 'icon' => 'bi bi-circle', 'route' => 'lunch.forecasts.index', 'active' => ['lunch.forecasts.*'], 'roles' => ['general_affairs', 'superadmin'], 'perms' => ['lunch.view']],
-            ['label' => 'Lunch Distribution', 'icon' => 'bi bi-circle', 'route' => 'lunch.distributions.index', 'active' => ['lunch.distributions.*'], 'roles' => ['general_affairs', 'superadmin'], 'perms' => ['lunch.view']],
-            ['label' => 'Lunch Transactions', 'icon' => 'bi bi-circle', 'route' => 'lunch.transactions.index', 'active' => ['lunch.transactions.*'], 'roles' => ['general_affairs', 'superadmin'], 'perms' => ['lunch.view']],
-            ['label' => 'Analytics', 'icon' => 'bi bi-circle', 'route' => 'lunch.analytics.index', 'active' => ['lunch.analytics.*'], 'roles' => ['general_affairs', 'superadmin'], 'perms' => ['lunch.view']],
-            ['label' => 'QR Lokasi', 'icon' => 'bi bi-circle', 'route' => 'lunch.qr-codes', 'active' => ['lunch.qr-codes'], 'roles' => ['general_affairs', 'superadmin'], 'perms' => ['lunch.view']],
-            ['label' => 'Export Vendor', 'icon' => 'bi bi-circle', 'route' => 'lunch.export-form', 'active' => ['lunch.export-form'], 'roles' => ['general_affairs', 'superadmin'], 'perms' => ['lunch.export']],
-            ['label' => 'Booking Mandiri', 'icon' => 'bi bi-circle', 'route' => 'lunch.self-booking.index', 'active' => ['lunch.self-booking.*'], 'roles' => ['general_affairs', 'superadmin'], 'perms' => ['lunch.view']],
+            ['label' => 'Analytics', 'icon' => 'bi bi-circle', 'route' => 'lunch.analytics.index', 'active' => ['lunch.analytics.*'], 'perms' => ['lunch.view']],
+            ['label' => 'Guest Reservation', 'icon' => 'bi bi-circle', 'route' => 'lunch.guests.calendar', 'active' => ['lunch.guests.*'], 'perms' => ['lunch.view']],
+            ['label' => 'Lunch Forecast', 'icon' => 'bi bi-circle', 'route' => 'lunch.forecasts.index', 'active' => ['lunch.forecasts.*'], 'perms' => ['lunch.view']],
+            ['label' => 'Lunch Distribution', 'icon' => 'bi bi-circle', 'route' => 'lunch.distributions.index', 'active' => ['lunch.distributions.*'], 'perms' => ['lunch.view']],
+            ['label' => 'Lunch Transaction', 'icon' => 'bi bi-circle', 'route' => 'lunch.transactions.index', 'active' => ['lunch.transactions.*'], 'perms' => ['lunch.view']],
+            ['label' => 'Export Vendor', 'icon' => 'bi bi-circle', 'route' => 'lunch.export-form', 'active' => ['lunch.export-form'], 'perms' => ['lunch.export']],
+            ['label' => 'Booking Mandiri', 'icon' => 'bi bi-circle', 'route' => 'lunch.self-booking.index', 'active' => ['lunch.self-booking.*'], 'perms' => ['lunch.view']],
         ]],
 
-        // ── Cetak Laporan BBM (admin) ──
-        ['label' => 'Cetak Laporan BBM', 'icon' => 'bi bi-printer', 'route' => 'superadmin.print-report', 'active' => ['superadmin.print-report*'], 'roles' => ['general_affairs'], 'perms' => ['bbm.export']],
+        // ── Cetak Laporan BBM (admin/superadmin) ──
+        ['label' => 'Cetak Laporan BBM', 'icon' => 'bi bi-printer', 'route' => 'superadmin.print-report', 'active' => ['superadmin.print-report*'], 'perms' => ['bbm.export']],
 
         // ── Laporan & Analisis (superadmin) ──
-        ['label' => 'Laporan & Analisis', 'icon' => 'bi bi-graph-up-arrow', 'id' => 'laporan-nav', 'active' => ['trip-analysis*', 'superadmin.financial-report.*', 'superadmin.transaction-report.*', 'superadmin.print-report*', 'ai-assistant.*'], 'children' => [
-            ['label' => 'Analisis Trip & Efisiensi BBM', 'icon' => 'bi bi-circle', 'route' => 'superadmin.trip-analysis.index', 'active' => ['trip-analysis*'], 'roles' => ['superadmin']],
-            ['label' => 'Lap. Keuangan Service', 'icon' => 'bi bi-circle', 'route' => 'superadmin.financial-report.index', 'active' => ['superadmin.financial-report.*'], 'roles' => ['superadmin']],
-            ['label' => 'Lap. Transaksi Sparepart', 'icon' => 'bi bi-circle', 'route' => 'superadmin.transaction-report.index', 'active' => ['superadmin.transaction-report.*'], 'roles' => ['superadmin']],
-            ['label' => 'Cetak Laporan BBM', 'icon' => 'bi bi-circle', 'route' => 'superadmin.print-report', 'active' => ['superadmin.print-report*'], 'roles' => ['superadmin']],
-            ['label' => 'AI Assistant (Beta)', 'icon' => 'bi bi-circle', 'route' => 'ai-assistant.index', 'active' => ['ai-assistant.*'], 'roles' => ['superadmin', 'general_affairs', 'admin', 'admin_bbm', 'dispatcher', 'manager', 'non_ga_staff', 'view_only'], 'perms' => ['dashboard.view']],
+        ['label' => 'Laporan & Analisis', 'icon' => 'bi bi-graph-up-arrow', 'id' => 'laporan-nav', 'active' => ['trip-analysis*', 'superadmin.financial-report.*', 'superadmin.transaction-report.*', 'superadmin.vehicle-health.*', 'ai-assistant.*'], 'children' => [
+            ['label' => 'Analisis Trip & Efisiensi BBM', 'icon' => 'bi bi-circle', 'route' => 'superadmin.trip-analysis.index', 'active' => ['trip-analysis*'], 'perms' => ['vehicle.report']],
+            ['label' => 'Lap. Keuangan Service', 'icon' => 'bi bi-circle', 'route' => 'superadmin.financial-report.index', 'active' => ['superadmin.financial-report.*'], 'perms' => ['vehicle.report']],
+            ['label' => 'Lap. Transaksi Sparepart', 'icon' => 'bi bi-circle', 'route' => 'superadmin.transaction-report.index', 'active' => ['superadmin.transaction-report.*'], 'perms' => ['vehicle.report']],
+            ['label' => 'Vehicle Health', 'icon' => 'bi bi-circle', 'route' => 'superadmin.vehicle-health.index', 'active' => ['superadmin.vehicle-health.*'], 'perms' => ['vehicle.report']],
+            ['label' => 'AI Assistant (Beta)', 'icon' => 'bi bi-circle', 'route' => 'ai-assistant.index', 'active' => ['ai-assistant.*'], 'perms' => ['dashboard.view']],
         ]],
     ]));
   @endphp
@@ -209,7 +213,7 @@
               @foreach ($kids as $k)
                 <li>
                   <a href="{{ !empty($k['params']) ? route($k['route'], $k['params']) : route($k['route']) }}"
-                     class="{{ $routeIsAny($k['active']) ? 'active' : '' }}">
+                     class="{{ $childIsActive($k) ? 'active' : '' }}">
                     <i class="{{ $k['icon'] }}"></i><span>{{ $k['label'] }}</span>
                     @if (!empty($k['badge']))
                       @php $badgeValue = $k['badge'](); @endphp

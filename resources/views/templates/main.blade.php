@@ -54,20 +54,14 @@
 <body>
 
   
-  @if (Auth::user()->role === 'superadmin'
-  || Auth::user()->role === 'requester'
-  || Auth::user()->role === 'driver'
-  || Auth::user()->role === 'admin'
-  || Auth::user()->role === 'non_ga_staff'
-  || Auth::user()->role === 'manager'
-  || Auth::user()->role === 'dispatcher'
-  )
+  @auth
+    {{-- Sidebar & navbar tampil untuk SEMUA user terautentikasi, termasuk
+         role custom buatan superadmin (dynamic RBAC). Isi menu disaring
+         berdasarkan permission di partials/sidebar. --}}
     @include('partials.navbar')
     @include('partials.sidebar')
     @include('partials.gemini-status-banner')
-    @else
-   
-    @endif
+  @endauth
 
 
     <main id="main" class="main">

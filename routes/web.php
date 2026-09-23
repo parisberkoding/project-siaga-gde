@@ -64,7 +64,7 @@ Route::middleware(['auth'])->group(function () {
     Route::match(['get', 'post'], '/logout', [AuthentiactionController::class, 'logout'])->name('logout');
 });
 
-Route::middleware(['auth', 'permission:spd.view'])->prefix('spd')->name('spd.')->group(function () {
+Route::middleware(['auth', 'permission:spd.view,spd.manage'])->prefix('spd')->name('spd.')->group(function () {
     Route::get('/surat/{surat}/print', [SpdController::class, 'printSurat'])->name('surat.print');
     Route::get('/laporan/{laporan}/print', [SpdController::class, 'printLaporan'])->name('laporan.print');
 
@@ -83,8 +83,11 @@ Route::middleware(['auth'])->group(function () {
 // ────────────────────────────────────────────────────────────────────────
 Route::middleware(['auth', 'permission:pelaporan.view,pelaporan.create'])->prefix('pelaporan')->name('pelaporan.')->group(function () {
     Route::get('/', [ReportingController::class, 'index'])->name('index');
+
+    // Semua aksi tulis / halaman input butuh pelaporan.create (view-only tidak bisa).
+    Route::middleware('permission:pelaporan.create')->group(function () {
     Route::post('/analyze-struk', [ReportingController::class, 'analyzeStruk'])
-        ->middleware('throttle:10,1')->name('analyze-struk');
+        ->middleware(['throttle:10,1', 'permission:pelaporan.analyze'])->name('analyze-struk');
     Route::post('/vehicle-budget', [ReportingController::class, 'vehicleBudget'])->name('vehicle-budget');
     Route::post('/spd', [ReportingController::class, 'storeSpd'])->name('spd.store');
     Route::post('/operational', [ReportingController::class, 'storeOperational'])->name('operational.store');
@@ -130,41 +133,45 @@ Route::middleware(['auth', 'permission:pelaporan.view,pelaporan.create'])->prefi
     // SATU halaman validasi (FLOW BARU) → input struk + segmentasi draft/final → LPJ
     Route::get('/spd/{surat}/validasi', [SpdDailyReportController::class, 'validasi'])->name('spd.validasi');
     Route::post('/spd/{surat}/finalize', [SpdDailyReportController::class, 'finalize'])->name('spd.finalize');
+    });
 });
 
 // Requester Routes
-Route::middleware(['auth', 'permission:bbm.request,bbm.view,bbm.report'])->group(function () {
-    Route::get('/requester/view-request-bbm', [RequestManagementController::class, 'requester_index'])->name('requester-index');
-    Route::post('/requester/create-request-bbm', [RequestManagementController::class, 'requester_create'])->name('requester-create');
-    Route::put('/requester/cancel/{id}', [RequestManagementController::class, 'requester_cancel_request'])->name('requester-cancel');
-    Route::get('/requester/bbm-history', [RequestManagementController::class, 'requester_history'])->name('requester-history');
-    Route::get('/requester/request/{id}', [RequestManagementController::class, 'requester_show'])->name('requester-show');
-    Route::post('/requester/request/{id}/upload-proof', [RequestManagementController::class, 'requestper_upload_proof'])->name('requester-upload-proof');
+Route::middleware(['auth'])->group(function () {
+    // ── Permohonan BBM (requester) ──
+    Route::middleware('permission:bbm.request,bbm.view,bbm.report')->group(function () {
+        Route::get('/requester/view-request-bbm', [RequestManagementController::class, 'requester_index'])->name('requester-index');
+        Route::post('/requester/create-request-bbm', [RequestManagementController::class, 'requester_create'])->name('requester-create');
+        Route::put('/requester/cancel/{id}', [RequestManagementController::class, 'requester_cancel_request'])->name('requester-cancel');
+        Route::get('/requester/bbm-history', [RequestManagementController::class, 'requester_history'])->name('requester-history');
+        Route::get('/requester/request/{id}', [RequestManagementController::class, 'requester_show'])->name('requester-show');
+        Route::post('/requester/request/{id}/upload-proof', [RequestManagementController::class, 'requestper_upload_proof'])->name('requester-upload-proof');
 
-    // Submit Report Route
-    Route::post('/requester/request/{id}/submit-report', [RequestManagementController::class, 'requester_submit_report'])->name('requester.submit-report');
+        // Submit Report Route
+        Route::post('/requester/request/{id}/submit-report', [RequestManagementController::class, 'requester_submit_report'])->name('requester.submit-report');
 
-    Route::put('/requester/cancel-request/{id}', [RequestManagementController::class, 'requester_cancel_request'])
-        ->name('requester.cancel-request');
+        Route::put('/requester/cancel-request/{id}', [RequestManagementController::class, 'requester_cancel_request'])
+            ->name('requester.cancel-request');
 
-    // Thermer Print Routes
-    Route::get('voucher/{id}/thermer/response', [VoucherController::class, 'thermerJsonResponse'])
-        ->name('voucher.thermer.response');
+        // Thermer Print Routes
+        Route::get('voucher/{id}/thermer/response', [VoucherController::class, 'thermerJsonResponse'])
+            ->name('voucher.thermer.response');
+    });
 
     // ────────────────────────────────────────────────────────────────────────
     // SURAT SPD
     // ────────────────────────────────────────────────────────────────────────
-    Route::prefix('surat_requester')->name('requester.surat.')->middleware('permission:spd.view')->group(function () {
-        Route::get('/main-surat', [SpdController::class, 'indexSuratRequester'])->name('index');
-        Route::get('/create', [SpdController::class, 'createSurat'])->name('create');
-        Route::post('/store', [SpdController::class, 'storeSurat'])->name('store');
-        Route::get('/{surat}', [SpdController::class, 'showSuratRequester'])->name('show');
+    Route::prefix('surat_requester')->name('requester.surat.')->group(function () {
+        Route::get('/main-surat', [SpdController::class, 'indexSuratRequester'])->name('index')->middleware('permission:spd.view');
+        Route::get('/create', [SpdController::class, 'createSurat'])->name('create')->middleware('permission:spd.create');
+        Route::post('/store', [SpdController::class, 'storeSurat'])->name('store')->middleware('permission:spd.create');
+        Route::get('/{surat}', [SpdController::class, 'showSuratRequester'])->name('show')->middleware('permission:spd.view');
     });
 
     // ────────────────────────────────────────────────────────────────────────
     // PERPANJANGAN
     // ────────────────────────────────────────────────────────────────────────
-    Route::prefix('perpanjangan')->name('requester.perpanjangan.')->middleware('permission:spd.view')->group(function () {
+    Route::prefix('perpanjangan')->name('requester.perpanjangan.')->middleware('permission:spd.create,spd.view')->group(function () {
         Route::get('/main-perpanjangan', [SpdController::class, 'indexPerpanjanganRequester'])->name('index');
         Route::get('/create', [SpdController::class, 'createPerpanjangan'])->name('create');
         Route::post('/store', [SpdController::class, 'storePerpanjangan'])->name('store');
@@ -194,7 +201,7 @@ Route::middleware(['auth', 'permission:bbm.request,bbm.view,bbm.report'])->group
     // ────────────────────────────────────────────────────────────────────────
     // VEHICLE CHECKING - Driver Acknowledgement & Service Transaction
     // ────────────────────────────────────────────────────────────────────────
-    Route::prefix('vehicle-check')->name('requester.')->group(function () {
+    Route::prefix('vehicle-check')->name('requester.')->middleware('permission:vehicle.acknowledge')->group(function () {
         // Acknowledge checking dari dispatcher
         Route::get('/acknowledgement', [VehicleRepairmentDriverController::class, 'acknowledgementIndex'])
             ->name('checking-acknowledgement.index');
@@ -274,8 +281,8 @@ Route::middleware(['auth', 'permission:vehicle.sparepart'])->prefix('admin/spare
     Route::post('/{vprCode}/complete', [VehicleSparepartRequestRepairController::class, 'markCompleted'])->name('complete');
 });
 
-// export laporan transaksi bbm
-Route::middleware(['auth', 'permission:bbm.export,bbm.view'])->group(function () {
+// export laporan transaksi bbm (admin/superadmin — bbm.export)
+Route::middleware(['auth', 'permission:bbm.export'])->group(function () {
     // ==================== REPORTS & EXPORTS ====================
     Route::get('/print-report', [SuperadminController::class, 'printReport'])->name('superadmin.print-report');
     Route::get('/print-report/form', [SuperadminController::class, 'printReportPage'])->name('superadmin.print-report.form');
@@ -317,39 +324,54 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
 
 // ── PERMISSION-BASED ROUTES (ex-superadmin group) ──
 
-// User Management
-Route::middleware(['auth', 'permission:users.view,users.create'])->group(function () {
-    Route::get('users', [SuperadminController::class, 'indexUsers'])->name('users');
-    Route::get('users/create', [SuperadminController::class, 'createUser'])->name('users.create');
-    Route::post('users/store', [SuperadminController::class, 'storeUser'])->name('users.store');
-    Route::post('users/{id}/update', [SuperadminController::class, 'updateUser'])->name('users.update');
-    Route::post('users/{id}/delete', [SuperadminController::class, 'deleteUser'])->name('users.delete');
-    Route::post('users/{id}/reset-password', [SuperadminController::class, 'resetPassword'])->name('users.reset-password');
-    Route::post('users/{id}/restore', [SuperadminController::class, 'restoreUser'])->name('users.restore');
+// User Management (split per aksi agar tidak bocor ke role view-only)
+Route::middleware(['auth'])->group(function () {
+    Route::middleware('permission:users.view')->group(function () {
+        Route::get('users', [SuperadminController::class, 'indexUsers'])->name('users');
+    });
+    Route::middleware('permission:users.create')->group(function () {
+        Route::get('users/create', [SuperadminController::class, 'createUser'])->name('users.create');
+        Route::post('users/store', [SuperadminController::class, 'storeUser'])->name('users.store');
+    });
+    Route::middleware('permission:users.update')->group(function () {
+        Route::post('users/{id}/update', [SuperadminController::class, 'updateUser'])->name('users.update');
+        Route::post('users/{id}/reset-password', [SuperadminController::class, 'resetPassword'])->name('users.reset-password');
+    });
+    Route::middleware('permission:users.delete')->group(function () {
+        Route::post('users/{id}/delete', [SuperadminController::class, 'deleteUser'])->name('users.delete');
+        Route::post('users/{id}/restore', [SuperadminController::class, 'restoreUser'])->name('users.restore');
+    });
 });
 
-// Vehicle Management
-Route::middleware(['auth', 'permission:vehicle.view,vehicle.create'])->group(function () {
-    Route::get('vehicles', [SuperadminController::class, 'indexVehicles'])->name('vehicles');
-    Route::get('vehicles/create', [SuperadminController::class, 'createVehicle'])->name('vehicles.create');
-    Route::get('vehicles/{id}/edit', [SuperadminController::class, 'editVehicle'])->name('vehicles.edit');
-    Route::post('vehicles/store', [SuperadminController::class, 'storeVehicle'])->name('vehicles.store');
-    Route::post('vehicles/{id}/update', [SuperadminController::class, 'updateVehicle'])->name('vehicles.update');
-    Route::post('vehicles/{id}/delete', [SuperadminController::class, 'deleteVehicle'])->name('vehicles.delete');
-    Route::post('vehicles/{id}/restore', [SuperadminController::class, 'restoreVehicle'])->name('vehicles.restore');
-
-    Route::post('/vehicles/{id}/approve', [SuperadminController::class, 'approveVehicle'])->name('superadmin.vehicle.approve');
-    Route::post('/vehicles/{id}/reject', [SuperadminController::class, 'rejectVehicle'])->name('superadmin.vehicle.reject');
-
-    Route::get('/vehicle-activation', [SuperadminController::class, 'vehicleActivation'])->name('superadmin.vehicle-activation');
-    Route::post('/vehicle/{id}/activate', [SuperadminController::class, 'activateVehicle'])->name('superadmin.vehicle.activate');
-    Route::post('/vehicle/{id}/deactivate', [SuperadminController::class, 'deactivateVehicle'])->name('superadmin.vehicle.deactivate');
-    Route::post('/vehicle/bulk-activate', [SuperadminController::class, 'bulkActivateVehicles'])->name('superadmin.vehicle.bulk-activate');
-    Route::post('/vehicle/bulk-deactivate', [SuperadminController::class, 'bulkDeactivateVehicles'])->name('superadmin.vehicle.bulk-deactivate');
-
-    Route::get('/vehicles/{id}/detail', [SuperadminController::class, 'showVehicleDetail'])->name('superadmin.vehicle.detail');
-    Route::get('/vehicles/{id}/detail/edit', [SuperadminController::class, 'editVehicleDetail'])->name('superadmin.vehicle.detail.edit');
-    Route::post('/vehicles/{id}/detail/update', [SuperadminController::class, 'updateVehicleDetail'])->name('superadmin.vehicle.detail.update');
+// Vehicle Management (split per aksi; admin/dispatcher hanya view + detail)
+Route::middleware(['auth'])->group(function () {
+    Route::middleware('permission:vehicle.view')->group(function () {
+        Route::get('vehicles', [SuperadminController::class, 'indexVehicles'])->name('vehicles');
+        Route::get('/vehicles/{id}/detail', [SuperadminController::class, 'showVehicleDetail'])->name('superadmin.vehicle.detail');
+    });
+    Route::middleware('permission:vehicle.create')->group(function () {
+        Route::get('vehicles/create', [SuperadminController::class, 'createVehicle'])->name('vehicles.create');
+        Route::post('vehicles/store', [SuperadminController::class, 'storeVehicle'])->name('vehicles.store');
+    });
+    Route::middleware('permission:vehicle.update')->group(function () {
+        Route::get('vehicles/{id}/edit', [SuperadminController::class, 'editVehicle'])->name('vehicles.edit');
+        Route::post('vehicles/{id}/update', [SuperadminController::class, 'updateVehicle'])->name('vehicles.update');
+        Route::get('/vehicles/{id}/detail/edit', [SuperadminController::class, 'editVehicleDetail'])->name('superadmin.vehicle.detail.edit');
+        Route::post('/vehicles/{id}/detail/update', [SuperadminController::class, 'updateVehicleDetail'])->name('superadmin.vehicle.detail.update');
+    });
+    Route::middleware('permission:vehicle.delete')->group(function () {
+        Route::post('vehicles/{id}/delete', [SuperadminController::class, 'deleteVehicle'])->name('vehicles.delete');
+        Route::post('vehicles/{id}/restore', [SuperadminController::class, 'restoreVehicle'])->name('vehicles.restore');
+    });
+    Route::middleware('permission:vehicle.approve')->group(function () {
+        Route::post('/vehicles/{id}/approve', [SuperadminController::class, 'approveVehicle'])->name('superadmin.vehicle.approve');
+        Route::post('/vehicles/{id}/reject', [SuperadminController::class, 'rejectVehicle'])->name('superadmin.vehicle.reject');
+        Route::get('/vehicle-activation', [SuperadminController::class, 'vehicleActivation'])->name('superadmin.vehicle-activation');
+        Route::post('/vehicle/{id}/activate', [SuperadminController::class, 'activateVehicle'])->name('superadmin.vehicle.activate');
+        Route::post('/vehicle/{id}/deactivate', [SuperadminController::class, 'deactivateVehicle'])->name('superadmin.vehicle.deactivate');
+        Route::post('/vehicle/bulk-activate', [SuperadminController::class, 'bulkActivateVehicles'])->name('superadmin.vehicle.bulk-activate');
+        Route::post('/vehicle/bulk-deactivate', [SuperadminController::class, 'bulkDeactivateVehicles'])->name('superadmin.vehicle.bulk-deactivate');
+    });
 });
 
 // Permohonan & Laporan (approval)
@@ -364,8 +386,8 @@ Route::middleware(['auth', 'permission:bbm.approve'])->group(function () {
     Route::post('/laporan/{id}/delete', [SuperadminController::class, 'deleteLaporan'])->name('superadmin.laporan.delete');
 });
 
-// Trip Analysis & Validation
-Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
+// Trip Analysis & Validation (superadmin only)
+Route::middleware(['auth', 'permission:vehicle.report'])->group(function () {
     Route::prefix('trip-analysis')->name('superadmin.trip-analysis.')->group(function () {
         Route::get('/', [SuperadminController::class, 'indexTripAnalysis'])->name('index');
         Route::post('/recalculate-all', [SuperadminController::class, 'recalculateAllTripMetrics'])->name('superadmin.trip-validations.recalculate-all');
@@ -378,7 +400,7 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
 });
 
 // SPD Superadmin
-Route::middleware(['auth', 'permission:spd.view,spd.create'])->prefix('surat')->name('surat.superadmin.')->group(function () {
+Route::middleware(['auth', 'permission:spd.manage'])->prefix('surat')->name('surat.superadmin.')->group(function () {
     Route::get('/', [SpdController::class, 'indexSuratSuperadmin'])->name('index');
     Route::get('/create-shortcut', [SpdController::class, 'createSuratSuperadmin'])->name('create-shortcut');
     Route::post('/store-shortcut', [SpdController::class, 'storeSuratSuperadmin'])->name('store-shortcut');
@@ -391,7 +413,7 @@ Route::middleware(['auth', 'permission:spd.view,spd.create'])->prefix('surat')->
 });
 
 // Perpanjangan Superadmin
-Route::middleware(['auth', 'permission:spd.view,spd.update'])->prefix('perpanjangan')->name('perpanjangan.superadmin.')->group(function () {
+Route::middleware(['auth', 'permission:spd.update'])->prefix('perpanjangan')->name('perpanjangan.superadmin.')->group(function () {
     Route::get('/', [SpdController::class, 'indexPerpanjanganSuperadmin'])->name('index');
     Route::get('/validate/{perpanjangan}', [SpdController::class, 'showPerpanjanganSuperadmin'])->name('show');
     Route::post('/{perpanjangan}/approve', [SpdController::class, 'approvePerpanjangan'])->name('approve');
@@ -400,7 +422,7 @@ Route::middleware(['auth', 'permission:spd.view,spd.update'])->prefix('perpanjan
 });
 
 // LPJ Superadmin
-Route::middleware(['auth', 'permission:lpj.view,lpj.validate'])->prefix('lpj')->name('lpj.superadmin.')->group(function () {
+Route::middleware(['auth', 'permission:lpj.validate'])->prefix('lpj')->name('lpj.superadmin.')->group(function () {
     Route::get('/', [SpdController::class, 'indexLaporanSuperadmin'])->name('index');
     Route::get('/{laporan}', [SpdController::class, 'showLaporanSuperadmin'])->name('show');
     Route::post('/{laporan}/approve', [SpdController::class, 'approveLaporan'])->name('approve');
@@ -410,7 +432,7 @@ Route::middleware(['auth', 'permission:lpj.view,lpj.validate'])->prefix('lpj')->
 });
 
 // AJAX Superadmin (SPD dashboard stats)
-Route::middleware(['auth', 'permission:spd.view'])->prefix('ajax')->name('ajax.superadmin.')->group(function () {
+Route::middleware(['auth', 'permission:spd.manage'])->prefix('ajax')->name('ajax.superadmin.')->group(function () {
     Route::get('/dashboard-stats', [SpdController::class, 'getDashboardStats'])->name('dashboard.stats');
 });
 
@@ -424,8 +446,8 @@ Route::middleware(['auth'])->prefix('sa/rbac')->name('superadmin.rbac.')->middle
     Route::post('/{id}/delete', [RbacController::class, 'destroy'])->name('delete');
 });
 
-// Unit Bisnis & Site Management
-Route::middleware(['auth', 'permission:settings.view'])->prefix('sa')->name('superadmin.')->group(function () {
+// Unit Bisnis & Site Management (superadmin only — settings.manage)
+Route::middleware(['auth', 'permission:settings.manage'])->prefix('sa')->name('superadmin.')->group(function () {
     Route::prefix('units')->name('units.')->group(function () {
         Route::get('/', [UnitController::class, 'index'])->name('index');
         Route::get('/create', [UnitController::class, 'create'])->name('create');
@@ -445,8 +467,8 @@ Route::middleware(['auth', 'permission:settings.view'])->prefix('sa')->name('sup
     });
 });
 
-// Vehicle Checking Superadmin — Health, Financial, Transaction Reports
-Route::middleware(['auth', 'permission:vehicle.view'])->prefix('vehicle-checking')->name('superadmin.')->group(function () {
+// Vehicle Checking Superadmin — Health, Financial, Transaction Reports (superadmin only)
+Route::middleware(['auth', 'permission:vehicle.report'])->prefix('vehicle-checking')->name('superadmin.')->group(function () {
     Route::get('/vehicle-health', [VehicleCheckingSuperadminController::class, 'vehicleHealthIndex'])
         ->name('vehicle-health.index');
     Route::get('/vehicle-health/{consumerialCode}', [VehicleCheckingSuperadminController::class, 'vehicleHealthShow'])
@@ -473,19 +495,22 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
 });
 
 // ────────────────────────────────────────────────────────────────────────
-// BARCODE SCAN & RIWAYAT KENDARAAN — Permission-based (vehicle.checking)
+// BARCODE SCAN & RIWAYAT KENDARAAN — Permission-based (vehicle.scan / vehicle.checking)
+// Admin boleh scan riwayat (read-only); dispatcher boleh scan riwayat & mulai periksa.
 // ────────────────────────────────────────────────────────────────────────
-Route::middleware(['auth', 'permission:vehicle.checking'])->prefix('dispatcher')->name('dispatcher.')->group(function () {
+Route::middleware(['auth', 'permission:vehicle.scan,vehicle.checking'])->prefix('dispatcher')->name('dispatcher.')->group(function () {
     // Scanner riwayat (eksisting) — scan untuk lihat riwayat pengecekan
     Route::get('/scan-vehicle', [VehicleHealthHistoryController::class, 'scanView'])
         ->name('scan-vehicle');
     Route::get('/scan-vehicle/result', [VehicleHealthHistoryController::class, 'vehicleHistory'])
         ->name('scan-vehicle.result');
 
-    // Dispatcher Scanner (baru) — scan untuk memulai pemeriksaan
+    // Dispatcher Scanner (baru) — scan untuk memulai pemeriksaan (butuh vehicle.checking)
     Route::get('/dispatcher-scanner', [VehicleHealthHistoryController::class, 'dispatcherScanView'])
+        ->middleware('permission:vehicle.checking')
         ->name('dispatcher-scanner');
     Route::get('/dispatcher-scanner/result', [VehicleHealthHistoryController::class, 'dispatcherScanResult'])
+        ->middleware('permission:vehicle.checking')
         ->name('dispatcher-scanner.result');
 
     // ────────────────────────────────────────────────────────────────────────
@@ -497,7 +522,7 @@ Route::middleware(['auth', 'permission:vehicle.checking'])->prefix('dispatcher')
 });
 
 // Role Baru, Dispatcher Routes — Assign
-Route::middleware(['auth', 'permission:vehicle.checking,vehicle.approve,spd.view,spd.create'])->prefix('dispatcher')->name('dispatcher.')->group(function () {
+Route::middleware(['auth', 'permission:vehicle.checking'])->prefix('dispatcher')->name('dispatcher.')->group(function () {
     // ────────────────────────────────────────────────────────────────────────
     // ASSIGN DISPATCHER - Assign PIC ke kendaraan
     // ────────────────────────────────────────────────────────────────────────
@@ -509,7 +534,7 @@ Route::middleware(['auth', 'permission:vehicle.checking,vehicle.approve,spd.view
     });
 });
 
-Route::middleware(['auth', 'permission:vehicle.checking,vehicle.approve,spd.view,spd.create'])->prefix('dispatcher')->name('dispatcher.')->group(function () {
+Route::middleware(['auth', 'permission:vehicle.checking'])->prefix('dispatcher')->name('dispatcher.')->group(function () {
 
     // ────────────────────────────────────────────────────────────────────────
     // DASHBOARD - Landing Page
@@ -604,7 +629,7 @@ Route::middleware(['auth', 'permission:vehicle.checking,vehicle.approve,spd.view
 // EXPORT EXCEL - FORM PENGECEKAN DISPATCHER
 // Bisa diakses oleh 3 role: Superadmin, Dispatcher, dan Driver (requester).
 // ────────────────────────────────────────────────────────────────────────
-Route::middleware(['auth', 'permission:vehicle.checking,bbm.view,vehicle.view'])->prefix('dispatcher')->name('dispatcher.')->group(function () {
+Route::middleware(['auth', 'permission:vehicle.export'])->prefix('dispatcher')->name('dispatcher.')->group(function () {
     Route::get('/export-checking', [DispatcherAdministrationController::class, 'exportCheckingIndex'])
         ->name('export-checking.index');
     Route::post('/export-checking', [DispatcherAdministrationController::class, 'exportCheckingDownload'])

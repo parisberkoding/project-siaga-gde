@@ -23,9 +23,12 @@ class RbacSeeder extends Seeder
         'admin' => 'general_affairs',
         'admin_bbm' => 'general_affairs',
         'requester' => 'requester',
+        'driver' => 'requester',
         'manager' => 'manager',
         'dispatcher' => 'dispatcher',
         'non_ga_staff' => 'view_only',
+        'view_only' => 'view_only',
+        'vendor' => 'vendor',
         'developer' => 'superadmin',
     ];
 
@@ -79,6 +82,7 @@ class RbacSeeder extends Seeder
             ['spd', 'delete',    'spd', 'Menghapus surat tugas'],
             ['spd', 'approve',   'spd', 'Menyetujui surat tugas'],
             ['spd', 'assign',    'spd', 'Assign driver/kendaraan'],
+            ['spd', 'manage',    'spd', 'Kelola & validasi surat SPD (superadmin/GA)'],
 
             // LPJ
             ['lpj', 'view',    'lpj', 'Melihat LPJ'],
@@ -100,6 +104,10 @@ class RbacSeeder extends Seeder
             ['vehicle', 'delete',    'vehicle', 'Menghapus kendaraan & alat'],
             ['vehicle', 'approve',   'vehicle', 'Menyetujui kendaraan & alat'],
             ['vehicle', 'checking',  'vehicle', 'Input body & daily checking'],
+            ['vehicle', 'scan',      'vehicle', 'Scan riwayat kendaraan (QR/Barcode)'],
+            ['vehicle', 'acknowledge', 'vehicle', 'Acknowledge hasil pengecekan (Driver)'],
+            ['vehicle', 'export',    'vehicle', 'Export form pengecekan'],
+            ['vehicle', 'report',    'vehicle', 'Laporan & matriks kesehatan kendaraan'],
             ['vehicle', 'master',    'vehicle', 'Kelola Master Vehicle (budget, site, kuota BBM)'],
             ['vehicle', 'sparepart', 'vehicle', 'Kelola sparepart request & repair'],
 
@@ -149,42 +157,36 @@ class RbacSeeder extends Seeder
             ],
             'general_affairs' => [
                 'name' => 'General Affairs',
-                'description' => 'Kelola BBM, SPD, LPJ, Vehicle, & transaksi. Tanpa user management.',
+                'description' => 'Admin: approval BBM, kelola SPD, VPR/service, lunch, master harga BBM. Tanpa user management.',
                 'is_system' => true,
                 'permissions' => [
                     'dashboard.view',
-                    'bbm.view', 'bbm.request', 'bbm.report', 'bbm.approve', 'bbm.export',
-                    'spd.view', 'spd.create', 'spd.update', 'spd.delete', 'spd.approve', 'spd.assign',
-                    'lpj.view', 'lpj.create', 'lpj.update', 'lpj.delete', 'lpj.validate', 'lpj.export',
-                    'vehicle.view', 'vehicle.create', 'vehicle.update', 'vehicle.delete',
-                    'vehicle.approve', 'vehicle.master',
-                    'lunch.view', 'lunch.export',
+                    'bbm.view', 'bbm.approve', 'bbm.export',
+                    'spd.manage', 'spd.update',
+                    'lpj.validate',
+                    'vehicle.view', 'vehicle.sparepart', 'vehicle.scan',
+                    'lunch.view', 'lunch.export', 'lunch.manage',
                     'settings.view',
                 ],
             ],
             'dispatcher' => [
                 'name' => 'Dispatcher',
-                'description' => 'Fokus operasional: SPD, vehicle checking, approval harian.',
+                'description' => 'Fokus operasional kendaraan: pemeriksaan, VPR, scanner, export.',
                 'is_system' => true,
                 'permissions' => [
-                    'dashboard.view',
-                    'spd.view', 'spd.create', 'spd.update', 'spd.approve', 'spd.assign',
-                    'vehicle.view', 'vehicle.checking', 'vehicle.approve',
-                    'bbm.view', 'bbm.approve',
-                    'pelaporan.view',
+                    'vehicle.view', 'vehicle.checking', 'vehicle.scan', 'vehicle.export',
                 ],
             ],
             'requester' => [
-                'name' => 'Requester / Driver',
-                'description' => 'Driver: request BBM, lapor bukti, buat & laporkan LPJ SPD.',
+                'name' => 'Driver / Requester',
+                'description' => 'Driver: request BBM, buat surat tugas & LPJ SPD, acknowledge hasil pengecekan.',
                 'is_system' => true,
                 'permissions' => [
-                    'dashboard.view',
                     'bbm.view', 'bbm.request', 'bbm.report',
-                    'spd.view',
+                    'spd.view', 'spd.create',
                     'lpj.view', 'lpj.create', 'lpj.update',
                     'pelaporan.view', 'pelaporan.create', 'pelaporan.analyze',
-                    'vehicle.view',
+                    'vehicle.acknowledge', 'vehicle.export',
                 ],
             ],
             'manager' => [
@@ -194,9 +196,9 @@ class RbacSeeder extends Seeder
                 'permissions' => [
                     'dashboard.view',
                     'bbm.view', 'bbm.approve', 'bbm.export',
-                    'spd.view', 'spd.approve',
                     'lpj.view', 'lpj.validate', 'lpj.export',
                     'vehicle.view',
+                    'pelaporan.view',
                 ],
             ],
             'view_only' => [
@@ -214,7 +216,6 @@ class RbacSeeder extends Seeder
                 'description' => 'Akses terbatas: melihat daftar kehadiran lunch harian.',
                 'is_system' => true,
                 'permissions' => [
-                    'dashboard.view',
                     'lunch.view',
                 ],
             ],
