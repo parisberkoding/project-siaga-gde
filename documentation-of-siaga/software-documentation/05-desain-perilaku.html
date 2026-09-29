@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bagian 5: Desain Perilaku (Activity &amp; Sequence) — SIAGA</title>
+<meta name="description" content="Activity diagram pengajuan hingga realisasi BBM dan LPJ, serta sequence diagram pengecekan harian dan forecast-distribusi makan siang SIAGA.">
+<link rel="icon" href="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="../assets/css/docs.css">
+</head>
+<body data-base="../">
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <button class="icon-btn btn-menu" id="docMenuBtn" aria-label="Buka navigasi" aria-expanded="false"><i class="bi bi-list"></i></button>
+    <a class="brand" href="../index.html">
+      <img class="brand__logo" src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="Logo Geo Dipa Energi">
+      <span>
+        <span class="brand__name">SIAGA</span>
+        <span class="brand__sub">Sistem Informasi Administrasi General Affairs</span>
+      </span>
+    </a>
+    <span class="brand__divider"></span>
+    <span class="brand__doc">Software Documentation</span>
+    <div class="topbar__spacer"></div>
+    <div class="searchbox">
+      <i class="bi bi-search"></i>
+      <input type="search" id="docSearch" placeholder="Cari halaman…  ( / )" aria-label="Cari halaman dokumentasi">
+      <div class="search-results" id="docSearchResults"></div>
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" data-print title="Cetak / simpan PDF"><i class="bi bi-printer"></i></button>
+      <a class="icon-btn" href="../index.html" title="Kembali ke beranda dokumentasi"><i class="bi bi-house"></i></a>
+    </div>
+  </div>
+</header>
+
+<div class="scrim" id="docScrim"></div>
+
+<main class="shell">
+  <aside class="sidebar" id="docSidebar">
+    <p class="sidebar__label">Software Documentation</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="index.html"><span class="nav-link__num">&#9679;</span><span class="nav-link__txt">Ikhtisar &amp; daftar isi</span></a></li>
+      <li><a class="nav-link" href="01-ruang-lingkup.html"><span class="nav-link__num">1</span><span class="nav-link__txt">Ruang lingkup &amp; visi produk</span></a></li>
+      <li><a class="nav-link" href="02-arsitektur-teknologi.html"><span class="nav-link__num">2</span><span class="nav-link__txt">Arsitektur &amp; teknologi</span></a></li>
+      <li><a class="nav-link" href="03-model-use-case.html"><span class="nav-link__num">3</span><span class="nav-link__txt">Model use case</span></a></li>
+      <li><a class="nav-link" href="04-spesifikasi-use-case.html"><span class="nav-link__num">4</span><span class="nav-link__txt">Spesifikasi use case</span></a></li>
+      <li><a class="nav-link is-active" href="05-desain-perilaku.html"><span class="nav-link__num">5</span><span class="nav-link__txt">Desain perilaku</span><span class="nav-badge">Activity · Sequence</span></a></li>
+      <li><a class="nav-link" href="06-desain-struktur.html"><span class="nav-link__num">6</span><span class="nav-link__txt">Desain struktur</span><span class="nav-badge">Class · ERD</span></a></li>
+      <li><a class="nav-link" href="07-validasi-logika.html"><span class="nav-link__num">7</span><span class="nav-link__txt">Validasi logika</span></a></li>
+      <li><a class="nav-link" href="08-pengujian.html"><span class="nav-link__num">8</span><span class="nav-link__txt">Pengujian &amp; test case</span></a></li>
+      <li><a class="nav-link" href="09-traceability.html"><span class="nav-link__num">9</span><span class="nav-link__txt">Traceability &amp; RBAC</span></a></li>
+      <li><a class="nav-link" href="10-glosarium.html"><span class="nav-link__num">10</span><span class="nav-link__txt">Glosarium</span></a></li>
+      <li><a class="nav-link" href="11-plantuml-changelog.html"><span class="nav-link__num">11</span><span class="nav-link__txt">PlantUML &amp; changelog</span></a></li>
+    </ul>
+
+    <p class="sidebar__label">Dokumen lain</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="../alur-tutorial/index.html"><i class="bi bi-signpost-split"></i><span class="nav-link__txt">Alur Tutorial</span></a></li>
+      <li><a class="nav-link" href="../index.html"><i class="bi bi-house"></i><span class="nav-link__txt">Beranda dokumentasi</span></a></li>
+    </ul>
+  </aside>
+
+  <div class="content">
+    <div class="wrap">
+      <nav>
+        <ol class="crumbs">
+          <li><a href="../index.html">Documentation</a></li>
+          <li>Software Documentation</li>
+          <li>Bagian 5</li>
+        </ol>
+      </nav>
+
+      <div class="page-head">
+        <span class="eyebrow"><span class="dot"></span> Bagian 5</span>
+        <h2>Desain perilaku (Activity &amp; Sequence)</h2>
+        <p class="lead">
+          Bagian ini menerjemahkan spesifikasi use case pada Bagian 4 menjadi model perilaku yang dapat
+          dieksekusi: dua <em>activity diagram</em> untuk logika keputusan lintas peran, dan dua
+          <em>sequence diagram</em> untuk urutan interaksi objek di dalam sistem.
+        </p>
+      </div>
+
+      <div class="callout callout--neutral">
+        <span class="callout__icon"><i class="bi bi-info-circle"></i></span>
+        <div class="callout__body">
+          <strong>Dasar penamaan kolom</strong>
+          Seluruh elemen data yang disebut pada diagram di bawah ini diambil dari migrasi di
+          <code>database/migrations/</code> dan model di <code>app/Models/</code>. Nama kolom ditulis
+          apa adanya (mis. <code>valid_until</code>, <code>needs_replacement</code>), bukan hasil
+          penerjemahan bebas.
+        </div>
+      </div>
+
+      <!-- ================= GAMBAR 5.1 ================= -->
+      <div class="section-block" id="aktivitas-bbm">
+        <h2><span class="num"><i class="bi bi-1-circle"></i></span> Activity diagram: pengajuan hingga realisasi BBM</h2>
+
+        <p>
+          Diagram berikut memodelkan rangkaian <b>UC-BBM-01 → UC-BBM-05</b> sebagai satu alur kerja
+          lintas empat partisi: Requester/Driver, Sistem SIAGA, Admin GA, dan SPBU sebagai pihak
+          eksternal di luar batas sistem. Terdapat empat simpul keputusan beserta jalur
+          pengecualiannya.
+        </p>
+
+        <figure>
+          <div class="fig fig--tint">
+<pre class="mermaid">
+flowchart TD
+    subgraph SL1["Requester / Driver"]
+        A1(["Mulai"])
+        A2["Login &amp; buka form permohonan BBM"]
+        A3["Pilih kendaraan / alat konsumen"]
+        A4["Isi jenis BBM &amp; perkiraan nominal"]
+        A5["Kirim permohonan - UC-BBM-01"]
+        A6["Terima notifikasi keputusan"]
+        A7["Beli BBM di SPBU"]
+        A8["Foto struk &amp; foto odometer"]
+        A9["Unggah bukti transaksi - UC-BBM-05"]
+        A10(["Selesai"])
+    end
+
+    subgraph SL2["Sistem SIAGA"]
+        B1["Validasi input &amp; generate request_number"]
+        B2{"Slot aktif &lt; 5?"}
+        B3["Simpan permohonans status pending"]
+        B4["Tolak pengajuan - slot aktif penuh"]
+        B5["Masukkan ke antrian peninjauan Admin GA"]
+        B6{"Nominal disetujui?"}
+        B7["Simpan approved_requests: voucher_code &amp; valid_until +50 jam"]
+        B8["Set status rejected &amp; simpan authorizer_notes"]
+        B9{"Voucher masih valid?"}
+        B10["Auto-cancel voucher - status cancelled &amp; penalti slot"]
+        B11{"Bukti lengkap?"}
+        B12["Simpan transaction_proofs &amp; set status completed"]
+        B13["Tandai bukti tidak sesuai &amp; minta unggah ulang"]
+        F1(("Fork"))
+        N1["Kirim notifikasi voucher ke Requester"]
+        N2["Jadwalkan reminder kedaluwarsa voucher"]
+        J1(("Join"))
+    end
+
+    subgraph SL3["Admin GA"]
+        C1["Tinjau detail permohonan"]
+        C2["Setujui &amp; tetapkan approved_amount"]
+        C3["Tolak permohonan"]
+        C4["Setujui massal - UC-BBM-03"]
+        C5["Terbitkan voucher - UC-BBM-04"]
+        C6["Verifikasi kesesuaian voucher dengan bukti"]
+    end
+
+    subgraph SL4["SPBU (eksternal)"]
+        D1["Layani pengisian BBM"]
+        D2["Serahkan struk pembelian"]
+    end
+
+    A1 --> A2 --> A3 --> A4 --> A5 --> B1
+    B1 --> B2
+    B2 -->|Ya| B3
+    B2 -->|Tidak| B4
+    B4 --> A6
+    B3 --> B5 --> C1
+    C1 --> C2
+    C1 --> C3
+    C4 --> C2
+    C2 --> B6
+    C3 --> B8
+    B6 -->|Ya| B7
+    B6 -->|Tidak| B8
+    B7 --> F1
+    F1 --> N1
+    F1 --> N2
+    N1 --> J1
+    N2 --> J1
+    J1 --> C5
+    C5 --> A6
+    B8 --> A6
+    A6 --> A7 --> D1 --> D2 --> A8 --> A9 --> B9
+    B9 -->|Tidak| B10
+    B9 -->|Ya| B11
+    B10 --> A6
+    B11 -->|Ya| C6
+    B11 -->|Tidak| B13
+    C6 --> B12 --> A10
+    B13 --> A9
+</pre>
+          </div>
+          <figcaption>
+            <b>Gambar 5.1</b> — Activity diagram pengajuan hingga realisasi BBM (UC-BBM-01 → UC-BBM-05),
+            dengan empat swimlane dan empat simpul keputusan. Simpul <em>Fork</em>/<em>Join</em> menandai
+            aksi paralel pasca-penerbitan voucher (notifikasi dan penjadwalan reminder).
+          </figcaption>
+        </figure>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Catatan verifikasi</strong>
+            Ambang <b>5 slot</b> berasal dari <code>RequestManagementController::calculateUserMaxSlots()</code>
+            (<code>$baseSlots = 5</code>, dikoreksi penalti/bonus <code>user_slot_adjustments</code> dengan
+            batas 1–6). Karena nilai ini dapat berubah per pengguna, guard pada diagram ditulis sebagai
+            relasi terhadap <code>max_slots</code> efektif, bukan konstanta mutlak.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= GAMBAR 5.2 ================= -->
+      <div class="section-block" id="aktivitas-lpj">
+        <h2><span class="num"><i class="bi bi-2-circle"></i></span> Activity diagram: LPJ dan validasinya</h2>
+
+        <p>
+          Alur <b>UC-LPJ-01 (Membuat LPJ)</b> dan <b>UC-LPJ-02 (Memvalidasi LPJ)</b> memuat tiga
+          pemeriksaan otomatis oleh sistem — batas waktu 3 hari, plafon Rp1.400.000 per hari, dan
+          kelengkapan bukti — sebelum laporan masuk ke meja Superadmin.
+        </p>
+
+        <figure>
+          <div class="fig fig--tint">
+<pre class="mermaid">
+flowchart TD
+    subgraph LP1["Requester / Driver"]
+        A1(["Mulai"])
+        A2["Buka SPD berstatus approved"]
+        A3["Buat LPJ penggantian - UC-LPJ-01"]
+        A4["Isi rincian pengeluaran: BBM / Tol / Parkir / Lain-lain"]
+        A5["Unggah bukti struk"]
+        A6["Kirim LPJ"]
+        A7["Perbaiki LPJ sesuai catatan revisi"]
+        A8["Terima hasil validasi"]
+        A9(["Selesai"])
+    end
+
+    subgraph LP2["Sistem SIAGA"]
+        B1["Hitung due_date = tanggal_kembali + 3 hari"]
+        B2{"Laporan dalam 3 hari?"}
+        B3["Set is_late = false"]
+        B4["Set is_late = true &amp; isi days_late"]
+        B5["Recalculate total_pengeluaran dari lpj_penggantian_details"]
+        B6{"Total per hari &gt; Rp1.400.000?"}
+        B7["Set is_over_budget = false"]
+        B8["Set is_over_budget = true &amp; wajibkan over_budget_reason"]
+        B9{"Bukti lengkap?"}
+        B10["Tandai LPJ perlu revisi"]
+        B11["Terbitkan lpj_number &amp; antrikan validasi"]
+        B12["Set status approved &amp; hitung pengembalian / kekurangan"]
+        B13["Set status rejected &amp; simpan rejection_reason"]
+    end
+
+    subgraph LP3["Superadmin"]
+        C1["Tinjau LPJ &amp; lampiran bukti"]
+        C2{"LPJ disetujui?"}
+        C3["Setujui tahap pengguna - approved_by_pengguna"]
+        C4["Setujui tahap Divisi GA - approved_by_divisi_ga"]
+        C5["Tolak LPJ"]
+        C6["Minta revisi dengan catatan"]
+    end
+
+    A1 --> A2 --> A3 --> A4 --> A5 --> A6 --> B1
+    B1 --> B2
+    B2 -->|Ya| B3
+    B2 -->|Tidak| B4
+    B3 --> B5
+    B4 --> B5
+    B5 --> B6
+    B6 -->|Tidak| B7
+    B6 -->|Ya| B8
+    B7 --> B9
+    B8 --> B9
+    B9 -->|Tidak| B10
+    B9 -->|Ya| B11
+    B10 --> A7
+    A7 --> A6
+    B11 --> C1
+    C1 --> C2
+    C1 --> C6
+    C6 --> A7
+    C2 -->|Ya| C3
+    C2 -->|Tidak| C5
+    C3 --> C4 --> B12
+    C5 --> B13
+    B12 --> A8 --> A9
+    B13 --> A8
+</pre>
+          </div>
+          <figcaption>
+            <b>Gambar 5.2</b> — Activity diagram LPJ dan validasinya (UC-LPJ-01 → UC-LPJ-02).
+            Validasi berjenjang dua tahap (<code>approved_by_pengguna</code> lalu
+            <code>approved_by_divisi_ga</code>) merupakan bagian dari satu alur persetujuan.
+          </figcaption>
+        </figure>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Catatan verifikasi</strong>
+            Nilai plafon <b>Rp1.400.000</b> tersimpan sebagai <code>default(1400000)</code> pada kolom
+            <code>lpj_penggantians.budget_per_hari</code>. Bila DBA mengubah default tersebut, guard pada
+            diagram harus dibaca sebagai perbandingan terhadap kolom <code>budget_per_hari</code>, bukan
+            angka tetap.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= GAMBAR 5.3 ================= -->
+      <div class="section-block" id="sekuens-checking">
+        <h2><span class="num"><i class="bi bi-3-circle"></i></span> Sequence diagram: pengecekan harian</h2>
+
+        <p>
+          Diagram berikut menelusuri <b>UC-CHK-01 (Melakukan Pengecekan Harian)</b> dari sisi
+          <code>DailyCheckingController</code> sampai ke lima kelas model yang terlibat, termasuk
+          penandaan kebutuhan penggantian suku cadang.
+        </p>
+
+        <figure>
+          <div class="fig fig--tint">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    actor D as Dispatcher
+    participant C as DailyCheckingController
+    participant VC as VehicleChecking
+    participant VCD as VehicleCheckingDetail
+    participant VCIR as VehicleCheckingItemResult
+    participant VCS as VehicleCheckingSchedule
+
+    D->>C: POST /dispatcher/daily-check
+    activate C
+    C->>C: validasi items[].status in ok,ng
+    C->>VCS: cari jadwal check_frequency = daily
+    VCS-->>C: schedule_code &amp; assigned_dispatcher_id
+    C->>VC: firstOrCreate(vehicle_id, period_start)
+    VC-->>C: checking_code periode berjalan
+    C->>VCD: create detail - type routine, sub_type daily
+    VCD-->>C: checking_detail_code
+    loop setiap item pengecekan
+        alt status = ok
+            C->>VCIR: create(status = ok)
+            VCIR-->>C: hasil tersimpan
+        else status = ng
+            C->>VCIR: create(status = ng, notes)
+            VCIR-->>C: hasil tersimpan
+            opt needs_replacement = 1
+                C->>VCIR: tandai needs_replacement = true
+                VCIR-->>C: item masuk daftar usulan VPR
+            end
+        end
+    end
+    C->>VCS: markAsChecked(Auth::id())
+    VCS-->>C: last_checked_at &amp; status diperbarui
+    C-->>D: redirect ke halaman hasil pengecekan
+    deactivate C
+    C->>VCD: tampilkan hasil pada daftar driver_acknowledged = false
+    VCD-->>D: driver melihat hasil pengecekan
+    D->>C: konfirmasi hasil pengecekan - UC-CHK-06
+    C->>VCD: acknowledge()
+    VCD-->>D: driver_acknowledged = true
+</pre>
+          </div>
+          <figcaption>
+            <b>Gambar 5.3</b> — Sequence diagram pengecekan harian (UC-CHK-01) dengan percabangan
+            <code>alt</code> status OK/NG, region opsional <code>opt</code> untuk
+            <code>needs_replacement = 1</code>, dan penutupan oleh konfirmasi driver (UC-CHK-06).
+          </figcaption>
+        </figure>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Catatan verifikasi — mekanisme pemberitahuan</strong>
+            Tidak ditemukan kanal notifikasi keluar (email/WhatsApp/queue) pada kode untuk pengecekan
+            harian. Pemberitahuan ke driver saat ini diwujudkan sebagai <em>daftar hasil dengan</em>
+            <code>driver_acknowledged = false</code> pada
+            <code>VehicleRepairmentDriverController</code>, yang kemudian dikonfirmasi melalui
+            <code>acknowledge()</code>. Bila kelak ditambahkan kanal notifikasi, tambahkan pesan
+            asinkron pada lifeline ini.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= GAMBAR 5.4 ================= -->
+      <div class="section-block" id="sekuens-lunch">
+        <h2><span class="num"><i class="bi bi-4-circle"></i></span> Sequence diagram: forecast &amp; distribusi makan siang</h2>
+
+        <p>
+          Diagram terakhir merangkai <b>UC-LNC-02 (Menghasilkan Forecast Porsi H+1)</b>,
+          <b>UC-LNC-04 (Mengunci &amp; Mendistribusikan Porsi)</b>, dan <b>UC-LNC-05 (Absensi Makan Siang)</b>
+          dalam satu rangkaian waktu, dengan enumerasi karyawan dan hierarki empat prioritas penentuan lokasi.
+        </p>
+
+        <figure>
+          <div class="fig fig--tint">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    actor SCH as Scheduler
+    actor GA as Admin GA
+    actor K as Karyawan
+    participant LFS as LunchForecastService
+    participant LS as LearningService
+    participant LF as LunchForecast
+    participant LDS as LunchDistributionService
+    participant LD as LunchDistribution
+    participant PAC as PublicAttendanceController
+    participant LT as LunchTransaction
+
+    SCH->>LFS: generateForDate(date, generator, type)
+    activate LFS
+    LFS->>LT: ambil tomorrow_site_id transaksi H-1
+    LT-->>LFS: peta employee_default_id ke site konfirmasi
+    LFS->>LFS: muat EmployeeDefault aktif &amp; learningProfiles
+    loop setiap EmployeeDefault aktif
+        LFS->>LF: cari (employee_default_id, lunch_date)
+        LF-->>LFS: forecast eksisting atau null
+        alt Prioritas 1 - Manual Override
+            LFS->>LF: pertahankan prediction_source = manual (confidence 100)
+        else Prioritas 2 - Tomorrow Confirmation
+            LFS->>LF: upsert site konfirmasi, confidence 95
+        else Prioritas 3 - Learning Profile
+            opt total transaksi &gt;= 3 dan pangsa site dominan &gt;= 50 persen
+                LFS->>LF: upsert site dominan, source historical
+            end
+        else Prioritas 4 - Default Site
+            LFS->>LF: upsert default_site_id, source default, confidence 50
+        end
+    end
+    LFS-->>SCH: LunchForecastBatch status finalized
+    deactivate LFS
+
+    GA->>LDS: lockForDate(date, actor)
+    activate LDS
+    LDS->>LF: rekap porsi per predicted_site_id
+    LF-->>LDS: jumlah porsi per site
+    LDS->>LD: upsert(is_locked = true, total_count, locked_at)
+    LD-->>GA: rekap porsi final per site untuk vendor
+    deactivate LDS
+
+    K->>PAC: submit QR / nama pada halaman absensi
+    activate PAC
+    PAC->>LT: create baris absensi (transaction_date, site_id)
+    LT-->>PAC: LunchTransaction tersimpan
+    PAC->>LS: recordTransaction(transaction)
+    activate LS
+    LS->>LF: rekonsiliasi is_prediction_correct
+    opt transaksi teresolusi ke EmployeeDefault
+        LS->>LF: perbarui LearningProfile (employee_default_id, site_id)
+        LF-->>LS: transaction_count bertambah
+    end
+    LS-->>PAC: profil pembelajaran diperbarui
+    deactivate LS
+    PAC->>LT: simpan tomorrow_site_id dari konfirmasi lokasi H+1
+    PAC-->>K: konfirmasi absensi berhasil
+    deactivate PAC
+</pre>
+          </div>
+          <figcaption>
+            <b>Gambar 5.4</b> — Sequence diagram forecast &amp; distribusi makan siang
+            (UC-LNC-02 → UC-LNC-04 → UC-LNC-05) dengan <code>loop</code> enumerasi karyawan,
+            <code>alt</code> empat prioritas lokasi, dan <code>opt</code> pembaruan
+            <code>learning_profiles</code> pasca-absensi.
+          </figcaption>
+        </figure>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Catatan verifikasi — prioritas tambahan di kode</strong>
+            Selain empat prioritas pada PRD, <code>LunchForecastService::generateForDate()</code> juga
+            mempertahankan <code>prediction_source = 'self_booking'</code> (booking mandiri karyawan)
+            agar tidak tertimpa forecast. Guard ini tidak digambarkan sebagai cabang <code>alt</code>
+            tersendiri, melainkan sebagai kondisi penjaga pada tahap pencarian forecast.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= PANDUAN REFINE ================= -->
+      <div class="section-block" id="panduan-refine">
+        <h2><span class="num"><i class="bi bi-diagram-2"></i></span> Ringkasan diagram &amp; tabel keputusan</h2>
+
+        <p>
+          Tabel berikut menjadi rujukan cepat saat menyempurnakan diagram: setiap diagram dipetakan ke
+          use case sumbernya, partisi/lifeline yang terlibat, serta guard dan kondisi penting yang
+          tidak boleh hilang saat diagram digambar ulang di perkakas pemodelan.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>Diagram</th><th>Sumber (use case)</th><th>Partition / lifeline</th><th>Guard &amp; kondisi penting</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">Gambar 5.1 — Activity BBM</td>
+                <td>UC-BBM-01, UC-BBM-02, UC-BBM-03, UC-BBM-04, UC-BBM-05</td>
+                <td>Requester/Driver · Sistem SIAGA · Admin GA · SPBU (eksternal)</td>
+                <td>Slot aktif &lt; <code>max_slots</code> efektif; nominal disetujui atau ditolak; <code>valid_until</code> belum lewat; kelengkapan <code>struk_bbm_path</code> dan <code>odometer_photo_path</code>; status akhir <code>completed</code> atau <code>cancelled</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">Gambar 5.2 — Activity LPJ</td>
+                <td>UC-LPJ-01, UC-LPJ-02</td>
+                <td>Requester/Driver · Sistem SIAGA · Superadmin</td>
+                <td><code>is_late</code> bila melewati <code>due_date</code>; <code>is_over_budget</code> bila melebihi <code>budget_per_hari</code>; kelengkapan bukti; persetujuan dua tahap (<code>approved_by_pengguna</code>, <code>approved_by_divisi_ga</code>)</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Gambar 5.3 — Sequence checking</td>
+                <td>UC-CHK-01, UC-CHK-06</td>
+                <td>Dispatcher · DailyCheckingController · VehicleChecking · VehicleCheckingDetail · VehicleCheckingItemResult · VehicleCheckingSchedule</td>
+                <td>Validasi <code>items[].status</code> bernilai <code>ok</code> atau <code>ng</code>; <code>needs_replacement = 1</code> memicu usulan VPR; <code>driver_acknowledged</code> harus berubah menjadi benar</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Gambar 5.4 — Sequence lunch</td>
+                <td>UC-LNC-02, UC-LNC-03, UC-LNC-04, UC-LNC-05</td>
+                <td>Scheduler · Admin GA · Karyawan · LunchForecastService · LearningService · LunchForecast · LunchDistributionService · LunchDistribution · PublicAttendanceController · LunchTransaction</td>
+                <td>Urutan prioritas lokasi tidak boleh dibalik; <code>manual</code> dan <code>self_booking</code> tidak ditimpa; <code>MIN_HISTORY = 3</code> dan pangsa ≥ 50 % untuk pola historis; <code>is_locked</code> mengunci porsi ke vendor</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Tabel keputusan — Gambar 5.1 (alur BBM)</h3>
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <thead>
+              <tr><th>Node keputusan</th><th>Kondisi</th><th>Cabang Ya</th><th>Cabang Tidak</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">Slot aktif &lt; 5?</td>
+                <td>Jumlah permohonan aktif pengguna dibandingkan <code>calculateUserMaxSlots()</code> (basis 5, dikoreksi <code>user_slot_adjustments</code>, dibatasi 1–6)</td>
+                <td>Simpan baris <code>permohonans</code> berstatus <code>pending</code> dan masuk antrian Admin GA</td>
+                <td>Tolak pengajuan dengan pesan slot penuh; tidak ada baris tersimpan</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Nominal disetujui?</td>
+                <td>Admin GA menetapkan <code>approved_amount</code> pada <code>approved_requests</code> atau menolak permohonan</td>
+                <td>Terbitkan <code>voucher_code</code> dengan masa berlaku <code>valid_until</code> = waktu approval + 50 jam</td>
+                <td>Set status <code>rejected</code> pada permohonan dan simpan <code>authorizer_notes</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">Voucher masih valid?</td>
+                <td><code>valid_until</code> dibandingkan waktu unggah bukti; pemeriksaan dijalankan malas (<em>lazy check</em>) pada permintaan berikutnya</td>
+                <td>Lanjut ke verifikasi bukti transaksi oleh Admin GA</td>
+                <td>Status voucher menjadi <code>cancelled</code> dan dibuat penalti slot pada <code>user_slot_adjustments</code> dengan alasan <code>voucher_expired</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">Bukti lengkap?</td>
+                <td>Keberadaan <code>transaction_proofs.struk_bbm_path</code> dan — bila diwajibkan — <code>odometer_photo_path</code>, serta kesesuaian dengan voucher</td>
+                <td>Simpan bukti dan set status permohonan menjadi <code>completed</code></td>
+                <td>Tandai bukti tidak sesuai dan kembalikan kepada Requester/Driver untuk unggah ulang</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Tabel keputusan — Gambar 5.2 (alur LPJ)</h3>
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <thead>
+              <tr><th>Node keputusan</th><th>Kondisi</th><th>Cabang Ya</th><th>Cabang Tidak</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">Laporan dalam 3 hari?</td>
+                <td><code>tanggal_lpj</code> dibandingkan <code>due_date</code> (tanggal kembali + 3 hari)</td>
+                <td>Set <code>is_late = false</code> dan <code>days_late = 0</code></td>
+                <td>Set <code>is_late = true</code> dan isi <code>days_late</code> sesuai selisih hari</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Total per hari &gt; Rp1.400.000?</td>
+                <td><code>total_pengeluaran</code> dibagi lama perjalanan dibandingkan <code>budget_per_hari</code></td>
+                <td>Set <code>is_over_budget = true</code> dan wajibkan <code>over_budget_reason</code></td>
+                <td>Set <code>is_over_budget = false</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">Bukti lengkap?</td>
+                <td>Setiap baris <code>lpj_penggantian_details</code> memiliki bukti pendukung yang terbaca</td>
+                <td>Terbitkan <code>lpj_number</code> dan antrikan validasi Superadmin</td>
+                <td>Tandai LPJ perlu revisi dan kembalikan ke pemohon</td>
+              </tr>
+              <tr>
+                <td class="rowhead">LPJ disetujui?</td>
+                <td>Keputusan Superadmin setelah meninjau LPJ dan lampiran bukti</td>
+                <td>Setujui bertahap (<code>approved_by_pengguna</code> lalu <code>approved_by_divisi_ga</code>) dan set status <code>approved</code>; hitung <code>pengembalian</code> / <code>kekurangan</code></td>
+                <td>Set status <code>rejected</code> dengan <code>rejection_reason</code>, atau minta revisi dengan catatan</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================= CATATAN ================= -->
+      <div class="section-block" id="catatan">
+        <h2><span class="num"><i class="bi bi-lightbulb"></i></span> Prinsip penyempurnaan diagram</h2>
+
+        <div class="callout callout--tip">
+          <span class="callout__icon"><i class="bi bi-lightbulb"></i></span>
+          <div class="callout__body">
+            <strong>Guard harus eksplisit</strong>
+            Setiap panah keluar dari simpul keputusan wajib memiliki guard bertuliskan kondisi yang
+            dapat dievaluasi — misalnya <code>[is_late = true]</code>, bukan sekadar
+            <em>terlambat</em>. Guard yang kabur adalah penyebab utama diagram perilaku tidak dapat
+            diturunkan menjadi <em>decision table</em> (Bagian 7) dan test case (Bagian 8).
+          </div>
+        </div>
+
+        <div class="callout callout--tip">
+          <span class="callout__icon"><i class="bi bi-lightbulb"></i></span>
+          <div class="callout__body">
+            <strong>Fork/join untuk aksi paralel</strong>
+            Bila satu peristiwa memicu dua aksi yang tidak saling bergantung, gambarkan sebagai
+            <em>fork</em> dan tutup dengan <em>join</em>. Contoh pada SIAGA: sesudah voucher terbit,
+            sistem <b>mengirim konfirmasi ke Requester/Driver</b> sekaligus
+            <b>menjadwalkan reminder kedaluwarsa voucher 50 jam</b>. Keduanya berjalan paralel dan baru
+            dianggap selesai saat keduanya tuntas sebelum permohonan boleh dinyatakan menunggu realisasi.
+          </div>
+        </div>
+
+        <div class="callout callout--tip">
+          <span class="callout__icon"><i class="bi bi-lightbulb"></i></span>
+          <div class="callout__body">
+            <strong>Interruptible region untuk timeout</strong>
+            Setiap aksi yang menunggu pihak luar harus dimodelkan sebagai
+            <em>interruptible activity region</em> yang menyediakan jalur pembatalan berbasis waktu.
+            Pada SIAGA, masa berlaku <code>valid_until</code> (50 jam) dan tenggat LPJ
+            (<code>due_date</code>) adalah dua <em>timeout</em> eksplisit: keduanya dapat menghentikan
+            alur normal dan memindahkan permohonan ke jalur pengecualian
+            (<em>auto-cancel</em> voucher, atau penandaan <code>is_late</code>) tanpa intervensi manual
+            yang seragam.
+          </div>
+        </div>
+
+        <ul class="list-check">
+          <li>Nama partisi harus memakai peran aktor kanonik dari Bagian 3, bukan nama orang atau jabatan sementara.</li>
+          <li>Pesan pada sequence diagram memakai bentuk <em>operasi + argumen kunci</em> (mis. <code>create(status = ng)</code>) agar dapat dipetakan ke pemanggilan metode pada Bagian 6.</li>
+          <li>Jalur pengecualian wajib berakhir pada simpul akhir atau kembali ke titik masuk yang jelas — bukan menggantung.</li>
+        </ul>
+      </div>
+
+      <div class="callout callout--info">
+        <span class="callout__icon"><i class="bi bi-arrow-right-circle"></i></span>
+        <div class="callout__body">
+          <strong>Lanjut ke Bagian 6 — Desain Struktur (Class &amp; ERD)</strong>
+          Perilaku pada bagian ini dipetakan menjadi struktur: class diagram domain BBM/kendaraan dan
+          SPD/LPJ/lunch, serta ERD crow&rsquo;s foot seluruh modul beserta kamus datanya.
+          <div style="margin-top:10px;"><a class="btn btn--primary btn--sm" href="06-desain-struktur.html">Buka Bagian 6 <i class="bi bi-arrow-right-short"></i></a></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="foot__inner">
+    <p>&copy; <span data-year>2026</span> PT Geo Dipa Energi (Persero) Unit Patuha — Divisi General Affairs.</p>
+    <div class="foot__links">
+      <a href="../index.html">Beranda dokumentasi</a>
+      <a href="index.html">Ikhtisar SDD</a>
+      <a href="../alur-tutorial/index.html">Alur Tutorial</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/js/docs.js"></script>
+<script src="../assets/js/diagrams.js" defer></script>
+</body>
+</html>

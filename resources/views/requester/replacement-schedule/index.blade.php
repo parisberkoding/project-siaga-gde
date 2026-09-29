@@ -6,7 +6,7 @@
 
 <style>
     .schedule-card {
-        border: 1px solid #e9ecef;
+        border: 1px solid #E4E9F0;
         border-radius: 12px;
         overflow: hidden;
         margin-bottom: 12px;
@@ -14,12 +14,12 @@
     }
     .schedule-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .schedule-card.urgent {
-        border-left: 5px solid #dc3545;
+        border-left: 5px solid #ED1B2F;
         animation: urgentGlow 2s ease-in-out infinite;
     }
-    .schedule-card.active-service { border-left: 5px solid #ffc107; }
-    .schedule-card.upcoming { border-left: 5px solid #4154f1; }
-    .schedule-card.completed { border-left: 5px solid #198754; opacity: 0.8; }
+    .schedule-card.active-service { border-left: 5px solid #D8CE3A; }
+    .schedule-card.upcoming { border-left: 5px solid #0B50A1; }
+    .schedule-card.completed { border-left: 5px solid #71A62F; opacity: 0.8; }
 
     @keyframes urgentGlow {
         0%,100% { box-shadow: 0 0 0 0 rgba(220,53,69,0); }
@@ -41,8 +41,8 @@
         align-items: center;
         gap: 4px;
         padding: 4px 10px;
-        background: #f8f9fa;
-        border: 1px solid #e9ecef;
+        background: #F8FAFC;
+        border: 1px solid #E4E9F0;
         border-radius: 6px;
         font-size: 12px;
         margin: 2px;
@@ -57,10 +57,10 @@
         font-size: 12px;
         font-weight: 600;
     }
-    .countdown-badge.overdue { background: #f8d7da; color: #dc3545; }
+    .countdown-badge.overdue { background: #f8d7da; color: #C4142A; }
     .countdown-badge.today { background: #fff3cd; color: #997404; }
-    .countdown-badge.soon { background: #cff4fc; color: #0dcaf0; }
-    .countdown-badge.ok { background: #e9ecef; color: #6c757d; }
+    .countdown-badge.soon { background: #cff4fc; color: #0B50A1; }
+    .countdown-badge.ok { background: #E4E9F0; color: #64748B; }
 </style>
 
 <div class="pagetitle">
@@ -215,7 +215,7 @@
                                 </div>
                                 <div class="col-3">
                                     <small class="text-muted d-block">Deadline</small>
-                                    <strong style="font-size: 13px; {{ ($daysLeft ?? 99) < 0 ? 'color:#dc3545' : '' }}">
+                                    <strong style="font-size: 13px; {{ ($daysLeft ?? 99) < 0 ? 'color:#C4142A' : '' }}">
                                         {{ $schedule->deadline_date?->format('d/m/Y') ?? '-' }}
                                     </strong>
                                 </div>

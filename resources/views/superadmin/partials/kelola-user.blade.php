@@ -649,7 +649,7 @@
 .empty-state {
     text-align: center;
     padding: 40px 20px;
-    color: #6c757d;
+    color: #64748B;
 }
 
 .empty-state i {
@@ -665,16 +665,16 @@
 }
 
 .sub-tabs .nav-link {
-    border: 2px solid #e9ecef;
-    color: #6c757d;
+    border: 2px solid #E4E9F0;
+    color: #64748B;
     font-weight: 500;
     padding: 8px 16px;
     margin-right: 5px;
 }
 
 .sub-tabs .nav-link.active {
-    background: #4154f1;
-    border-color: #4154f1;
+    background: #0B50A1;
+    border-color: #0B50A1;
     color: white;
 }
 
@@ -683,7 +683,7 @@
 }
 
 .input-group .btn-outline-secondary:hover {
-    background-color: #e9ecef;
+    background-color: #E4E9F0;
     border-color: #ced4da;
 }
 </style>

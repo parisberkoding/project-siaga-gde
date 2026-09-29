@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bagian 1: Ruang Lingkup &amp; Visi Produk — SIAGA</title>
+<meta name="description" content="Ruang lingkup, pernyataan masalah, pemetaan pemangku kepentingan, daftar aktor, modul fungsional, dan kebutuhan non-fungsional SIAGA.">
+<link rel="icon" href="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="../assets/css/docs.css">
+</head>
+<body data-base="../">
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <button class="icon-btn btn-menu" id="docMenuBtn" aria-label="Buka navigasi" aria-expanded="false"><i class="bi bi-list"></i></button>
+    <a class="brand" href="../index.html">
+      <img class="brand__logo" src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="Logo Geo Dipa Energi">
+      <span>
+        <span class="brand__name">SIAGA</span>
+        <span class="brand__sub">Sistem Informasi Administrasi General Affairs</span>
+      </span>
+    </a>
+    <span class="brand__divider"></span>
+    <span class="brand__doc">Software Documentation</span>
+    <div class="topbar__spacer"></div>
+    <div class="searchbox">
+      <i class="bi bi-search"></i>
+      <input type="search" id="docSearch" placeholder="Cari halaman…  ( / )" aria-label="Cari halaman dokumentasi">
+      <div class="search-results" id="docSearchResults"></div>
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" data-print title="Cetak / simpan PDF"><i class="bi bi-printer"></i></button>
+      <a class="icon-btn" href="../index.html" title="Kembali ke beranda dokumentasi"><i class="bi bi-house"></i></a>
+    </div>
+  </div>
+</header>
+
+<div class="scrim" id="docScrim"></div>
+
+<main class="shell">
+  <aside class="sidebar" id="docSidebar">
+    <p class="sidebar__label">Software Documentation</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="index.html"><span class="nav-link__num">&#9679;</span><span class="nav-link__txt">Ikhtisar &amp; daftar isi</span></a></li>
+      <li><a class="nav-link is-active" href="01-ruang-lingkup.html"><span class="nav-link__num">1</span><span class="nav-link__txt">Ruang lingkup &amp; visi produk</span></a></li>
+      <li><a class="nav-link" href="02-arsitektur-teknologi.html"><span class="nav-link__num">2</span><span class="nav-link__txt">Arsitektur &amp; teknologi</span></a></li>
+      <li><a class="nav-link" href="03-model-use-case.html"><span class="nav-link__num">3</span><span class="nav-link__txt">Model use case</span></a></li>
+      <li><a class="nav-link" href="04-spesifikasi-use-case.html"><span class="nav-link__num">4</span><span class="nav-link__txt">Spesifikasi use case</span></a></li>
+      <li><a class="nav-link" href="05-desain-perilaku.html"><span class="nav-link__num">5</span><span class="nav-link__txt">Desain perilaku</span><span class="nav-badge">Activity · Sequence</span></a></li>
+      <li><a class="nav-link" href="06-desain-struktur.html"><span class="nav-link__num">6</span><span class="nav-link__txt">Desain struktur</span><span class="nav-badge">Class · ERD</span></a></li>
+      <li><a class="nav-link" href="07-validasi-logika.html"><span class="nav-link__num">7</span><span class="nav-link__txt">Validasi logika</span></a></li>
+      <li><a class="nav-link" href="08-pengujian.html"><span class="nav-link__num">8</span><span class="nav-link__txt">Pengujian &amp; test case</span></a></li>
+      <li><a class="nav-link" href="09-traceability.html"><span class="nav-link__num">9</span><span class="nav-link__txt">Traceability &amp; RBAC</span></a></li>
+      <li><a class="nav-link" href="10-glosarium.html"><span class="nav-link__num">10</span><span class="nav-link__txt">Glosarium</span></a></li>
+      <li><a class="nav-link" href="11-plantuml-changelog.html"><span class="nav-link__num">11</span><span class="nav-link__txt">PlantUML &amp; changelog</span></a></li>
+    </ul>
+
+    <p class="sidebar__label">Dokumen lain</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="../alur-tutorial/index.html"><i class="bi bi-signpost-split"></i><span class="nav-link__txt">Alur Tutorial</span></a></li>
+      <li><a class="nav-link" href="../index.html"><i class="bi bi-house"></i><span class="nav-link__txt">Beranda dokumentasi</span></a></li>
+    </ul>
+  </aside>
+
+  <div class="content">
+    <div class="wrap">
+
+      <nav>
+        <ol class="crumbs">
+          <li><a href="../index.html">Documentation</a></li>
+          <li>Software Documentation</li>
+          <li>Bagian 1</li>
+        </ol>
+      </nav>
+
+      <div class="page-head">
+        <span class="eyebrow"><span class="dot"></span> Bagian 1</span>
+        <h2>Ruang Lingkup &amp; Visi Produk</h2>
+        <p class="lead">
+          Bagian ini menetapkan batas sistem SIAGA, pernyataan masalah yang melatarbelakangi pembangunannya,
+          peta pemangku kepentingan, daftar aktor, sembilan modul fungsional, serta kebutuhan non-fungsional
+          yang menjadi dasar seluruh model dan pengujian pada bagian berikutnya.
+        </p>
+      </div>
+
+      <!-- ================= SCOPE ================= -->
+      <div class="section-block" id="scope">
+        <h2><span class="num"><i class="bi bi-bounding-box"></i></span> Scope statement</h2>
+
+        <p>
+          <b>Visi produk.</b> Menjadikan seluruh administrasi operasional Divisi General Affairs
+          PT Geo Dipa Energi (Persero) terdigitalisasi, terukur, dan dapat diaudit dalam satu sistem
+          terpadu — dari permohonan bahan bakar, perjalanan dinas, pengecekan kendaraan, hingga
+          manajemen katering — sehingga waktu siklus administrasi berkurang dan setiap keputusan
+          memiliki rekam jejak yang dapat ditelusuri.
+        </p>
+
+        <ul class="meta-list">
+          <li><span class="meta-list__k">Nama sistem</span><span class="meta-list__v">SIAGA — Sistem Informasi Administrasi General Affairs</span></li>
+          <li><span class="meta-list__k">Tipe aplikasi</span><span class="meta-list__v">Aplikasi web internal berbasis server (Laravel, server-rendered Blade), diakses melalui browser</span></li>
+          <li><span class="meta-list__k">Tujuan utama</span><span class="meta-list__v">Mengelola, mengotomatisasi, dan mengaudit kegiatan administrasi operasional Divisi General Affairs</span></li>
+          <li><span class="meta-list__k">Audiens utama</span><span class="meta-list__v">Divisi General Affairs, pengemudi/requester, dispatcher, manajemen, vendor katering, auditor</span></li>
+          <li><span class="meta-list__k">Unit / site</span><span class="meta-list__v">Unit Pusat, Unit Patuha, dan Unit Dieng; site operasional seperti PMU, Patuha Basecamp, dan Sumur</span></li>
+          <li><span class="meta-list__k">Batas sistem — in-scope</span><span class="meta-list__v">BBM, SPD &amp; LPJ, pengecekan kendaraan, VPR, lunch management, analisis efisiensi BBM, asisten AI Gaga, master data unit &amp; site, RBAC</span></li>
+          <li><span class="meta-list__k">Batas sistem — out-of-scope</span><span class="meta-list__v">Penggajian/HR, akuntansi induk, pemesanan tiket pesawat/hotel, dan modul Trip Booking lama yang telah dihapus</span></li>
+        </ul>
+
+        <p>
+          <b>Pernyataan lingkup.</b> SIAGA adalah platform web internal PT Geo Dipa Energi (Persero) yang
+          membatasi dirinya pada pengelolaan administrasi operasional Divisi General Affairs di wilayah
+          kerja Unit Pusat, Unit Patuha, dan Unit Dieng beserta site terkait, dengan cakupan fungsional
+          meliputi manajemen permohonan bahan bakar (BBM), administrasi perjalanan dinas (SPD) dan laporan
+          pertanggungjawaban (LPJ), pengecekan dan pemantauan kesehatan kendaraan, pengajuan penggantian
+          suku cadang (VPR), manajemen katering (lunch management), analisis efisiensi BBM, asisten AI
+          (Gaga), master data unit &amp; site, serta lapisan otorisasi berbasis peran; sistem ini
+          <b>tidak</b> mencakup proses penggajian dan administrasi kepegawaian (HR), pencatatan akuntansi
+          induk, maupun pemesanan tiket pesawat dan hotel, dan modul pemesanan perjalanan kendaraan lama
+          (Trip Booking) yang meliputi tabel <code>trips</code>, <code>trip_passengers</code>,
+          <code>trip_booking_requests</code>, <code>driver_schedules</code>,
+          <code>vehicle_specifications</code>, dan <code>pekerja_patuha</code> telah dihapus secara permanen
+          dan digantikan oleh modul SPD &amp; LPJ.
+        </p>
+
+        <h3>Di luar lingkup sistem</h3>
+        <ul class="list-cross">
+          <li><b>Penggajian dan administrasi HR</b> — tidak ada modul payroll, kehadiran pegawai umum, atau manajemen SDM.</li>
+          <li><b>Akuntansi induk</b> — SIAGA menghasilkan laporan operasional, bukan jurnal atau buku besar keuangan perusahaan.</li>
+          <li><b>Pemesanan tiket pesawat dan hotel</b> — pemesanan akomodasi perjalanan dinas dilakukan di luar sistem.</li>
+          <li><b>Modul Trip Booking lama</b> — skema pemesanan kendaraan lama (rute, nebeng manual, jadwal supir harian) sudah dihapus dan tidak dirujuk lagi.</li>
+        </ul>
+
+        <div class="callout callout--tip">
+          <span class="callout__icon"><i class="bi bi-lightbulb"></i></span>
+          <div class="callout__body">
+            <strong>Konsekuensi batas sistem</strong>
+            Setiap kebutuhan yang menyentuh penggajian, akuntansi induk, atau pemesanan akomodasi harus
+            diselesaikan melalui sistem lain di luar SIAGA; integrasi resmi ke sistem-sistem tersebut belum
+            termasuk lingkup versi ini.
+          </div>
+        </div>
+
+        <figure>
+          <div class="fig fig--tint">
+<pre class="mermaid">
+flowchart LR
+    subgraph AKTOR["Aktor manusia"]
+        direction TB
+        A1["Superadmin"]
+        A2["General Affairs / Admin"]
+        A3["Dispatcher"]
+        A4["Requester / Driver"]
+        A5["Manager"]
+        A6["View Only / Auditor"]
+        A7["Vendor katering"]
+    end
+
+    subgraph SYS["Batas sistem SIAGA"]
+        direction TB
+        SI["SIAGA<br/>Sistem Informasi Administrasi General Affairs"]
+        DB[("Basis data MySQL<br/>40+ tabel operasional")]
+        SI --- DB
+    end
+
+    subgraph EXT["Sistem eksternal"]
+        direction TB
+        E1["SPBU dan vendor katering"]
+        E2["Layanan AI Groq<br/>llama-3.3-70b-versatile"]
+        E3["API harga BBM publik<br/>berbasis province_slug"]
+        E4["Layanan OCR struk<br/>gemini-3.1-flash-lite"]
+        E5[("Penyimpanan berkas<br/>storage/app/public")]
+    end
+
+    A1 --> SI
+    A2 --> SI
+    A3 --> SI
+    A4 --> SI
+    A5 --> SI
+    A6 --> SI
+    A7 --> SI
+    SI --> E1
+    SI <--> E2
+    SI <--> E3
+    SI --> E4
+    SI <--> E5
+
+    classDef sys fill:#F2F9E8,stroke:#8DC63F,stroke-width:1.5px,color:#3F6120
+    classDef act fill:#EAF1FA,stroke:#0B50A1,stroke-width:1.5px,color:#0B50A1
+    classDef ext fill:#FFF7E6,stroke:#E0A400,stroke-width:1.5px,color:#7A5B00
+    class SI sys
+    class A1,A2,A3,A4,A5,A6,A7 act
+    class E1,E2,E3,E4,E5 ext
+</pre>
+          </div>
+          <figcaption><b>Gambar 1.1</b> — Diagram konteks sistem: aktor manusia, batas sistem SIAGA, dan sistem eksternal yang berinteraksi.</figcaption>
+        </figure>
+
+        <details class="acc">
+          <summary>Kode PlantUML padanan — Gambar 1.1 Diagram konteks</summary>
+          <div class="acc__body">
+            <div class="code-head"><span>plantuml</span><button data-copy="puml-konteks">Salin</button></div>
+<pre id="puml-konteks"><code>@startuml
+title Diagram Konteks SIAGA
+left to right direction
+skinparam componentStyle rectangle
+
+actor "Superadmin" as A1
+actor "General Affairs / Admin" as A2
+actor "Dispatcher" as A3
+actor "Requester / Driver" as A4
+actor "Manager" as A5
+actor "View Only / Auditor" as A6
+actor "Vendor katering" as A7
+
+rectangle "Batas Sistem SIAGA" {
+  component "SIAGA - Sistem Informasi\\nAdministrasi General Affairs" as SI
+  database "MySQL - 40+ tabel" as DB
+  SI -- DB
+}
+
+cloud "SPBU dan vendor katering" as E1
+cloud "Layanan AI Groq\\nllama-3.3-70b-versatile" as E2
+cloud "API harga BBM publik\\nprovince_slug" as E3
+cloud "OCR struk\\ngemini-3.1-flash-lite" as E4
+folder "Penyimpanan berkas\\nstorage/app/public" as E5
+
+A1 --> SI
+A2 --> SI
+A3 --> SI
+A4 --> SI
+A5 --> SI
+A6 --> SI
+A7 --> SI
+SI --> E1
+SI <--> E2
+SI <--> E3
+SI --> E4
+SI <--> E5
+@enduml</code></pre>
+          </div>
+        </details>
+      </div>
+
+      <!-- ================= MASALAH ================= -->
+      <div class="section-block" id="masalah">
+        <h2><span class="num"><i class="bi bi-exclamation-diamond"></i></span> Problem statement</h2>
+
+        <p>
+          Sebelum SIAGA, administrasi General Affairs dijalankan dengan kombinasi berkas kertas, formulir
+          cetak, dan spreadsheet yang tersebar di banyak berkas lokal. Setiap unit menyimpan catatannya
+          sendiri sehingga tidak ada sumber data tunggal. Akibatnya alur persetujuan menumpuk pada satu
+          orang, rekap biaya harus disusun ulang secara manual, dan pertanyaan sederhana seperti
+          &ldquo;berapa porsi makan siang yang benar-benar diambil kemarin?&rdquo; atau &ldquo;berapa
+          liter BBM yang tersedot kendaraan X bulan ini?&rdquo; tidak dapat dijawab tanpa menelusuri
+          tumpukan bukti fisik.
+        </p>
+
+        <div class="card card--soft">
+          <div class="card__head">
+            <span class="icon-sq"><i class="bi bi-clipboard-x"></i></span>
+            <div>
+              <h3>Rangkaian pain point administrasi manual</h3>
+              <p>Titik kegagalan yang berulang pada proses sebelum digitalisasi.</p>
+            </div>
+          </div>
+          <ul>
+            <li><b>Data tersebar.</b> Catatan BBM, SPD, pengecekan, dan katering berada di berkas dan spreadsheet terpisah per unit tanpa relasi yang konsisten.</li>
+            <li><b>Approval lambat.</b> Persetujuan bergantung pada keberadaan fisik penandatangan; tidak ada antrean terpusat maupun persetujuan massal.</li>
+            <li><b>Sulit diaudit.</b> Tidak ada jejak waktu, pelaku, dan perubahan status untuk setiap transaksi.</li>
+            <li><b>Data katering tidak akurat.</b> Jumlah porsi didasarkan perkiraan lisan; kelebihan atau kekurangan porsi sulit dibuktikan.</li>
+            <li><b>Tidak ada rekam jejak BBM.</b> Tidak ada kaitan otomatis antara voucher yang disetujui, struk pembelian, dan angka odometer kendaraan.</li>
+            <li><b>Pelaporan manual.</b> Rekap bulanan harus dihitung ulang dari berkas cetak, rentan salah dan memakan waktu.</li>
+          </ul>
+        </div>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>Masalah</th><th>Dampak</th><th>Cara SIAGA menjawab</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">Pencatatan tersebar di kertas dan spreadsheet</td>
+                <td>Data ganda, tidak konsisten antar unit, sulit direkonsiliasi</td>
+                <td>Satu basis data operasional dengan relasi antar modul; master data unit &amp; site dikelola terpusat</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Persetujuan bergantung tanda tangan fisik</td>
+                <td>Siklus permohonan panjang, pekerjaan tertunda, tidak ada status yang jelas</td>
+                <td>Alur approval digital dengan status eksplisit, bulk approval, serta halaman peninjauan per peran</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Tidak ada rekam jejak transaksi</td>
+                <td>Audit internal sulit, potensi penyimpangan tidak terdeteksi</td>
+                <td>Log aktivitas, jejak status permohonan, dan pemisahan hak akses berbasis permission</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Data katering berbasis perkiraan lisan</td>
+                <td>Porsi berlebih/kurang, biaya membengkak, vendor tidak punya angka pasti</td>
+                <td>Forecast engine H+1 berjenjang, distribution lock ke vendor, dan absensi QR yang mencatat pengambilan riil</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Bukti pembelian BBM tidak terhubung ke permohonan</td>
+                <td>Selisih nominal tidak terlacak, odometer tidak tervalidasi</td>
+                <td>Unggah struk &amp; odometer yang terhubung ke voucher, plus analisis efisiensi dan deteksi refueling dini</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Rekap laporan disusun manual</td>
+                <td>Waktu pelaporan lama, rawan salah hitung, tidak dapat dibandingkan antar periode</td>
+                <td>Ekspor PDF dan Excel terjadwal, dashboard analitik katering, dan laporan biaya kendaraan</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================= STAKEHOLDER ================= -->
+      <div class="section-block" id="stakeholder">
+        <h2><span class="num"><i class="bi bi-people"></i></span> Peta pemangku kepentingan</h2>
+
+        <p>
+          Pemangku kepentingan SIAGA dikelompokkan menjadi tiga kategori menurut intensitas dan sifat
+          keterlibatannya. Kategori ini menentukan prioritas perancangan antarmuka dan kedalaman hak akses.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>Aktor / Pemangku kepentingan</th><th>Kategori</th><th>Kebutuhan utama</th><th>Tingkat interaksi</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">General Affairs / Admin</td>
+                <td><span class="badge badge--solid">Primary user</span></td>
+                <td>Meninjau dan menyetujui permohonan BBM, memvalidasi SPD &amp; LPJ, mengelola suku cadang, serta mengelola katering harian</td>
+                <td><span class="badge">Harian — intens</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">Dispatcher</td>
+                <td><span class="badge badge--solid">Primary user</span></td>
+                <td>Melakukan pengecekan harian/mingguan/bulanan/body, menetapkan PIC, dan mengajukan penggantian suku cadang</td>
+                <td><span class="badge">Harian — intens</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">Requester / Driver</td>
+                <td><span class="badge badge--solid">Primary user</span></td>
+                <td>Mengajukan permohonan BBM dan SPD, mengunggah bukti transaksi, serta melaporkan LPJ</td>
+                <td><span class="badge">Harian — sesuai penugasan</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">Superadmin</td>
+                <td><span class="badge badge--blue">Secondary actor</span></td>
+                <td>Mengelola pengguna, role &amp; permission, master data, validasi akhir, serta pemantauan konsolidasi</td>
+                <td><span class="badge badge--blue">Harian — pengelolaan sistem</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">Vendor katering</td>
+                <td><span class="badge badge--blue">Secondary actor</span></td>
+                <td>Melihat rekap porsi yang sudah dikunci hari ini per site untuk keperluan penyajian</td>
+                <td><span class="badge badge--blue">Harian — hanya baca</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">Manager</td>
+                <td><span class="badge badge--gray">Indirect stakeholder</span></td>
+                <td>Memantau kinerja operasional melalui dashboard bisnis dan analitik katering</td>
+                <td><span class="badge badge--gray">Periodik — pemantauan</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">View Only</td>
+                <td><span class="badge badge--gray">Indirect stakeholder</span></td>
+                <td>Membaca laporan dan statistik sebagai bahan audit tanpa kemampuan mengubah data</td>
+                <td><span class="badge badge--gray">Periodik — audit</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <figure>
+          <div class="fig">
+<pre class="mermaid">
+flowchart TD
+    ROOT["Pemangku kepentingan SIAGA"]
+    ROOT --> P["Primary user<br/>interaksi harian langsung"]
+    ROOT --> SEC["Secondary actor<br/>pendukung proses dan validasi"]
+    ROOT --> IND["Indirect stakeholder<br/>penerima manfaat dan pengawas"]
+
+    P --> P1["General Affairs / Admin"]
+    P --> P2["Dispatcher"]
+    P --> P3["Requester / Driver"]
+
+    SEC --> S1["Superadmin"]
+    SEC --> S2["Vendor katering"]
+
+    IND --> I1["Manager"]
+    IND --> I2["View Only / Auditor"]
+
+    classDef root fill:#EAF1FA,stroke:#0B50A1,stroke-width:1.5px,color:#0B50A1
+    classDef primary fill:#F2F9E8,stroke:#8DC63F,stroke-width:1.5px,color:#3F6120
+    classDef secondary fill:#FFF7E6,stroke:#E0A400,stroke-width:1.5px,color:#7A5B00
+    classDef indirect fill:#F1F3F6,stroke:#8A93A3,stroke-width:1.5px,color:#4A5262
+    class ROOT root
+    class P1,P2,P3 primary
+    class S1,S2 secondary
+    class I1,I2 indirect
+</pre>
+          </div>
+          <figcaption><b>Gambar 1.2</b> — Peta hierarki pemangku kepentingan SIAGA: primary user, secondary actor, dan indirect stakeholder.</figcaption>
+        </figure>
+      </div>
+
+      <!-- ================= AKTOR ================= -->
+      <div class="section-block" id="aktor">
+        <h2><span class="num"><i class="bi bi-person-badge"></i></span> Daftar aktor UML</h2>
+
+        <p>
+          Setiap aktor diberi kode <code>ACT-nn</code> yang dipakai konsisten pada model use case
+          (Bagian 3) dan matriks ketertelusuran (Bagian 9). Kode use case mengikuti katalog kanonik
+          pada panduan penyusunan.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>Kode aktor</th><th>Deskripsi</th><th>Hak akses ringkas</th><th>Use case utama</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead"><code>ACT-01 Superadmin</code></td>
+                <td>Pengelola sistem dengan akses penuh dan ruang lingkup global seluruh unit/site.</td>
+                <td>Semua permission; kelola pengguna, role, master data, dan laporan konsolidasi</td>
+                <td><code>UC-BBM-06</code>, <code>UC-SPD-04</code>, <code>UC-LPJ-02</code>, <code>UC-EFF-01</code>&hellip;<code>03</code>, <code>UC-AI-01</code>&hellip;<code>02</code>, <code>UC-MST-01</code>&hellip;<code>03</code>, <code>UC-RBAC-01</code>&hellip;<code>04</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>ACT-02 General Affairs / Admin</code></td>
+                <td>Administrator operasional yang memproses transaksi harian; ruang lingkup terbatasi unit yang ditugaskan.</td>
+                <td>Approval BBM, validasi SPD &amp; LPJ, penjadwalan servis, manajemen katering</td>
+                <td><code>UC-BBM-02</code>, <code>UC-BBM-03</code>, <code>UC-BBM-04</code>, <code>UC-BBM-06</code>, <code>UC-VPR-02</code>, <code>UC-VPR-04</code>, <code>UC-LNC-01</code>&hellip;<code>04</code>, <code>UC-LNC-07</code>, <code>UC-LNC-09</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>ACT-03 Dispatcher</code></td>
+                <td>Petugas lapangan yang melakukan inspeksi kendaraan dan mengelola temuan kerusakan.</td>
+                <td>Pengecekan harian/mingguan/bulanan/body, penetapan PIC, pengajuan VPR</td>
+                <td><code>UC-CHK-01</code>&hellip;<code>05</code>, <code>UC-CHK-07</code>, <code>UC-VPR-01</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>ACT-04 Requester / Driver</code></td>
+                <td>Pengguna akhir yang mengajukan permohonan, membuat surat tugas, dan melaporkan realisasi.</td>
+                <td>Permohonan BBM, SPD &amp; LPJ, unggah bukti, konfirmasi hasil pengecekan</td>
+                <td><code>UC-BBM-01</code>, <code>UC-BBM-05</code>, <code>UC-SPD-01</code>&hellip;<code>03</code>, <code>UC-SPD-05</code>, <code>UC-LPJ-01</code>, <code>UC-CHK-06</code>, <code>UC-VPR-03</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>ACT-05 Manager</code></td>
+                <td>Pemantau kinerja operasional dengan akses baca dan approval tertentu.</td>
+                <td>Dashboard bisnis, analitik katering, dan persetujuan yang memerlukan otorisasi manajemen</td>
+                <td><code>UC-LNC-09</code> (analitik katering) dan pemantauan dashboard bisnis</td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>ACT-06 View Only</code></td>
+                <td>Pengguna eksternal atau auditor dengan hak baca saja.</td>
+                <td>Membaca laporan dan statistik tanpa kemampuan memodifikasi data</td>
+                <td>Laporan &amp; statistik lintas modul; terikat <code>UC-SYS-01</code> dan <code>UC-SYS-02</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>ACT-07 Vendor</code></td>
+                <td>Penyedia katering yang melihat kuota porsi final per site.</td>
+                <td>Dashboard vendor (baca saja) atas distribusi yang telah dikunci</td>
+                <td><code>UC-LNC-08</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================= LINGKUP MODUL ================= -->
+      <div class="section-block" id="lingkup-modul">
+        <h2><span class="num"><i class="bi bi-grid-3x3-gap"></i></span> Lingkup modul fungsional</h2>
+
+        <p>
+          Sistem terbagi menjadi sembilan modul fungsional. Kolom referensi kode menunjuk controller dan
+          prefiks rute utama yang dapat diverifikasi pada <code>routes/web.php</code> dan
+          <code>app/Http/Controllers/</code>.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>Modul</th><th>Tujuan</th><th>Fitur kunci</th><th>Referensi kode</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">1. Permohonan BBM <span class="badge badge--gray">BBM</span></td>
+                <td>Mengelola siklus hidup pengadaan bahan bakar kendaraan dinas dan alat pendukung kerja.</td>
+                <td>Pengajuan permohonan, approval &amp; bulk approval, penerbitan voucher berbatas kedaluwarsa, unggah struk dan odometer, ekspor laporan</td>
+                <td><code>RequestManagementController</code>, <code>VoucherController</code>; rute <code>/requester/*</code>, <code>/admin/approval/*</code>, <code>/voucher/*</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">2. Perjalanan dinas <span class="badge badge--gray">SPD / LPJ</span></td>
+                <td>Mengadministrasikan perjalanan dinas sejak surat penugasan hingga pelaporan biaya.</td>
+                <td>Penomoran surat otomatis, pemberi tugas hibrid, perpanjangan berantai, LPJ dengan batas waktu dan plafon harian, cetak bundel PDF, tanda tangan QR</td>
+                <td><code>SpdController</code>, <code>SpdPrintController</code>, <code>SpdDailyReportController</code>; rute <code>/surat_requester/*</code>, <code>/surat/*</code>, <code>/perpanjangan/*</code>, <code>/lpj/*</code>, <code>/spd/*</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">3. Pengecekan kendaraan <span class="badge badge--gray">CHK</span></td>
+                <td>Memastikan armada tetap aman dan layak pakai melalui inspeksi berkala.</td>
+                <td>Daily/Weekly/Monthly Checking dengan status OK/NG, Body Inspection empat zona, jadwal PIC, matriks kesehatan, riwayat via QR</td>
+                <td><code>DailyCheckingController</code>, <code>WeeklyCheckingController</code>, <code>MonthlyCheckingController</code>, <code>BodyCheckingController</code>, <code>VehicleCheckingSuperadminController</code>, <code>VehicleHealthHistoryController</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">4. Penggantian suku cadang <span class="badge badge--gray">VPR</span></td>
+                <td>Menjembatani temuan kerusakan kendaraan menjadi aksi perbaikan nyata.</td>
+                <td>Auto-ajukan VPR dari hasil pengecekan, approval &amp; penjadwalan servis, pencatatan biaya aktual dan foto suku cadang, monitoring transaksi</td>
+                <td><code>VehicleSparepartRequestRepairController</code>, <code>VehicleRepairmentDriverController</code>; rute <code>/dispatcher/replacement/*</code>, <code>/admin/sparepart-request/*</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">5. Lunch management <span class="badge badge--gray">LNC</span></td>
+                <td>Mengelola kebutuhan katering karyawan dan tamu di site operasional.</td>
+                <td>Master pekerja &amp; alias, forecast H+1 berjenjang, override manual, distribution lock, absensi QR publik, dashboard vendor, reservasi tamu H-2</td>
+                <td><code>Lunch/*</code> (Dashboard, Forecast, Distribution, Transaction, Analytics, PublicAttendance, SelfBooking, EmployeeDefault, VendorLunch); rute <code>/lunch/*</code>, <code>/lunch-attendance/*</code>, <code>/vendor/lunch/*</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">6. Analisis efisiensi BBM <span class="badge badge--gray">EFF</span></td>
+                <td>Melacak pemakaian bahan bakar dan mendeteksi anomali konsumsi.</td>
+                <td>Perhitungan KM/Liter antar transaksi berurutan, deteksi premature refueling, kategorisasi trip, validasi hasil, baseline per jenis kendaraan</td>
+                <td><code>SuperadminController</code>; rute <code>/trip-analysis/*</code>, <code>/trip-validations/*</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">7. Asisten AI Gaga <span class="badge badge--gray">AI</span></td>
+                <td>Membantu pengelolaan data administrasi melalui antarmuka percakapan.</td>
+                <td>Chat UI, Data Mart sembilan domain, output Markdown aman XSS, penamaan sesi otomatis, riwayat sesi</td>
+                <td><code>AiAssistantController</code>, <code>GeminiAssistantService</code>; rute <code>/ai-assistant</code>, <code>/ai-assistant/send</code>, <code>/api/data-mart/*</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">8. Master data unit &amp; site <span class="badge badge--gray">MST</span></td>
+                <td>Menyediakan data referensi wilayah bisnis dan aset yang dipakai seluruh modul.</td>
+                <td>Hierarki Unit Bisnis &rarr; Site wajib terasosiasi, unit scope rule, validasi dependensi saat penghapusan, master kendaraan &amp; alat, master harga BBM</td>
+                <td><code>UnitController</code>, <code>SiteController</code>, <code>MasterGasolineController</code>; rute <code>/units/*</code>, <code>/sites/*</code>, <code>/master-gasoline/*</code>, <code>/vehicles/*</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">9. RBAC &amp; pengguna <span class="badge badge--gray">RBAC</span></td>
+                <td>Mengendalikan hak akses granular dan menjaga kompatibilitas peran lama.</td>
+                <td>Permission group per domain, role &amp; permission, dual-write <code>user.role</code> dan <code>user_roles</code>, log aktivitas, throttling halaman publik</td>
+                <td><code>RbacController</code>, <code>UserController</code>, <code>CheckPermission</code>, <code>CheckRole</code>; rute <code>/sa/rbac/*</code>, <code>/users/*</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================= NFR ================= -->
+      <div class="section-block" id="nfr">
+        <h2><span class="num"><i class="bi bi-shield-check"></i></span> Kebutuhan non-fungsional</h2>
+
+        <p>
+          Kebutuhan non-fungsional diturunkan dari PRD bagian 5 dan dikelompokkan menjadi tiga kategori:
+          keamanan, performa &amp; keandalan, serta usabilitas. Setiap kebutuhan diberi kode <code>NFR-nn</code>
+          agar dapat dirujuk oleh test case pada Bagian 8.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>Kode</th><th>Kategori</th><th>Kebutuhan</th><th>Kriteria terukur</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead"><code>NFR-01</code></td>
+                <td><span class="badge badge--red">Keamanan</span></td>
+                <td>Pembatasan akses (rate limiting) pada halaman publik, khususnya absensi katering, untuk mencegah injeksi request massal.</td>
+                <td>Endpoint publik memakai <code>throttle</code> eksplisit: lookup 60/menit, submit 15/menit, pilih lokasi 30/menit.</td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>NFR-02</code></td>
+                <td><span class="badge badge--red">Keamanan</span></td>
+                <td>Filter anti-XSS pada seluruh keluaran asisten AI sebelum dirender sebagai Markdown.</td>
+                <td>Tag <code>script</code> dan atribut berbahaya tidak lolos ke DOM; parser Markdown berjalan pada keluaran yang sudah dibersihkan.</td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>NFR-03</code></td>
+                <td><span class="badge badge--red">Keamanan</span></td>
+                <td>Berkas sensitif — foto kuitansi, foto odometer, dan QR tanda tangan — tidak dapat diakses langsung secara publik.</td>
+                <td>Akses hanya melalui <code>StorageFileController</code> dengan otentikasi; path traversal di luar <code>storage/app/public</code> ditolak 404.</td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>NFR-04</code></td>
+                <td><span class="badge badge--blue">Performa</span></td>
+                <td>Input pencarian dan filter memakai pola debounce agar tidak membebani basis data.</td>
+                <td>Auto-submit formulir terjadi 350–400 ms setelah perubahan input terakhir.</td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>NFR-05</code></td>
+                <td><span class="badge badge--blue">Performa</span></td>
+                <td>Kompresi gambar otomatis di sisi server untuk foto struk dan odometer yang diunggah dari ponsel.</td>
+                <td>Ukuran berkas tersimpan lebih kecil dari unggahan asli; validasi per gambar maksimum 10 MB dan maksimum 10 berkas per permintaan.</td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>NFR-06</code></td>
+                <td><span class="badge badge--blue">Performa</span></td>
+                <td>Query perhitungan tanggal dan pengelompokan laporan bersifat database-agnostic (kompatibel MySQL dan SQLite).</td>
+                <td>Tidak memakai sintaks spesifik MySQL seperti <code>HOUR()</code> atau <code>DAY()</code>; seluruh test suite berjalan di SQLite.</td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>NFR-07</code></td>
+                <td><span class="badge badge--yellow">Usabilitas</span></td>
+                <td>Dashboard bisnis disajikan sebagai satu halaman bergulir yang memuat kartu statistik, grafik, dan tabel pivot tanpa perpindahan tab yang membingungkan.</td>
+                <td>Seluruh blok informasi dashboard dapat dijangkau dengan satu kali pemuatan halaman.</td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>NFR-08</code></td>
+                <td><span class="badge badge--yellow">Usabilitas</span></td>
+                <td>Navigasi sidebar dikelompokkan per domain dan status menu aktif ditentukan di sisi server.</td>
+                <td>Tidak terjadi pergeseran tata letak maupun <em>view jumping</em> saat menu diklik; sub-menu katering berada dalam satu dropdown.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================= ASUMSI ================= -->
+      <div class="section-block" id="asumsi">
+        <h2><span class="num"><i class="bi bi-clipboard-check"></i></span> Asumsi &amp; batasan</h2>
+
+        <p>
+          Asumsi berikut berlaku selama penyusunan dokumen ini. Bila salah satu tidak lagi terpenuhi,
+          bagian dokumen yang bergantung padanya perlu ditinjau ulang.
+        </p>
+
+        <ul class="list-check">
+          <li><b>Jumlah unit dan site terbatas.</b> Hanya tiga unit bisnis aktif (Unit Pusat, Unit Patuha, Unit Dieng) dengan site operasional seperti PMU, Patuha Basecamp, dan Sumur.</li>
+          <li><b>Lunch management melayani tiga site.</b> Modul katering dirancang untuk site PMU, Patuha, dan BCMP.</li>
+          <li><b>Akses melalui jaringan internal.</b> Pengguna internal mengakses SIAGA melalui jaringan kantor; hanya halaman absensi katering yang bersifat publik diakses dari tablet/smartphone kantin.</li>
+          <li><b>Peran Vendor bersifat eksternal dan baca saja.</b> Vendor katering hanya melihat rekap porsi yang telah dikunci, tanpa hak mengubah data.</li>
+          <li><b>Data referensi sudah tersedia.</b> Master pekerja, unit, site, kendaraan, dan jenis BBM diisi terlebih dahulu oleh admin sebelum transaksi harian berjalan.</li>
+          <li><b>Layanan eksternal tersedia.</b> API harga BBM publik dan layanan AI (Groq) dapat diakses dari lingkungan server saat scheduler dan fitur AI dijalankan.</li>
+          <li><b>Modul Trip Booking lama tidak dipakai.</b> Seluruh tabel dan alur pemesanan kendaraan lama sudah dihapus dan tidak menjadi bagian dari sistem.</li>
+          <li><b>Batas sistem tetap.</b> Fungsi penggajian/HR, akuntansi induk, dan pemesanan tiket pesawat/hotel tetap berada di luar SIAGA.</li>
+        </ul>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Asumsi</strong>
+            Daftar di atas adalah asumsi penyusunan dokumen, bukan jaminan konfigurasi produksi. Jumlah unit/site
+            aktif, kebijakan akses jaringan, dan ketersediaan layanan eksternal wajib diverifikasi ulang terhadap
+            konfigurasi <code>config/siaga.php</code>, <code>.env</code>, serta data master pada basis data
+            sebelum dokumen ini dipakai sebagai acuan implementasi.
+          </div>
+        </div>
+      </div>
+
+      <div class="callout callout--info">
+        <span class="callout__icon"><i class="bi bi-arrow-right-circle"></i></span>
+        <div class="callout__body">
+          <strong>Lanjut ke Bagian 2 — Arsitektur &amp; Teknologi</strong>
+          Bagian berikutnya menjelaskan tumpukan teknologi, pola arsitektur MVC, komponen utama, struktur
+          direktori, integrasi eksternal, dan catatan deployment SIAGA.
+          <div style="margin-top:10px;"><a class="btn btn--primary btn--sm" href="02-arsitektur-teknologi.html">Buka Bagian 2 <i class="bi bi-arrow-right-short"></i></a></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="foot__inner">
+    <p>&copy; <span data-year>2026</span> PT Geo Dipa Energi (Persero) Unit Patuha — Divisi General Affairs.</p>
+    <div class="foot__links">
+      <a href="../index.html">Beranda dokumentasi</a>
+      <a href="index.html">Ikhtisar SDD</a>
+      <a href="../alur-tutorial/index.html">Alur Tutorial</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/js/docs.js"></script>
+<script src="../assets/js/diagrams.js" defer></script>
+</body>
+</html>

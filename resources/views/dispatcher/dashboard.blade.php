@@ -66,11 +66,11 @@
                     <h5 class="card-title">Due Today</h5>
                     <div class="d-flex align-items-center">
                         <div class="card-icon rounded-circle d-flex align-items-center justify-content-center"
-                             style="background: #fff4de; color: #ffbb2c;">
+                             style="background: #fff4de; color: #8A6A00;">
                             <i class="bi bi-clock"></i>
                         </div>
                         <div class="ps-3">
-                            <h6 style="color: #ffbb2c;">{{ $badges['due_today_count'] }}</h6>
+                            <h6 style="color: #8A6A00;">{{ $badges['due_today_count'] }}</h6>
                             <span class="text-muted small">Harus dicek hari ini</span>
                         </div>
                     </div>
@@ -85,11 +85,11 @@
                     <h5 class="card-title">Permohonan Aktif</h5>
                     <div class="d-flex align-items-center">
                         <div class="card-icon rounded-circle d-flex align-items-center justify-content-center"
-                             style="background: #e0f8e9; color: #2eca6a;">
+                             style="background: #F2F9E8; color: #4A7A1C;">
                             <i class="bi bi-wrench-adjustable"></i>
                         </div>
                         <div class="ps-3">
-                            <h6 style="color: #2eca6a;">{{ $badges['pending_replacements'] }}</h6>
+                            <h6 style="color: #4A7A1C;">{{ $badges['pending_replacements'] }}</h6>
                             <span class="text-muted small">Menunggu approval</span>
                         </div>
                     </div>
@@ -104,11 +104,11 @@
                     <h5 class="card-title">Selesai Service</h5>
                     <div class="d-flex align-items-center">
                         <div class="card-icon rounded-circle d-flex align-items-center justify-content-center"
-                             style="background: #f6f6fe; color: #4154f1;">
+                             style="background: #EAF1FA; color: #0B50A1;">
                             <i class="bi bi-check2-circle"></i>
                         </div>
                         <div class="ps-3">
-                            <h6 style="color: #4154f1;">{{ $badges['recently_serviced'] }}</h6>
+                            <h6 style="color: #0B50A1;">{{ $badges['recently_serviced'] }}</h6>
                             <span class="text-muted small">Dalam 24 jam terakhir</span>
                         </div>
                     </div>

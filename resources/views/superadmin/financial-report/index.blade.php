@@ -16,16 +16,16 @@
     }
     .fin-stat .stat-label {
         font-size: 11px;
-        color: #6c757d;
+        color: #64748B;
         margin-top: 4px;
     }
     .fin-stat .stat-sub {
         font-size: 11px;
         margin-top: 2px;
     }
-    .fin-stat .stat-sub.up   { color: #dc3545; }
-    .fin-stat .stat-sub.down { color: #198754; }
-    .fin-stat .stat-sub.flat { color: #6c757d; }
+    .fin-stat .stat-sub.up   { color: #C4142A; }
+    .fin-stat .stat-sub.down { color: #4A7A1C; }
+    .fin-stat .stat-sub.flat { color: #64748B; }
 
     .period-nav {
         display: flex;
@@ -35,18 +35,18 @@
     .period-nav .btn-nav {
         width: 32px; height: 32px;
         border-radius: 50%;
-        border: 1px solid #dee2e6;
+        border: 1px solid #E4E9F0;
         background: #fff;
         display: flex; align-items: center; justify-content: center;
         font-size: 14px;
         cursor: pointer;
-        color: #6c757d;
+        color: #64748B;
     }
-    .period-nav .btn-nav:hover { background: #f8f9fa; }
+    .period-nav .btn-nav:hover { background: #F8FAFC; }
     .period-nav .period-label {
         font-weight: 700;
         font-size: 15px;
-        color: #012970;
+        color: #093D7D;
         min-width: 160px;
         text-align: center;
     }
@@ -60,12 +60,12 @@
         font-size: 11px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        color: #6c757d;
-        border-bottom: 2px solid #dee2e6;
+        color: #64748B;
+        border-bottom: 2px solid #E4E9F0;
     }
     .table-financial td { vertical-align: middle; }
     .table-financial .row-total {
-        background: #f8f9fa;
+        background: #F8FAFC;
         font-weight: 700;
     }
 
@@ -85,9 +85,9 @@
         margin-right: 10px;
     }
     .top-spender .rank.gold   { background: #fff3cd; color: #997404; }
-    .top-spender .rank.silver { background: #e9ecef; color: #6c757d; }
+    .top-spender .rank.silver { background: #E4E9F0; color: #64748B; }
     .top-spender .rank.bronze { background: #f8d7da; color: #997404; }
-    .top-spender .rank.normal { background: #f8f9fa; color: #6c757d; }
+    .top-spender .rank.normal { background: #F8FAFC; color: #64748B; }
 </style>
 
 <div class="pagetitle">
@@ -130,7 +130,7 @@
         <div class="col-lg-3 col-6">
             <div class="card mb-2">
                 <div class="fin-stat">
-                    <div class="stat-number" style="color: #4154f1;">
+                    <div class="stat-number" style="color: #0B50A1;">
                         Rp {{ number_format($summary['total_cost'] ?? 0, 0, ',', '.') }}
                     </div>
                     <div class="stat-label">Total Biaya Bulan Ini</div>
@@ -152,7 +152,7 @@
         <div class="col-lg-3 col-6">
             <div class="card mb-2">
                 <div class="fin-stat">
-                    <div class="stat-number" style="color: #198754;">{{ $summary['completed_count'] ?? 0 }}</div>
+                    <div class="stat-number" style="color: #4A7A1C;">{{ $summary['completed_count'] ?? 0 }}</div>
                     <div class="stat-label">Service Selesai</div>
                     <div class="stat-sub flat">dari {{ $summary['total_vpr'] ?? 0 }} VPR total</div>
                 </div>
@@ -161,7 +161,7 @@
         <div class="col-lg-3 col-6">
             <div class="card mb-2">
                 <div class="fin-stat">
-                    <div class="stat-number" style="color: #ffc107;">{{ $summary['total_items'] ?? 0 }}</div>
+                    <div class="stat-number" style="color: #D8CE3A;">{{ $summary['total_items'] ?? 0 }}</div>
                     <div class="stat-label">Item Diganti</div>
                     <div class="stat-sub flat">
                         Avg: Rp {{ number_format($summary['avg_cost_per_item'] ?? 0, 0, ',', '.') }}/item
@@ -172,7 +172,7 @@
         <div class="col-lg-3 col-6">
             <div class="card mb-2">
                 <div class="fin-stat">
-                    <div class="stat-number" style="color: #dc3545;">{{ $summary['overdue_count'] ?? 0 }}</div>
+                    <div class="stat-number" style="color: #C4142A;">{{ $summary['overdue_count'] ?? 0 }}</div>
                     <div class="stat-label">Overdue</div>
                     <div class="stat-sub flat">
                         Avg: Rp {{ number_format($summary['avg_cost_per_trx'] ?? 0, 0, ',', '.') }}/transaksi
@@ -339,7 +339,7 @@
                             <br><small class="text-muted">{{ $tv->trx_count }} transaksi</small>
                         </div>
                         <div class="text-end">
-                            <strong style="font-size: 13px; color: #4154f1;">
+                            <strong style="font-size: 13px; color: #0B50A1;">
                                 Rp {{ number_format($tv->total_cost ?? 0, 0, ',', '.') }}
                             </strong>
                         </div>
@@ -383,9 +383,9 @@
             </div>
 
             {{-- Export Card (Prominent) --}}
-            <div class="card" style="border: 2px solid #198754;">
+            <div class="card" style="border: 2px solid #71A62F;">
                 <div class="card-body pt-3 text-center">
-                    <h5 class="card-title" style="color: #198754;">
+                    <h5 class="card-title" style="color: #4A7A1C;">
                         <i class="bi bi-download me-1"></i> Export Laporan
                     </h5>
                     <p class="text-muted mb-3" style="font-size: 13px;">
@@ -442,8 +442,8 @@ new Chart(trendCtx, {
             {
                 label: 'Biaya Service',
                 data: {!! json_encode($trendCosts ?? []) !!},
-                backgroundColor: 'rgba(65,84,241,0.7)',
-                borderColor: '#4154f1',
+                backgroundColor: 'rgba(11,80,161,0.7)',
+                borderColor: '#0B50A1',
                 borderWidth: 1,
                 borderRadius: 4,
                 order: 2,
@@ -452,9 +452,9 @@ new Chart(trendCtx, {
                 label: 'Jumlah Transaksi',
                 data: {!! json_encode($trendCounts ?? []) !!},
                 type: 'line',
-                borderColor: '#ffc107',
+                borderColor: '#D8CE3A',
                 backgroundColor: 'rgba(255,193,7,0.1)',
-                pointBackgroundColor: '#ffc107',
+                pointBackgroundColor: '#D8CE3A',
                 pointRadius: 5,
                 yAxisID: 'y1',
                 order: 1,
@@ -503,8 +503,8 @@ new Chart(vehCtx, {
             label: 'Biaya',
             data: {!! json_encode($vehicleCostValues ?? []) !!},
             backgroundColor: [
-                '#4154f1', '#2eca6e', '#ff771d', '#0dcaf0',
-                '#6f42c1', '#dc3545', '#ffc107', '#20c997',
+                '#0B50A1', '#2eca6e', '#ff771d', '#0B50A1',
+                '#6f42c1', '#ED1B2F', '#D8CE3A', '#20c997',
                 '#fd7e14', '#6610f2'
             ],
             borderRadius: 4,
@@ -538,8 +538,8 @@ new Chart(pieCtx, {
         datasets: [{
             data: {!! json_encode($vehicleCostValues ?? []) !!},
             backgroundColor: [
-                '#4154f1', '#2eca6e', '#ff771d', '#0dcaf0',
-                '#6f42c1', '#dc3545', '#ffc107', '#20c997',
+                '#0B50A1', '#2eca6e', '#ff771d', '#0B50A1',
+                '#6f42c1', '#ED1B2F', '#D8CE3A', '#20c997',
                 '#fd7e14', '#6610f2'
             ],
         }]

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIAGA — Documentations | PT Geo Dipa Energi (Persero) Unit Patuha</title>
+<meta name="description" content="Pusat dokumentasi SIAGA: Software Documentation (SDD) dan Alur Tutorial penggunaan sistem.">
+<link rel="icon" href="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="assets/css/docs.css">
+</head>
+<body data-base="">
+
+<!-- ============================= TOPBAR ============================= -->
+<header class="topbar">
+  <div class="topbar__inner">
+    <button class="icon-btn btn-menu" id="docMenuBtn" aria-label="Buka navigasi" aria-expanded="false"><i class="bi bi-list"></i></button>
+
+    <a class="brand" href="index.html">
+      <img class="brand__logo" src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="Logo Geo Dipa Energi">
+      <span>
+        <span class="brand__name">SIAGA</span>
+        <span class="brand__sub">Sistem Informasi Administrasi General Affairs</span>
+      </span>
+    </a>
+    <span class="brand__divider"></span>
+    <span class="brand__doc">Documentations</span>
+
+    <div class="topbar__spacer"></div>
+
+    <div class="searchbox">
+      <i class="bi bi-search"></i>
+      <input type="search" id="docSearch" placeholder="Cari halaman…  ( / )" aria-label="Cari halaman dokumentasi">
+      <div class="search-results" id="docSearchResults"></div>
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" data-print title="Cetak / simpan PDF"><i class="bi bi-printer"></i></button>
+      <a class="icon-btn" href="software-documentation/index.html" title="Buka Software Documentation"><i class="bi bi-journal-code"></i></a>
+    </div>
+  </div>
+</header>
+
+<div class="scrim" id="docScrim"></div>
+
+<!-- ============================= HERO ============================= -->
+<section class="hero hero--light">
+  <div class="hero__inner">
+    <span class="hero__tag"><span class="dot"></span> Dokumentasi Resmi · Unit Patuha</span>
+    <h1>SIAGA — Documentations</h1>
+    <p class="lead">
+      Satu paket dokumentasi untuk aplikasi <b>SIAGA (Sistem Informasi Administrasi General Affairs)</b>
+      PT Geo Dipa Energi (Persero). Berisi dokumentasi teknis perangkat lunak lengkap dan panduan
+      alur penggunaan bergambar untuk setiap modul.
+    </p>
+
+    <div class="hero__meta">
+      <span><b>Versi dokumen</b> 1.0</span>
+      <span><b>Status</b> Produksi internal</span>
+      <span><b>Modul</b> 9 modul terintegrasi</span>
+      <span><b>Bahasa</b> Indonesia</span>
+    </div>
+  </div>
+  <span class="hero__lines"></span>
+</section>
+
+<div class="landing-strip">
+  <span class="chip"><i class="bi bi-diagram-3"></i> <b>Diagram UML</b> use case · activity · sequence · class · ERD</span>
+  <span class="chip"><i class="bi bi-clipboard2-check"></i> <b>Test case</b> &amp; matriks traceability</span>
+  <span class="chip"><i class="bi bi-table"></i> <b>Decision table</b> untuk aturan bisnis</span>
+  <span class="chip"><i class="bi bi-signpost-split"></i> <b>Tutorial bergambar</b> 6 alur utama</span>
+</div>
+
+<!-- ============================= PILIHAN DOKUMEN ============================= -->
+<main class="shell">
+  <aside class="sidebar" id="docSidebar">
+    <p class="sidebar__label">Mulai dari sini</p>
+    <ul class="nav-list">
+      <li><a class="nav-link is-active" href="index.html"><span class="nav-link__num">&#9679;</span><span class="nav-link__txt">Beranda dokumentasi</span></a></li>
+      <li><a class="nav-link" href="software-documentation/index.html"><span class="nav-link__num">A</span><span class="nav-link__txt">Software Documentation</span></a></li>
+      <li><a class="nav-link" href="alur-tutorial/index.html"><span class="nav-link__num">B</span><span class="nav-link__txt">Alur Tutorial</span></a></li>
+    </ul>
+
+    <p class="sidebar__label">Pintasan tutorial</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="alur-tutorial/01-permohonan-bbm.html"><i class="bi bi-fuel-pump"></i><span class="nav-link__txt">Permohonan BBM</span></a></li>
+      <li><a class="nav-link" href="alur-tutorial/02-spd.html"><i class="bi bi-envelope-paper"></i><span class="nav-link__txt">Pengajuan SPD</span></a></li>
+      <li><a class="nav-link" href="alur-tutorial/03-cetak-surat.html"><i class="bi bi-printer"></i><span class="nav-link__txt">Cetak Surat</span></a></li>
+      <li><a class="nav-link" href="alur-tutorial/04-dispatcher.html"><i class="bi bi-truck"></i><span class="nav-link__txt">Dispatcher</span></a></li>
+      <li><a class="nav-link" href="alur-tutorial/05-makan-siang.html"><i class="bi bi-cup-hot"></i><span class="nav-link__txt">Makan Siang</span></a></li>
+      <li><a class="nav-link" href="alur-tutorial/06-checking.html"><i class="bi bi-clipboard-check"></i><span class="nav-link__txt">Routine Checking</span></a></li>
+    </ul>
+
+    <div class="sidebar__cta">
+      <strong>Butuh konteks singkat?</strong>
+      <p>Alur Tutorial memakai <em>clipping</em> tampilan aplikasi asli beserta tooltip per langkah.</p>
+      <a href="alur-tutorial/index.html"><i class="bi bi-play-circle"></i> Buka tutorial</a>
+    </div>
+  </aside>
+
+  <div class="content">
+    <div class="wrap">
+
+      <div class="page-head">
+        <nav>
+          <ol class="crumbs">
+            <li>Documentation</li>
+            <li>Beranda</li>
+          </ol>
+        </nav>
+        <h2 style="font-size:1.05rem;margin-bottom:6px;">Pilih dokumentasi yang ingin dibuka</h2>
+        <p class="lead" style="font-size:.9rem;">
+          Dua dokumen ini saling melengkapi: yang satu menjelaskan <b>apa dan bagaimana sistem dibangun</b>,
+          yang lain menunjukkan <b>bagaimana sistem dipakai</b> langkah demi langkah.
+        </p>
+      </div>
+
+      <div class="grid grid--2" style="margin-bottom:26px;">
+
+        <!-- KARTU A -->
+        <a class="choice" href="software-documentation/index.html">
+          <span class="choice__icon"><i class="bi bi-journal-code"></i></span>
+          <h3>Software Documentation</h3>
+          <p>
+            Software Design Document (SDD) SIAGA: ruang lingkup &amp; visi produk, arsitektur teknologi,
+            model use case, spesifikasi use case, diagram perilaku dan struktur, validasi logika,
+            pengujian, traceability, hingga glosarium.
+          </p>
+          <div class="choice__foot">
+            <span class="choice__note">untuk teknis IT</span>
+            <span class="choice__go">Buka dokumentasi <i class="bi bi-arrow-right-short"></i></span>
+          </div>
+        </a>
+
+        <!-- KARTU B -->
+        <a class="choice choice--green" href="alur-tutorial/index.html">
+          <span class="choice__icon"><i class="bi bi-signpost-split"></i></span>
+          <h3>Alur Tutorial</h3>
+          <p>
+            Panduan penggunaan bergambar untuk enam alur utama: permohonan BBM, pengajuan SPD,
+            cetak surat &amp; laporan, dispatcher, makan siang, dan routine checking kendaraan —
+            lengkap dengan tooltip pada setiap langkah.
+          </p>
+          <div class="choice__foot">
+            <span class="choice__note">alur penggunaan</span>
+            <span class="choice__go">Mulai tutorial <i class="bi bi-arrow-right-short"></i></span>
+          </div>
+        </a>
+      </div>
+
+      <!-- RINGKASAN ISI -->
+      <div class="divider-label">Isi paket dokumentasi</div>
+
+      <div class="grid grid--4" style="margin-bottom:24px;">
+        <div class="kpi">
+          <div class="kpi__label">Bagian SDD</div>
+          <div class="kpi__value">11</div>
+          <div class="kpi__hint">Fase 1 s.d. 8 metodologi</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi__label">Use case teridentifikasi</div>
+          <div class="kpi__value kpi__value--green">49</div>
+          <div class="kpi__hint">45 use case modul + 4 use case bersama</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi__label">Diagram</div>
+          <div class="kpi__value">23</div>
+          <div class="kpi__hint">Use case, activity, sequence, class, ERD</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi__label">Halaman tutorial</div>
+          <div class="kpi__value kpi__value--green">6</div>
+          <div class="kpi__hint">Alur utama aplikasi</div>
+        </div>
+      </div>
+
+      <div class="grid grid--3">
+        <div class="card card--tight card--soft">
+          <div class="card__head">
+            <span class="icon-sq"><i class="bi bi-diagram-3"></i></span>
+            <div>
+              <h3>Diagram &amp; alur data</h3>
+              <p>Setiap diagram ditulis sebagai kode (Mermaid) sehingga mudah ditinjau dan diperbarui.</p>
+            </div>
+          </div>
+        </div>
+        <div class="card card--tight card--soft">
+          <div class="card__head">
+            <span class="icon-sq icon-sq--blue"><i class="bi bi-shield-check"></i></span>
+            <div>
+              <h3>Aturan bisnis &amp; RBAC</h3>
+              <p>Decision table, hak akses per peran, dan matriks traceability requirement → test case.</p>
+            </div>
+          </div>
+        </div>
+        <div class="card card--tight card--soft">
+          <div class="card__head">
+            <span class="icon-sq icon-sq--yellow"><i class="bi bi-folder2-open"></i></span>
+            <div>
+              <h3>Paket siap dibagikan</h3>
+              <p>Seluruh folder dapat dikompres menjadi satu berkas ZIP dan dibuka langsung di browser.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout callout--info">
+        <span class="callout__icon"><i class="bi bi-info-circle"></i></span>
+        <div class="callout__body">
+          <strong>Cara membuka</strong>
+          Buka <code>index.html</code> dengan peramban (Chrome/Edge/Firefox). Untuk ikon dan diagram,
+          halaman memuat pustaka dari CDN sehingga diperlukan koneksi internet. Bila dibuka tanpa internet,
+          seluruh teks dan tabel tetap terbaca — hanya ikon dan diagram yang tidak tampil.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="foot__inner">
+    <p>&copy; <span data-year>2026</span> PT Geo Dipa Energi (Persero) Unit Patuha — Divisi General Affairs. Dokumentasi internal.</p>
+    <div class="foot__links">
+      <a href="software-documentation/index.html">Software Documentation</a>
+      <a href="alur-tutorial/index.html">Alur Tutorial</a>
+      <a href="#top" onclick="window.scrollTo({top:0,behavior:'smooth'});return false;">Kembali ke atas</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/docs.js"></script>
+<script src="assets/js/diagrams.js" defer></script>
+</body>
+</html>

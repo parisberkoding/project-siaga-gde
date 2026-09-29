@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pengujian &amp; Test Case — SIAGA</title>
+<meta name="description" content="Bagian 8 SDD SIAGA: strategi pengujian, 26 test case rinci, pengujian non-fungsional, dashboard cakupan, dan perkakas Pest PHP.">
+<link rel="icon" href="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="../assets/css/docs.css">
+</head>
+<body data-base="../">
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <button class="icon-btn btn-menu" id="docMenuBtn" aria-label="Buka navigasi" aria-expanded="false"><i class="bi bi-list"></i></button>
+    <a class="brand" href="../index.html">
+      <img class="brand__logo" src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="Logo Geo Dipa Energi">
+      <span>
+        <span class="brand__name">SIAGA</span>
+        <span class="brand__sub">Sistem Informasi Administrasi General Affairs</span>
+      </span>
+    </a>
+    <span class="brand__divider"></span>
+    <span class="brand__doc">Software Documentation</span>
+    <div class="topbar__spacer"></div>
+    <div class="searchbox">
+      <i class="bi bi-search"></i>
+      <input type="search" id="docSearch" placeholder="Cari halaman…  ( / )" aria-label="Cari halaman dokumentasi">
+      <div class="search-results" id="docSearchResults"></div>
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" data-print title="Cetak / simpan PDF"><i class="bi bi-printer"></i></button>
+      <a class="icon-btn" href="../index.html" title="Kembali ke beranda dokumentasi"><i class="bi bi-house"></i></a>
+    </div>
+  </div>
+</header>
+
+<div class="scrim" id="docScrim"></div>
+
+<main class="shell">
+  <aside class="sidebar" id="docSidebar">
+    <p class="sidebar__label">Software Documentation</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="index.html"><span class="nav-link__num">&#9679;</span><span class="nav-link__txt">Ikhtisar &amp; daftar isi</span></a></li>
+      <li><a class="nav-link" href="01-ruang-lingkup.html"><span class="nav-link__num">1</span><span class="nav-link__txt">Ruang lingkup &amp; visi produk</span></a></li>
+      <li><a class="nav-link" href="02-arsitektur-teknologi.html"><span class="nav-link__num">2</span><span class="nav-link__txt">Arsitektur &amp; teknologi</span></a></li>
+      <li><a class="nav-link" href="03-model-use-case.html"><span class="nav-link__num">3</span><span class="nav-link__txt">Model use case</span></a></li>
+      <li><a class="nav-link" href="04-spesifikasi-use-case.html"><span class="nav-link__num">4</span><span class="nav-link__txt">Spesifikasi use case</span></a></li>
+      <li><a class="nav-link" href="05-desain-perilaku.html"><span class="nav-link__num">5</span><span class="nav-link__txt">Desain perilaku</span><span class="nav-badge">Activity · Sequence</span></a></li>
+      <li><a class="nav-link" href="06-desain-struktur.html"><span class="nav-link__num">6</span><span class="nav-link__txt">Desain struktur</span><span class="nav-badge">Class · ERD</span></a></li>
+      <li><a class="nav-link" href="07-validasi-logika.html"><span class="nav-link__num">7</span><span class="nav-link__txt">Validasi logika</span></a></li>
+      <li><a class="nav-link is-active" href="08-pengujian.html"><span class="nav-link__num">8</span><span class="nav-link__txt">Pengujian &amp; test case</span></a></li>
+      <li><a class="nav-link" href="09-traceability.html"><span class="nav-link__num">9</span><span class="nav-link__txt">Traceability &amp; RBAC</span></a></li>
+      <li><a class="nav-link" href="10-glosarium.html"><span class="nav-link__num">10</span><span class="nav-link__txt">Glosarium</span></a></li>
+      <li><a class="nav-link" href="11-plantuml-changelog.html"><span class="nav-link__num">11</span><span class="nav-link__txt">PlantUML &amp; changelog</span></a></li>
+    </ul>
+
+    <p class="sidebar__label">Dokumen lain</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="../alur-tutorial/index.html"><i class="bi bi-signpost-split"></i><span class="nav-link__txt">Alur Tutorial</span></a></li>
+      <li><a class="nav-link" href="../index.html"><i class="bi bi-house"></i><span class="nav-link__txt">Beranda dokumentasi</span></a></li>
+    </ul>
+  </aside>
+
+  <div class="content">
+    <div class="wrap">
+
+      <nav>
+        <ol class="crumbs">
+          <li><a href="../index.html">Documentation</a></li>
+          <li>Software Documentation</li>
+          <li>Bagian 8</li>
+        </ol>
+      </nav>
+
+      <div class="page-head">
+        <span class="eyebrow"><span class="dot"></span> Bagian 8</span>
+        <h2>Pengujian &amp; Test Case</h2>
+        <p class="lead">
+          Halaman ini menerjemahkan use case, aturan bisnis, dan decision table menjadi skenario pengujian
+          yang dapat dijalankan. Seluruh angka cakupan di sini adalah <b>target/estimasi</b> pada saat
+          dokumen disusun — bukan hasil eksekusi pengujian yang sesungguhnya.
+        </p>
+      </div>
+
+      <!-- ================= STRATEGI ================= -->
+      <div class="section-block" id="strategi">
+        <h2><span class="num"><i class="bi bi-signpost"></i></span> Strategi pengujian</h2>
+
+        <p>
+          Pengujian SIAGA bertumpu pada piramida yang menempatkan tes otomatis berkecepatan tinggi di lapisan
+          bawah (unit &amp; feature test) dan validasi berbasis skenario bisnis di lapisan atas (UAT manual).
+          Prioritas eksekusi ditentukan oleh risiko: alur yang menyangkut keuangan, keselamatan, atau
+          kepatuhan diuji lebih dulu dan lebih rinci.
+        </p>
+
+        <div class="grid grid--3">
+          <div class="card card--soft card--tight">
+            <div class="card__head"><span class="icon-sq"><i class="bi bi-cpu"></i></span><div><h3>Unit test</h3><p>Pest PHP · folder <code>tests/Unit</code></p></div></div>
+            <p style="font-size:.82rem;color:var(--muted);margin:0;">Menguji komponen logika tunggal tanpa basis data: resolver AI, normalisasi nama, query engine Data Mart, dan perhitungan metrik efisiensi.</p>
+          </div>
+          <div class="card card--soft card--tight">
+            <div class="card__head"><span class="icon-sq"><i class="bi bi-window-stack"></i></span><div><h3>Feature / integration test</h3><p>Pest PHP · folder <code>tests/Feature</code></p></div></div>
+            <p style="font-size:.82rem;color:var(--muted);margin:0;">Mengirim request HTTP end-to-end pada rute nyata, memverifikasi middleware permission, validasi form, serta perubahan baris basis data.</p>
+          </div>
+          <div class="card card--soft card--tight">
+            <div class="card__head"><span class="icon-sq"><i class="bi bi-people"></i></span><div><h3>UAT manual</h3><p>Berbasis skenario per peran</p></div></div>
+            <p style="font-size:.82rem;color:var(--muted);margin:0;">Dijalankan GA, Dispatcher, dan Driver pada lingkungan staging dengan data perwakilan, mengikuti langkah pada Alur Tutorial.</p>
+          </div>
+        </div>
+
+        <div class="grid grid--2" style="margin-top:22px;">
+          <div>
+            <h3>Jenis cakupan yang diuji</h3>
+            <ul class="list-check" style="font-size:.84rem;">
+              <li><b>Happy path</b> — alur utama berjalan dengan masukan valid.</li>
+              <li><b>Alternatif</b> — variasi masukan yang tetap sah, misalnya nominal di bawah saran full-tank.</li>
+              <li><b>Pengecualian</b> — kesalahan, penolakan, atau data tidak lengkap.</li>
+              <li><b>Boundary</b> — nilai tepat di batas: slot 5/5, plafon Rp1.400.000, tenggat hari ke-3, 60% kapasitas tangki, H-2.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Lingkungan pengujian</h3>
+            <p style="font-size:.85rem;color:var(--muted);">
+              Tes otomatis berjalan di atas <b>SQLite</b> (<code>:memory:</code>) sesuai <code>phpunit.xml</code>.
+              Konsekuensinya, seluruh query harus <b>database-agnostic</b>: dilarang memakai fungsi spesifik
+              MySQL seperti <code>HOUR()</code> atau <code>DAY()</code> untuk perhitungan tanggal dan
+              pengelompokan laporan (PRD 5.2). Pelanggaran aturan ini akan muncul sebagai kegagalan tes, bukan
+              sekadar catatan gaya penulisan.
+            </p>
+          </div>
+        </div>
+
+        <h3 style="margin-top:24px;">Aturan bisnis yang menjadi acuan pengujian</h3>
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <caption><b>Tabel 8.1</b> — Kode aturan bisnis (BR) yang diturunkan dari PRD dan kode sumber.</caption>
+            <thead>
+              <tr><th>Kode</th><th>Aturan bisnis</th><th>Sumber</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="rowhead">BR-BBM-01</td><td>Maksimal 5 slot permohonan aktif per pengguna; bonus/penalti menyesuaikan.</td><td>PRD 4.1; <code>RequestManagementController</code></td></tr>
+              <tr><td class="rowhead">BR-BBM-02</td><td>Voucher memiliki masa berlaku (<em>expiry</em>) dan tidak sah setelah kedaluwarsa.</td><td>PRD 4.1</td></tr>
+              <tr><td class="rowhead">BR-BBM-03</td><td>Nominal disarankan mengikuti batas tangki kelipatan Rp50.000 (full-tank).</td><td>PRD 4.1</td></tr>
+              <tr><td class="rowhead">BR-LPJ-01</td><td>LPJ wajib dilaporkan ≤ 3 hari setelah tanggal kembali, jika lewat ditandai <code>is_late</code>.</td><td>PRD 4.2</td></tr>
+              <tr><td class="rowhead">BR-LPJ-02</td><td>Plafon harian Rp1.400.000; kelebihan ditandai <code>is_over_budget</code>.</td><td>PRD 4.2</td></tr>
+              <tr><td class="rowhead">BR-CHK-01</td><td>Semua item harus terisi status sebelum pengecekan dapat disubmit.</td><td>PRD 4.3</td></tr>
+              <tr><td class="rowhead">BR-CHK-02</td><td>Item dengan <code>needs_replacement</code> memicu draf VPR otomatis.</td><td>PRD 4.4</td></tr>
+              <tr><td class="rowhead">BR-CHK-03</td><td>Body inspection wajib melampirkan foto kerusakan per zona (Depan, Belakang, Kiri, Kanan).</td><td>PRD 4.3</td></tr>
+              <tr><td class="rowhead">BR-LNC-01</td><td>Forecast H+1 memakai prioritas override → konfirmasi → histori → default site.</td><td>PRD 4.5</td></tr>
+              <tr><td class="rowhead">BR-LNC-02</td><td>Distribusi porsi dikunci pada pukul 15:00 sebelum dikirim ke vendor.</td><td>PRD 4.5</td></tr>
+              <tr><td class="rowhead">BR-LNC-03</td><td>Reservasi tamu wajib dikonfirmasi maksimal H-2 sebelum kedatangan.</td><td>PRD 4.5</td></tr>
+              <tr><td class="rowhead">BR-EFF-01</td><td>Premature refueling terdeteksi bila jarak pemakaian &lt; 60% kapasitas tangki.</td><td>PRD 4.6</td></tr>
+              <tr><td class="rowhead">BR-EFF-02</td><td>Override baseline konsumsi BBM wajib disertai alasan.</td><td>PRD 4.6</td></tr>
+              <tr><td class="rowhead">BR-AI-01</td><td>Output markdown asisten dibersihkan dari tag script (anti-XSS).</td><td>PRD 4.7; PRD 5.1</td></tr>
+              <tr><td class="rowhead">BR-RBAC-01</td><td>Akses modul dikendalikan permission granular; permintaan tanpa izin ditolak.</td><td>PRD 2; <code>CheckPermission</code></td></tr>
+              <tr><td class="rowhead">BR-MST-01</td><td>Unit scope: GA Unit Patuha hanya mengelola data site di bawah Unit Patuha.</td><td>PRD 4.8</td></tr>
+              <tr><td class="rowhead">BR-MST-02</td><td>Unit/Site tidak dapat dihapus selama masih memiliki relasi data.</td><td>PRD 4.8</td></tr>
+              <tr><td class="rowhead">BR-MST-03</td><td>Setiap Site wajib terasosiasi dengan tepat 1 Unit Bisnis.</td><td>PRD 4.8</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================= SKENARIO ================= -->
+      <div class="section-block" id="skenario">
+        <h2><span class="num"><i class="bi bi-list-check"></i></span> Skenario uji per modul</h2>
+
+        <p>
+          Sebaran skenario dijaga proporsional terhadap risiko dan luas permukaan fitur. Jumlah pada tabel
+          ini adalah skenario rinci yang diuraikan pada Tabel 8.3, sedangkan pemilik uji menunjuk peran yang
+          paling memahami domainnya.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <caption><b>Tabel 8.2</b> — Sebaran skenario uji per modul dan pemilik uji.</caption>
+            <thead>
+              <tr><th>Modul</th><th>Jumlah skenario</th><th>Prioritas</th><th>Pemilik uji</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="rowhead">BBM (permohonan, approval, voucher, bukti)</td><td>5</td><td><span class="badge badge--red">Kritis</span></td><td>QA + Admin GA</td></tr>
+              <tr><td class="rowhead">SPD &amp; LPJ</td><td>4</td><td><span class="badge badge--red">Kritis</span></td><td>QA + Superadmin</td></tr>
+              <tr><td class="rowhead">Pengecekan kendaraan (CHK)</td><td>4</td><td><span class="badge">Tinggi</span></td><td>QA + Dispatcher</td></tr>
+              <tr><td class="rowhead">Lunch management (LNC)</td><td>4</td><td><span class="badge badge--red">Kritis</span></td><td>QA + Admin GA</td></tr>
+              <tr><td class="rowhead">Analisis efisiensi BBM (EFF)</td><td>2</td><td><span class="badge badge--blue">Sedang</span></td><td>QA + Superadmin</td></tr>
+              <tr><td class="rowhead">RBAC &amp; pengguna</td><td>3</td><td><span class="badge badge--red">Kritis</span></td><td>QA + Superadmin</td></tr>
+              <tr><td class="rowhead">Asisten AI (Gaga)</td><td>2</td><td><span class="badge badge--blue">Sedang</span></td><td>QA</td></tr>
+              <tr><td class="rowhead">Master data unit &amp; site (MST)</td><td>2</td><td><span class="badge">Tinggi</span></td><td>QA + Superadmin</td></tr>
+              <tr><td class="rowhead"><b>Total</b></td><td><b>26</b></td><td>—</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================= TEST CASE ================= -->
+      <div class="section-block" id="testcase">
+        <h2><span class="num"><i class="bi bi-clipboard2-check"></i></span> Test case rinci</h2>
+
+        <p>
+          Setiap test case diberi nomor <code>TC-&lt;MODUL&gt;-&lt;nn&gt;</code> dan ditautkan ke use case,
+          aturan bisnis, serta rule decision table pada Bagian 7. Kolom prioritas memakai penandaan yang sama
+          dengan konvensi dokumen: <span class="badge badge--red">Kritis</span>, <span class="badge">Tinggi</span>,
+          <span class="badge badge--blue">Sedang</span>, dan <span class="badge badge--gray">Rendah</span>.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <caption><b>Tabel 8.3</b> — Daftar 26 test case rinci lintas modul.</caption>
+            <thead>
+              <tr>
+                <th>Test ID</th>
+                <th>Skenario</th>
+                <th>Precondition</th>
+                <th>Langkah singkat</th>
+                <th>Hasil yang diharapkan</th>
+                <th>Prioritas</th>
+                <th>Trace (UC / BR / DT)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">TC-BBM-01</td>
+                <td>Pengajuan BBM normal dalam batas tangki, disetujui admin, voucher terbit</td>
+                <td>Requester login; slot aktif &lt; 5; kendaraan aktif; dalam jam kerja</td>
+                <td>Pilih kendaraan → isi nominal ≤ batas tangki → submit → admin menyetujui</td>
+                <td>Permohonan tersimpan berstatus pending, lalu approved; voucher terbit dengan kode unik + tanggal kedaluwarsa</td>
+                <td><span class="badge">Tinggi</span></td>
+                <td><code>UC-BBM-01</code>, <code>UC-BBM-02</code>, <code>UC-BBM-04</code>, <code>DT-7.1/R3</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-BBM-02</td>
+                <td>Pengajuan ditolak saat slot aktif penuh (5/5)</td>
+                <td>Requester login; sudah memiliki 5 slot aktif</td>
+                <td>Buka form permohonan → lengkapi data → submit</td>
+                <td>Permohonan ditolak dengan pesan slot penuh; tidak ada baris <code>permohonans</code> baru</td>
+                <td><span class="badge badge--red">Kritis</span></td>
+                <td><code>UC-BBM-01</code>, <code>BR-BBM-01</code>, <code>DT-7.1/R1</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-BBM-03</td>
+                <td>Nominal melebihi batas tangki → sistem menyarankan full-tank kelipatan Rp50.000</td>
+                <td>Requester login; kendaraan memiliki data kapasitas tangki dan harga BBM</td>
+                <td>Isi nominal melebihi kapasitas → simpan → admin meninjau</td>
+                <td>Saran nominal full-tank muncul; admin dapat menyesuaikan nominal sebelum voucher diterbitkan</td>
+                <td><span class="badge">Tinggi</span></td>
+                <td><code>UC-BBM-01</code>, <code>UC-BBM-02</code>, <code>BR-BBM-03</code>, <code>DT-7.1/R4</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-BBM-04</td>
+                <td>Voucher kedaluwarsa tidak dapat dipakai untuk pembelian</td>
+                <td>Voucher terbit dengan <em>expiry</em> yang sudah lewat</td>
+                <td>Buka voucher → coba gunakan/cetak pada tanggal setelah kedaluwarsa</td>
+                <td>Sistem menolak dengan pesan voucher kedaluwarsa; tidak ada status completed untuk voucher tersebut</td>
+                <td><span class="badge badge--red">Kritis</span></td>
+                <td><code>UC-BBM-04</code>, <code>BR-BBM-02</code>, <code>DT-7.1/R7</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-BBM-05</td>
+                <td>Bukti struk tidak sesuai dengan voucher yang disetujui</td>
+                <td>Permohonan approved; driver mengunggah struk dengan nominal/volume berbeda</td>
+                <td>Unggah foto struk + odometer → admin meninjau kesesuaian</td>
+                <td>Selisih terdeteksi; admin dapat menolak/meminta perbaikan; status tidak otomatis completed</td>
+                <td><span class="badge">Tinggi</span></td>
+                <td><code>UC-BBM-05</code>, <code>BR-BBM-02</code>, <code>DT-7.1/R9</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-SPD-01</td>
+                <td>Penomoran surat SPD otomatis memakai konversi angka Romawi untuk bulan aktif</td>
+                <td>Requester login; data pejabat pemberi tugas tersedia</td>
+                <td>Buat SPD baru → simpan → lihat nomor surat yang dihasilkan</td>
+                <td>Nomor surat mengikuti kode wilayah dan angka Romawi bulan berjalan; tidak ada duplikasi nomor</td>
+                <td><span class="badge">Tinggi</span></td>
+                <td><code>UC-SPD-01</code>, <code>BR-LPJ-01</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-LPJ-01</td>
+                <td>LPJ disubmit melewati tenggat 3 hari setelah tanggal kembali → ditandai <code>is_late</code></td>
+                <td>SPD selesai; tanggal kembali diketahui; laporan dibuat pada hari ke-4 atau lebih</td>
+                <td>Buat LPJ → isi rincian → submit → periksa status</td>
+                <td>LPJ tetap dapat diproses, status <code>is_late</code> aktif; peringatan tenggat tampil</td>
+                <td><span class="badge badge--red">Kritis</span></td>
+                <td><code>UC-LPJ-01</code>, <code>UC-LPJ-02</code>, <code>BR-LPJ-01</code>, <code>DT-7.2/R2</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-LPJ-02</td>
+                <td>Total pengeluaran harian melebihi plafon Rp1.400.000 → <code>is_over_budget</code></td>
+                <td>LPJ berisi rincian tol/parkir/BBM dengan total harian di atas plafon</td>
+                <td>Isi rincian melampaui plafon → simpan → tinjau penanda anggaran</td>
+                <td>Status <code>is_over_budget</code> aktif; perhitungan ulang total berjalan otomatis saat detail berubah</td>
+                <td><span class="badge badge--red">Kritis</span></td>
+                <td><code>UC-LPJ-01</code>, <code>BR-LPJ-02</code>, <code>DT-7.2/R3</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-SPD-02</td>
+                <td>Perpanjangan perjalanan berantai (Surat Asli → Ekstensi 1 → Ekstensi 2)</td>
+                <td>SPD asli sudah disetujui; requester login</td>
+                <td>Ajukan Ekstensi 1 → setujui → ajukan Ekstensi 2 dari ekstensi sebelumnya</td>
+                <td>Tanggal kembali diperbarui dan akumulasi tambahan anggaran dihitung otomatis di tiap rantai</td>
+                <td><span class="badge badge--blue">Sedang</span></td>
+                <td><code>UC-SPD-03</code>, <code>BR-LPJ-02</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-CHK-01</td>
+                <td>Submit pengecekan ditolak karena masih ada item tanpa status</td>
+                <td>Dispatcher login; form pengecekan terisi sebagian</td>
+                <td>Isi sebagian item → tekan submit</td>
+                <td>Submit ditolak dengan pesan item belum lengkap; data tidak tersimpan sebagai hasil final</td>
+                <td><span class="badge">Tinggi</span></td>
+                <td><code>UC-CHK-01..04</code>, <code>BR-CHK-01</code>, <code>DT-7.3/R8</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-CHK-02</td>
+                <td>Item berstatus NG dan butuh penggantian memicu draf VPR otomatis</td>
+                <td>Dispatcher login; item pengecekan ditandai NG + <code>needs_replacement</code></td>
+                <td>Tandai item NG → centang butuh penggantian → submit → buka menu replacement</td>
+                <td>Pengecekan tersimpan sebagai NG + notifikasi terkirim; draf VPR otomatis berisi daftar suku cadang rusak</td>
+                <td><span class="badge badge--red">Kritis</span></td>
+                <td><code>UC-CHK-01</code>, <code>UC-VPR-01</code>, <code>BR-CHK-02</code>, <code>DT-7.3/R3</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-CHK-03</td>
+                <td>Body inspection tanpa foto zona lengkap ditolak</td>
+                <td>Dispatcher login; body inspection dengan 4 zona (Depan, Belakang, Kiri, Kanan)</td>
+                <td>Isi penilaian body → unggah foto hanya 2 zona → submit</td>
+                <td>Submit ditahan; sistem meminta foto zona yang kurang sebelum dapat diselesaikan</td>
+                <td><span class="badge badge--blue">Sedang</span></td>
+                <td><code>UC-CHK-04</code>, <code>BR-CHK-03</code>, <code>DT-7.3/R7</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-CHK-04</td>
+                <td>QR riwayat kesehatan kendaraan menampilkan ringkasan riwayat pengecekan</td>
+                <td>Kendaraan memiliki lembar QR dan riwayat pengecekan</td>
+                <td>Pindai QR kendaraan → buka hasil pemindaian</td>
+                <td>Halaman riwayat kesehatan kendaraan tampil tanpa perlu pencarian manual, memuat pengecekan terbaru</td>
+                <td><span class="badge badge--blue">Sedang</span></td>
+                <td><code>UC-CHK-07</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-LNC-01</td>
+                <td>Forecast H+1 memilih sumber sesuai 4 tingkat prioritas</td>
+                <td>Data karyawan dengan kombinasi override, konfirmasi, histori, dan default site</td>
+                <td>Jalankan generate forecast → bandingkan <code>source</code> tiap karyawan dengan datanya</td>
+                <td>Urutan prioritas dihormati: manual &gt; confirmation &gt; learning &gt; default; tanpa data → skip</td>
+                <td><span class="badge">Tinggi</span></td>
+                <td><code>UC-LNC-02</code>, <code>BR-LNC-01</code>, <code>DT-7.4/R1–R9</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-LNC-02</td>
+                <td>Lock distribusi pukul 15:00 membekukan kuota final untuk vendor</td>
+                <td>Forecast H+1 sudah terbentuk; Admin GA login</td>
+                <td>Buka distribusi → tekan lock pada pukul 15:00 → buka dashboard vendor</td>
+                <td>Kuota berstatus final per site dan tidak berubah saat data absensi setelahnya berubah; vendor melihat angka terkunci</td>
+                <td><span class="badge badge--red">Kritis</span></td>
+                <td><code>UC-LNC-04</code>, <code>BR-LNC-02</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-LNC-03</td>
+                <td>Absensi QR ganda (dobel submit) tidak menghasilkan transaksi ganda</td>
+                <td>Halaman absensi publik; karyawan sudah absen hari ini</td>
+                <td>Pindai QR yang sama dua kali / submit form dua kali berturut-turut</td>
+                <td>Hanya satu transaksi absensi tersimpan; percobaan kedua idempoten atau ditolak dengan pesan jelas</td>
+                <td><span class="badge">Tinggi</span></td>
+                <td><code>UC-LNC-05</code>, <code>BR-LNC-01</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-LNC-04</td>
+                <td>Reservasi tamu yang diajukan lewat dari H-2 ditolak</td>
+                <td>Admin GA login; tanggal kedatangan tamu kurang dari 2 hari dari hari ini</td>
+                <td>Buat reservasi tamu dengan tanggal H-1 → simpan</td>
+                <td>Reservasi ditolak dengan pesan batas H-2; data tidak masuk kalender katering</td>
+                <td><span class="badge badge--blue">Sedang</span></td>
+                <td><code>UC-LNC-07</code>, <code>BR-LNC-03</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-EFF-01</td>
+                <td>Deteksi premature refueling saat pemakaian &lt; 60% kapasitas tangki</td>
+                <td>Dua transaksi BBM berturut-turut pada kendaraan yang sama; jarak tempuh &lt; 60% kapasitas</td>
+                <td>Jalankan recalculate metrik trip → periksa level peringatan</td>
+                <td>Trip ditandai <em>suspicious</em> dengan level warning/critical sesuai ambang; efisiensi KM/L terhitung</td>
+                <td><span class="badge badge--blue">Sedang</span></td>
+                <td><code>UC-EFF-01</code>, <code>BR-EFF-01</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-EFF-02</td>
+                <td>Override baseline BBM tanpa alasan ditolak</td>
+                <td>Superadmin login; kendaraan memiliki baseline konsumsi standar</td>
+                <td>Ubah nilai baseline → kosongkan kolom alasan → simpan</td>
+                <td>Validasi menolak penyimpanan; baseline lama tidak berubah</td>
+                <td><span class="badge badge--blue">Sedang</span></td>
+                <td><code>UC-EFF-03</code>, <code>BR-EFF-02</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-RBAC-01</td>
+                <td>Akses di luar permission ditolak (HTTP 403)</td>
+                <td>Pengguna login dengan peran tanpa izin modul tertentu, mis. View Only membuka aksi tulis</td>
+                <td>Akses langsung URL aksi terlarang</td>
+                <td>Permintaan ditolak 403; tidak ada perubahan data</td>
+                <td><span class="badge badge--red">Kritis</span></td>
+                <td><code>UC-RBAC-02</code>, <code>UC-SYS-02</code>, <code>BR-RBAC-01</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-RBAC-02</td>
+                <td>Unit scope: GA Unit Patuha tidak melihat data unit lain</td>
+                <td>Pengguna GA dengan <code>unit_id = Patuha</code> login</td>
+                <td>Buka daftar permohonan/SPD → cari data milik Unit Dieng/Pusat</td>
+                <td>Data di luar Unit Patuha tidak tampil dan tidak dapat diproses; permintaan langsung ke ID tersebut ditolak</td>
+                <td><span class="badge badge--red">Kritis</span></td>
+                <td><code>UC-RBAC-01</code>, <code>BR-MST-01</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-RBAC-03</td>
+                <td>Dual-write <code>users.role</code> dan tabel <code>user_roles</code> tetap konsisten</td>
+                <td>Superadmin login; pengguna memiliki peran legacy dan peran RBAC v2</td>
+                <td>Ubah peran pengguna → simpan → periksa kolom <code>role</code> dan baris <code>user_roles</code></td>
+                <td>Kedua representasi peran sinkron; tidak ada perbedaan hak akses antara middleware lama dan baru</td>
+                <td><span class="badge">Tinggi</span></td>
+                <td><code>UC-RBAC-01</code>, <code>BR-RBAC-01</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-AI-01</td>
+                <td>Output markdown AI yang mengandung tag script dibersihkan (anti-XSS)</td>
+                <td>Superadmin login; respons AI disisipi payload <code>&lt;script&gt;</code></td>
+                <td>Kirim prompt yang memicu markdown berbahaya → render jawaban di chat</td>
+                <td>Tag script tidak dieksekusi dan tidak muncul pada DOM; markdown aman tetap tampil rapi</td>
+                <td><span class="badge badge--red">Kritis</span></td>
+                <td><code>UC-AI-01</code>, <code>BR-AI-01</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-AI-02</td>
+                <td>Function calling AI menjangkau Data Mart multi-domain</td>
+                <td>Superadmin login; Data Mart terisi data BBM, SPD, katering, dsb.</td>
+                <td>Ajukan pertanyaan lintas domain, mis. &ldquo;rekap BBM dan porsi makan siang&rdquo;</td>
+                <td>Asisten memanggil fungsi Data Mart yang tepat dan mengembalikan angka yang konsisten dengan data sumber</td>
+                <td><span class="badge badge--blue">Sedang</span></td>
+                <td><code>UC-AI-01</code>, <code>UC-AI-02</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-MST-01</td>
+                <td>Penghapusan Unit/Site yang masih memiliki relasi ditolak</td>
+                <td>Superadmin login; Unit Patuha masih memiliki site, karyawan aktif, dan kendaraan</td>
+                <td>Buka master unit/site → tekan hapus</td>
+                <td>Penghapusan ditolak dengan pesan dependency; data unit/site tetap utuh</td>
+                <td><span class="badge">Tinggi</span></td>
+                <td><code>UC-MST-01</code>, <code>UC-MST-02</code>, <code>BR-MST-02</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">TC-MST-02</td>
+                <td>Site wajib terasosiasi dengan tepat 1 Unit Bisnis</td>
+                <td>Superadmin login; form site baru</td>
+                <td>Buat site tanpa memilih unit → simpan; lalu simpan dengan validasi unit diisi</td>
+                <td>Penyimpanan tanpa unit ditolak; site hanya tersimpan bila <code>unit_id</code> terisi valid</td>
+                <td><span class="badge">Tinggi</span></td>
+                <td><code>UC-MST-02</code>, <code>BR-MST-03</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================= NON-FUNGSIONAL ================= -->
+      <div class="section-block" id="nonfungsional">
+        <h2><span class="num"><i class="bi bi-shield-check"></i></span> Pengujian non-fungsional</h2>
+
+        <p>
+          Kebutuhan non-fungsional pada PRD bagian 5 diuji dengan ambang batas terukur. Ambang yang belum
+          ditetapkan produk ditandai sebagai usulan, agar tidak disalahartikan sebagai kesepakatan final.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <caption><b>Tabel 8.4</b> — Pengujian non-fungsional dan ambang batas.</caption>
+            <thead>
+              <tr><th>Kode</th><th>Aspek</th><th>Skenario uji</th><th>Ambang batas</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">NF-01</td>
+                <td>Rate limiting absensi publik</td>
+                <td>Kirim permintaan berulang ke endpoint absensi/lookup dari satu alamat</td>
+                <td>Lookup dibatasi 60 permintaan/menit dan submit 15 permintaan/menit; permintaan berlebih menerima HTTP 429</td>
+              </tr>
+              <tr>
+                <td class="rowhead">NF-02</td>
+                <td>Debounce filter realtime</td>
+                <td>Ketik cepat pada kolom pencarian dashboard lalu pantau permintaan jaringan</td>
+                <td>Satu permintaan per jeda 350–400 ms; tidak ada query per penekanan tombol</td>
+              </tr>
+              <tr>
+                <td class="rowhead">NF-03</td>
+                <td>Kompresi gambar struk/odometer</td>
+                <td>Unggah foto berukuran besar dari ponsel, lalu bandingkan ukuran tersimpan</td>
+                <td>Ukuran berkas turun signifikan dengan teks struk tetap terbaca; waktu render PDF membaik</td>
+              </tr>
+              <tr>
+                <td class="rowhead">NF-04</td>
+                <td>Waktu muat dashboard single-page</td>
+                <td>Muat dashboard bisnis Superadmin lengkap dengan kartu statistik dan grafik Chart.js</td>
+                <td><span class="badge badge--blue">Usulan</span> — halaman interaktif termuat &lt; 3 detik pada jaringan internal</td>
+              </tr>
+              <tr>
+                <td class="rowhead">NF-05</td>
+                <td>Proteksi berkas sensitif</td>
+                <td>Akses langsung URL fisik berkas storage (struk, QR, odometer) tanpa sesi terautentikasi</td>
+                <td>Respons 404/403; berkas hanya dapat diakses melalui <code>StorageFileController</code> setelah login</td>
+              </tr>
+              <tr>
+                <td class="rowhead">NF-06</td>
+                <td>Output AI bebas tag script</td>
+                <td>Paksa respons AI memuat HTML/JS, lalu periksa DOM hasil render</td>
+                <td>Tidak ada elemen <code>&lt;script&gt;</code> maupun event handler yang tereksekusi</td>
+              </tr>
+              <tr>
+                <td class="rowhead">NF-07</td>
+                <td>Query database-agnostic</td>
+                <td>Jalankan seluruh feature test di SQLite <code>:memory:</code> dan bandingkan hasil di MySQL</td>
+                <td>Tidak ada fungsi tanggal spesifik MySQL (<code>HOUR()</code>, <code>DAY()</code>); hasil laporan identik di kedua mesin</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Usulan</strong>
+            Ambang waktu muat pada NF-04 belum ditetapkan di PRD. Angka &lt; 3 detik diusulkan sebagai target awal
+            untuk jaringan internal kantor; bila tim produk menetapkan angka lain, test case performa perlu
+            disesuaikan. Ambang rate limiting pada NF-01 sudah mengikuti <code>throttle</code> pada
+            <code>routes/web.php</code> (60/menit untuk lookup, 15/menit untuk submit).
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= COVERAGE ================= -->
+      <div class="section-block" id="coverage">
+        <h2><span class="num"><i class="bi bi-speedometer2"></i></span> Dashboard cakupan</h2>
+
+        <p>
+          Tabel berikut merangkum <b>target cakupan</b> per modul. Semua angka adalah <b>estimasi perencanaan</b>
+          pada saat dokumen disusun — belum ada eksekusi pengujian nyata yang menghasilkan angka ini, sehingga
+          tidak boleh dibaca sebagai bukti kualitas.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <caption><b>Tabel 8.5</b> — Target cakupan pengujian per modul (estimasi, bukan hasil nyata).</caption>
+            <thead>
+              <tr><th>Modul</th><th>Target cakupan</th><th>Jumlah TC</th><th>Status indikatif</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">BBM</td>
+                <td><div class="progress"><span style="width:92%"></span></div>92% (target)</td>
+                <td>5</td>
+                <td><span class="badge">Di atas ambang</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">SPD / LPJ</td>
+                <td><div class="progress"><span style="width:85%"></span></div>85% (target)</td>
+                <td>4</td>
+                <td><span class="badge badge--yellow">Di bawah ambang</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">Pengecekan kendaraan (CHK)</td>
+                <td><div class="progress"><span style="width:88%"></span></div>88% (target)</td>
+                <td>4</td>
+                <td><span class="badge badge--yellow">Di bawah ambang</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">Lunch management (LNC)</td>
+                <td><div class="progress progress--blue"><span style="width:90%"></span></div>90% (target)</td>
+                <td>4</td>
+                <td><span class="badge">Tepat ambang</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">Efisiensi BBM (EFF)</td>
+                <td><div class="progress progress--blue"><span style="width:80%"></span></div>80% (target)</td>
+                <td>2</td>
+                <td><span class="badge badge--yellow">Di bawah ambang</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">RBAC &amp; pengguna</td>
+                <td><div class="progress"><span style="width:95%"></span></div>95% (target)</td>
+                <td>3</td>
+                <td><span class="badge">Di atas ambang</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">Asisten AI (Gaga)</td>
+                <td><div class="progress progress--blue"><span style="width:75%"></span></div>75% (target)</td>
+                <td>2</td>
+                <td><span class="badge badge--yellow">Di bawah ambang</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">Master data (MST)</td>
+                <td><div class="progress"><span style="width:85%"></span></div>85% (target)</td>
+                <td>2</td>
+                <td><span class="badge badge--yellow">Di bawah ambang</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--info">
+          <span class="callout__icon"><i class="bi bi-info-circle"></i></span>
+          <div class="callout__body">
+            <strong>Arti ambang 90–95% sebelum baseline</strong>
+            Rencana pengujian menetapkan <b>ambang 90–95%</b> sebagai syarat minimum sebelum modul dinyatakan
+            siap menjadi <em>baseline</em> rilis. Maknanya: dari seluruh skenario relevan pada satu modul,
+            minimal 90% harus benar-benar dieksekusi dan lulus, bukan sekadar direncanakan. Angka di bawah 90%
+            (mis. EFF 80% dan AI 75%) menandakan modul tersebut belum layak dijadikan baseline dan perlu
+            penambahan test case atau penurunan cakupan fitur terlebih dahulu. Ambang ini adalah <b>target
+            perencanaan</b>; status sesungguhnya baru dapat ditetapkan setelah eksekusi tes dijalankan.
+          </div>
+        </div>
+
+        <h3 style="margin-top:26px;">Rule decision table yang belum memiliki test case</h3>
+
+        <p>
+          Pemetaan silang antara Bagian 7 dan Bagian 8 menunjukkan sejumlah rule yang belum tertutup test case
+          rinci di atas. Daftar ini menjadi backlog pengujian berikutnya.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <caption><b>Tabel 8.6</b> — Celah cakupan rule decision table dan usulan test case baru.</caption>
+            <thead>
+              <tr><th>Rule belum tercakup</th><th>Kondisi khas</th><th>Risiko bila tak diuji</th><th>Usulan test case baru</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">DT-7.1/R5–R6</td>
+                <td>Admin menolak permohonan (dengan dan tanpa nominal di luar batas)</td>
+                <td>Penolakan tidak tercatat benar; status permohonan tertinggal di pending</td>
+                <td><code>TC-BBM-06</code> — verifikasi status rejected dan alasan penolakan tersimpan</td>
+              </tr>
+              <tr>
+                <td class="rowhead">DT-7.1/R7–R8</td>
+                <td>Approval di luar jam kerja, voucher ditunda</td>
+                <td>Voucher terbit di luar jadwal atau justru tidak pernah terbit</td>
+                <td><code>TC-BBM-07</code> — approval di luar jam kerja dan penerbitan voucher pada jam kerja berikutnya</td>
+              </tr>
+              <tr>
+                <td class="rowhead">DT-7.2/R5–R7</td>
+                <td>Rincian pengeluaran tidak lengkap dan/atau struk belum terunggah</td>
+                <td>LPJ tidak lengkap lolos validasi (risiko kepatuhan keuangan)</td>
+                <td><code>TC-LPJ-03</code> — permintaan revisi gabungan dan pemblokiran finalize</td>
+              </tr>
+              <tr>
+                <td class="rowhead">DT-7.2/R4</td>
+                <td>Terlambat sekaligus over budget pada LPJ yang sama</td>
+                <td>Salah satu penanda tertimpa saat keduanya aktif</td>
+                <td><code>TC-LPJ-04</code> — kedua flag aktif bersamaan dan tetap independen</td>
+              </tr>
+              <tr>
+                <td class="rowhead">DT-7.3/R1, R4–R6</td>
+                <td>Penyimpanan status OK dan kerusakan visual body tanpa permintaan ganti</td>
+                <td>Hasil pengecekan hilang atau salah kategori (OK vs Baik/Cukup)</td>
+                <td><code>TC-CHK-05</code> — simpan hasil OK/body dan verifikasi kategori tersimpan</td>
+              </tr>
+              <tr>
+                <td class="rowhead">DT-7.4/R4–R5</td>
+                <td>Fallback default site dan skip karyawan tanpa data</td>
+                <td>Karyawan aktif tidak terhitung atau porsi ganda</td>
+                <td><code>TC-LNC-05</code> — verifikasi <code>source=default</code> dan skip tercatat di log forecast</td>
+              </tr>
+              <tr>
+                <td class="rowhead">DT-7.5/R7–R8</td>
+                <td>Bulk approval lintas unit (dengan/tanpa catatan authorizer)</td>
+                <td>Pelanggaran unit scope atau bulk yang gagal tanpa umpan balik</td>
+                <td><code>TC-BBM-08</code> — bulk lintas unit ditolak dan fallback satu per satu berjalan</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Usulan</strong>
+            Tujuh test case di atas diusulkan sebagai tambahan agar target cakupan modul yang masih di bawah
+            ambang (SPD/LPJ, CHK, EFF, AI, MST) dapat naik menuju 90%. Penambahannya perlu diprioritaskan
+            pada <code>TC-LPJ-03</code> dan <code>TC-BBM-07</code> karena menyangkut kepatuhan keuangan.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= PERKAKAS ================= -->
+      <div class="section-block" id="perkakas">
+        <h2><span class="num"><i class="bi bi-terminal"></i></span> Perkakas &amp; perintah</h2>
+
+        <p>
+          Proyek ini memakai <b>Pest PHP</b> sebagai kerangka pengujian (tercatat pada
+          <code>DOKUMENTASI_PROJECT.md</code> bagian arsitektur &amp; teknologi). Pest dibangun di atas PHPUnit
+          sehingga perintah <code>artisan test</code> tetap dapat dipakai dan keduanya menjalankan suite yang sama.
+        </p>
+
+        <div class="code-head"><span>bash</span><button data-copy="kode-test">Salin</button></div>
+        <pre id="kode-test"><code># Menjalankan seluruh suite (Unit + Feature) melalui artisan
+php artisan test
+
+# Menjalankan langsung melalui binary Pest
+./vendor/bin/pest
+
+# Filter per modul / nama tes
+php artisan test --filter=UnitScope
+./vendor/bin/pest tests/Feature/RbacViewOnlyTest.php
+
+# Hanya menjalankan kelompok Unit
+php artisan test --testsuite=Unit</code></pre>
+
+        <div class="callout callout--info">
+          <span class="callout__icon"><i class="bi bi-info-circle"></i></span>
+          <div class="callout__body">
+            <strong>Perlu verifikasi ke composer.json / phpunit.xml</strong>
+            Pemakaian Pest PHP dan konfigurasi SQLite <em>in-memory</em> perlu diverifikasi ulang setiap kali
+            dependensi berubah. Pada pengecekan dokumen ini, <code>composer.json</code> memuat
+            <code>pestphp/pest: ^3.8</code> dan <code>phpunit/phpunit: ^11.5.3</code>, sedangkan
+            <code>phpunit.xml</code> menetapkan <code>DB_CONNECTION=sqlite</code> dan
+            <code>DB_DATABASE=:memory:</code> dengan dua testsuite: <code>Unit</code> dan <code>Feature</code>.
+            Bila versi atau konfigurasi berubah, perintah pada halaman ini harus disesuaikan.
+          </div>
+        </div>
+
+        <ul class="list-check" style="font-size:.85rem;">
+          <li>Jalankan suite lengkap sebelum setiap penggabungan ke cabang utama.</li>
+          <li>Setiap test case rinci idealnya memiliki padanan otomatis di <code>tests/Feature</code> atau <code>tests/Unit</code>.</li>
+          <li>UAT manual dijalankan mengikuti langkah pada dokumen <a href="../alur-tutorial/index.html">Alur Tutorial</a>.</li>
+          <li>Hasil eksekusi nyata dicatat terpisah; tabel cakupan pada halaman ini tetap berstatus target sampai ada bukti eksekusi.</li>
+        </ul>
+      </div>
+
+      <div class="callout callout--info">
+        <span class="callout__icon"><i class="bi bi-arrow-right-circle"></i></span>
+        <div class="callout__body">
+          <strong>Lanjut ke Bagian 9 — Traceability &amp; RBAC</strong>
+          Bagian berikutnya menautkan use case, aturan bisnis, decision table, dan test case dalam satu
+          matriks ketertelusuran, dilengkapi matriks hak akses per peran.
+          <div style="margin-top:10px;"><a class="btn btn--primary btn--sm" href="09-traceability.html">Buka Bagian 9 <i class="bi bi-arrow-right-short"></i></a></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="foot__inner">
+    <p>&copy; <span data-year>2026</span> PT Geo Dipa Energi (Persero) Unit Patuha — Divisi General Affairs.</p>
+    <div class="foot__links">
+      <a href="../index.html">Beranda dokumentasi</a>
+      <a href="index.html">Ikhtisar SDD</a>
+      <a href="../alur-tutorial/index.html">Alur Tutorial</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/js/docs.js"></script>
+<script src="../assets/js/diagrams.js" defer></script>
+</body>
+</html>

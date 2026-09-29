@@ -10,7 +10,7 @@
         padding: 10px 0;
         transition: background 0.15s;
     }
-    .check-item-row:hover { background: #f8f9fa; }
+    .check-item-row:hover { background: #F8FAFC; }
     .check-item-row:last-child { border-bottom: none; }
 
     .status-toggle { display: none; }
@@ -20,7 +20,7 @@
         justify-content: center;
         min-width: 56px;
         height: 42px;
-        border: 2px solid #dee2e6;
+        border: 2px solid #E4E9F0;
         border-radius: 8px;
         cursor: pointer;
         font-weight: 600;
@@ -29,20 +29,20 @@
         user-select: none;
         -webkit-tap-highlight-color: transparent;
     }
-    .status-toggle-ok:checked + label  { background: #198754; border-color: #198754; color: #fff; }
-    .status-toggle-ng:checked + label  { background: #dc3545; border-color: #dc3545; color: #fff; }
+    .status-toggle-ok:checked + label  { background: #71A62F; border-color: #4A7A1C; color: #fff; }
+    .status-toggle-ng:checked + label  { background: #ED1B2F; border-color: #C4142A; color: #fff; }
 
     .category-header {
-        background: linear-gradient(135deg, #495057 0%, #6c757d 100%);
+        background: linear-gradient(135deg, #495057 0%, #64748B 100%);
         color: #fff;
         padding: 10px 16px;
         border-radius: 8px;
         font-weight: 600;
     }
-    .standard-desc { font-size: 12px; color: #6c757d; font-style: italic; }
+    .standard-desc { font-size: 12px; color: #64748B; font-style: italic; }
 
     .item-notes {
-        border: 1px solid #dee2e6;
+        border: 1px solid #E4E9F0;
         border-radius: 6px;
         padding: 6px 10px;
         font-size: 13px;
@@ -50,14 +50,14 @@
         resize: none;
     }
     .item-notes:focus {
-        border-color: #4154f1;
-        box-shadow: 0 0 0 0.15rem rgba(65,84,241,.1);
+        border-color: #0B50A1;
+        box-shadow: 0 0 0 0.15rem rgba(11,80,161,.1);
         outline: none;
     }
 
     .schedule-info-card {
-        border-left: 4px solid #6c757d;
-        background: #f8f9fa;
+        border-left: 4px solid #64748B;
+        background: #F8FAFC;
     }
 
     @media (max-width: 576px) {

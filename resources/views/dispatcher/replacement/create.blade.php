@@ -6,20 +6,20 @@
 
 <style>
     .item-card {
-        border: 2px solid #e9ecef;
+        border: 2px solid #E4E9F0;
         border-radius: 10px;
         padding: 14px;
         margin-bottom: 10px;
         transition: all 0.2s;
         cursor: pointer;
     }
-    .item-card:hover { border-color: #4154f1; background: #f8f9ff; }
-    .item-card.selected { border-color: #4154f1; background: #f0f2ff; }
+    .item-card:hover { border-color: #0B50A1; background: #f8f9ff; }
+    .item-card.selected { border-color: #0B50A1; background: #f0f2ff; }
     .item-card .item-checkbox {
         width: 22px;
         height: 22px;
         cursor: pointer;
-        accent-color: #4154f1;
+        accent-color: #0B50A1;
     }
 
     .status-badge-sm {
@@ -29,16 +29,16 @@
         font-size: 12px;
         font-weight: 600;
     }
-    .status-badge-sm.ok   { background: #d1e7dd; color: #198754; }
-    .status-badge-sm.ng   { background: #f8d7da; color: #dc3545; }
-    .status-badge-sm.baik   { background: #d1e7dd; color: #198754; }
-    .status-badge-sm.cukup  { background: #cff4fc; color: #0dcaf0; }
+    .status-badge-sm.ok   { background: #d1e7dd; color: #4A7A1C; }
+    .status-badge-sm.ng   { background: #f8d7da; color: #C4142A; }
+    .status-badge-sm.baik   { background: #d1e7dd; color: #4A7A1C; }
+    .status-badge-sm.cukup  { background: #cff4fc; color: #0B50A1; }
     .status-badge-sm.kurang { background: #fff3cd; color: #997404; }
-    .status-badge-sm.tidak  { background: #f8d7da; color: #dc3545; }
+    .status-badge-sm.tidak  { background: #f8d7da; color: #C4142A; }
 
     .source-info {
-        background: #f8f9fa;
-        border-left: 4px solid #4154f1;
+        background: #F8FAFC;
+        border-left: 4px solid #0B50A1;
         padding: 12px 16px;
         border-radius: 0 8px 8px 0;
     }

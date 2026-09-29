@@ -5,23 +5,23 @@
 @section('content')
 
 <style>
-    .result-ok { color: #198754; }
-    .result-ng { color: #dc3545; }
+    .result-ok { color: #4A7A1C; }
+    .result-ng { color: #C4142A; }
     .summary-box { border-radius: 10px; padding: 16px; text-align: center; }
     .summary-box h3 { font-size: 28px; font-weight: 700; margin: 0; }
-    .summary-box .label { font-size: 13px; color: #6c757d; }
+    .summary-box .label { font-size: 13px; color: #64748B; }
     .result-row { border-bottom: 1px solid #f0f0f0; padding: 10px 0; }
     .result-row:last-child { border-bottom: none; }
     .status-badge-lg {
         display: inline-flex; align-items: center; justify-content: center;
         width: 40px; height: 40px; border-radius: 8px; font-weight: 700; font-size: 16px;
     }
-    .status-badge-lg.ok { background: #d1e7dd; color: #198754; }
-    .status-badge-lg.ng { background: #f8d7da; color: #dc3545; }
-    .category-section { border-left: 4px solid #4154f1; padding-left: 16px; margin-bottom: 8px; }
+    .status-badge-lg.ok { background: #d1e7dd; color: #4A7A1C; }
+    .status-badge-lg.ng { background: #f8d7da; color: #C4142A; }
+    .category-section { border-left: 4px solid #0B50A1; padding-left: 16px; margin-bottom: 8px; }
     .info-pair { margin-bottom: 6px; }
-    .info-pair .info-label { font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: .5px; }
-    .info-pair .info-value { font-weight: 600; color: #012970; }
+    .info-pair .info-label { font-size: 12px; color: #64748B; text-transform: uppercase; letter-spacing: .5px; }
+    .info-pair .info-value { font-weight: 600; color: #093D7D; }
 </style>
 
 <div class="pagetitle">
@@ -139,7 +139,7 @@
                     <h5 class="card-title">Ringkasan</h5>
                     <div class="row g-2">
                         <div class="col-4">
-                            <div class="summary-box" style="background:#f8f9fa;">
+                            <div class="summary-box" style="background:#F8FAFC;">
                                 <h3>{{ $summary['total'] }}</h3>
                                 <div class="label">Total</div>
                             </div>

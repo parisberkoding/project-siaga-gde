@@ -5,8 +5,8 @@
 @section('content')
 
 <style>
-    .result-ok { color: #198754; }
-    .result-ng { color: #dc3545; }
+    .result-ok { color: #4A7A1C; }
+    .result-ng { color: #C4142A; }
 
     .summary-box {
         border-radius: 10px;
@@ -20,7 +20,7 @@
     }
     .summary-box .label {
         font-size: 13px;
-        color: #6c757d;
+        color: #64748B;
     }
 
     .result-row {
@@ -43,34 +43,34 @@
     }
     .status-badge-lg.ok {
         background: #d1e7dd;
-        color: #198754;
+        color: #4A7A1C;
     }
     .status-badge-lg.ng {
         background: #f8d7da;
-        color: #dc3545;
+        color: #C4142A;
     }
 
     .category-section {
-        border-left: 4px solid #012970;
+        border-left: 4px solid #093D7D;
         padding-left: 16px;
         margin-bottom: 8px;
     }
-    .category-section.cat-kesiapan { border-color: #4154f1; }
-    .category-section.cat-keselamatan { border-color: #dc3545; }
-    .category-section.cat-kelengkapan { border-color: #ffc107; }
+    .category-section.cat-kesiapan { border-color: #0B50A1; }
+    .category-section.cat-keselamatan { border-color: #C4142A; }
+    .category-section.cat-kelengkapan { border-color: #D8CE3A; }
 
     .info-pair {
         margin-bottom: 6px;
     }
     .info-pair .info-label {
         font-size: 12px;
-        color: #6c757d;
+        color: #64748B;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
     .info-pair .info-value {
         font-weight: 600;
-        color: #012970;
+        color: #093D7D;
     }
 </style>
 
@@ -214,7 +214,7 @@
                     <h5 class="card-title">Ringkasan</h5>
                     <div class="row g-2">
                         <div class="col-4">
-                            <div class="summary-box" style="background: #f8f9fa;">
+                            <div class="summary-box" style="background: #F8FAFC;">
                                 <h3>{{ $summary['total'] }}</h3>
                                 <div class="label">Total Item</div>
                             </div>

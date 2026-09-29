@@ -462,7 +462,7 @@
         }
 
         @media screen {
-            body { background: #e9ecef; padding: 20px; }
+            body { background: #E4E9F0; padding: 20px; }
             .sheet {
                 background: #fff;
                 box-shadow: 0 0 15px rgba(0,0,0,0.2);

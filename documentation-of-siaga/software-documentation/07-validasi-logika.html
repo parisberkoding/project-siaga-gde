@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Validasi Logika (Decision Table) — SIAGA</title>
+<meta name="description" content="Bagian 7 SDD SIAGA: decision table untuk permohonan BBM, validasi LPJ, status pengecekan, forecast katering H+1, serta analisis celah kombinasinya.">
+<link rel="icon" href="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="../assets/css/docs.css">
+</head>
+<body data-base="../">
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <button class="icon-btn btn-menu" id="docMenuBtn" aria-label="Buka navigasi" aria-expanded="false"><i class="bi bi-list"></i></button>
+    <a class="brand" href="../index.html">
+      <img class="brand__logo" src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="Logo Geo Dipa Energi">
+      <span>
+        <span class="brand__name">SIAGA</span>
+        <span class="brand__sub">Sistem Informasi Administrasi General Affairs</span>
+      </span>
+    </a>
+    <span class="brand__divider"></span>
+    <span class="brand__doc">Software Documentation</span>
+    <div class="topbar__spacer"></div>
+    <div class="searchbox">
+      <i class="bi bi-search"></i>
+      <input type="search" id="docSearch" placeholder="Cari halaman…  ( / )" aria-label="Cari halaman dokumentasi">
+      <div class="search-results" id="docSearchResults"></div>
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" data-print title="Cetak / simpan PDF"><i class="bi bi-printer"></i></button>
+      <a class="icon-btn" href="../index.html" title="Kembali ke beranda dokumentasi"><i class="bi bi-house"></i></a>
+    </div>
+  </div>
+</header>
+
+<div class="scrim" id="docScrim"></div>
+
+<main class="shell">
+  <aside class="sidebar" id="docSidebar">
+    <p class="sidebar__label">Software Documentation</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="index.html"><span class="nav-link__num">&#9679;</span><span class="nav-link__txt">Ikhtisar &amp; daftar isi</span></a></li>
+      <li><a class="nav-link" href="01-ruang-lingkup.html"><span class="nav-link__num">1</span><span class="nav-link__txt">Ruang lingkup &amp; visi produk</span></a></li>
+      <li><a class="nav-link" href="02-arsitektur-teknologi.html"><span class="nav-link__num">2</span><span class="nav-link__txt">Arsitektur &amp; teknologi</span></a></li>
+      <li><a class="nav-link" href="03-model-use-case.html"><span class="nav-link__num">3</span><span class="nav-link__txt">Model use case</span></a></li>
+      <li><a class="nav-link" href="04-spesifikasi-use-case.html"><span class="nav-link__num">4</span><span class="nav-link__txt">Spesifikasi use case</span></a></li>
+      <li><a class="nav-link" href="05-desain-perilaku.html"><span class="nav-link__num">5</span><span class="nav-link__txt">Desain perilaku</span><span class="nav-badge">Activity · Sequence</span></a></li>
+      <li><a class="nav-link" href="06-desain-struktur.html"><span class="nav-link__num">6</span><span class="nav-link__txt">Desain struktur</span><span class="nav-badge">Class · ERD</span></a></li>
+      <li><a class="nav-link is-active" href="07-validasi-logika.html"><span class="nav-link__num">7</span><span class="nav-link__txt">Validasi logika</span></a></li>
+      <li><a class="nav-link" href="08-pengujian.html"><span class="nav-link__num">8</span><span class="nav-link__txt">Pengujian &amp; test case</span></a></li>
+      <li><a class="nav-link" href="09-traceability.html"><span class="nav-link__num">9</span><span class="nav-link__txt">Traceability &amp; RBAC</span></a></li>
+      <li><a class="nav-link" href="10-glosarium.html"><span class="nav-link__num">10</span><span class="nav-link__txt">Glosarium</span></a></li>
+      <li><a class="nav-link" href="11-plantuml-changelog.html"><span class="nav-link__num">11</span><span class="nav-link__txt">PlantUML &amp; changelog</span></a></li>
+    </ul>
+
+    <p class="sidebar__label">Dokumen lain</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="../alur-tutorial/index.html"><i class="bi bi-signpost-split"></i><span class="nav-link__txt">Alur Tutorial</span></a></li>
+      <li><a class="nav-link" href="../index.html"><i class="bi bi-house"></i><span class="nav-link__txt">Beranda dokumentasi</span></a></li>
+    </ul>
+  </aside>
+
+  <div class="content">
+    <div class="wrap">
+
+      <nav>
+        <ol class="crumbs">
+          <li><a href="../index.html">Documentation</a></li>
+          <li>Software Documentation</li>
+          <li>Bagian 7</li>
+        </ol>
+      </nav>
+
+      <div class="page-head">
+        <span class="eyebrow"><span class="dot"></span> Bagian 7</span>
+        <h2>Validasi Logika — Decision Table</h2>
+        <p class="lead">
+          Decision table memvalidasi logika keputusan dengan cara menuliskan kombinasi kondisi dan aksi
+          secara eksplisit, sehingga kebuntuan (gap) maupun tumpang tindih (overlap) aturan dapat dilihat
+          sebelum kode ditulis. Halaman ini memuat lima decision table inti SIAGA dan analisis celahnya.
+        </p>
+      </div>
+
+      <!-- ================= KONSEP ================= -->
+      <div class="section-block" id="konsep">
+        <h2><span class="num"><i class="bi bi-table"></i></span> Konsep decision table</h2>
+
+        <p>
+          Decision table adalah notasi tabular untuk memetakan logika kondisional: kapan aksi tertentu
+          dijalankan, dan kapan ia tidak dijalankan. Notasi ini dipilih pada fase validasi logika karena
+          memaksa penulis menyebut seluruh kombinasi kondisi bisnis yang relevan, bukan hanya alur bahagia
+          yang lazim ditulis di narasi use case.
+        </p>
+
+        <div class="grid grid--4">
+          <div class="card card--soft card--tight">
+            <div class="card__head"><span class="icon-sq"><i class="bi bi-funnel"></i></span><div><h3>Conditions</h3><p>Kondisi</p></div></div>
+            <p style="font-size:.82rem;color:var(--muted);margin:0;">Pernyataan bernilai benar/salah yang membedakan satu rule dari rule lain, misalnya <em>Slot aktif &lt; 5?</em>.</p>
+          </div>
+          <div class="card card--soft card--tight">
+            <div class="card__head"><span class="icon-sq"><i class="bi bi-diagram-2"></i></span><div><h3>Rules</h3><p>Aturan</p></div></div>
+            <p style="font-size:.82rem;color:var(--muted);margin:0;">Satu kolom/baris kombinasi nilai kondisi yang menghasilkan perilaku tunggal dan dapat diuji.</p>
+          </div>
+          <div class="card card--soft card--tight">
+            <div class="card__head"><span class="icon-sq"><i class="bi bi-lightning-charge"></i></span><div><h3>Actions</h3><p>Aksi</p></div></div>
+            <p style="font-size:.82rem;color:var(--muted);margin:0;">Keputusan atau efek sistem yang dijalankan pada rule tersebut, misalnya <em>terbitkan voucher + expiry</em>.</p>
+          </div>
+          <div class="card card--soft card--tight">
+            <div class="card__head"><span class="icon-sq"><i class="bi bi-pencil-square"></i></span><div><h3>Annotations</h3><p>Anotasi</p></div></div>
+            <p style="font-size:.82rem;color:var(--muted);margin:0;">Catatan tambahan di luar logika murni: sumber aturan, asumsi, pengecualian, atau pertanyaan yang belum diputuskan.</p>
+          </div>
+        </div>
+
+        <h3 style="margin-top:26px;">Limited-entry vs extended-entry</h3>
+
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <caption><b>Tabel 7.0</b> — Perbandingan notasi limited-entry dan extended-entry.</caption>
+            <thead>
+              <tr><th>Aspek</th><th>Limited-entry</th><th>Extended-entry</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">Nilai kondisi</td>
+                <td>Hanya <code>Y</code> (ya/benar), <code>N</code> (tidak/salah), dan <code>—</code> (tidak relevan / <em>don&rsquo;t care</em>).</td>
+                <td>Rentang nilai, kategori, atau ekspresi, misalnya <code>≤ Rp1.400.000</code>, <code>Harian</code>, <code>Body</code>.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Kapan dipakai</td>
+                <td>Kondisi yang hakikatnya biner dan dapat dijawab ya/tidak.</td>
+                <td>Kondisi berjenis, berentang, atau berkelompok (mis. jenis pengecekan, plafon anggaran).</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Contoh di halaman ini</td>
+                <td>Slot aktif &lt; 5? · Admin menyetujui? · Bukti struk terunggah?</td>
+                <td>Jenis pengecekan (Harian/Mingguan/Bulanan/Body) · Total harian ≤ Rp1.400.000?</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--tip">
+          <span class="callout__icon"><i class="bi bi-lightbulb"></i></span>
+          <div class="callout__body">
+            <strong>Tujuan validasi: lengkap, konsisten, ringkas</strong>
+            <b>Completeness</b> — setiap kombinasi kondisi yang mungkin harus punya minimal satu rule, sehingga tidak ada keadaan yang perilakunya tak terdefinisi. <b>Consistency</b> — tidak boleh ada dua rule dengan kondisi identik tetapi aksi berbeda. <b>Conciseness</b> — jumlah rule dijaga minimum dengan memakai <code>—</code> pada kondisi yang tidak relevan, bukan dengan menduplikasi rule yang sama.
+          </div>
+        </div>
+
+        <p style="font-size:.82rem;color:var(--muted);">
+          Konvensi tabel pada halaman ini: setiap <b>baris</b> adalah satu rule (<code>R1…Rn</code>), kolom kondisi memuat
+          <code>Y</code>/<code>N</code>/<code>—</code> (atau nilai kategorikal untuk kondisi extended-entry), kolom
+          <b>Aksi</b> memuat kode aksi yang dijelaskan pada legenda di bawah tiap tabel, dan kolom <b>Trace</b>
+          menautkan rule ke use case, alur utama/alternatif, serta aturan bisnis terkait.
+        </p>
+      </div>
+
+      <!-- ================= DT BBM ================= -->
+      <div class="section-block" id="dt-bbm">
+        <h2><span class="num"><i class="bi bi-fuel-pump"></i></span> Tabel 7.1 — Decision Table UC-BBM-01/02 Permohonan BBM</h2>
+
+        <p>
+          Tabel ini memvalidasi keputusan saat permohonan BBM diajukan (<code>UC-BBM-01</code>) sampai
+          ditinjau admin GA (<code>UC-BBM-02</code>). Kondisi pertama memakai batas slot aktif maksimum
+          lima permohonan per pengguna (lihat <code>RequestManagementController</code>), sedangkan kondisi
+          nominal memakai saran <em>full-tank</em> kelipatan Rp50.000 terhadap batas tangki kendaraan.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <caption><b>Tabel 7.1</b> — Decision Table UC-BBM-01/02 Permohonan BBM (DT-7.1).</caption>
+            <thead>
+              <tr>
+                <th>Rule</th>
+                <th>Slot aktif &lt; 5?</th>
+                <th>Kendaraan valid &amp; aktif?</th>
+                <th>Nominal ≤ batas tangki?</th>
+                <th>Admin menyetujui?</th>
+                <th>Dalam jam kerja?</th>
+                <th>Aksi</th>
+                <th>Trace</th>
+                <th>Anotasi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="rowhead">R1</td><td>N</td><td>—</td><td>—</td><td>—</td><td>—</td><td>A1</td><td>UC-BBM-01, Main 1–3</td><td>Slot penuh (aktif 5/5) — permohonan ditolak di gerbang pertama.</td></tr>
+              <tr><td class="rowhead">R2</td><td>Y</td><td>N</td><td>—</td><td>—</td><td>—</td><td>A1</td><td>UC-BBM-01, Alt 1</td><td>Kendaraan tidak valid/nonaktif; pesan penolakan memakai varian validasi kendaraan.</td></tr>
+              <tr><td class="rowhead">R3</td><td>Y</td><td>Y</td><td>Y</td><td>Y</td><td>Y</td><td>A2, A4, A5</td><td>UC-BBM-01, Main 1–3; UC-BBM-02, Main; UC-BBM-04, Main</td><td>Jalur bahagia: nominal wajar, disetujui, voucher terbit di jam kerja.</td></tr>
+              <tr><td class="rowhead">R4</td><td>Y</td><td>Y</td><td>N</td><td>Y</td><td>Y</td><td>A2, A3, A4, A5</td><td>UC-BBM-02, Alt 2</td><td>Nominal melebihi batas tangki → disesuaikan ke saran full-tank sebelum voucher.</td></tr>
+              <tr><td class="rowhead">R5</td><td>Y</td><td>Y</td><td>Y</td><td>N</td><td>—</td><td>A1</td><td>UC-BBM-02, Alt 3</td><td>Admin menolak tanpa perubahan nominal.</td></tr>
+              <tr><td class="rowhead">R6</td><td>Y</td><td>Y</td><td>N</td><td>N</td><td>—</td><td>A1</td><td>UC-BBM-02, Alt 3</td><td>Admin menolak; penyesuaian nominal tidak lagi relevan.</td></tr>
+              <tr><td class="rowhead">R7</td><td>Y</td><td>Y</td><td>Y</td><td>Y</td><td>N</td><td>A2, A5</td><td>UC-BBM-02, Alt 4; UC-BBM-04</td><td>Disetujui di luar jam kerja → penerbitan voucher ditunda ke jam kerja berikutnya.</td></tr>
+              <tr><td class="rowhead">R8</td><td>Y</td><td>Y</td><td>N</td><td>Y</td><td>N</td><td>A2, A3, A5</td><td>UC-BBM-02, Alt 4</td><td>Penyesuaian nominal dilakukan, voucher masuk antrean terbit.</td></tr>
+              <tr><td class="rowhead">R9</td><td>Y</td><td>Y</td><td>Y</td><td>—</td><td>—</td><td>A2, A5</td><td>UC-BBM-01, Main 1–2</td><td>Permohonan valid dan menunggu keputusan admin (status pending).</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <ul class="meta-list" style="margin-top:12px;">
+          <li><span class="meta-list__k">A1</span><span class="meta-list__v">Tolak dengan pesan slot penuh (varian pesan validasi kendaraan)</span></li>
+          <li><span class="meta-list__k">A2</span><span class="meta-list__v">Teruskan ke approval</span></li>
+          <li><span class="meta-list__k">A3</span><span class="meta-list__v">Sesuaikan nominal</span></li>
+          <li><span class="meta-list__k">A4</span><span class="meta-list__v">Terbitkan voucher + expiry</span></li>
+          <li><span class="meta-list__k">A5</span><span class="meta-list__v">Tampilkan status pending</span></li>
+        </ul>
+      </div>
+
+      <!-- ================= DT SPD/LPJ ================= -->
+      <div class="section-block" id="dt-spd-lpj">
+        <h2><span class="num"><i class="bi bi-envelope-paper"></i></span> Tabel 7.2 — Decision Table UC-LPJ-01/02 Validasi LPJ</h2>
+
+        <p>
+          Tabel ini memvalidasi pelaporan pertanggungjawaban perjalanan dinas. Dua kondisi bersumber dari
+          aturan bisnis eksplisit pada PRD: tenggat laporan <b>3 hari</b> setelah tanggal kembali
+          (<code>is_late</code>) dan plafon harian <b>Rp1.400.000</b> (<code>is_over_budget</code>).
+          Perlu dicatat bahwa kedua status tersebut bersifat penanda, bukan otomatis penolakan.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <caption><b>Tabel 7.2</b> — Decision Table UC-LPJ-01/02 Validasi LPJ (DT-7.2).</caption>
+            <thead>
+              <tr>
+                <th>Rule</th>
+                <th>Laporan ≤ 3 hari setelah kembali?</th>
+                <th>Total harian ≤ Rp1.400.000?</th>
+                <th>Rincian pengeluaran lengkap (tol/parkir/BBM)?</th>
+                <th>Bukti struk terunggah?</th>
+                <th>Disetujui validator?</th>
+                <th>Aksi</th>
+                <th>Trace</th>
+                <th>Anotasi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="rowhead">R1</td><td>Y</td><td>Y</td><td>Y</td><td>Y</td><td>Y</td><td>A4</td><td>UC-LPJ-01, Main; UC-LPJ-02, Main</td><td>Jalur bahagia: tepat waktu, dalam anggaran, lengkap.</td></tr>
+              <tr><td class="rowhead">R2</td><td>N</td><td>Y</td><td>Y</td><td>Y</td><td>Y</td><td>A1, A4</td><td>UC-LPJ-01, Alt 1; UC-LPJ-02</td><td>Terlambat dilaporkan → tetap finalize dengan penanda <code>is_late</code>.</td></tr>
+              <tr><td class="rowhead">R3</td><td>Y</td><td>N</td><td>Y</td><td>Y</td><td>Y</td><td>A2, A4</td><td>UC-LPJ-01, Alt 2</td><td>Melebihi plafon → tetap finalize dengan penanda <code>is_over_budget</code>.</td></tr>
+              <tr><td class="rowhead">R4</td><td>N</td><td>N</td><td>Y</td><td>Y</td><td>Y</td><td>A1, A2, A4</td><td>UC-LPJ-01, Alt 1–2</td><td>Kedua penanda aktif bersamaan; keduanya independen.</td></tr>
+              <tr><td class="rowhead">R5</td><td>Y</td><td>Y</td><td>N</td><td>Y</td><td>—</td><td>A3</td><td>UC-LPJ-01, Exc 1</td><td>Rincian tidak lengkap → revisi sebelum dapat divalidasi.</td></tr>
+              <tr><td class="rowhead">R6</td><td>Y</td><td>Y</td><td>Y</td><td>N</td><td>—</td><td>A3</td><td>UC-LPJ-01, Exc 2</td><td>Bukti struk belum diunggah → revisi.</td></tr>
+              <tr><td class="rowhead">R7</td><td>Y</td><td>Y</td><td>N</td><td>N</td><td>—</td><td>A3</td><td>UC-LPJ-01, Exc 1–2</td><td>Rincian dan struk sama-sama kurang → satu permintaan revisi gabungan.</td></tr>
+              <tr><td class="rowhead">R8</td><td>—</td><td>—</td><td>—</td><td>—</td><td>N</td><td>A5</td><td>UC-LPJ-02, Alt 3</td><td>Validator menolak; kelengkapan tidak lagi menentukan keputusan.</td></tr>
+              <tr><td class="rowhead">R9</td><td>Y</td><td>Y</td><td>Y</td><td>Y</td><td>N</td><td>A5</td><td>UC-LPJ-02, Alt 3</td><td>Laporan lengkap namun ditolak karena substansi (mis. struk tidak sesuai).</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <ul class="meta-list" style="margin-top:12px;">
+          <li><span class="meta-list__k">A1</span><span class="meta-list__v">Tandai is_late</span></li>
+          <li><span class="meta-list__k">A2</span><span class="meta-list__v">Tandai is_over_budget</span></li>
+          <li><span class="meta-list__k">A3</span><span class="meta-list__v">Minta revisi</span></li>
+          <li><span class="meta-list__k">A4</span><span class="meta-list__v">Validasi sukses (finalize)</span></li>
+          <li><span class="meta-list__k">A5</span><span class="meta-list__v">Tolak</span></li>
+        </ul>
+      </div>
+
+      <!-- ================= DT CHK ================= -->
+      <div class="section-block" id="dt-chk">
+        <h2><span class="num"><i class="bi bi-clipboard-check"></i></span> Tabel 7.3 — Decision Table UC-CHK-01..04 Status Pengecekan</h2>
+
+        <p>
+          Tabel ini memvalidasi penyimpanan hasil pengecekan harian, mingguan, bulanan, dan body inspection.
+          Kondisi <em>Jenis pengecekan</em> bersifat <b>extended-entry</b> (kategorikal): <code>Rutin</code>
+          mencakup Harian/Mingguan/Bulanan dengan status <code>ok/ng</code>, sedangkan <code>Body</code>
+          memakai skala Baik/Cukup/Kurang/Tidak Layak dan wajib foto per zona.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <caption><b>Tabel 7.3</b> — Decision Table UC-CHK-01..04 Status Pengecekan (DT-7.3).</caption>
+            <thead>
+              <tr>
+                <th>Rule</th>
+                <th>Jenis pengecekan</th>
+                <th>Semua item terisi status?</th>
+                <th>Ada item NG (Not Good)?</th>
+                <th>Item ditandai butuh penggantian?</th>
+                <th>Foto kerusakan per zona lengkap (khusus body)?</th>
+                <th>Aksi</th>
+                <th>Trace</th>
+                <th>Anotasi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="rowhead">R1</td><td>Rutin</td><td>Y</td><td>N</td><td>—</td><td>—</td><td>A1</td><td>UC-CHK-01..03, Main</td><td>Seluruh item <code>ok</code> → simpan sebagai OK.</td></tr>
+              <tr><td class="rowhead">R2</td><td>Rutin</td><td>Y</td><td>Y</td><td>N</td><td>—</td><td>A2</td><td>UC-CHK-01..03, Alt 1</td><td>Ada temuan NG tanpa kebutuhan penggantian → notifikasi.</td></tr>
+              <tr><td class="rowhead">R3</td><td>Rutin</td><td>Y</td><td>Y</td><td>Y</td><td>—</td><td>A2, A3</td><td>UC-CHK-01, UC-VPR-01, Main</td><td>Temuan NG + <code>needs_replacement = 1</code> → draf VPR otomatis.</td></tr>
+              <tr><td class="rowhead">R4</td><td>Body</td><td>Y</td><td>N</td><td>—</td><td>Y</td><td>A1</td><td>UC-CHK-04, Main</td><td>Body tanpa kerusakan visual → simpan (kategori Baik).</td></tr>
+              <tr><td class="rowhead">R5</td><td>Body</td><td>Y</td><td>Y</td><td>N</td><td>Y</td><td>A2</td><td>UC-CHK-04, Alt 1</td><td>Kerusakan visual tercatat tanpa permintaan ganti.</td></tr>
+              <tr><td class="rowhead">R6</td><td>Body</td><td>Y</td><td>Y</td><td>Y</td><td>Y</td><td>A2, A3</td><td>UC-CHK-04, UC-VPR-01</td><td>Kerusakan + butuh ganti → draf VPR dari temuan body.</td></tr>
+              <tr><td class="rowhead">R7</td><td>Body</td><td>Y</td><td>—</td><td>—</td><td>N</td><td>A5</td><td>UC-CHK-04, Alt 2</td><td>Foto zona belum lengkap → submit ditahan sampai foto dilengkapi.</td></tr>
+              <tr><td class="rowhead">R8</td><td>Rutin</td><td>N</td><td>—</td><td>—</td><td>—</td><td>A4</td><td>UC-CHK-01..03, Exc 1</td><td>Ada item tanpa status → submit ditolak.</td></tr>
+              <tr><td class="rowhead">R9</td><td>Body</td><td>N</td><td>—</td><td>—</td><td>N</td><td>A4, A5</td><td>UC-CHK-04, Exc 1</td><td>Item belum lengkap sekaligus foto zona kurang → tolak + minta foto.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <ul class="meta-list" style="margin-top:12px;">
+          <li><span class="meta-list__k">A1</span><span class="meta-list__v">Simpan sebagai OK</span></li>
+          <li><span class="meta-list__k">A2</span><span class="meta-list__v">Simpan sebagai NG + notifikasi</span></li>
+          <li><span class="meta-list__k">A3</span><span class="meta-list__v">Buat draf VPR otomatis</span></li>
+          <li><span class="meta-list__k">A4</span><span class="meta-list__v">Tolak submit karena item belum lengkap</span></li>
+          <li><span class="meta-list__k">A5</span><span class="meta-list__v">Minta foto zona yang kurang</span></li>
+        </ul>
+      </div>
+
+      <!-- ================= DT LNC ================= -->
+      <div class="section-block" id="dt-lnc">
+        <h2><span class="num"><i class="bi bi-cup-hot"></i></span> Tabel 7.4 — Decision Table UC-LNC-02 Forecast H+1</h2>
+
+        <p>
+          Forecast porsi makan siang H+1 dijalankan terjadwal pukul 15:00 dan memilih lokasi makan per
+          karyawan berdasarkan hierarki prioritas berjenjang: override manual → konfirmasi besok →
+          histori profil belajar → default site. Bila keempatnya tidak tersedia, karyawan di-skip dari
+          perhitungan kuota.
+        </p>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Klarifikasi implementasi — ada satu tingkat tambahan</strong>
+            Tabel di bawah mengikuti empat tingkat pada PRD. Pada kode
+            (<code>app/Services/Lunch/LunchForecastService.php</code>) terdapat tingkat <b>self_booking</b>
+            yang dipakai sebelum konfirmasi: lokasi yang dipilih karyawan sendiri lewat halaman
+            <em>Booking Mandiri</em> tidak ditimpa oleh hasil prediksi. Urutan aktual:
+            <code>manual</code> → <code>self_booking</code> → <code>confirmation</code> →
+            <code>historical</code> → <code>default</code>. Ambang histori: jumlah observasi
+            ≥ <code>MIN_HISTORY = 3</code> dan pangsa site dominan ≥ 50%; tanpa data, sistem memakai
+            default site dengan confidence 50%. Bila kolom <em>Self-booking tersimpan?</em> ingin
+            ditambahkan sebagai kondisi keenam, tabel ini perlu diperluas.
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <caption><b>Tabel 7.4</b> — Decision Table UC-LNC-02 Forecast H+1 (DT-7.4).</caption>
+            <thead>
+              <tr>
+                <th>Rule</th>
+                <th>Manual override tersedia?</th>
+                <th>Karyawan mengisi konfirmasi besok?</th>
+                <th>Learning profile punya histori pola?</th>
+                <th>Default site terdaftar?</th>
+                <th>Aksi</th>
+                <th>Trace</th>
+                <th>Anotasi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="rowhead">R1</td><td>Y</td><td>—</td><td>—</td><td>—</td><td>A1</td><td>UC-LNC-02, Main; UC-LNC-03</td><td>Override manual adalah prioritas tertinggi; sumber lain diabaikan.</td></tr>
+              <tr><td class="rowhead">R2</td><td>N</td><td>Y</td><td>—</td><td>—</td><td>A2</td><td>UC-LNC-02, Alt 1; UC-LNC-05</td><td>Konfirmasi karyawan menang atas histori maupun default.</td></tr>
+              <tr><td class="rowhead">R3</td><td>N</td><td>N</td><td>Y</td><td>—</td><td>A3</td><td>UC-LNC-02, Alt 2</td><td>Pola historis dipakai bila tidak ada override/konfirmasi.</td></tr>
+              <tr><td class="rowhead">R4</td><td>N</td><td>N</td><td>N</td><td>Y</td><td>A4</td><td>UC-LNC-02, Alt 3</td><td>Default site menjadi fallback terakhir sebelum skip.</td></tr>
+              <tr><td class="rowhead">R5</td><td>N</td><td>N</td><td>N</td><td>N</td><td>A5</td><td>UC-LNC-02, Exc 1</td><td>Tidak ada data apa pun → karyawan tidak dihitung ke kuota.</td></tr>
+              <tr><td class="rowhead">R6</td><td>Y</td><td>Y</td><td>Y</td><td>Y</td><td>A1</td><td>UC-LNC-02, Main</td><td>Semua sumber tersedia → override tetap menang (konsistensi hierarki).</td></tr>
+              <tr><td class="rowhead">R7</td><td>N</td><td>Y</td><td>Y</td><td>N</td><td>A2</td><td>UC-LNC-02, Alt 1</td><td>Konfirmasi menang atas histori.</td></tr>
+              <tr><td class="rowhead">R8</td><td>N</td><td>N</td><td>Y</td><td>Y</td><td>A3</td><td>UC-LNC-02, Alt 2</td><td>Histori menang atas default site.</td></tr>
+              <tr><td class="rowhead">R9</td><td>N</td><td>Y</td><td>N</td><td>Y</td><td>A2</td><td>UC-LNC-02, Alt 1</td><td>Konfirmasi tanpa histori → tetap pakai konfirmasi.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <ul class="meta-list" style="margin-top:12px;">
+          <li><span class="meta-list__k">A1</span><span class="meta-list__v">Pakai override (source=manual)</span></li>
+          <li><span class="meta-list__k">A2</span><span class="meta-list__v">Pakai konfirmasi (source=confirmation)</span></li>
+          <li><span class="meta-list__k">A3</span><span class="meta-list__v">Pakai histori (source=learning)</span></li>
+          <li><span class="meta-list__k">A4</span><span class="meta-list__v">Pakai default (source=default)</span></li>
+          <li><span class="meta-list__k">A5</span><span class="meta-list__v">Karyawan di-skip (tidak ada data)</span></li>
+        </ul>
+
+        <h3 style="margin-top:26px;">Ringkasan sumber prediksi → tingkat kepercayaan</h3>
+
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <caption><b>Tabel 7.4a</b> — Sumber prediksi dan tingkat kepercayaan (confidence) yang diusulkan.</caption>
+            <thead>
+              <tr><th>Sumber prediksi</th><th>Nilai <code>source</code></th><th>Tingkat kepercayaan</th><th>Dasar penentuan</th><th>Catatan</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="rowhead">Manual override</td><td><code>manual</code></td><td><span class="badge badge--red">Sangat tinggi</span></td><td>Keputusan eksplisit Admin GA</td><td>Deterministik — mencerminkan kondisi lapangan terkini.</td></tr>
+              <tr><td class="rowhead">Tomorrow confirmation</td><td><code>confirmation</code></td><td><span class="badge">Tinggi</span></td><td>Jawaban karyawan saat absensi hari ini</td><td>Akurasi bergantung pada kedisiplinan pengisian.</td></tr>
+              <tr><td class="rowhead">Historical pattern</td><td><code>learning</code></td><td><span class="badge badge--blue">Sedang</span></td><td>Learning profile pola makan per site</td><td>Perlu minimal sejumlah transaksi historis agar stabil.</td></tr>
+              <tr><td class="rowhead">Default site</td><td><code>default</code></td><td><span class="badge badge--gray">Rendah</span></td><td>Site utama tempat karyawan terdaftar</td><td>Fallback bila tidak ada sinyal perilaku.</td></tr>
+              <tr><td class="rowhead">Skip</td><td>—</td><td><span class="badge badge--gray">Tidak ada</span></td><td>Keempat kondisi bernilai salah</td><td>Karyawan tidak masuk perhitungan kuota vendor.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Usulan</strong>
+            Label tingkat kepercayaan pada Tabel 7.4a adalah usulan desain untuk memandu validasi manual, bukan
+            nilai yang saat ini dihitung sistem. Bila tim produk menyetujui, usulan ambang numeriknya adalah:
+            override 100% (deterministik), konfirmasi ≈90%, histori ≈70%, dan default ≈50%; angka tersebut perlu
+            diturunkan dari akurasi historis sebelum dipakai sebagai bobot otomatis.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= DT UMUM ================= -->
+      <div class="section-block" id="dt-umum">
+        <h2><span class="num"><i class="bi bi-diagram-2"></i></span> Tabel 7.5 — Decision Table UC-BBM-02 vs UC-BBM-03 (approval tunggal vs massal)</h2>
+
+        <p>
+          Tabel ini memisahkan perilaku persetujuan tunggal (<code>UC-BBM-02</code>) dan persetujuan massal
+          (<code>UC-BBM-03</code>). Kondisi <em>semua permohonan milik unit yang sama</em> merupakan turunan
+          aturan unit scope: Admin GA yang terkunci pada satu unit tidak boleh memproses lintas unit dalam
+          satu aksi bulk.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <caption><b>Tabel 7.5</b> — Decision Table UC-BBM-02 vs UC-BBM-03 (DT-7.5).</caption>
+            <thead>
+              <tr>
+                <th>Rule</th>
+                <th>Jumlah permohonan terpilih &gt; 1?</th>
+                <th>Semua permohonan milik unit yang sama?</th>
+                <th>Ada catatan authorizer?</th>
+                <th>Semua nominal dalam batas?</th>
+                <th>Aksi</th>
+                <th>Trace</th>
+                <th>Anotasi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="rowhead">R1</td><td>N</td><td>—</td><td>N</td><td>—</td><td>A1</td><td>UC-BBM-02, Main</td><td>Satu permohonan tanpa catatan → proses tunggal biasa.</td></tr>
+              <tr><td class="rowhead">R2</td><td>N</td><td>—</td><td>Y</td><td>—</td><td>A1, A4</td><td>UC-BBM-02, Alt 1</td><td>Satu permohonan dengan catatan authorizer → catatan disimpan.</td></tr>
+              <tr><td class="rowhead">R3</td><td>Y</td><td>Y</td><td>Y</td><td>Y</td><td>A2, A4</td><td>UC-BBM-03, Main</td><td>Bulk ideal: unit sama, nominal aman, catatan disertakan.</td></tr>
+              <tr><td class="rowhead">R4</td><td>Y</td><td>Y</td><td>N</td><td>Y</td><td>A2</td><td>UC-BBM-03, Main</td><td>Bulk tanpa catatan authorizer tetap diizinkan.</td></tr>
+              <tr><td class="rowhead">R5</td><td>Y</td><td>Y</td><td>Y</td><td>N</td><td>A3, A4</td><td>UC-BBM-03, Alt 2</td><td>Ada nominal melebihi batas → tolak bulk, tinjau satu per satu.</td></tr>
+              <tr><td class="rowhead">R6</td><td>Y</td><td>Y</td><td>N</td><td>N</td><td>A3</td><td>UC-BBM-03, Alt 2</td><td>Bulk ditolak karena nominal; tanpa catatan untuk disimpan.</td></tr>
+              <tr><td class="rowhead">R7</td><td>Y</td><td>N</td><td>Y</td><td>—</td><td>A3, A1</td><td>UC-BBM-03, Alt 1</td><td>Lintas unit → tolak bulk; fallback proses satu per satu sesuai scope.</td></tr>
+              <tr><td class="rowhead">R8</td><td>Y</td><td>N</td><td>N</td><td>—</td><td>A3</td><td>UC-BBM-03, Alt 1</td><td>Bulk lintas unit tanpa catatan → cukup ditolak.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <ul class="meta-list" style="margin-top:12px;">
+          <li><span class="meta-list__k">A1</span><span class="meta-list__v">Proses satu per satu</span></li>
+          <li><span class="meta-list__k">A2</span><span class="meta-list__v">Proses bulk</span></li>
+          <li><span class="meta-list__k">A3</span><span class="meta-list__v">Tolak bulk</span></li>
+          <li><span class="meta-list__k">A4</span><span class="meta-list__v">Simpan catatan authorizer</span></li>
+        </ul>
+      </div>
+
+      <!-- ================= GAP ================= -->
+      <div class="section-block" id="gap">
+        <h2><span class="num"><i class="bi bi-exclamation-diamond"></i></span> Analisis celah &amp; pertanyaan terbuka</h2>
+
+        <p>
+          Decision table di atas menutup kombinasi kondisi yang umum, tetapi beberapa kombinasi masih belum
+          didefinisikan baik pada PRD maupun pada implementasi. Daftar berikut adalah celah yang perlu
+          diputuskan tim produk sebelum diimplementasikan sebagai aturan yang dapat diuji.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <caption><b>Tabel 7.6</b> — Kombinasi kondisi yang belum tercakup dan pertanyaan terbuka.</caption>
+            <thead>
+              <tr><th>Kode</th><th>Kombinasi / keadaan belum tercakup</th><th>Dampak bila dibiarkan</th><th>Pertanyaan untuk tim produk</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="rowhead">GAP-01</td><td>Dua admin memproses permohonan yang sama secara bersamaan (race condition) pada <code>UC-BBM-02</code>.</td><td><span class="badge badge--red">Kritis</span> — dua voucher/approved_request untuk satu permohonan.</td><td>Apakah perlu penguncian baris (<em>row lock</em>) dan state machine yang idempoten, atau cukup validasi status?</td></tr>
+              <tr><td class="rowhead">GAP-02</td><td>Slot dihitung saat submit, tetapi permohonan disetujui beberapa saat kemudian (slot dapat berubah).</td><td><span class="badge">Tinggi</span> — kuota terlampaui atau penolakan yang tidak adil.</td><td>Kapan slot di-<em>reserve</em>: saat submit atau saat approve? Kapan slot dilepas kembali?</td></tr>
+              <tr><td class="rowhead">GAP-03</td><td>Voucher sudah kedaluwarsa, namun driver terlanjur membeli BBM dan mengunggah struk.</td><td><span class="badge badge--red">Kritis</span> — bukti pengeluaran tidak dapat dipertanggungjawabkan.</td><td>Apakah tersedia jalur pengecualian (reimbursement) dengan persetujuan superadmin?</td></tr>
+              <tr><td class="rowhead">GAP-04</td><td>Body inspection dengan sebagian foto zona terisi (mis. 2 dari 4 zona).</td><td><span class="badge badge--blue">Sedang</span> — inspeksi dapat tersimpan tidak lengkap.</td><td>Apakah penyimpanan draf boleh sebagian, sedangkan submit final wajib lengkap?</td></tr>
+              <tr><td class="rowhead">GAP-05</td><td>Forecast H+1 ketika karyawan tidak punya histori dan default site belum terdaftar.</td><td><span class="badge">Tinggi</span> — porsi karyawan aktif tidak terhitung.</td><td>Apakah perlu fallback ke site default unit, atau wajib masuk daftar review manual Admin GA?</td></tr>
+              <tr><td class="rowhead">GAP-06</td><td>Bulk approval oleh Admin GA global (tanpa <code>unit_id</code>) untuk permohonan lintas unit.</td><td><span class="badge badge--blue">Sedang</span> — pembatasan unit scope dapat memblokir alur yang sah.</td><td>Apakah scope global boleh melakukan bulk lintas unit, atau tetap wajib per unit?</td></tr>
+              <tr><td class="rowhead">GAP-07</td><td>LPJ yang sudah difinalisasi kemudian diubah admin keuangan (<code>updateKeuanganLaporan</code>).</td><td><span class="badge badge--blue">Sedang</span> — status <code>is_over_budget</code> bisa jadi tidak sinkron.</td><td>Apakah perubahan pasca-finalisasi memicu perhitungan ulang penanda budget secara otomatis?</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Perlu keputusan</strong>
+            Celah paling berisiko adalah <b>GAP-01 (race condition dua admin)</b>. Bila dua admin membuka halaman
+            approval yang sama dan menekan tombol proses hampir bersamaan, sistem berpotensi membuat dua
+            <code>approved_requests</code> dan dua voucher untuk satu permohonan — sebuah kesalahan yang berdampak
+            keuangan dan sulit dilacak setelah terjadi.
+            <br><br>
+            <b>Usulan penanganan:</b> bungkus proses approval dalam transaksi basis data dengan penguncian baris
+            (<code>lockForUpdate</code>), terapkan transisi status idempoten (<code>pending → approved</code> hanya
+            boleh sekali), dan tolak permintaan kedua dengan pesan &ldquo;permohonan sedang/telah diproses&rdquo;.
+            Tambahkan pula test case konkurensi pada Bagian 8.
+          </div>
+        </div>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Usulan</strong>
+            Untuk GAP-02, disarankan slot di-<em>reserve</em> pada saat submit dan dilepas otomatis ketika
+            permohonan ditolak atau voucher kedaluwarsa. Untuk GAP-04, disarankan pemisahan tegas antara
+            <em>draft</em> (boleh sebagian) dan <em>submit final</em> (wajib lengkap) agar dispatcher dapat
+            menyimpan progres di lapangan tanpa menurunkan kualitas data.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= RINGKASAN ================= -->
+      <div class="section-block" id="ringkas">
+        <h2><span class="num"><i class="bi bi-bar-chart-line"></i></span> Ringkasan rule &amp; tingkat cakupan</h2>
+
+        <p>
+          Total terdapat <b>44 rule</b> pada lima decision table. Angka cakupan di bawah adalah
+          <b>target/estimasi</b> hasil validasi saat penyusunan dokumen, bukan hasil pengujian nyata;
+          angkanya menggambarkan seberapa besar kombinasi kondisi yang sudah memiliki rule eksplisit.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <caption><b>Tabel 7.7</b> — Jumlah rule dan estimasi tingkat cakupan per decision table.</caption>
+            <thead>
+              <tr><th>Decision table</th><th>Use case</th><th>Jumlah rule</th><th>Estimasi cakupan kondisi</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">DT-7.1 — Permohonan BBM</td>
+                <td><code>UC-BBM-01/02</code></td>
+                <td>9</td>
+                <td><div class="progress"><span style="width:92%"></span></div>92% (target)</td>
+                <td><span class="badge">Lengkap dengan catatan</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">DT-7.2 — Validasi LPJ</td>
+                <td><code>UC-LPJ-01/02</code></td>
+                <td>9</td>
+                <td><div class="progress"><span style="width:85%"></span></div>85% (target)</td>
+                <td><span class="badge badge--blue">Perlu keputusan</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">DT-7.3 — Status pengecekan</td>
+                <td><code>UC-CHK-01..04</code></td>
+                <td>9</td>
+                <td><div class="progress"><span style="width:88%"></span></div>88% (target)</td>
+                <td><span class="badge badge--blue">Perlu keputusan</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">DT-7.4 — Forecast H+1</td>
+                <td><code>UC-LNC-02</code></td>
+                <td>9</td>
+                <td><div class="progress progress--blue"><span style="width:90%"></span></div>90% (target)</td>
+                <td><span class="badge">Baik</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">DT-7.5 — Approval tunggal vs massal</td>
+                <td><code>UC-BBM-02/03</code></td>
+                <td>8</td>
+                <td><div class="progress"><span style="width:86%"></span></div>86% (target)</td>
+                <td><span class="badge badge--blue">Perlu keputusan</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead"><b>Total</b></td>
+                <td>—</td>
+                <td><b>44</b></td>
+                <td><div class="progress"><span style="width:88%"></span></div>88% (estimasi agregat)</td>
+                <td><span class="badge badge--yellow">7 celah terbuka</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--info">
+          <span class="callout__icon"><i class="bi bi-info-circle"></i></span>
+          <div class="callout__body">
+            <strong>Dasar angka cakupan</strong>
+            Cakupan dihitung dari perbandingan antara jumlah kombinasi kondisi yang telah memiliki rule dan
+            perkiraan total kombinasi yang relevan secara bisnis (setelah kombinasi tak masuk akal dibuang).
+            Angka ini bersifat indikatif; verifikasi sesungguhnya dilakukan pada Bagian 8 melalui test case
+            yang menelusuri tiap rule.
+          </div>
+        </div>
+      </div>
+
+      <div class="callout callout--info">
+        <span class="callout__icon"><i class="bi bi-arrow-right-circle"></i></span>
+        <div class="callout__body">
+          <strong>Lanjut ke Bagian 8 — Pengujian &amp; Test Case</strong>
+          Setiap rule pada halaman ini diturunkan menjadi test case yang terukur, lengkap dengan prioritas,
+          pengujian non-fungsional, dan peta cakupan per modul.
+          <div style="margin-top:10px;"><a class="btn btn--primary btn--sm" href="08-pengujian.html">Buka Bagian 8 <i class="bi bi-arrow-right-short"></i></a></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="foot__inner">
+    <p>&copy; <span data-year>2026</span> PT Geo Dipa Energi (Persero) Unit Patuha — Divisi General Affairs.</p>
+    <div class="foot__links">
+      <a href="../index.html">Beranda dokumentasi</a>
+      <a href="index.html">Ikhtisar SDD</a>
+      <a href="../alur-tutorial/index.html">Alur Tutorial</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/js/docs.js"></script>
+<script src="../assets/js/diagrams.js" defer></script>
+</body>
+</html>

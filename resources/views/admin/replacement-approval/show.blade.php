@@ -7,21 +7,21 @@
 <style>
     .info-pair { margin-bottom: 6px; }
     .info-pair .info-label {
-        font-size: 12px; color: #6c757d;
+        font-size: 12px; color: #64748B;
         text-transform: uppercase; letter-spacing: 0.5px;
     }
-    .info-pair .info-value { font-weight: 600; color: #012970; }
+    .info-pair .info-value { font-weight: 600; color: #093D7D; }
 
     .condition-badge {
         display: inline-block; padding: 3px 10px;
         border-radius: 6px; font-size: 12px; font-weight: 600;
     }
-    .condition-badge.ok     { background: #d1e7dd; color: #198754; }
-    .condition-badge.ng     { background: #f8d7da; color: #dc3545; }
-    .condition-badge.baik   { background: #d1e7dd; color: #198754; }
-    .condition-badge.cukup  { background: #cff4fc; color: #0dcaf0; }
+    .condition-badge.ok     { background: #d1e7dd; color: #4A7A1C; }
+    .condition-badge.ng     { background: #f8d7da; color: #C4142A; }
+    .condition-badge.baik   { background: #d1e7dd; color: #4A7A1C; }
+    .condition-badge.cukup  { background: #cff4fc; color: #0B50A1; }
     .condition-badge.kurang { background: #fff3cd; color: #997404; }
-    .condition-badge.tidak  { background: #f8d7da; color: #dc3545; }
+    .condition-badge.tidak  { background: #f8d7da; color: #C4142A; }
 
     .vprd-item {
         border-bottom: 1px solid #f0f0f0;
@@ -30,7 +30,7 @@
     .vprd-item:last-child { border-bottom: none; }
 
     .action-card {
-        border: 2px solid #dee2e6;
+        border: 2px solid #E4E9F0;
         border-radius: 12px;
         overflow: hidden;
     }
@@ -40,14 +40,14 @@
     }
     .action-card .action-body { padding: 16px; }
 
-    .action-card.approve { border-color: #198754; }
-    .action-card.approve .action-header { background: #d1e7dd; color: #198754; }
+    .action-card.approve { border-color: #4A7A1C; }
+    .action-card.approve .action-header { background: #d1e7dd; color: #4A7A1C; }
 
-    .action-card.reject { border-color: #dc3545; }
-    .action-card.reject .action-header { background: #f8d7da; color: #dc3545; }
+    .action-card.reject { border-color: #C4142A; }
+    .action-card.reject .action-header { background: #f8d7da; color: #C4142A; }
 
-    .action-card.schedule { border-color: #4154f1; }
-    .action-card.schedule .action-header { background: #f0f2ff; color: #4154f1; }
+    .action-card.schedule { border-color: #0B50A1; }
+    .action-card.schedule .action-header { background: #f0f2ff; color: #0B50A1; }
 
     /* Status Timeline (compact) */
     .status-flow {
@@ -62,13 +62,13 @@
         border-radius: 20px;
         font-size: 12px;
         font-weight: 500;
-        background: #e9ecef;
-        color: #6c757d;
+        background: #E4E9F0;
+        color: #64748B;
     }
-    .flow-step.active { background: #4154f1; color: #fff; }
-    .flow-step.done { background: #198754; color: #fff; }
-    .flow-step.rejected { background: #dc3545; color: #fff; }
-    .flow-arrow { color: #dee2e6; font-size: 12px; }
+    .flow-step.active { background: #0B50A1; color: #fff; }
+    .flow-step.done { background: #71A62F; color: #fff; }
+    .flow-step.rejected { background: #ED1B2F; color: #fff; }
+    .flow-arrow { color: #E4E9F0; font-size: 12px; }
 </style>
 
 <div class="pagetitle">

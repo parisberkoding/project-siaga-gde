@@ -9,18 +9,18 @@
         display: grid;
         grid-template-columns: repeat(7, 1fr);
         gap: 1px;
-        background: #e9ecef;
-        border: 1px solid #dee2e6;
+        background: #E4E9F0;
+        border: 1px solid #E4E9F0;
         border-radius: 8px;
         overflow: hidden;
     }
     .calendar-day-header {
-        background: #f8f9fa;
+        background: #F8FAFC;
         text-align: center;
         padding: 8px 4px;
         font-size: 12px;
         font-weight: 700;
-        color: #6c757d;
+        color: #64748B;
         text-transform: uppercase;
     }
     .calendar-cell {
@@ -32,7 +32,7 @@
         transition: background 0.15s;
     }
     .calendar-cell:hover { background: #f1f5ff; }
-    .calendar-cell.empty { background: #f8f9fa; cursor: default; }
+    .calendar-cell.empty { background: #F8FAFC; cursor: default; }
     .calendar-cell.today { background: #fffbf0; }
     .calendar-cell.past  { background: #fafafa; cursor: default; }
     .calendar-cell.past:hover { background: #fafafa; }
@@ -44,7 +44,7 @@
         margin-bottom: 4px;
     }
     .calendar-cell.today .cell-date {
-        background: #4154f1;
+        background: #0B50A1;
         color: #fff;
         border-radius: 50%;
         width: 24px; height: 24px;
@@ -68,13 +68,13 @@
     .guest-pill.cancelled { background: #f8d7da; color: #842029; text-decoration: line-through; }
 
     .cell-add-btn { font-size: 18px; color: #ced4da; line-height: 1; }
-    .calendar-cell:hover .cell-add-btn { color: #4154f1; }
+    .calendar-cell:hover .cell-add-btn { color: #0B50A1; }
 
     .month-nav {
         display: flex; align-items: center; justify-content: space-between;
         margin-bottom: 16px;
     }
-    .month-nav h5 { margin: 0; color: #012970; font-weight: 700; font-size: 1.1rem; }
+    .month-nav h5 { margin: 0; color: #093D7D; font-weight: 700; font-size: 1.1rem; }
 </style>
 
 <div class="pagetitle">

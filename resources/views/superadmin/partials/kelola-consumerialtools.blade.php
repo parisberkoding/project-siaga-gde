@@ -132,7 +132,7 @@
                                 <div class="d-flex flex-column align-items-center gap-1">
                                     <img src="{{ $barcode->url }}"
                                         alt="Barcode {{ $vehicle->consumerial_code }}"
-                                        style="width:70px;height:70px;object-fit:contain;border:1px solid #dee2e6;border-radius:4px;padding:2px;background:#fff;"
+                                        style="width:70px;height:70px;object-fit:contain;border:1px solid #E4E9F0;border-radius:4px;padding:2px;background:#fff;"
                                         title="{{ $vehicle->consumerial_code }}"
                                         onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
                                     <div style="display:none">

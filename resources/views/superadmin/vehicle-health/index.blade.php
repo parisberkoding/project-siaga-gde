@@ -6,7 +6,7 @@
 
 <style>
     .health-card {
-        border: 1px solid #e9ecef;
+        border: 1px solid #E4E9F0;
         border-radius: 12px;
         overflow: hidden;
         transition: all 0.2s;
@@ -25,7 +25,7 @@
     }
     .health-card .card-bottom {
         padding: 8px 16px 12px;
-        background: #f8f9fa;
+        background: #F8FAFC;
         font-size: 12px;
     }
 
@@ -36,15 +36,15 @@
         font-size: 18px; font-weight: 800;
         flex-shrink: 0;
     }
-    .health-score.excellent { background: #d1e7dd; color: #198754; border: 3px solid #198754; }
-    .health-score.good      { background: #cff4fc; color: #0dcaf0; border: 3px solid #0dcaf0; }
-    .health-score.warning   { background: #fff3cd; color: #997404; border: 3px solid #ffc107; }
-    .health-score.critical  { background: #f8d7da; color: #dc3545; border: 3px solid #dc3545; }
+    .health-score.excellent { background: #d1e7dd; color: #4A7A1C; border: 3px solid #71A62F; }
+    .health-score.good      { background: #cff4fc; color: #0B50A1; border: 3px solid #0B50A1; }
+    .health-score.warning   { background: #fff3cd; color: #997404; border: 3px solid #D8CE3A; }
+    .health-score.critical  { background: #f8d7da; color: #C4142A; border: 3px solid #ED1B2F; }
 
     .mini-bar {
         height: 6px;
         border-radius: 3px;
-        background: #e9ecef;
+        background: #E4E9F0;
         overflow: hidden;
         flex-grow: 1;
     }
@@ -59,17 +59,17 @@
         border-radius: 50%;
         display: inline-block;
     }
-    .check-dot.ok       { background: #198754; }
-    .check-dot.due      { background: #ffc107; }
-    .check-dot.overdue  { background: #dc3545; }
-    .check-dot.none     { background: #dee2e6; }
+    .check-dot.ok       { background: #71A62F; }
+    .check-dot.due      { background: #D8CE3A; }
+    .check-dot.overdue  { background: #ED1B2F; }
+    .check-dot.none     { background: #E4E9F0; }
 
     .legend-item {
         display: inline-flex;
         align-items: center;
         gap: 4px;
         font-size: 11px;
-        color: #6c757d;
+        color: #64748B;
         margin-right: 12px;
     }
 
@@ -84,7 +84,7 @@
     }
     .fleet-stat .stat-label {
         font-size: 12px;
-        color: #6c757d;
+        color: #64748B;
         margin-top: 4px;
     }
 </style>
@@ -115,10 +115,10 @@
         <div class="col-lg-3 col-6">
             <div class="card mb-2">
                 <div class="fleet-stat">
-                    <div class="stat-number" style="color: #198754;">{{ $fleetStats['excellent'] ?? 0 }}</div>
+                    <div class="stat-number" style="color: #4A7A1C;">{{ $fleetStats['excellent'] ?? 0 }}</div>
                     <div class="stat-label">Excellent (≥85%)</div>
                     <div class="mini-bar mt-2">
-                        <div class="fill" style="width: {{ $fleetStats['total'] > 0 ? round(($fleetStats['excellent'] ?? 0) / $fleetStats['total'] * 100) : 0 }}%; background: #198754;"></div>
+                        <div class="fill" style="width: {{ $fleetStats['total'] > 0 ? round(($fleetStats['excellent'] ?? 0) / $fleetStats['total'] * 100) : 0 }}%; background: #71A62F;"></div>
                     </div>
                 </div>
             </div>
@@ -126,10 +126,10 @@
         <div class="col-lg-3 col-6">
             <div class="card mb-2">
                 <div class="fleet-stat">
-                    <div class="stat-number" style="color: #0dcaf0;">{{ $fleetStats['good'] ?? 0 }}</div>
+                    <div class="stat-number" style="color: #0B50A1;">{{ $fleetStats['good'] ?? 0 }}</div>
                     <div class="stat-label">Good (70-84%)</div>
                     <div class="mini-bar mt-2">
-                        <div class="fill" style="width: {{ $fleetStats['total'] > 0 ? round(($fleetStats['good'] ?? 0) / $fleetStats['total'] * 100) : 0 }}%; background: #0dcaf0;"></div>
+                        <div class="fill" style="width: {{ $fleetStats['total'] > 0 ? round(($fleetStats['good'] ?? 0) / $fleetStats['total'] * 100) : 0 }}%; background: #0B50A1;"></div>
                     </div>
                 </div>
             </div>
@@ -137,10 +137,10 @@
         <div class="col-lg-3 col-6">
             <div class="card mb-2">
                 <div class="fleet-stat">
-                    <div class="stat-number" style="color: #ffc107;">{{ $fleetStats['warning'] ?? 0 }}</div>
+                    <div class="stat-number" style="color: #D8CE3A;">{{ $fleetStats['warning'] ?? 0 }}</div>
                     <div class="stat-label">Warning (50-69%)</div>
                     <div class="mini-bar mt-2">
-                        <div class="fill" style="width: {{ $fleetStats['total'] > 0 ? round(($fleetStats['warning'] ?? 0) / $fleetStats['total'] * 100) : 0 }}%; background: #ffc107;"></div>
+                        <div class="fill" style="width: {{ $fleetStats['total'] > 0 ? round(($fleetStats['warning'] ?? 0) / $fleetStats['total'] * 100) : 0 }}%; background: #D8CE3A;"></div>
                     </div>
                 </div>
             </div>
@@ -148,10 +148,10 @@
         <div class="col-lg-3 col-6">
             <div class="card mb-2">
                 <div class="fleet-stat">
-                    <div class="stat-number" style="color: #dc3545;">{{ $fleetStats['critical'] ?? 0 }}</div>
+                    <div class="stat-number" style="color: #C4142A;">{{ $fleetStats['critical'] ?? 0 }}</div>
                     <div class="stat-label">Critical (&lt;50%)</div>
                     <div class="mini-bar mt-2">
-                        <div class="fill" style="width: {{ $fleetStats['total'] > 0 ? round(($fleetStats['critical'] ?? 0) / $fleetStats['total'] * 100) : 0 }}%; background: #dc3545;"></div>
+                        <div class="fill" style="width: {{ $fleetStats['total'] > 0 ? round(($fleetStats['critical'] ?? 0) / $fleetStats['total'] * 100) : 0 }}%; background: #ED1B2F;"></div>
                     </div>
                 </div>
             </div>
@@ -221,10 +221,10 @@
                             elseif ($score >= 50) $scoreClass = 'warning';
 
                             $barColor = match($scoreClass) {
-                                'excellent' => '#198754',
-                                'good' => '#0dcaf0',
-                                'warning' => '#ffc107',
-                                'critical' => '#dc3545',
+                                'excellent' => '#71A62F',
+                                'good' => '#0B50A1',
+                                'warning' => '#D8CE3A',
+                                'critical' => '#ED1B2F',
                             };
                         @endphp
                         <div class="col-lg-4 col-md-6 col-12">
@@ -255,7 +255,7 @@
                                                 @endphp
                                                 <div class="text-center">
                                                     <span class="check-dot {{ $dotClass }}"></span>
-                                                    <br><span style="font-size: 9px; color: #6c757d;">{{ $label }}</span>
+                                                    <br><span style="font-size: 9px; color: #64748B;">{{ $label }}</span>
                                                 </div>
                                             @endforeach
                                         </div>

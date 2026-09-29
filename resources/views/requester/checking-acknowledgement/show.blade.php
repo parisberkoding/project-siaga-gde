@@ -7,10 +7,10 @@
 <style>
     .info-pair { margin-bottom: 8px; }
     .info-pair .info-label {
-        font-size: 11px; color: #6c757d;
+        font-size: 11px; color: #64748B;
         text-transform: uppercase; letter-spacing: 0.5px;
     }
-    .info-pair .info-value { font-weight: 600; color: #012970; }
+    .info-pair .info-value { font-weight: 600; color: #093D7D; }
 
     .item-row {
         display: flex;
@@ -28,23 +28,23 @@
         font-size: 12px; font-weight: 700;
         flex-shrink: 0;
     }
-    .status-dot.ok    { background: #d1e7dd; color: #198754; }
-    .status-dot.ng    { background: #f8d7da; color: #dc3545; }
-    .status-dot.baik  { background: #d1e7dd; color: #198754; }
-    .status-dot.cukup { background: #cff4fc; color: #0dcaf0; }
+    .status-dot.ok    { background: #d1e7dd; color: #4A7A1C; }
+    .status-dot.ng    { background: #f8d7da; color: #C4142A; }
+    .status-dot.baik  { background: #d1e7dd; color: #4A7A1C; }
+    .status-dot.cukup { background: #cff4fc; color: #0B50A1; }
     .status-dot.kurang{ background: #fff3cd; color: #997404; }
-    .status-dot.tidak { background: #f8d7da; color: #dc3545; }
+    .status-dot.tidak { background: #f8d7da; color: #C4142A; }
 
     .ack-banner {
         background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
-        border: 2px solid #ffc107;
+        border: 2px solid #D8CE3A;
         border-radius: 12px;
         padding: 20px;
         text-align: center;
     }
     .ack-banner.done {
         background: linear-gradient(135deg, #d1e7dd 0%, #a3cfbb 100%);
-        border-color: #198754;
+        border-color: #4A7A1C;
     }
 
     .ack-btn {
@@ -66,7 +66,7 @@
     .photo-grid .photo-item {
         border-radius: 8px;
         overflow: hidden;
-        border: 1px solid #e9ecef;
+        border: 1px solid #E4E9F0;
         cursor: pointer;
     }
     .photo-grid .photo-item img {
@@ -173,14 +173,14 @@
                         <div class="row text-center g-2">
                             <div class="col-6">
                                 <div class="rounded p-2" style="background: #d1e7dd;">
-                                    <div class="fw-bold fs-4" style="color: #198754;">{{ $summary['ok'] }}</div>
-                                    <small style="color: #198754;">OK</small>
+                                    <div class="fw-bold fs-4" style="color: #4A7A1C;">{{ $summary['ok'] }}</div>
+                                    <small style="color: #4A7A1C;">OK</small>
                                 </div>
                             </div>
                             <div class="col-6">
                                 <div class="rounded p-2" style="background: #f8d7da;">
-                                    <div class="fw-bold fs-4" style="color: #dc3545;">{{ $summary['ng'] }}</div>
-                                    <small style="color: #dc3545;">NG</small>
+                                    <div class="fw-bold fs-4" style="color: #C4142A;">{{ $summary['ng'] }}</div>
+                                    <small style="color: #C4142A;">NG</small>
                                 </div>
                             </div>
                         </div>
@@ -188,14 +188,14 @@
                         <div class="row text-center g-2">
                             <div class="col-3">
                                 <div class="rounded p-2" style="background: #d1e7dd;">
-                                    <div class="fw-bold" style="color: #198754;">{{ $summary['baik'] ?? 0 }}</div>
-                                    <small style="color: #198754; font-size: 10px;">Baik</small>
+                                    <div class="fw-bold" style="color: #4A7A1C;">{{ $summary['baik'] ?? 0 }}</div>
+                                    <small style="color: #4A7A1C; font-size: 10px;">Baik</small>
                                 </div>
                             </div>
                             <div class="col-3">
                                 <div class="rounded p-2" style="background: #cff4fc;">
-                                    <div class="fw-bold" style="color: #0dcaf0;">{{ $summary['cukup'] ?? 0 }}</div>
-                                    <small style="color: #0dcaf0; font-size: 10px;">Cukup</small>
+                                    <div class="fw-bold" style="color: #0B50A1;">{{ $summary['cukup'] ?? 0 }}</div>
+                                    <small style="color: #0B50A1; font-size: 10px;">Cukup</small>
                                 </div>
                             </div>
                             <div class="col-3">
@@ -206,8 +206,8 @@
                             </div>
                             <div class="col-3">
                                 <div class="rounded p-2" style="background: #f8d7da;">
-                                    <div class="fw-bold" style="color: #dc3545;">{{ $summary['tidak'] ?? 0 }}</div>
-                                    <small style="color: #dc3545; font-size: 10px;">Tidak</small>
+                                    <div class="fw-bold" style="color: #C4142A;">{{ $summary['tidak'] ?? 0 }}</div>
+                                    <small style="color: #C4142A; font-size: 10px;">Tidak</small>
                                 </div>
                             </div>
                         </div>
@@ -225,8 +225,8 @@
             {{-- Acknowledge Banner --}}
             <div class="ack-banner {{ $detail->driver_acknowledged ? 'done' : '' }} mb-3">
                 @if($detail->driver_acknowledged)
-                    <i class="bi bi-check-circle-fill fs-1 d-block mb-2" style="color: #198754;"></i>
-                    <strong style="color: #198754;">Sudah Di-acknowledge</strong>
+                    <i class="bi bi-check-circle-fill fs-1 d-block mb-2" style="color: #4A7A1C;"></i>
+                    <strong style="color: #4A7A1C;">Sudah Di-acknowledge</strong>
                     <br><small class="text-muted">
                         {{ $detail->driver_acknowledged_at?->translatedFormat('d F Y, H:i') }}
                     </small>
@@ -339,13 +339,13 @@
                             <div class="photo-info">
                                 @php
                                     $zoneColors = [
-                                        'depan' => '#0d6efd', 'belakang' => '#6610f2',
-                                        'kiri' => '#198754', 'kanan' => '#fd7e14',
-                                        'atas' => '#0dcaf0', 'bawah' => '#6c757d',
+                                        'depan' => '#0B50A1', 'belakang' => '#6610f2',
+                                        'kiri' => '#71A62F', 'kanan' => '#fd7e14',
+                                        'atas' => '#0B50A1', 'bawah' => '#64748B',
                                         'interior' => '#d63384',
                                     ];
                                 @endphp
-                                <span class="badge" style="background: {{ $zoneColors[$photo->zone] ?? '#6c757d' }};">
+                                <span class="badge" style="background: {{ $zoneColors[$photo->zone] ?? '#64748B' }};">
                                     {{ ucfirst($photo->zone) }}
                                 </span>
                                 @if($photo->description)

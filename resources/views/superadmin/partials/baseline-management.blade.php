@@ -12,7 +12,7 @@
 
 .info-card h6 {
     font-size: 28px;
-    color: #012970;
+    color: #093D7D;
     font-weight: 700;
     margin: 0;
     padding: 0;
@@ -28,22 +28,22 @@
 }
 
 .sales-card .card-icon {
-    color: #4154f1;
-    background: #f6f6fe;
+    color: #0B50A1;
+    background: #EAF1FA;
 }
 
 .revenue-card .card-icon {
-    color: #2eca6a;
-    background: #e0f8e9;
+    color: #4A7A1C;
+    background: #F2F9E8;
 }
 
 .customers-card .card-icon {
-    color: #ff771d;
+    color: #B35B00;
     background: #ffecdf;
 }
 
 .warning-card .card-icon {
-    color: #ffbb2c;
+    color: #8A6A00;
     background: #fff4de;
 }
 
@@ -54,21 +54,21 @@
 
 .form-control:focus,
 .form-select:focus {
-    border-color: #4154f1;
-    box-shadow: 0 0 0 0.2rem rgba(65, 84, 241, 0.15);
+    border-color: #0B50A1;
+    box-shadow: 0 0 0 0.2rem rgba(11, 80, 161, 0.15);
 }
 
 /* Badge Styles */
 .badge-method-manual {
-    background-color: #0d6efd;
+    background-color: #0B50A1;
 }
 
 .badge-method-auto {
-    background-color: #198754;
+    background-color: #4A7A1C;
 }
 
 .badge-method-override {
-    background-color: #ffc107;
+    background-color: #D8CE3A;
     color: #000;
 }
 
@@ -80,7 +80,7 @@
 /* No Baseline Alert */
 .alert-no-baseline {
     background-color: #fff3cd;
-    border-left: 4px solid #ffc107;
+    border-left: 4px solid #D8CE3A;
 }
 </style>
 

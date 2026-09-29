@@ -255,11 +255,11 @@ document.addEventListener('DOMContentLoaded', function() {
 <style>
 .info-card {
     border: none;
-    box-shadow: 0px 0 20px rgba(1, 41, 112, 0.1);
+    box-shadow: 0px 0 20px rgba(9, 61, 125, 0.1);
 }
 
 .table th {
-    background-color: #f8f9fa;
+    background-color: #F8FAFC;
     font-weight: 600;
 }
 

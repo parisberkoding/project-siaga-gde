@@ -7,7 +7,7 @@
 <style>
     .info-bar {
         background: #f0f2ff;
-        border: 1px solid #4154f1;
+        border: 1px solid #0B50A1;
         border-radius: 10px;
         padding: 14px 16px;
         margin-bottom: 16px;
@@ -18,20 +18,20 @@
         gap: 8px;
         align-items: flex-start;
         padding: 10px 0;
-        border-bottom: 1px dashed #e9ecef;
+        border-bottom: 1px dashed #E4E9F0;
     }
     .cost-row:last-child { border-bottom: none; }
     .cost-row .remove-btn {
         background: none; border: none;
-        color: #dc3545; font-size: 18px;
+        color: #C4142A; font-size: 18px;
         cursor: pointer; padding: 4px;
         line-height: 1;
     }
     .cost-row .remove-btn:hover { color: #a71d2a; }
 
     .total-bar {
-        background: #f8f9fa;
-        border: 2px solid #dee2e6;
+        background: #F8FAFC;
+        border: 2px solid #E4E9F0;
         border-radius: 10px;
         padding: 14px 16px;
         display: flex;
@@ -41,7 +41,7 @@
     .total-bar .total-amount {
         font-size: 22px;
         font-weight: 700;
-        color: #012970;
+        color: #093D7D;
     }
 
     .photo-preview {
@@ -49,33 +49,33 @@
         max-height: 200px;
         object-fit: contain;
         border-radius: 8px;
-        border: 2px dashed #dee2e6;
-        background: #f8f9fa;
+        border: 2px dashed #E4E9F0;
+        background: #F8FAFC;
         display: none;
     }
     .photo-preview.has-image {
         display: block;
         border-style: solid;
-        border-color: #198754;
+        border-color: #4A7A1C;
     }
 
     .upload-area {
-        border: 2px dashed #dee2e6;
+        border: 2px dashed #E4E9F0;
         border-radius: 10px;
         padding: 30px 16px;
         text-align: center;
         cursor: pointer;
         transition: all 0.2s;
     }
-    .upload-area:hover { border-color: #4154f1; background: #f8f9ff; }
-    .upload-area.has-file { border-color: #198754; background: #f0fdf4; }
+    .upload-area:hover { border-color: #0B50A1; background: #f8f9ff; }
+    .upload-area.has-file { border-color: #4A7A1C; background: #f0fdf4; }
 
     .sticky-submit {
         position: sticky;
         bottom: 0;
         background: #fff;
         padding: 12px 0;
-        border-top: 1px solid #dee2e6;
+        border-top: 1px solid #E4E9F0;
         z-index: 10;
     }
 </style>
@@ -107,7 +107,7 @@
     <div class="row align-items-center g-2">
         <div class="col-md-3 col-6">
             <small class="text-muted">Kode VPR</small>
-            <br><strong style="color: #4154f1;">{{ $replacement->vpr_code }}</strong>
+            <br><strong style="color: #0B50A1;">{{ $replacement->vpr_code }}</strong>
         </div>
         <div class="col-md-3 col-6">
             <small class="text-muted">Kendaraan</small>

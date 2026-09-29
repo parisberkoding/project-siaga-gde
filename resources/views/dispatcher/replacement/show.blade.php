@@ -10,13 +10,13 @@
     }
     .info-pair .info-label {
         font-size: 12px;
-        color: #6c757d;
+        color: #64748B;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
     .info-pair .info-value {
         font-weight: 600;
-        color: #012970;
+        color: #093D7D;
     }
 
     /* Status Timeline */
@@ -31,7 +31,7 @@
         top: 8px;
         bottom: 8px;
         width: 2px;
-        background: #dee2e6;
+        background: #E4E9F0;
     }
     .timeline-item {
         position: relative;
@@ -45,16 +45,16 @@
         width: 14px;
         height: 14px;
         border-radius: 50%;
-        border: 2px solid #dee2e6;
+        border: 2px solid #E4E9F0;
         background: #fff;
     }
     .timeline-dot.active {
-        border-color: #4154f1;
-        background: #4154f1;
+        border-color: #0B50A1;
+        background: #0B50A1;
     }
     .timeline-dot.completed {
-        border-color: #198754;
-        background: #198754;
+        border-color: #4A7A1C;
+        background: #71A62F;
     }
     .timeline-label {
         font-size: 13px;
@@ -62,7 +62,7 @@
     }
     .timeline-meta {
         font-size: 12px;
-        color: #6c757d;
+        color: #64748B;
     }
 
     /* Item list */
@@ -79,21 +79,21 @@
         font-size: 12px;
         font-weight: 600;
     }
-    .condition-badge.ok     { background: #d1e7dd; color: #198754; }
-    .condition-badge.ng     { background: #f8d7da; color: #dc3545; }
-    .condition-badge.baik   { background: #d1e7dd; color: #198754; }
-    .condition-badge.cukup  { background: #cff4fc; color: #0dcaf0; }
+    .condition-badge.ok     { background: #d1e7dd; color: #4A7A1C; }
+    .condition-badge.ng     { background: #f8d7da; color: #C4142A; }
+    .condition-badge.baik   { background: #d1e7dd; color: #4A7A1C; }
+    .condition-badge.cukup  { background: #cff4fc; color: #0B50A1; }
     .condition-badge.kurang { background: #fff3cd; color: #997404; }
-    .condition-badge.tidak  { background: #f8d7da; color: #dc3545; }
+    .condition-badge.tidak  { background: #f8d7da; color: #C4142A; }
 
     /* Transaction card */
     .transaction-card {
-        border: 2px solid #e9ecef;
+        border: 2px solid #E4E9F0;
         border-radius: 10px;
         padding: 16px;
     }
-    .transaction-card.completed { border-color: #198754; }
-    .transaction-card.overdue { border-color: #dc3545; }
+    .transaction-card.completed { border-color: #4A7A1C; }
+    .transaction-card.overdue { border-color: #C4142A; }
 </style>
 
 <div class="pagetitle">
@@ -244,7 +244,7 @@
 
                         @if($replacement->status === 'rejected')
                         <div class="timeline-item">
-                            <div class="timeline-dot" style="border-color: #dc3545; background: #dc3545;"></div>
+                            <div class="timeline-dot" style="border-color: #C4142A; background: #ED1B2F;"></div>
                             <div class="timeline-label text-danger">
                                 <i class="bi bi-x-circle me-1"></i> Ditolak
                             </div>

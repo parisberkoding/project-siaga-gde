@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bagian 11: PlantUML &amp; Riwayat Perubahan — SIAGA</title>
+<meta name="description" content="Kode PlantUML SIAGA, laporan analisis model, panduan menghasilkan dokumen, timeline changelog fase pengembangan, dan prosedur pemeliharaan dokumentasi.">
+<link rel="icon" href="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="../assets/css/docs.css">
+</head>
+<body data-base="../">
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <button class="icon-btn btn-menu" id="docMenuBtn" aria-label="Buka navigasi" aria-expanded="false"><i class="bi bi-list"></i></button>
+    <a class="brand" href="../index.html">
+      <img class="brand__logo" src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="Logo Geo Dipa Energi">
+      <span>
+        <span class="brand__name">SIAGA</span>
+        <span class="brand__sub">Sistem Informasi Administrasi General Affairs</span>
+      </span>
+    </a>
+    <span class="brand__divider"></span>
+    <span class="brand__doc">Software Documentation</span>
+    <div class="topbar__spacer"></div>
+    <div class="searchbox">
+      <i class="bi bi-search"></i>
+      <input type="search" id="docSearch" placeholder="Cari halaman…  ( / )" aria-label="Cari halaman dokumentasi">
+      <div class="search-results" id="docSearchResults"></div>
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" data-print title="Cetak / simpan PDF"><i class="bi bi-printer"></i></button>
+      <a class="icon-btn" href="../index.html" title="Kembali ke beranda dokumentasi"><i class="bi bi-house"></i></a>
+    </div>
+  </div>
+</header>
+
+<div class="scrim" id="docScrim"></div>
+
+<main class="shell">
+  <aside class="sidebar" id="docSidebar">
+    <p class="sidebar__label">Software Documentation</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="index.html"><span class="nav-link__num">&#9679;</span><span class="nav-link__txt">Ikhtisar &amp; daftar isi</span></a></li>
+      <li><a class="nav-link" href="01-ruang-lingkup.html"><span class="nav-link__num">1</span><span class="nav-link__txt">Ruang lingkup &amp; visi produk</span></a></li>
+      <li><a class="nav-link" href="02-arsitektur-teknologi.html"><span class="nav-link__num">2</span><span class="nav-link__txt">Arsitektur &amp; teknologi</span></a></li>
+      <li><a class="nav-link" href="03-model-use-case.html"><span class="nav-link__num">3</span><span class="nav-link__txt">Model use case</span></a></li>
+      <li><a class="nav-link" href="04-spesifikasi-use-case.html"><span class="nav-link__num">4</span><span class="nav-link__txt">Spesifikasi use case</span></a></li>
+      <li><a class="nav-link" href="05-desain-perilaku.html"><span class="nav-link__num">5</span><span class="nav-link__txt">Desain perilaku</span><span class="nav-badge">Activity · Sequence</span></a></li>
+      <li><a class="nav-link" href="06-desain-struktur.html"><span class="nav-link__num">6</span><span class="nav-link__txt">Desain struktur</span><span class="nav-badge">Class · ERD</span></a></li>
+      <li><a class="nav-link" href="07-validasi-logika.html"><span class="nav-link__num">7</span><span class="nav-link__txt">Validasi logika</span></a></li>
+      <li><a class="nav-link" href="08-pengujian.html"><span class="nav-link__num">8</span><span class="nav-link__txt">Pengujian &amp; test case</span></a></li>
+      <li><a class="nav-link" href="09-traceability.html"><span class="nav-link__num">9</span><span class="nav-link__txt">Traceability &amp; RBAC</span></a></li>
+      <li><a class="nav-link" href="10-glosarium.html"><span class="nav-link__num">10</span><span class="nav-link__txt">Glosarium</span></a></li>
+      <li><a class="nav-link is-active" href="11-plantuml-changelog.html"><span class="nav-link__num">11</span><span class="nav-link__txt">PlantUML &amp; changelog</span></a></li>
+    </ul>
+
+    <p class="sidebar__label">Dokumen lain</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="../alur-tutorial/index.html"><i class="bi bi-signpost-split"></i><span class="nav-link__txt">Alur Tutorial</span></a></li>
+      <li><a class="nav-link" href="../index.html"><i class="bi bi-house"></i><span class="nav-link__txt">Beranda dokumentasi</span></a></li>
+    </ul>
+  </aside>
+
+  <div class="content">
+    <div class="wrap">
+      <nav>
+        <ol class="crumbs">
+          <li><a href="../index.html">Documentation</a></li>
+          <li>Software Documentation</li>
+          <li>Bagian 11</li>
+        </ol>
+      </nav>
+
+      <div class="page-head">
+        <span class="eyebrow"><span class="dot"></span> Bagian 11</span>
+        <h2>PlantUML &amp; Riwayat Perubahan</h2>
+        <p class="lead">
+          Bagian penutup ini menyediakan jembatan teks ke model visual, panduan menghasilkan dokumen cetak,
+          riwayat perubahan sepanjang tiga belas fase pengembangan, serta prosedur pemeliharaan dokumen.
+        </p>
+      </div>
+
+      <!-- ================= PLANTUML ================= -->
+      <div class="section-block" id="plantuml">
+        <h2><span class="num"><i class="bi bi-code-slash"></i></span> PlantUML sebagai jembatan teks</h2>
+
+        <p>
+          Seluruh diagram pada bagian 3 sampai 6 ditulis sebagai teks: Mermaid untuk tampilan di dalam halaman,
+          dan PlantUML untuk diagram yang perlu diserahkan ke perkakas pemodelan atau dicetak sebagai gambar.
+          Karena berbentuk teks, diagram dapat ditinjau lewat <em>pull request</em>, dibandingkan antar versi, dan
+          diregenerasi kapan saja tanpa kehilangan berkas biner.
+        </p>
+
+        <div class="grid grid--2">
+          <div class="card card--soft">
+            <div class="card__head">
+              <span class="icon-sq"><i class="bi bi-filetype-svg"></i></span>
+              <div><h3>Keunggulan pendekatan teks</h3><p>Model selalu sinkron dengan kode dan dapat dihasilkan ulang secara otomatis.</p></div>
+            </div>
+            <ul class="list-check" style="font-size:.84rem;">
+              <li>Perubahan diagram ikut terversioning bersama kode sumber.</li>
+              <li>Warna dan gaya diseragamkan lewat <code>skinparam</code> palet Geodipa.</li>
+              <li>Diagram yang sama dapat dirender sebagai PNG atau SVG.</li>
+            </ul>
+          </div>
+          <div class="card card--soft">
+            <div class="card__head">
+              <span class="icon-sq icon-sq--blue"><i class="bi bi-palette"></i></span>
+              <div><h3>Palet warna Geodipa</h3><p>Tiga warna utama dipakai konsisten pada setiap diagram.</p></div>
+            </div>
+            <div class="chips">
+              <span class="chip"><b>#8DC63F</b> aksen hijau</span>
+              <span class="chip"><b>#0B50A1</b> biru korporat</span>
+              <span class="chip"><b>#ED1B2F</b> merah peringatan</span>
+            </div>
+          </div>
+        </div>
+
+        <h3>Bagian laporan analisis model</h3>
+        <p>
+          Setiap kali model use case dianalisis, keluaran yang diharapkan mengikuti enam bagian tetap berikut.
+          Struktur ini menjaga agar analisis tidak berhenti pada gambar, melainkan menghasilkan temuan yang
+          dapat ditindaklanjuti.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>Bagian laporan</th><th>Isi minimal</th><th>Dimanfaatkan untuk</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="rowhead">Problem Domain Title</td><td>Nama domain masalah dan unit organisasi yang ditinjau.</td><td>Menetapkan konteks analisis.</td></tr>
+              <tr><td class="rowhead">Diagram Overview</td><td>Jenis diagram, jumlah aktor, jumlah use case, batas sistem.</td><td>Ringkasan cepat bagi pembaca eksekutif.</td></tr>
+              <tr><td class="rowhead">Actors Identified</td><td>Daftar aktor beserta klasifikasi primer/sekunder.</td><td>Memastikan tidak ada peran yang terlewat.</td></tr>
+              <tr><td class="rowhead">Use Cases Summary</td><td>Kelompok use case per modul beserta aktor utamanya.</td><td>Verifikasi kelengkapan cakupan.</td></tr>
+              <tr><td class="rowhead">Relationships Analysis</td><td>Relasi <em>include</em> dan <em>extend</em> beserta alasannya.</td><td>Menilai pemfaktoran perilaku bersama.</td></tr>
+              <tr><td class="rowhead">AI Recommendations</td><td>Usulan perbaikan model, penggabungan, atau penambahan.</td><td>Bahan perbaikan iterasi berikutnya.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Contoh laporan naratif — Use Case Diagram SIAGA</h3>
+
+        <div class="code-head"><span>Laporan analisis model</span><button data-copy="laporan-usecase">Salin</button></div>
+<pre id="laporan-usecase"><code>LAPORAN ANALISIS PLANTUML - USE CASE DIAGRAM SIAGA
+
+1. Problem Domain Title
+   Administrasi General Affairs PT Geo Dipa Energi (Persero), Unit Patuha.
+
+2. Diagram Overview
+   Jenis diagram : Use Case Diagram tingkat sistem.
+   Batas sistem  : SIAGA (Sistem Informasi Administrasi General Affairs).
+   Jumlah aktor  : 6 aktor manusia dan sistem terjadi.
+   Jumlah use case: 45 use case modul + 4 use case bersama = 49 use case.
+   Modul tercakup : BBM, SPD/LPJ, Pengecekan Kendaraan, VPR, Lunch Management,
+                    Analisis Efisiensi BBM, Asisten AI Gaga, Master Data, RBAC.
+
+3. Actors Identified
+   ACT-01 Requester/Driver   : pemohon BBM, pembuat SPD, pelapor LPJ, konfirmasi checking.
+   ACT-02 Admin GA           : approval BBM, validasi SPD/LPJ, penjadwalan service, katering.
+   ACT-03 Dispatcher         : pengecekan harian/mingguan/bulanan, body inspection, VPR.
+   ACT-04 Superadmin         : kelola pengguna & RBAC, master data, analisis efisiensi, validasi.
+   ACT-05 Manager            : pemantauan dashboard bisnis, approval tertentu.
+   ACT-06 Vendor Katering    : melihat rekap porsi yang telah dikunci pada site-nya.
+   Catatan: Karyawan dan View Only muncul pada use case katering dan pelaporan.
+
+4. Use Cases Summary
+   BBM (6)            : UC-BBM-01 s.d. UC-BBM-06.
+   SPD & LPJ (7)      : UC-SPD-01 s.d. UC-SPD-05, UC-LPJ-01 s.d. UC-LPJ-02.
+   Pengecekan (7)     : UC-CHK-01 s.d. UC-CHK-07.
+   VPR (4)            : UC-VPR-01 s.d. UC-VPR-04.
+   Lunch (9)          : UC-LNC-01 s.d. UC-LNC-09.
+   Efisiensi BBM (3)  : UC-EFF-01 s.d. UC-EFF-03.
+   Asisten AI (2)     : UC-AI-01 s.d. UC-AI-02.
+   Master data (3)    : UC-MST-01 s.d. UC-MST-03.
+   RBAC (4)           : UC-RBAC-01 s.d. UC-RBAC-04.
+   Bersama (4)        : UC-SYS-01 s.d. UC-SYS-04.
+
+5. Relationships Analysis
+   include : UC-SYS-01 Autentikasi dan UC-SYS-02 Pemeriksaan Hak Akses di-include
+             oleh seluruh use case terproteksi.
+   include : UC-SYS-03 Penyimpanan Berkas Terproteksi di-include oleh
+             UC-BBM-05, UC-LPJ-01, UC-VPR-03, dan UC-CHK-04.
+   include : UC-SYS-04 Notifikasi di-include oleh UC-BBM-04 dan UC-VPR-02.
+   extend  : UC-LNC-03 Override Manual meng-extend UC-LNC-02 Forecast Porsi H+1.
+   extend  : UC-SPD-03 Perpanjangan ETD meng-extend UC-SPD-01 Surat Perjalanan Dinas.
+
+6. AI Recommendations
+   a. Pertahankan UC-SYS sebagai use case bersama agar tidak terjadi duplikasi
+      perilaku autentikasi dan otorisasi.
+   b. Tambahkan use case spesifik untuk pemulihan kata sandi bila proses
+      tersebut menjadi tanggung jawab General Affairs.
+   c. Pisahkan use case pengelolaan sesi AI dari use case percakapan agar
+      pengujian perilaku model tidak bercampur dengan pengujian CRUD.
+   d. Lengkapi use case log aktivitas dengan diagram struktur tersendiri
+      karena entitasnya belum dipetakan pada ERD.</code></pre>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Usulan</strong>
+            Bagian <em>AI Recommendations</em> pada laporan di atas adalah contoh format, bukan temuan otomatis
+            dari perkakas. Isiannya perlu ditinjau ulang oleh pemilik modul sebelum dipakai sebagai dasar perubahan model.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= KODE ================= -->
+      <div class="section-block" id="kode">
+        <h2><span class="num"><i class="bi bi-braces"></i></span> Kode PlantUML</h2>
+
+        <p>
+          Tiga blok berikut adalah padanan PlantUML untuk diagram utama SIAGA. Semuanya memakai palet Geodipa
+          melalui <code>skinparam</code> dan dapat disalin langsung ke editor PlantUML tanpa perubahan.
+        </p>
+
+        <div class="code-head"><span>plantuml — use case diagram SIAGA</span><button data-copy="kode-usecase">Salin</button></div>
+<pre id="kode-usecase"><code>@startuml
+title Use Case Diagram SIAGA - tingkat sistem
+left to right direction
+skinparam backgroundColor #FFFFFF
+skinparam actorStyle awesome
+skinparam actor {
+  BackgroundColor #EAF1FA
+  BorderColor #0B50A1
+  FontColor #0B50A1
+}
+skinparam usecase {
+  BackgroundColor #F2F9E8
+  BorderColor #8DC63F
+  FontColor #16202E
+  ArrowColor #0B50A1
+}
+skinparam rectangle {
+  BackgroundColor #F8FAFC
+  BorderColor #0B50A1
+  FontColor #0B50A1
+}
+skinparam note {
+  BackgroundColor #FFFDE8
+  BorderColor #ED1B2F
+  FontColor #7A6A00
+}
+
+actor "Requester / Driver" as ACT_REQ
+actor "Admin GA" as ACT_GA
+actor "Dispatcher" as ACT_DSP
+actor "Superadmin" as ACT_SA
+actor "Karyawan" as ACT_KRY
+actor "Vendor Katering" as ACT_VND
+
+rectangle "SIAGA - Sistem Informasi Administrasi General Affairs" {
+  usecase "UC-BBM-01 Mengajukan Permohonan BBM" as UC_BBM01
+  usecase "UC-BBM-02 Meninjau dan Menyetujui Permohonan" as UC_BBM02
+  usecase "UC-BBM-04 Menerbitkan Voucher BBM" as UC_BBM04
+  usecase "UC-BBM-05 Mengunggah Bukti Transaksi dan Odometer" as UC_BBM05
+  usecase "UC-SPD-01 Membuat Surat Perjalanan Dinas" as UC_SPD01
+  usecase "UC-SPD-03 Mengajukan Perpanjangan Perjalanan" as UC_SPD03
+  usecase "UC-LPJ-01 Membuat Laporan Pertanggungjawaban" as UC_LPJ01
+  usecase "UC-CHK-01 Melakukan Pengecekan Harian" as UC_CHK01
+  usecase "UC-VPR-01 Mengajukan Penggantian Suku Cadang" as UC_VPR01
+  usecase "UC-LNC-02 Menghasilkan Forecast Porsi H+1" as UC_LNC02
+  usecase "UC-LNC-03 Melakukan Override Manual Lokasi Makan" as UC_LNC03
+  usecase "UC-LNC-05 Melakukan Absensi Makan Siang" as UC_LNC05
+  usecase "UC-LNC-08 Melihat Dashboard Vendor" as UC_LNC08
+  usecase "UC-EFF-01 Menghitung Ulang Metrik Efisiensi Trip" as UC_EFF01
+  usecase "UC-RBAC-02 Mengelola Role dan Permission" as UC_RBAC02
+
+  usecase "UC-SYS-01 Autentikasi Pengguna" as UC_SYS01
+  usecase "UC-SYS-02 Memeriksa Hak Akses" as UC_SYS02
+  usecase "UC-SYS-03 Menyimpan Berkas Terproteksi" as UC_SYS03
+  usecase "UC-SYS-04 Mengirim Notifikasi" as UC_SYS04
+}
+
+ACT_REQ --&gt; UC_BBM01
+ACT_REQ --&gt; UC_BBM05
+ACT_REQ --&gt; UC_SPD01
+ACT_REQ --&gt; UC_LPJ01
+ACT_GA --&gt; UC_BBM02
+ACT_GA --&gt; UC_BBM04
+ACT_GA --&gt; UC_LNC02
+ACT_DSP --&gt; UC_CHK01
+ACT_DSP --&gt; UC_VPR01
+ACT_SA --&gt; UC_EFF01
+ACT_SA --&gt; UC_RBAC02
+ACT_KRY --&gt; UC_LNC05
+ACT_VND --&gt; UC_LNC08
+
+UC_BBM01 ..&gt; UC_SYS01 : &lt;&lt;include&gt;&gt;
+UC_BBM01 ..&gt; UC_SYS02 : &lt;&lt;include&gt;&gt;
+UC_BBM02 ..&gt; UC_SYS02 : &lt;&lt;include&gt;&gt;
+UC_BBM04 ..&gt; UC_SYS04 : &lt;&lt;include&gt;&gt;
+UC_BBM05 ..&gt; UC_SYS03 : &lt;&lt;include&gt;&gt;
+UC_LPJ01 ..&gt; UC_SYS03 : &lt;&lt;include&gt;&gt;
+UC_LNC03 ..&gt; UC_LNC02 : &lt;&lt;extend&gt;&gt;
+UC_SPD03 ..&gt; UC_SPD01 : &lt;&lt;extend&gt;&gt;
+
+note right of UC_LNC05
+  Halaman absensi publik tanpa login,
+  dilindungi rate limiting dan
+  pencocokan nama berbasis alias.
+end note
+
+@enduml</code></pre>
+
+        <div class="code-head"><span>plantuml — activity diagram alur permohonan BBM</span><button data-copy="kode-activity">Salin</button></div>
+<pre id="kode-activity"><code>@startuml
+title Activity Diagram - Alur Permohonan BBM SIAGA
+skinparam backgroundColor #FFFFFF
+skinparam activity {
+  BackgroundColor #F2F9E8
+  BorderColor #8DC63F
+  FontColor #16202E
+  DiamondBackgroundColor #EAF1FA
+  DiamondBorderColor #0B50A1
+  ArrowColor #0B50A1
+}
+skinparam swimlane {
+  BorderColor #0B50A1
+  TitleBackgroundColor #EAF1FA
+  TitleFontColor #0B50A1
+}
+
+|Requester / Driver|
+start
+:Login ke SIAGA;
+if (Hak akses terverifikasi?) then (ya)
+  :Pilih kendaraan dan jenis BBM;
+  :Isi perkiraan nominal pengisian;
+  :Kirim permohonan BBM;
+else (tidak)
+  :Tampilkan pesan akses ditolak;
+  stop
+endif
+
+|Admin GA|
+:Tinjau permohonan;
+if (Permohonan disetujui?) then (ya)
+  :Sesuaikan nominal dengan kapasitas tangki;
+  :Terbitkan voucher berisi kode unik dan tanggal kedaluwarsa;
+  |Requester / Driver|
+  :Belanja BBM di SPBU;
+  :Unggah foto struk dan foto odometer;
+  |Admin GA|
+  :Tinjau bukti transaksi;
+  if (Bukti transaksi sesuai?) then (ya)
+    :Ubah status permohonan menjadi Completed;
+  else (tidak)
+    :Minta perbaikan bukti transaksi;
+  endif
+else (tidak)
+  :Tolak permohonan dengan catatan;
+endif
+stop
+@enduml</code></pre>
+
+        <div class="code-head"><span>plantuml — class diagram domain Lunch Management</span><button data-copy="kode-lunch">Salin</button></div>
+<pre id="kode-lunch"><code>@startuml
+title Class Diagram - Domain Lunch Management SIAGA
+skinparam backgroundColor #FFFFFF
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #F2F9E8
+  BorderColor #8DC63F
+  ArrowColor #0B50A1
+  FontColor #16202E
+}
+skinparam note {
+  BackgroundColor #FFFDE8
+  BorderColor #ED1B2F
+  FontColor #7A6A00
+}
+
+class Site {
+  +id
+  +nama_site
+  +unit_id
+}
+
+class EmployeeDefault {
+  +id
+  +nama
+  +site_id
+  +is_active
+}
+
+class EmployeeAlias {
+  +id
+  +employee_default_id
+  +alias
+}
+
+class LunchForecastBatch {
+  +id
+  +tanggal
+  +status
+}
+
+class LunchForecast {
+  +id
+  +batch_id
+  +employee_default_id
+  +site_id
+  +sumber_prioritas
+}
+
+class LunchDistribution {
+  +id
+  +batch_id
+  +site_id
+  +jumlah_porsi
+  +locked_at
+}
+
+class LunchTransaction {
+  +id
+  +employee_default_id
+  +site_id
+  +waktu_absen
+}
+
+class LunchGuestReservation {
+  +id
+  +nama_tamu
+  +site_id
+  +tanggal
+  +status
+}
+
+class LearningProfile {
+  +id
+  +employee_default_id
+  +site_id
+  +frekuensi
+}
+
+Site "1" --&gt; "0..*" EmployeeDefault : menaungi
+EmployeeDefault "1" --&gt; "0..*" EmployeeAlias : memiliki
+EmployeeDefault "1" --&gt; "0..*" LunchForecast : diprediksi
+LunchForecastBatch "1" --&gt; "0..*" LunchForecast : menghimpun
+LunchForecastBatch "1" --&gt; "0..*" LunchDistribution : dikunci menjadi
+Site "1" --&gt; "0..*" LunchDistribution : menyajikan
+EmployeeDefault "1" --&gt; "0..*" LunchTransaction : absensi
+Site "1" --&gt; "0..*" LunchTransaction : berlokasi
+Site "1" --&gt; "0..*" LunchGuestReservation : reservasi tamu
+EmployeeDefault "1" --&gt; "0..*" LearningProfile : profil belajar
+
+note right of LunchForecast
+  Prioritas penentuan lokasi:
+  1. Manual Override
+  2. Tomorrow Confirmation
+  3. Historical Pattern
+  4. Default Site
+end note
+
+@enduml</code></pre>
+
+        <div class="callout callout--info">
+          <span class="callout__icon"><i class="bi bi-info-circle"></i></span>
+          <div class="callout__body">
+            <strong>Catatan sintaks</strong>
+            Kode di atas tidak memuat komentar tambahan agar dapat langsung disalin ke editor PlantUML.
+            Stereotipe <code>&laquo;include&raquo;</code> dan <code>&laquo;extend&raquo;</code> ditulis dengan
+            kurung sudut ganda, sesuai notasi UML pada Bagian 3.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= CETAK ================= -->
+      <div class="section-block" id="cetak">
+        <h2><span class="num"><i class="bi bi-printer"></i></span> Menghasilkan dokumen</h2>
+
+        <p>
+          Seluruh halaman dirancang dapat dicetak tanpa server. Tombol cetak pada topbar memakai gaya cetak
+          khusus yang menyembunyikan topbar, sidebar, tombol salin, dan kotak pencarian.
+        </p>
+
+        <ol class="steps">
+          <li><strong>Pilih format keluaran</strong><p>PDF untuk distribusi resmi dan tanda tangan, Markdown/sumber HTML untuk peninjauan perubahan di repositori, atau pembacaan langsung di peramban untuk pemakaian sehari-hari.</p></li>
+          <li><strong>Pilih format keluaran dan tekan cetak</strong><p>Gunakan tombol <i class="bi bi-printer"></i> pada topbar atau pintasan cetak peramban, lalu pilih &ldquo;Simpan sebagai PDF&rdquo; pada dialog tujuan cetak.</p></li>
+          <li><strong>Tentukan kebijakan section</strong><p>Sertakan Glosarium bila dokumen ditujukan untuk pengguna baru, auditor, atau pihak di luar tim teknis. Kecualikan Glosarium bila dokumen hanya untuk pengembang yang sudah memahami istilah domain.</p></li>
+          <li><strong>Isi judul dokumen</strong><p>Judul mengikuti pola <code>Software Design Document SIAGA — &lt;cakupan&gt;</code>, misalnya <em>Bagian 1–11</em> untuk dokumen lengkap atau <em>Bagian 9–11</em> untuk bundel tata kelola.</p></li>
+          <li><strong>Lengkapi metadata sampul</strong><p>Cantumkan versi dokumen, tanggal rilis, klasifikasi (Internal — General Affairs), penyusun, dan daftar bagian yang disertakan.</p></li>
+        </ol>
+
+        <h3>Keputusan format keluaran</h3>
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead><tr><th>Format keluaran</th><th>Kegunaan</th><th>Kapan dipilih</th></tr></thead>
+            <tbody>
+              <tr><td class="rowhead">PDF</td><td>Distribusi resmi, pengarsipan, dan penandatanganan dokumen.</td><td>Saat dokumen perlu dibekukan sebagai bukti pada satu titik waktu.</td></tr>
+              <tr><td class="rowhead">Markdown</td><td>Peninjauan perubahan lewat <em>diff</em>, pencarian teks, dan integrasi repositori.</td><td>Saat dokumen masih aktif berubah dan perlu ditinjau tim.</td></tr>
+              <tr><td class="rowhead">HTML (daring)</td><td>Pembacaan berpindah antar bagian, pencarian halaman, dan diagram interaktif.</td><td>Saat dokumen dipakai sehari-hari sebagai rujukan kerja.</td></tr>
+              <tr><td class="rowhead">Excel / XLSX</td><td>Rekap laporan operasional seperti voucher dan distribusi katering.</td><td>Saat keluaran yang dibutuhkan berupa data, bukan narasi dokumen.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Metadata sampul yang disarankan</h3>
+        <ul class="meta-list">
+          <li><span class="meta-list__k">Judul</span><span class="meta-list__v">Software Design Document SIAGA</span></li>
+          <li><span class="meta-list__k">Cakupan</span><span class="meta-list__v">Bagian 1–11 (dapat dibatasi per bundel)</span></li>
+          <li><span class="meta-list__k">Versi</span><span class="meta-list__v">1.0 — rilis pertama</span></li>
+          <li><span class="meta-list__k">Klasifikasi</span><span class="meta-list__v">Internal — Divisi General Affairs</span></li>
+          <li><span class="meta-list__k">Penyusun</span><span class="meta-list__v">Divisi General Affairs &amp; tim IT Unit Patuha</span></li>
+          <li><span class="meta-list__k">Sistem</span><span class="meta-list__v">SIAGA — Laravel 12 (PHP 8.2+)</span></li>
+        </ul>
+      </div>
+
+      <!-- ================= CHANGELOG ================= -->
+      <div class="section-block" id="changelog">
+        <h2><span class="num"><i class="bi bi-clock-history"></i></span> Riwayat perubahan pengembangan</h2>
+
+        <p>
+          Timeline berikut merangkum tiga belas fase pengembangan SIAGA sebagaimana tercatat pada
+          <code>DOKUMENTASI_PROJECT.md</code> Bagian 7. Tanggal ditulis ulang dari rentang fase, bukan hari per hari.
+        </p>
+
+        <ul class="timeline">
+          <li>
+            <div class="timeline__date">Nov 2025 · Phase 1</div>
+            <div class="timeline__title">Initial Project Setup</div>
+            <div class="timeline__desc">Inisiasi version control project BBM GDE dan penyiapan Laravel boilerplate beserta aset vendor sebagai fondasi pengembangan.</div>
+          </li>
+          <li>
+            <div class="timeline__date">Nov 2025 · Phase 2</div>
+            <div class="timeline__title">Authentication &amp; Schema</div>
+            <div class="timeline__desc">Perancangan skema basis data, fitur autentikasi, seeding empat peran, middleware CheckRole, dan inisiasi routing. Model VTC beserta seeder juga lahir pada fase ini.</div>
+          </li>
+          <li>
+            <div class="timeline__date">Nov 2025 – Jan 2026 · Phase 3</div>
+            <div class="timeline__title">Approval Flow &amp; Superadmin Backend</div>
+            <div class="timeline__desc">Adaptasi alur persetujuan lewat RequestManagementController, pengembangan backend superadmin, bulk approval, dashboard bisnis, CRUD kendaraan dan pengguna. Fase ditutup dengan penyiapan voucher, profil, dan modul perbaikan sebelum deploy ke Hostinger.</div>
+          </li>
+          <li>
+            <div class="timeline__date">Jan 2026 · Phase 4</div>
+            <div class="timeline__title">Major Deployment &amp; SPD/LPJ Features</div>
+            <div class="timeline__desc">Pengembangan besar pasca deploy: perbaikan paginasi, migrasi seeder dari CSV, perbaikan trip analysis dan fuel baseline, serta kompresor gambar. Fase ini melahirkan fitur baru SPD dan LPJ dengan dompdf.</div>
+          </li>
+          <li>
+            <div class="timeline__date">Feb 2026 · Phase 5</div>
+            <div class="timeline__title">SPD Refinements &amp; Superadmin Work</div>
+            <div class="timeline__desc">Overhaul besar SPD mencakup anggaran, perpanjangan, dan template surat. Dilanjutkan pembuatan flow cek kesehatan kendaraan beserta peran dispatcher dengan 14 model baru.</div>
+          </li>
+          <li>
+            <div class="timeline__date">Feb 2026 · Phase 6</div>
+            <div class="timeline__title">SIAGA Module Introduction</div>
+            <div class="timeline__desc">Penambahan modul SIAGA (DriverSchedule, Trip, TripPassenger, VehicleSpec, LunchTracking) dan refactor flow booking menjadi model berbasis permintaan, diikuti sejumlah merge perbaikan.</div>
+          </li>
+          <li>
+            <div class="timeline__date">Feb – Mar 2026 · Phase 7</div>
+            <div class="timeline__title">Catering, Lunch Tracking &amp; Dispatcher Work</div>
+            <div class="timeline__desc">Catering fase 2 dengan data pekerja Patuha, kalender tamu, dan ekspor; perbaikan pelacakan makan siang; pemisahan RoutineCheckingController menjadi controller harian, mingguan, dan bulanan; pembaruan sidebar serta quick action dispatcher.</div>
+          </li>
+          <li>
+            <div class="timeline__date">Mar 2026 · Phase 8</div>
+            <div class="timeline__title">Trip History, Export Reports &amp; PDF</div>
+            <div class="timeline__desc">Riwayat perjalanan dan ketentuan pemesanan, paginasi grid transaksi BBM, migrasi laporan BBM ke dompdf, serta rangkaian perbaikan tata letak laporan: margin, letterhead, kompresi gambar, dan kartu transaksi.</div>
+          </li>
+          <li>
+            <div class="timeline__date">Mar 2026 · Phase 9</div>
+            <div class="timeline__title">Barcode Scanning &amp; Vehicle Health</div>
+            <div class="timeline__desc">VehicleHealthHistoryController baru, fitur pemindaian barcode kendaraan beserta seeding-nya, lalu peralihan dari barcode scanner ke QR code memakai BaconQrCode.</div>
+          </li>
+          <li>
+            <div class="timeline__date">Mar 2026 · Phase 10</div>
+            <div class="timeline__title">Dashboard, User Management &amp; View Standardization</div>
+            <div class="timeline__desc">Dashboard bisnis dipisah menjadi tab grafik dan tabel detail, perbaikan manajemen pengguna serta kendaraan, dan standardisasi komponen stat card beserta breadcrumbs pada lima belas view.</div>
+          </li>
+          <li>
+            <div class="timeline__date">Mar 2026 · Phase 11</div>
+            <div class="timeline__title">URL Slug Standardization &amp; Dispatcher Templates</div>
+            <div class="timeline__desc">Penambahan kolom slug pada sepuluh model dengan empat migrasi untuk penulisan ulang URL, perbaikan barcode tanda tangan SPD, template ekspor checklist dispatcher, filter approver pada laporan BBM, dan model DamagePhoto.</div>
+          </li>
+          <li>
+            <div class="timeline__date">Mar – Apr 2026 · Phase 12</div>
+            <div class="timeline__title">Vehicle Checkings &amp; Merge Cleanup</div>
+            <div class="timeline__desc">Sinkronisasi besar 90 berkas, perbaikan alur pengecekan kendaraan dispatcher beserta template laporannya, dan perbaikan barcode SPD yang tidak muncul pada template cetak.</div>
+          </li>
+          <li>
+            <div class="timeline__date">Jul 2026 · Phase 13</div>
+            <div class="timeline__title">Lunch Forecast &amp; Distribution Redesign</div>
+            <div class="timeline__desc">Redesign pelacakan makan siang menjadi sistem forecast dan distribusi dengan model Site, LunchForecastBatch, LunchDistribution, dan LunchGuestReservation. Lunch Management kemudian dijadikan modul independen dengan EmployeeDefaults, EmployeeAliases, LearningProfile, dan LunchForecastService, sementara enam tabel pelacakan kendaraan dihapus. Fase ditutup perbaikan laporan LPJ.</div>
+          </li>
+        </ul>
+
+        <h3>Versi dokumen</h3>
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead><tr><th>Versi</th><th>Tanggal</th><th>Perubahan</th><th>Penyusun</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">0.1</td>
+                <td>2026</td>
+                <td>Kerangka dokumen, daftar isi, dan konvensi penulisan; memuat Bagian 0 sampai 2 sebagai pratinjau internal.</td>
+                <td>Tim penyusun dokumentasi</td>
+              </tr>
+              <tr>
+                <td class="rowhead">0.9</td>
+                <td>2026</td>
+                <td>Penambahan Bagian 3 sampai 8: model dan spesifikasi use case, desain perilaku dan struktur, validasi logika, serta pengujian.</td>
+                <td>Tim penyusun dokumentasi</td>
+              </tr>
+              <tr>
+                <td class="rowhead">1.0</td>
+                <td>2026</td>
+                <td><b>Rilis pertama.</b> Dokumen lengkap sebelas bagian, memuat traceability matrix, matriks RBAC, glosarium proyek, PlantUML, dan riwayat perubahan.</td>
+                <td>Divisi General Affairs &amp; tim IT Unit Patuha</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Usulan</strong>
+            Baris versi 0.1 dan 0.9 adalah penanda pratinjau penyusunan, bukan rilis resmi. Isi tanggal tepatnya
+            perlu disesuaikan dengan jadwal penyusunan dokumentasi yang sebenarnya; hanya versi 1.0 yang dinyatakan
+            sebagai rilis pertama.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= PEMELIHARAAN ================= -->
+      <div class="section-block" id="pemeliharaan">
+        <h2><span class="num"><i class="bi bi-tools"></i></span> Pemeliharaan dokumen</h2>
+
+        <p>
+          Dokumentasi yang tidak dipelihara akan cepat kehilangan kepercayaan. Dokumen ini diperlakukan sebagai
+          artefak yang ikut berubah bersama kode: setiap perubahan perilaku sistem wajib disertai pembaruan bagian terkait.
+        </p>
+
+        <h3>Kapan dokumen harus diperbarui</h3>
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead><tr><th>Pemicu</th><th>Bagian yang wajib diperbarui</th></tr></thead>
+            <tbody>
+              <tr><td class="rowhead">Ada use case baru atau use case dihapus</td><td>Bagian 3 (katalog kanonik), Bagian 4 (spesifikasi), Bagian 9 (matriks traceability dan tujuan bisnis).</td></tr>
+              <tr><td class="rowhead">Perubahan aturan bisnis</td><td>Bagian 4 (alur dan pengecualian), Bagian 7 (decision table), Bagian 9 (kolom aturan bisnis), Bagian 10 (glosarium bila istilah ikut berubah).</td></tr>
+              <tr><td class="rowhead">Perubahan skema basis data</td><td>Bagian 6 (class diagram dan ERD), Bagian 10 (alias tabel pada glosarium), Bagian 9 bila relasi memengaruhi scope data.</td></tr>
+              <tr><td class="rowhead">Perubahan peran atau permission</td><td>Bagian 9 (matriks RBAC dan bagian middleware), Bagian 10 (istilah peran dan permission group).</td></tr>
+              <tr><td class="rowhead">Penambahan diagram baru</td><td>Bagian 5 atau 6, plus bagan ketertelusuran pada Bagian 9 dan kode PlantUML pada Bagian 11.</td></tr>
+              <tr><td class="rowhead">Perubahan alur antarmuka</td><td>Dokumen Alur Tutorial yang bersesuaian dan halaman Bagian 5 (activity diagram).</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Daftar periksa pembaruan</h3>
+        <div class="split">
+          <div>
+            <ul class="list-check">
+              <li>Kode use case tetap memakai katalog kanonik tanpa perubahan penomoran.</li>
+              <li>Setiap use case baru sudah muncul di matriks traceability dan matriks tujuan bisnis.</li>
+              <li>Aturan bisnis baru memiliki decision table atau alasan tertulis mengapa tidak diperlukan.</li>
+              <li>Test case baru tertaut ke baris matriks yang sesuai.</li>
+              <li>Istilah baru sudah ditambahkan ke glosarium beserta kategori dan aliasnya.</li>
+            </ul>
+          </div>
+          <div>
+            <ul class="list-check">
+              <li>Diagram Mermaid pada halaman masih dapat dirender tanpa galat sintaks.</li>
+              <li>Kode PlantUML telah diuji pada editor PlantUML dan warnanya sesuai palet Geodipa.</li>
+              <li>Tautan internal antar bagian tidak menunjuk ke berkas yang belum ada.</li>
+              <li>Nomor gambar dan tabel tidak bertabrakan setelah penambahan konten.</li>
+              <li>Tabel versi dokumen diperbarui dengan ringkasan perubahan rilis ini.</li>
+            </ul>
+          </div>
+        </div>
+
+        <h3>Pemilik dokumen</h3>
+        <div class="grid grid--2">
+          <div class="card">
+            <div class="card__head">
+              <span class="icon-sq"><i class="bi bi-people"></i></span>
+              <div><h3>Divisi General Affairs</h3><p>Pemilik proses bisnis dan penentu kebijakan.</p></div>
+            </div>
+            <ul class="list-check" style="font-size:.84rem;">
+              <li>Menyetujui perubahan aturan bisnis dan istilah domain.</li>
+              <li>Menjadi penanggung jawab kebenaran isi Bagian 1, 3, dan 10.</li>
+              <li>Menetapkan prioritas modul yang didokumentasikan lebih dulu.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="card__head">
+              <span class="icon-sq icon-sq--blue"><i class="bi bi-cpu"></i></span>
+              <div><h3>Tim IT Unit Patuha</h3><p>Pemelihara teknis dan penjaga konsistensi dengan kode.</p></div>
+            </div>
+            <ul class="list-check" style="font-size:.84rem;">
+              <li>Memperbarui diagram, matriks, dan glosarium setiap kali kode berubah.</li>
+              <li>Memverifikasi rute, controller, dan skema basis data yang dirujuk dokumen.</li>
+              <li>Menjalankan daftar periksa pembaruan sebelum dokumen dirilis ulang.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="callout callout--tip">
+          <span class="callout__icon"><i class="bi bi-lightbulb"></i></span>
+          <div class="callout__body">
+            <strong>Irama peninjauan</strong>
+            Disarankan peninjauan ringan setiap akhir fase pengembangan dan peninjauan menyeluruh setiap kali
+            modul baru dirilis. Dokumen versi 1.0 ini menjadi titik rujukan pertama; perubahan berikutnya
+            dinaikkan ke versi 1.1 dan seterusnya melalui tabel versi di atas.
+          </div>
+        </div>
+      </div>
+
+      <div class="callout callout--info">
+        <span class="callout__icon"><i class="bi bi-arrow-left-circle"></i></span>
+        <div class="callout__body">
+          <strong>Kembali ke ikhtisar Software Design Document</strong>
+          Anda telah menyelesaikan seluruh sebelas bagian dokumen. Ikhtisar SDD memuat daftar isi, ringkasan
+          eksekutif, dan konvensi penulisan yang menjadi pintu masuk dokumen ini.
+          <div style="margin-top:10px;"><a class="btn btn--primary btn--sm" href="index.html"><i class="bi bi-house"></i> Buka Ikhtisar SDD</a></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="foot__inner">
+    <p>&copy; <span data-year>2026</span> PT Geo Dipa Energi (Persero) Unit Patuha — Divisi General Affairs.</p>
+    <div class="foot__links">
+      <a href="../index.html">Beranda dokumentasi</a>
+      <a href="index.html">Ikhtisar SDD</a>
+      <a href="../alur-tutorial/index.html">Alur Tutorial</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/js/docs.js"></script>
+<script src="../assets/js/diagrams.js" defer></script>
+</body>
+</html>

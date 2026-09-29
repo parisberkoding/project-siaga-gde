@@ -14,9 +14,7 @@
   <link href="{{ asset('DashboardTemplates/assets/img/geodipa-logo-croped.png') }}" rel="icon">
   <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
 
-  <!-- Google Fonts -->
-  <link href="https://fonts.gstatic.com" rel="preconnect">
-  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+  <!-- Google Fonts (dihapus: tipografi kini lokal lewat GDE UI Templates) -->
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
@@ -28,9 +26,9 @@
      crossorigin=""></script>
 
 
-    {{-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
+    {{-- <link href="{{ asset('DashboardTemplates/assets/vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q" crossorigin="anonymous"></script> --}}
+    <script src="{{ asset('DashboardTemplates/assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script> --}}
 
 
   <!-- Vendor CSS Files -->
@@ -45,9 +43,10 @@
  <!-- Template Main CSS File -->
   <link href="{{ asset('DashboardTemplates/assets/css/style.css') }}" rel="stylesheet">
 
-  <!-- Custom CSS untuk role lainnya (other_user, manager) yang baru -->
+  <!-- GDE UI Templates — design system Geodipa (dimuat terakhir agar menimpa NiceAdmin) -->
+  @include('partials.gde-head')
 
-</head>
+  <!-- Custom CSS untuk role lainnya (other_user, manager) yang baru -->
 
 </head>
 
@@ -103,6 +102,9 @@
 
     {{-- Stack untuk script tambahan dari child views (mis. SIAGA) --}}
     @stack('scripts')
+
+    {{-- GDE UI Templates — perilaku komponen gde-* --}}
+    @include('partials.gde-scripts')
 
 </body>
 

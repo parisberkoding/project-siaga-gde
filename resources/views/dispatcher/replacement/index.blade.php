@@ -13,26 +13,26 @@
     }
     .status-tab {
         padding: 6px 14px;
-        border: 1px solid #dee2e6;
+        border: 1px solid #E4E9F0;
         border-radius: 20px;
         font-size: 13px;
         font-weight: 500;
         text-decoration: none;
-        color: #6c757d;
+        color: #64748B;
         transition: all 0.15s;
         display: inline-flex;
         align-items: center;
         gap: 6px;
     }
-    .status-tab:hover { border-color: #4154f1; color: #4154f1; }
-    .status-tab.active { background: #4154f1; border-color: #4154f1; color: #fff; }
+    .status-tab:hover { border-color: #0B50A1; color: #0B50A1; }
+    .status-tab.active { background: #0B50A1; border-color: #0B50A1; color: #fff; }
     .status-tab .count {
         border-radius: 10px;
         padding: 1px 8px;
         font-size: 11px;
     }
     .status-tab.active .count { background: rgba(255,255,255,0.3); }
-    .status-tab:not(.active) .count { background: #e9ecef; color: #6c757d; }
+    .status-tab:not(.active) .count { background: #E4E9F0; color: #64748B; }
 </style>
 
 <div class="pagetitle">

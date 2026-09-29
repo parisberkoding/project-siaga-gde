@@ -6,14 +6,14 @@
 
 <style>
     .trx-detail-card {
-        border: 1px solid #e9ecef;
+        border: 1px solid #E4E9F0;
         border-radius: 10px;
         margin-bottom: 12px;
         overflow: hidden;
     }
-    .trx-detail-card.overdue  { border-left: 4px solid #dc3545; }
-    .trx-detail-card.completed { border-left: 4px solid #198754; }
-    .trx-detail-card.active   { border-left: 4px solid #ffc107; }
+    .trx-detail-card.overdue  { border-left: 4px solid #ED1B2F; }
+    .trx-detail-card.completed { border-left: 4px solid #71A62F; }
+    .trx-detail-card.active   { border-left: 4px solid #D8CE3A; }
 
     .trx-header {
         padding: 14px 16px;
@@ -26,7 +26,7 @@
 
     .trx-expand {
         padding: 0 16px 14px;
-        border-top: 1px dashed #e9ecef;
+        border-top: 1px dashed #E4E9F0;
         display: none;
     }
     .trx-expand.show { display: block; }
@@ -35,7 +35,7 @@
         width: 60px; height: 60px;
         border-radius: 6px;
         object-fit: cover;
-        border: 1px solid #dee2e6;
+        border: 1px solid #E4E9F0;
         cursor: pointer;
     }
 
@@ -43,8 +43,8 @@
         font-size: 11px;
         text-transform: uppercase;
         letter-spacing: 0.3px;
-        color: #6c757d;
-        border-bottom: 1px solid #e9ecef;
+        color: #64748B;
+        border-bottom: 1px solid #E4E9F0;
         padding: 6px 8px;
     }
     .items-table td {
@@ -53,7 +53,7 @@
     }
 
     .stat-mini {
-        background: #f8f9fa;
+        background: #F8FAFC;
         border-radius: 8px;
         padding: 12px;
         text-align: center;
@@ -65,7 +65,7 @@
     }
     .stat-mini .stat-lbl {
         font-size: 11px;
-        color: #6c757d;
+        color: #64748B;
         margin-top: 4px;
     }
 
@@ -81,10 +81,10 @@
         border-radius: 4px;
         font-weight: 600;
     }
-    .timeline-flow .step.done { background: #d1e7dd; color: #198754; }
-    .timeline-flow .step.current { background: #cff4fc; color: #0dcaf0; }
-    .timeline-flow .step.pending { background: #e9ecef; color: #6c757d; }
-    .timeline-flow .arrow { color: #dee2e6; }
+    .timeline-flow .step.done { background: #d1e7dd; color: #4A7A1C; }
+    .timeline-flow .step.current { background: #cff4fc; color: #0B50A1; }
+    .timeline-flow .step.pending { background: #E4E9F0; color: #64748B; }
+    .timeline-flow .arrow { color: #E4E9F0; }
 
     /* Lightbox */
     .lightbox-overlay {
@@ -116,25 +116,25 @@
 <div class="row mb-3">
     <div class="col-lg-2 col-4">
         <div class="stat-mini">
-            <div class="stat-val" style="color: #4154f1;">{{ $stats['total'] ?? 0 }}</div>
+            <div class="stat-val" style="color: #0B50A1;">{{ $stats['total'] ?? 0 }}</div>
             <div class="stat-lbl">Total Transaksi</div>
         </div>
     </div>
     <div class="col-lg-2 col-4">
         <div class="stat-mini">
-            <div class="stat-val" style="color: #198754;">{{ $stats['completed'] ?? 0 }}</div>
+            <div class="stat-val" style="color: #4A7A1C;">{{ $stats['completed'] ?? 0 }}</div>
             <div class="stat-lbl">Selesai</div>
         </div>
     </div>
     <div class="col-lg-2 col-4">
         <div class="stat-mini">
-            <div class="stat-val" style="color: #dc3545;">{{ $stats['overdue'] ?? 0 }}</div>
+            <div class="stat-val" style="color: #C4142A;">{{ $stats['overdue'] ?? 0 }}</div>
             <div class="stat-lbl">Overdue</div>
         </div>
     </div>
     <div class="col-lg-3 col-6">
         <div class="stat-mini">
-            <div class="stat-val" style="color: #4154f1; font-size: 16px;">
+            <div class="stat-val" style="color: #0B50A1; font-size: 16px;">
                 Rp {{ number_format($stats['total_cost'] ?? 0, 0, ',', '.') }}
             </div>
             <div class="stat-lbl">Total Biaya</div>
@@ -142,7 +142,7 @@
     </div>
     <div class="col-lg-3 col-6">
         <div class="stat-mini">
-            <div class="stat-val" style="color: #6c757d; font-size: 16px;">
+            <div class="stat-val" style="color: #64748B; font-size: 16px;">
                 Rp {{ number_format($stats['avg_cost'] ?? 0, 0, ',', '.') }}
             </div>
             <div class="stat-lbl">Rata-rata / Transaksi</div>
@@ -241,7 +241,7 @@
                                      onclick="event.stopPropagation(); openLightbox('{{ asset('storage/' . $trx->proof_photo) }}')"
                                      alt="Bukti">
                                 @else
-                                <div class="proof-thumb-sm d-flex align-items-center justify-content-center" style="background: #f8f9fa;">
+                                <div class="proof-thumb-sm d-flex align-items-center justify-content-center" style="background: #F8FAFC;">
                                     <i class="bi bi-image text-muted fs-5"></i>
                                 </div>
                                 @endif
@@ -297,7 +297,7 @@
                             </div>
 
                             <div class="text-end flex-shrink-0">
-                                <strong style="font-size: 16px; color: #012970;">
+                                <strong style="font-size: 16px; color: #093D7D;">
                                     Rp {{ number_format($trx->total_amount ?? 0, 0, ',', '.') }}
                                 </strong>
                                 <br><small class="text-muted">{{ $trx->service_date?->format('d/m/Y') }}</small>
@@ -337,9 +337,9 @@
                                         </tbody>
                                         @if($trx->details->count() > 0)
                                         <tfoot>
-                                            <tr style="background: #f8f9fa;">
+                                            <tr style="background: #F8FAFC;">
                                                 <td colspan="4" class="text-end fw-bold">Total:</td>
-                                                <td class="text-end fw-bold" style="color: #4154f1;">
+                                                <td class="text-end fw-bold" style="color: #0B50A1;">
                                                     Rp {{ number_format($trx->details->sum('total_price'), 0, ',', '.') }}
                                                 </td>
                                             </tr>
@@ -414,7 +414,7 @@
                                     <div class="mt-2">
                                         <small class="text-muted d-block mb-1">Bukti Struk/Nota:</small>
                                         <img src="{{ asset('storage/' . $trx->proof_photo) }}"
-                                             style="width: 100%; max-height: 180px; object-fit: contain; border-radius: 8px; border: 1px solid #dee2e6; cursor: pointer;"
+                                             style="width: 100%; max-height: 180px; object-fit: contain; border-radius: 8px; border: 1px solid #E4E9F0; cursor: pointer;"
                                              onclick="openLightbox('{{ asset('storage/' . $trx->proof_photo) }}')"
                                              alt="Bukti">
                                     </div>

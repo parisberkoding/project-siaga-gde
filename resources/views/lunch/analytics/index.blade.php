@@ -145,8 +145,8 @@ new Chart(document.getElementById('accuracyChart'), {
         datasets: [{
             label: 'Akurasi (%)',
             data: accuracyTrend.map(r => r.accuracy),
-            borderColor: '#4154f1',
-            backgroundColor: 'rgba(65, 84, 241, .1)',
+            borderColor: '#0B50A1',
+            backgroundColor: 'rgba(11, 80, 161, .1)',
             tension: .3,
             spanGaps: true,
             fill: true,
@@ -155,7 +155,7 @@ new Chart(document.getElementById('accuracyChart'), {
     options: { scales: { y: { min: 0, max: 100 } }, plugins: { legend: { display: false } } },
 });
 
-const palette = ['#4154f1', '#2eca6a', '#ff771d', '#e03444'];
+const palette = ['#0B50A1', '#71A62F', '#ff771d', '#e03444'];
 new Chart(document.getElementById('trendChart'), {
     type: 'bar',
     data: {

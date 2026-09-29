@@ -5,15 +5,22 @@
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <title>Booking Mandiri Makan Siang - GeoDipa</title>
   <link href="{{ asset('DashboardTemplates/assets/img/geodipa-logo-croped.png') }}" rel="icon">
-  <link href="https://fonts.gstatic.com" rel="preconnect">
-  <link href="https://fonts.googleapis.com/css?family=Plus+Jakarta+Sans:300,400,500,600,700,800" rel="stylesheet">
+
   <link href="{{ asset('DashboardTemplates/assets/vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
   <link href="{{ asset('DashboardTemplates/assets/vendor/bootstrap-icons/bootstrap-icons.css') }}" rel="stylesheet">
+
+  <!-- GDE UI Templates — design system Geodipa (dimuat setelah NiceAdmin agar menimpanya) -->
+  <link href="{{ asset('gde-ui-templates/fonts/poppins.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-tokens.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-base.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-components.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-app.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-compat.css') }}" rel="stylesheet">
   
   <style>
     body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      background: linear-gradient(135deg, #f8f9fa 0%, #eef2f7 100%);
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #F8FAFC 0%, #eef2f7 100%);
       min-height: 100vh;
       color: #2d3748;
     }
@@ -33,12 +40,12 @@
       border: 1.5px solid #e2e8f0;
     }
     .form-control-lg:focus {
-      border-color: #0d6efd;
-      box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15);
+      border-color: #0B50A1;
+      box-shadow: 0 0 0 4px rgba(11, 80, 161, 0.15);
     }
 
     .btn-primary-custom {
-      background: #0d6efd;
+      background: #0B50A1;
       border: none;
       border-radius: 12px;
       font-weight: 600;
@@ -46,9 +53,9 @@
       transition: all 0.2s ease-in-out;
     }
     .btn-primary-custom:hover {
-      background: #0b5ed7;
+      background: #093D7D;
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(13, 110, 253, 0.2);
+      box-shadow: 0 4px 12px rgba(11, 80, 161, 0.2);
     }
 
     /* Suggestion List for Autocomplete */

@@ -4,8 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>404 - Halaman Tidak Ditemukan</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" integrity="sha384-QuGBSgV5Im3DzL2z+8Ko9/hqNy/N0O7zwvXAtfd1MvPKWa/UbeLV65cfm4BV5Wgq" crossorigin="anonymous">
+    <link href="{{ asset('DashboardTemplates/assets/vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ asset('DashboardTemplates/assets/vendor/bootstrap-icons/bootstrap-icons.css') }}">
+
+  <!-- GDE UI Templates — design system Geodipa (dimuat setelah NiceAdmin agar menimpanya) -->
+  <link href="{{ asset('gde-ui-templates/fonts/poppins.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-tokens.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-base.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-components.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-app.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-compat.css') }}" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -15,7 +24,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f8f9fa;
+            background: #F8FAFC;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -49,13 +58,13 @@
 
         .error-icon i {
             font-size: 60px;
-            color: #0d6efd;
+            color: #0B50A1;
         }
 
         .error-code {
             font-size: 72px;
             font-weight: 700;
-            color: #212529;
+            color: #16202E;
             margin-bottom: 10px;
             letter-spacing: -2px;
         }
@@ -63,13 +72,13 @@
         .error-title {
             font-size: 28px;
             font-weight: 600;
-            color: #343a40;
+            color: #16202E;
             margin-bottom: 15px;
         }
 
         .error-description {
             font-size: 16px;
-            color: #6c757d;
+            color: #64748B;
             line-height: 1.6;
             margin-bottom: 35px;
         }
@@ -77,7 +86,7 @@
         .divider {
             width: 60px;
             height: 3px;
-            background: #0d6efd;
+            background: #0B50A1;
             margin: 25px auto;
             border-radius: 2px;
         }
@@ -90,7 +99,7 @@
         }
 
         .btn-primary-custom {
-            background: #212529;
+            background: #16202E;
             color: white;
             border: none;
             padding: 14px 30px;
@@ -113,8 +122,8 @@
 
         .btn-secondary-custom {
             background: white;
-            color: #212529;
-            border: 2px solid #dee2e6;
+            color: #16202E;
+            border: 2px solid #E4E9F0;
             padding: 12px 30px;
             font-size: 15px;
             font-weight: 500;
@@ -127,14 +136,14 @@
         }
 
         .btn-secondary-custom:hover {
-            background: #f8f9fa;
+            background: #F8FAFC;
             border-color: #adb5bd;
             transform: translateY(-2px);
-            color: #212529;
+            color: #16202E;
         }
 
         .suggestions {
-            background: #f8f9fa;
+            background: #F8FAFC;
             border-radius: 8px;
             padding: 25px;
             margin-top: 35px;
@@ -159,7 +168,7 @@
 
         .suggestions li {
             padding: 10px 0;
-            color: #6c757d;
+            color: #64748B;
             font-size: 14px;
             display: flex;
             align-items: flex-start;
@@ -167,7 +176,7 @@
         }
 
         .suggestions li i {
-            color: #0d6efd;
+            color: #0B50A1;
             margin-top: 2px;
             flex-shrink: 0;
         }

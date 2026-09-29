@@ -314,7 +314,7 @@
 
               {{-- Checklist (kosong untuk diisi manual) --}}
               <td style="text-align: center; vertical-align: middle;">
-                <div style="width: 30px; height: 30px; border: 2px solid #6c757d; border-radius: 4px; margin: 0 auto;"></div>
+                <div style="width: 30px; height: 30px; border: 2px solid #64748B; border-radius: 4px; margin: 0 auto;"></div>
               </td>
             </tr>
           @empty

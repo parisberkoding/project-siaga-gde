@@ -4,16 +4,16 @@
 
 @section('content')
 
-<link href="https://cdn.jsdelivr.net/npm/simple-datatables@10.3.0/dist/style.css" rel="stylesheet" integrity="sha384-CinX6s1UC1GpaQwL9eKshF7JhtC8H2xchDD0dWqlCgZ8t+GCCcjluxCgmsbVpdEh" crossorigin="anonymous">
+<link href="{{ asset('gde-ui-templates/vendor/simple-datatables-10.3.0.css') }}" rel="stylesheet">
 <style>
   .info-card { padding-bottom: 10px; }
-  .info-card h6 { font-size: 28px; color: #012970; font-weight: 700; margin: 0; padding: 0; }
+  .info-card h6 { font-size: 28px; color: #093D7D; font-weight: 700; margin: 0; padding: 0; }
   .card-icon { font-size: 32px; line-height: 0; width: 64px; height: 64px; flex-shrink: 0; flex-grow: 0; }
-  .sales-card .card-icon { color: #4154f1; background: #f6f6fe; }
-  .customers-card .card-icon { color: #ff771d; background: #ffecdf; }
-  .warning-card .card-icon { color: #ffbb2c; background: #fff6e1; }
-  .revenue-card .card-icon { color: #2eca6a; background: #e0f8e9; }
-  .card { margin-bottom: 30px; border: none; border-radius: 5px; box-shadow: 0px 0 30px rgba(1, 41, 112, 0.1); }
+  .sales-card .card-icon { color: #0B50A1; background: #EAF1FA; }
+  .customers-card .card-icon { color: #B35B00; background: #ffecdf; }
+  .warning-card .card-icon { color: #8A6A00; background: #fff6e1; }
+  .revenue-card .card-icon { color: #4A7A1C; background: #F2F9E8; }
+  .card { margin-bottom: 1.5rem; border: 1px solid var(--gde-line); border-radius: var(--gde-r-lg); box-shadow: var(--gde-sh-1); }
   .card-body { padding: 20px; }
 
   .bulk-action-bar {

@@ -4,9 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tentang SIAGA — PT Geo Dipa Energi (Persero) Unit Patuha</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" integrity="sha384-tViUnnbYAV00FLIhhi3v/dWt3Jxw4gZQcNoSCxCIFNJVCx7/D55/wXsrNIRANwdD" crossorigin="anonymous">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="{{ asset('DashboardTemplates/assets/vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('DashboardTemplates/assets/vendor/bootstrap-icons/bootstrap-icons.css') }}">
+
+  <!-- GDE UI Templates — design system Geodipa (dimuat setelah NiceAdmin agar menimpanya) -->
+  <link href="{{ asset('gde-ui-templates/fonts/poppins.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-tokens.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-base.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-components.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-app.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-compat.css') }}" rel="stylesheet">
+
 
     <style>
         :root {
@@ -24,7 +32,7 @@
             --radius-sm:    12px;
         }
 
-        body { font-family: 'Inter', sans-serif; color: var(--ink); background: #fff; overflow-x: hidden; }
+        body { font-family: 'Poppins', sans-serif; color: var(--ink); background: #fff; overflow-x: hidden; }
         h1, h2, h3, h4 { font-family: 'Poppins', sans-serif; }
 
         .navbar-gde { background: #fff; border-bottom: 1px solid var(--border); }
@@ -335,7 +343,7 @@
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+    <script src="{{ asset('DashboardTemplates/assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     <script>
         const fadeEls = document.querySelectorAll('.fade-up');
         const io = new IntersectionObserver((entries) => {

@@ -4,7 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Surat Tugas - {{ $surat->nomor_surat }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <link href="{{ asset('DashboardTemplates/assets/vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+
+  <!-- GDE UI Templates — design system Geodipa (dimuat setelah NiceAdmin agar menimpanya) -->
+  <link href="{{ asset('gde-ui-templates/fonts/poppins.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-tokens.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-base.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-components.css') }}" rel="stylesheet">
+
     <style>
         /* Reset & General */
         * {
@@ -26,7 +33,7 @@
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
             font-size: 14px;
             line-height: 1.5;
-            color: #212529;
+            color: #16202E;
             padding: 40px;
             max-width: 800px;
             margin: 0 auto;
@@ -347,7 +354,7 @@
         /* Screen Only Styles */
         @media screen {
             body {
-                background: #e9ecef;
+                background: #E4E9F0;
                 padding: 20px;
             }
 

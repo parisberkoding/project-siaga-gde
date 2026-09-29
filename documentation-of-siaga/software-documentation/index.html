@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Software Documentation SIAGA — Ikhtisar SDD</title>
+<meta name="description" content="Software Design Document SIAGA: daftar isi, ringkasan eksekutif, dan konvensi penulisan dokumen.">
+<link rel="icon" href="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="../assets/css/docs.css">
+</head>
+<body data-base="../">
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <button class="icon-btn btn-menu" id="docMenuBtn" aria-label="Buka navigasi" aria-expanded="false"><i class="bi bi-list"></i></button>
+    <a class="brand" href="../index.html">
+      <img class="brand__logo" src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="Logo Geo Dipa Energi">
+      <span>
+        <span class="brand__name">SIAGA</span>
+        <span class="brand__sub">Sistem Informasi Administrasi General Affairs</span>
+      </span>
+    </a>
+    <span class="brand__divider"></span>
+    <span class="brand__doc">Software Documentation</span>
+    <div class="topbar__spacer"></div>
+    <div class="searchbox">
+      <i class="bi bi-search"></i>
+      <input type="search" id="docSearch" placeholder="Cari halaman…  ( / )" aria-label="Cari halaman dokumentasi">
+      <div class="search-results" id="docSearchResults"></div>
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" data-print title="Cetak / simpan PDF"><i class="bi bi-printer"></i></button>
+      <a class="icon-btn" href="../index.html" title="Kembali ke beranda dokumentasi"><i class="bi bi-house"></i></a>
+    </div>
+  </div>
+</header>
+
+<div class="scrim" id="docScrim"></div>
+
+<section class="hero">
+  <div class="hero__inner">
+    <span class="hero__tag"><span class="dot"></span> Dokumen Teknis · Internal</span>
+    <h1>Software Design Document<br>SIAGA</h1>
+    <p class="lead">
+      Sistem Informasi Administrasi General Affairs — PT Geo Dipa Energi (Persero) Unit Patuha.
+      Dokumen ini disusun mengikuti metodologi <em>use case driven development</em>: dari ruang lingkup
+      dan pemetaan pemangku kepentingan, model dan spesifikasi use case, desain perilaku dan struktur,
+      validasi logika, hingga pengujian dan ketertelusuran.
+    </p>
+    <div class="hero__btns">
+      <a class="btn btn--green" href="01-ruang-lingkup.html"><i class="bi bi-play-fill"></i> Mulai dari Bagian 1</a>
+      <a class="btn btn--light" href="../alur-tutorial/index.html"><i class="bi bi-signpost-split"></i> Lihat Alur Tutorial</a>
+    </div>
+    <div class="hero__meta">
+      <span><b>Versi</b> 1.0</span>
+      <span><b>Tanggal</b> 2026</span>
+      <span><b>Klasifikasi</b> Internal — General Affairs</span>
+      <span><b>Framework</b> Laravel 12 (PHP 8.2+)</span>
+    </div>
+  </div>
+</section>
+
+<main class="shell">
+  <aside class="sidebar" id="docSidebar">
+    <p class="sidebar__label">Software Documentation</p>
+    <ul class="nav-list">
+      <li><a class="nav-link is-active" href="index.html"><span class="nav-link__num">&#9679;</span><span class="nav-link__txt">Ikhtisar &amp; daftar isi</span></a></li>
+      <li><a class="nav-link" href="01-ruang-lingkup.html"><span class="nav-link__num">1</span><span class="nav-link__txt">Ruang lingkup &amp; visi produk</span></a></li>
+      <li><a class="nav-link" href="02-arsitektur-teknologi.html"><span class="nav-link__num">2</span><span class="nav-link__txt">Arsitektur &amp; teknologi</span></a></li>
+      <li><a class="nav-link" href="03-model-use-case.html"><span class="nav-link__num">3</span><span class="nav-link__txt">Model use case</span></a></li>
+      <li><a class="nav-link" href="04-spesifikasi-use-case.html"><span class="nav-link__num">4</span><span class="nav-link__txt">Spesifikasi use case</span></a></li>
+      <li><a class="nav-link" href="05-desain-perilaku.html"><span class="nav-link__num">5</span><span class="nav-link__txt">Desain perilaku</span><span class="nav-badge">Activity · Sequence</span></a></li>
+      <li><a class="nav-link" href="06-desain-struktur.html"><span class="nav-link__num">6</span><span class="nav-link__txt">Desain struktur</span><span class="nav-badge">Class · ERD</span></a></li>
+      <li><a class="nav-link" href="07-validasi-logika.html"><span class="nav-link__num">7</span><span class="nav-link__txt">Validasi logika</span></a></li>
+      <li><a class="nav-link" href="08-pengujian.html"><span class="nav-link__num">8</span><span class="nav-link__txt">Pengujian &amp; test case</span></a></li>
+      <li><a class="nav-link" href="09-traceability.html"><span class="nav-link__num">9</span><span class="nav-link__txt">Traceability &amp; RBAC</span></a></li>
+      <li><a class="nav-link" href="10-glosarium.html"><span class="nav-link__num">10</span><span class="nav-link__txt">Glosarium</span></a></li>
+      <li><a class="nav-link" href="11-plantuml-changelog.html"><span class="nav-link__num">11</span><span class="nav-link__txt">PlantUML &amp; changelog</span></a></li>
+    </ul>
+
+    <p class="sidebar__label">Dokumen lain</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="../alur-tutorial/index.html"><i class="bi bi-signpost-split"></i><span class="nav-link__txt">Alur Tutorial</span></a></li>
+      <li><a class="nav-link" href="../index.html"><i class="bi bi-house"></i><span class="nav-link__txt">Beranda dokumentasi</span></a></li>
+    </ul>
+
+    <div class="sidebar__cta">
+      <strong>Dokumen terkait</strong>
+      <p>PRD.md dan DOKUMENTASI_PROJECT.md pada repositori merupakan sumber awal; SDD ini melengkapinya dengan model, spesifikasi, dan pengujian.</p>
+      <a href="03-model-use-case.html"><i class="bi bi-diagram-3"></i> Lihat model use case</a>
+    </div>
+  </aside>
+
+  <div class="content">
+    <div class="wrap">
+
+      <nav>
+        <ol class="crumbs">
+          <li><a href="../index.html">Documentation</a></li>
+          <li>Software Documentation</li>
+        </ol>
+      </nav>
+
+      <div class="page-head">
+        <span class="eyebrow"><span class="dot"></span> Bagian 0</span>
+        <h2>Ikhtisar dokumen</h2>
+        <p class="lead">
+          Halaman ini adalah titik masuk Software Design Document SIAGA. Gunakan daftar isi di bawah untuk
+          menuju bagian tertentu, atau ikuti urutan fase 1 sampai 8 bila Anda membaca dokumen ini untuk pertama kali.
+        </p>
+      </div>
+
+      <!-- ================= RINGKASAN EKSEKUTIF ================= -->
+      <div class="section-block" id="ringkasan">
+        <h2><span class="num"><i class="bi bi-file-text"></i></span> Ringkasan eksekutif</h2>
+
+        <p>
+          <b>SIAGA (Sistem Informasi Administrasi General Affairs)</b> adalah platform web internal
+          PT Geo Dipa Energi (Persero) yang mengelola, mengotomatisasi, dan mengaudit kegiatan administrasi
+          operasional Divisi General Affairs di wilayah kerja Unit Pusat, Unit Patuha, dan Unit Dieng —
+          termasuk site seperti PMU, Patuha Basecamp, dan Sumur.
+        </p>
+
+        <p>
+          Sistem menangani sembilan area fungsional: permohonan bahan bakar (BBM), perjalanan dinas (SPD) dan
+          laporan pertanggungjawaban (LPJ), pengecekan &amp; kesehatan kendaraan, penggantian suku cadang (VPR),
+          manajemen katering (lunch management), analisis efisiensi BBM, asisten AI (Gaga), master data
+          unit &amp; site, serta lapisan otorisasi berbasis peran (RBAC Phase 2).
+        </p>
+
+        <div class="grid grid--4">
+          <div class="kpi">
+            <div class="kpi__label">Modul fungsional</div>
+            <div class="kpi__value">9</div>
+            <div class="kpi__hint">BBM, SPD/LPJ, kendaraan, katering, dll.</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi__label">Peran pengguna</div>
+            <div class="kpi__value kpi__value--green">7</div>
+            <div class="kpi__hint">Superadmin s.d. Vendor</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi__label">Tabel basis data</div>
+            <div class="kpi__value">40+</div>
+            <div class="kpi__hint">Dikelola lewat 57 migrasi</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi__label">Rute web</div>
+            <div class="kpi__value">540+</div>
+            <div class="kpi__hint">Terdaftar di routes/web.php</div>
+          </div>
+        </div>
+
+        <div class="callout callout--tip">
+          <span class="callout__icon"><i class="bi bi-lightbulb"></i></span>
+          <div class="callout__body">
+            <strong>Prinsip penyusunan dokumen</strong>
+            Dokumen ini memakai prinsip kerja yang sama dengan proses pengembangannya: model dan spesifikasi
+            berperan sebagai sumber kebenaran tunggal, sedangkan setiap keputusan desain harus dapat
+            ditelusuri balik ke tujuan pengguna dan diterjemahkan menjadi pengujian yang terukur.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= DAFTAR ISI ================= -->
+      <div class="section-block" id="daftar-isi">
+        <h2><span class="num"><i class="bi bi-list-ol"></i></span> Daftar isi</h2>
+
+        <ul class="anchor-list">
+          <li><a href="01-ruang-lingkup.html"><i class="bi bi-bounding-box"></i> 1. Ruang Lingkup &amp; Visi Produk <span>Fase 1</span></a></li>
+          <li><a href="02-arsitektur-teknologi.html"><i class="bi bi-cpu"></i> 2. Arsitektur &amp; Teknologi <span>Fase 1</span></a></li>
+          <li><a href="03-model-use-case.html"><i class="bi bi-diagram-3"></i> 3. Model Use Case <span>Fase 2–3</span></a></li>
+          <li><a href="04-spesifikasi-use-case.html"><i class="bi bi-file-earmark-text"></i> 4. Spesifikasi Use Case <span>Fase 4</span></a></li>
+          <li><a href="05-desain-perilaku.html"><i class="bi bi-activity"></i> 5. Desain Perilaku — Activity &amp; Sequence <span>Fase 5</span></a></li>
+          <li><a href="06-desain-struktur.html"><i class="bi bi-boxes"></i> 6. Desain Struktur — Class &amp; ERD <span>Fase 5</span></a></li>
+          <li><a href="07-validasi-logika.html"><i class="bi bi-table"></i> 7. Validasi Logika — Decision Table <span>Fase 6</span></a></li>
+          <li><a href="08-pengujian.html"><i class="bi bi-clipboard2-check"></i> 8. Pengujian &amp; Test Case <span>Fase 7</span></a></li>
+          <li><a href="09-traceability.html"><i class="bi bi-link-45deg"></i> 9. Traceability Matrix &amp; Matriks RBAC <span>Fase 7</span></a></li>
+          <li><a href="10-glosarium.html"><i class="bi bi-book"></i> 10. Glosarium Proyek <span>Fase 8</span></a></li>
+          <li><a href="11-plantuml-changelog.html"><i class="bi bi-code-slash"></i> 11. PlantUML &amp; Riwayat Perubahan <span>Fase 8</span></a></li>
+        </ul>
+      </div>
+
+      <!-- ================= METODOLOGI ================= -->
+      <div class="section-block" id="metodologi">
+        <h2><span class="num"><i class="bi bi-signpost"></i></span> Alur penyusunan (8 fase)</h2>
+
+        <p>
+          Setiap bagian dokumen ini merupakan hasil dari satu fase penyusunan. Fase-fase tersebut
+          berurutan: keluaran satu fase menjadi masukan fase berikutnya.
+        </p>
+
+        <figure>
+          <div class="fig fig--tint">
+<pre class="mermaid">
+flowchart LR
+    F1["1. Fondasi<br/>scope &amp; stakeholder"] --> F2["2. Use case awal<br/>aktor &amp; kandidat UC"]
+    F2 --> F3["3. Perbaikan model<br/>include / extend"]
+    F3 --> F4["4. Spesifikasi detail<br/>alur utama &amp; alternatif"]
+    F4 --> F5["5. Desain<br/>activity, sequence, class, ERD"]
+    F5 --> F6["6. Validasi logika<br/>decision table"]
+    F6 --> F7["7. Pengujian<br/>test case &amp; coverage"]
+    F7 --> F8["8. Pelaporan<br/>SDD, PlantUML, glosarium"]
+
+    classDef done fill:#F2F9E8,stroke:#8DC63F,stroke-width:1.5px,color:#3F6120
+    classDef start fill:#EAF1FA,stroke:#0B50A1,stroke-width:1.5px,color:#0B50A1
+    class F1 start
+    class F8 done
+</pre>
+          </div>
+          <figcaption><b>Gambar 0.1</b> — Rangkaian fase penyusunan dokumentasi SIAGA.</figcaption>
+        </figure>
+
+        <div class="timeline" style="margin-top:26px;">
+          <ul class="timeline" style="border:0;padding-left:26px;">
+            <li>
+              <div class="timeline__date">Fase 1 · Fondasi</div>
+              <div class="timeline__title">Ruang lingkup, masalah, pemangku kepentingan</div>
+              <div class="timeline__desc">Menetapkan batas sistem, pernyataan masalah, dan siapa saja yang berkepentingan. Keluaran: scope statement, problem statement, peta stakeholder, daftar aktor.</div>
+            </li>
+            <li>
+              <div class="timeline__date">Fase 2–3 · Model use case</div>
+              <div class="timeline__title">Identifikasi use case &amp; relasi</div>
+              <div class="timeline__desc">Menyusun kandidat use case dari sudut pandang aktor, lalu memperhalusnya dengan relasi «include» (perilaku wajib yang dipakai bersama) dan «extend» (perilaku opsional/kondisional).</div>
+            </li>
+            <li>
+              <div class="timeline__date">Fase 4 · Spesifikasi</div>
+              <div class="timeline__title">Alur kejadian rinci per use case</div>
+              <div class="timeline__desc">Setiap use case penting dituliskan precondition, postcondition, alur utama bernomor, alur alternatif, alur pengecualian, dan aturan bisnis yang mengikatnya.</div>
+            </li>
+            <li>
+              <div class="timeline__date">Fase 5 · Desain</div>
+              <div class="timeline__title">Perilaku dan struktur</div>
+              <div class="timeline__desc">Activity diagram untuk logika keputusan, sequence diagram untuk urutan interaksi antar komponen, class diagram untuk struktur objek, dan ERD untuk model data persisten.</div>
+            </li>
+            <li>
+              <div class="timeline__date">Fase 6–7 · Validasi &amp; pengujian</div>
+              <div class="timeline__title">Decision table dan test case</div>
+              <div class="timeline__desc">Kombinasi kondisi dienumerasi secara eksplisit dalam decision table; setiap aturan diturunkan menjadi satu atau lebih test case dengan tautan ketertelusuran.</div>
+            </li>
+            <li>
+              <div class="timeline__date">Fase 8 · Pelaporan</div>
+              <div class="timeline__title">SDD, PlantUML, glosarium</div>
+              <div class="timeline__desc">Seluruh artefak dirangkai menjadi dokumen yang dapat dibaca manusia dan mesin, dilengkapi glosarium agar istilah dipakai konsisten di semua bagian.</div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ================= KONVENSI ================= -->
+      <div class="section-block" id="konvensi">
+        <h2><span class="num"><i class="bi bi-rulers"></i></span> Konvensi penulisan</h2>
+
+        <div class="split">
+          <div>
+            <h3>Penamaan use case</h3>
+            <p style="font-size:.86rem;color:var(--muted);">
+              Nama use case ditulis sebagai <b>kata kerja + objek</b> dalam bentuk sekarang dan berorientasi
+              tujuan aktor, misalnya <em>Mengajukan Permohonan BBM</em> — bukan <em>Proses BBM</em>.
+            </p>
+
+            <h3>Penomoran</h3>
+            <div class="table-wrap">
+              <table class="tbl tbl--compact">
+                <thead>
+                  <tr><th>Prefiks</th><th>Arti</th><th>Contoh</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td class="rowhead">UC-&lt;modul&gt;-&lt;nn&gt;</td><td>Use case</td><td><code>UC-BBM-01</code></td></tr>
+                  <tr><td class="rowhead">BR-&lt;modul&gt;-&lt;nn&gt;</td><td>Business rule</td><td><code>BR-SPD-04</code></td></tr>
+                  <tr><td class="rowhead">DT-&lt;nn&gt;</td><td>Decision table</td><td><code>DT-03</code></td></tr>
+                  <tr><td class="rowhead">TC-&lt;modul&gt;-&lt;nn&gt;</td><td>Test case</td><td><code>TC-BBM-07</code></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div>
+            <h3>Penandaan prioritas</h3>
+            <div class="table-wrap">
+              <table class="tbl tbl--compact">
+                <thead><tr><th>Label</th><th>Makna</th></tr></thead>
+                <tbody>
+                  <tr><td><span class="badge badge--red">Kritis</span></td><td>Menyangkut keuangan, keselamatan, atau kepatuhan.</td></tr>
+                  <tr><td><span class="badge">Tinggi</span></td><td>Alur inti harian; kegagalan menghentikan operasional.</td></tr>
+                  <tr><td><span class="badge badge--blue">Sedang</span></td><td>Menambah efisiensi, ada jalur manual sementara.</td></tr>
+                  <tr><td><span class="badge badge--gray">Rendah</span></td><td>Pelengkap atau kebutuhan pelaporan berkala.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Notasi diagram</h3>
+            <ul class="list-check" style="font-size:.84rem;">
+              <li>Diagram ditulis sebagai kode <b>Mermaid</b> di dalam halaman.</li>
+              <li>Relasi use case memakai label <code>&laquo;include&raquo;</code> dan <code>&laquo;extend&raquo;</code>.</li>
+              <li>Kode PlantUML padanan disediakan pada Bagian 11.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= SUMBER ================= -->
+      <div class="section-block" id="sumber">
+        <h2><span class="num"><i class="bi bi-collection"></i></span> Sumber dan referensi</h2>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>Sumber</th><th>Jenis</th><th>Dimanfaatkan untuk</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">PRD.md — SIAGA</td>
+                <td><span class="badge badge--gray">Repositori</span></td>
+                <td>Deskripsi produk, peran &amp; RBAC, kebutuhan fungsional per modul, kebutuhan non-fungsional</td>
+              </tr>
+              <tr>
+                <td class="rowhead">DOKUMENTASI_PROJECT.md</td>
+                <td><span class="badge badge--gray">Repositori</span></td>
+                <td>Arsitektur, struktur direktori, pemetaan tabel basis data, riwayat perubahan</td>
+              </tr>
+              <tr>
+                <td class="rowhead">routes/web.php &amp; controller</td>
+                <td><span class="badge badge--gray">Kode sumber</span></td>
+                <td>Verifikasi nama fitur, rute, dan cakupan fungsi aktual</td>
+              </tr>
+              <tr>
+                <td class="rowhead">panduan.blade.php</td>
+                <td><span class="badge badge--gray">Kode sumber</span></td>
+                <td>Kerangka alur penggunaan yang dipakai pada dokumen Alur Tutorial</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Visual Paradigm Guides — <em>Streamlining the Software Lifecycle</em></td>
+                <td><span class="badge badge--blue">Referensi metodologi</span></td>
+                <td>Struktur 8 fase, konvensi use case, format decision table, dan komponen test case</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p style="font-size:.84rem;color:var(--muted);">
+          Referensi metodologi:
+          <a href="https://guides.visual-paradigm.com/id/docs/streamlining-the-software-lifecycle-integrating-ai-use-case-modeling-with-visual-paradigms-all-in-one-platform/preface/" target="_blank" rel="noopener">
+            Streamlining the Software Lifecycle — Integrating AI Use Case Modeling with Visual Paradigm&rsquo;s All-in-One Platform
+          </a>.
+        </p>
+      </div>
+
+      <div class="callout callout--info">
+        <span class="callout__icon"><i class="bi bi-arrow-right-circle"></i></span>
+        <div class="callout__body">
+          <strong>Lanjut ke Bagian 1</strong>
+          Ruang lingkup &amp; visi produk menjelaskan batas sistem SIAGA, pernyataan masalah, pemetaan
+          pemangku kepentingan, dan daftar aktor yang menjadi dasar seluruh model berikutnya.
+          <div style="margin-top:10px;"><a class="btn btn--primary btn--sm" href="01-ruang-lingkup.html">Buka Bagian 1 <i class="bi bi-arrow-right-short"></i></a></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="foot__inner">
+    <p>&copy; <span data-year>2026</span> PT Geo Dipa Energi (Persero) Unit Patuha — Divisi General Affairs.</p>
+    <div class="foot__links">
+      <a href="../index.html">Beranda dokumentasi</a>
+      <a href="01-ruang-lingkup.html">Bagian 1</a>
+      <a href="../alur-tutorial/index.html">Alur Tutorial</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/js/docs.js"></script>
+<script src="../assets/js/diagrams.js" defer></script>
+</body>
+</html>

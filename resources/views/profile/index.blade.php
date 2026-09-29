@@ -263,7 +263,7 @@ document.addEventListener('DOMContentLoaded', function() {
     font-size: 24px;
     font-weight: 700;
     margin: 10px 0;
-    color: #012970;
+    color: #093D7D;
 }
 
 .profile-card h3 {
@@ -295,13 +295,13 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .nav-tabs-bordered .nav-link:hover {
-    color: #4154f1;
-    border-color: #4154f1;
+    color: #0B50A1;
+    border-color: #0B50A1;
 }
 
 .nav-tabs-bordered .nav-link.active {
-    color: #4154f1;
-    border-color: #4154f1;
+    color: #0B50A1;
+    border-color: #0B50A1;
 }
 </style>
 

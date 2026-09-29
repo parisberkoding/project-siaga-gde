@@ -6,7 +6,7 @@
 
 <style>
     .trx-card {
-        border: 1px solid #e9ecef;
+        border: 1px solid #E4E9F0;
         border-radius: 10px;
         padding: 14px 16px;
         margin-bottom: 10px;
@@ -16,21 +16,21 @@
         transition: all 0.15s;
     }
     .trx-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); color: inherit; }
-    .trx-card.overdue { border-left: 4px solid #dc3545; }
-    .trx-card.completed { border-left: 4px solid #198754; }
-    .trx-card.in-progress { border-left: 4px solid #ffc107; }
+    .trx-card.overdue { border-left: 4px solid #ED1B2F; }
+    .trx-card.completed { border-left: 4px solid #71A62F; }
+    .trx-card.in-progress { border-left: 4px solid #D8CE3A; }
 
     .trx-amount {
         font-size: 16px;
         font-weight: 700;
-        color: #012970;
+        color: #093D7D;
     }
 
     .proof-thumb {
         width: 50px; height: 50px;
         border-radius: 6px;
         object-fit: cover;
-        border: 1px solid #dee2e6;
+        border: 1px solid #E4E9F0;
         cursor: pointer;
     }
 
@@ -165,7 +165,7 @@
                                          alt="Bukti" class="proof-thumb"
                                          onclick="openLightbox('{{ asset('storage/' . $trx->proof_photo) }}')">
                                 @else
-                                    <div class="proof-thumb d-flex align-items-center justify-content-center" style="background: #f8f9fa;">
+                                    <div class="proof-thumb d-flex align-items-center justify-content-center" style="background: #F8FAFC;">
                                         <i class="bi bi-image text-muted"></i>
                                     </div>
                                 @endif

@@ -12,7 +12,7 @@
     }
     .info-card h6 {
         font-size: 28px;
-        color: #012970;
+        color: #093D7D;
         font-weight: 700;
         margin: 0;
         padding: 0;
@@ -29,10 +29,10 @@
         align-items: center;
         justify-content: center;
     }
-    .sales-card .card-icon        { color: #4154f1; background: #f6f6fe; }
-    .revenue-card .card-icon      { color: #2eca6a; background: #e0f8e9; }
-    .customers-card .card-icon    { color: #ff771d; background: #ffecdf; }
-    .transactions-card .card-icon { color: #9747ff; background: #f3e8ff; }
+    .sales-card .card-icon        { color: #0B50A1; background: #EAF1FA; }
+    .revenue-card .card-icon      { color: #4A7A1C; background: #F2F9E8; }
+    .customers-card .card-icon    { color: #B35B00; background: #ffecdf; }
+    .transactions-card .card-icon { color: #6D28D9; background: #f3e8ff; }
 
     /* ===== PERIOD DROPDOWN ===== */
     .period-menu {
@@ -46,13 +46,13 @@
         border-radius: 4px;
         font-size: 14px;
     }
-    .period-menu .dropdown-item:hover { background-color: #f6f9ff; }
+    .period-menu .dropdown-item:hover { background-color: #F4F7FB; }
 
     /* ===== FILTER PANEL ===== */
     #advancedFilter .form-control:focus,
     #advancedFilter .form-select:focus {
-        border-color: #4154f1;
-        box-shadow: 0 0 0 0.2rem rgba(65, 84, 241, 0.15);
+        border-color: #0B50A1;
+        box-shadow: 0 0 0 0.2rem rgba(11, 80, 161, 0.15);
     }
 
     /* ===== CHARTS ===== */
@@ -60,7 +60,7 @@
     .chart-card canvas { max-height: 340px; }
 
     /* ===== TABLES ===== */
-    .card { border-radius: 10px; }
+    .card { border-radius: var(--gde-r-lg); }
     .card-header { border-radius: 10px 10px 0 0 !important; }
     .table-hover tbody tr:hover { background-color: rgba(0,123,255,0.05); }
 
@@ -68,7 +68,7 @@
     .section-title {
         font-size: 15px;
         font-weight: 700;
-        color: #012970;
+        color: #093D7D;
         letter-spacing: 0.3px;
     }
     .bg-gradient-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }

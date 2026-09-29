@@ -7,10 +7,10 @@
 <style>
     .info-pair { margin-bottom: 8px; }
     .info-pair .info-label {
-        font-size: 11px; color: #6c757d;
+        font-size: 11px; color: #64748B;
         text-transform: uppercase; letter-spacing: 0.5px;
     }
-    .info-pair .info-value { font-weight: 600; color: #012970; }
+    .info-pair .info-value { font-weight: 600; color: #093D7D; }
 
     .score-ring {
         width: 120px; height: 120px;
@@ -55,7 +55,7 @@
     .timeline-item::before {
         content: '';
         position: absolute; left: 8px; top: 24px; bottom: 0;
-        width: 2px; background: #e9ecef;
+        width: 2px; background: #E4E9F0;
     }
     .timeline-item:last-child::before { display: none; }
     .timeline-item .timeline-dot {
@@ -63,13 +63,13 @@
         border-radius: 50%;
         position: absolute; left: 0; top: 4px;
         border: 3px solid #fff;
-        box-shadow: 0 0 0 2px #dee2e6;
+        box-shadow: 0 0 0 2px #E4E9F0;
     }
-    .timeline-item .timeline-dot.routine { background: #4154f1; box-shadow: 0 0 0 2px #4154f1; }
-    .timeline-item .timeline-dot.body { background: #6c757d; box-shadow: 0 0 0 2px #6c757d; }
+    .timeline-item .timeline-dot.routine { background: #0B50A1; box-shadow: 0 0 0 2px #0B50A1; }
+    .timeline-item .timeline-dot.body { background: #64748B; box-shadow: 0 0 0 2px #64748B; }
 
     .replacement-mini {
-        border: 1px solid #e9ecef;
+        border: 1px solid #E4E9F0;
         border-radius: 8px;
         padding: 10px 12px;
         margin-bottom: 8px;
@@ -137,7 +137,7 @@
                     </div>
                     <div class="info-pair">
                         <div class="info-label">Total Biaya Service</div>
-                        <div class="info-value" style="color: #4154f1;">
+                        <div class="info-value" style="color: #0B50A1;">
                             Rp {{ number_format($totalServiceCost ?? 0, 0, ',', '.') }}
                         </div>
                     </div>
@@ -167,16 +167,16 @@
 
                     @php
                         $freqConfig = [
-                            'daily'   => ['label' => 'Harian',   'short' => 'H',  'color' => '#4154f1'],
-                            'weekly'  => ['label' => 'Mingguan', 'short' => 'M',  'color' => '#0dcaf0'],
+                            'daily'   => ['label' => 'Harian',   'short' => 'H',  'color' => '#0B50A1'],
+                            'weekly'  => ['label' => 'Mingguan', 'short' => 'M',  'color' => '#0B50A1'],
                             'monthly' => ['label' => 'Bulanan',  'short' => 'B',  'color' => '#6610f2'],
-                            'body'    => ['label' => 'Body',     'short' => 'Bd', 'color' => '#6c757d'],
+                            'body'    => ['label' => 'Body',     'short' => 'Bd', 'color' => '#64748B'],
                         ];
                     @endphp
 
                     @foreach($schedules as $sch)
                     @php
-                        $cfg = $freqConfig[$sch->check_frequency] ?? ['label' => $sch->check_frequency, 'short' => '?', 'color' => '#6c757d'];
+                        $cfg = $freqConfig[$sch->check_frequency] ?? ['label' => $sch->check_frequency, 'short' => '?', 'color' => '#64748B'];
                         $statusBadge = match($sch->status) {
                             'overdue' => 'bg-danger',
                             'due' => 'bg-warning text-dark',
@@ -290,10 +290,10 @@
                                     <span class="badge bg-danger" style="font-size: 10px;">NG {{ $check->ng_count }}</span>
                                 @else
                                     @php $results = $check->itemResults; @endphp
-                                    <span class="badge" style="font-size:10px;background:#d1e7dd;color:#198754;">B{{ $results->where('status','baik')->count() }}</span>
-                                    <span class="badge" style="font-size:10px;background:#cff4fc;color:#0dcaf0;">C{{ $results->where('status','cukup')->count() }}</span>
+                                    <span class="badge" style="font-size:10px;background:#d1e7dd;color:#4A7A1C;">B{{ $results->where('status','baik')->count() }}</span>
+                                    <span class="badge" style="font-size:10px;background:#cff4fc;color:#0B50A1;">C{{ $results->where('status','cukup')->count() }}</span>
                                     <span class="badge" style="font-size:10px;background:#fff3cd;color:#997404;">K{{ $results->where('status','kurang')->count() }}</span>
-                                    <span class="badge" style="font-size:10px;background:#f8d7da;color:#dc3545;">T{{ $results->where('status','tidak')->count() }}</span>
+                                    <span class="badge" style="font-size:10px;background:#f8d7da;color:#C4142A;">T{{ $results->where('status','tidak')->count() }}</span>
                                 @endif
                                 @if($check->driver_acknowledged)
                                     <span class="badge bg-light text-success" style="font-size: 10px;">
@@ -458,12 +458,12 @@ new Chart(trendCtx, {
         datasets: [{
             label: 'Health Score',
             data: {!! json_encode($trendScores ?? []) !!},
-            borderColor: '#4154f1',
-            backgroundColor: 'rgba(65,84,241,0.1)',
+            borderColor: '#0B50A1',
+            backgroundColor: 'rgba(11,80,161,0.1)',
             fill: true,
             tension: 0.3,
             pointRadius: 5,
-            pointBackgroundColor: '#4154f1',
+            pointBackgroundColor: '#0B50A1',
         }]
     },
     options: {
@@ -483,7 +483,7 @@ new Chart(routineCtx, {
         labels: ['OK', 'NG'],
         datasets: [{
             data: [{{ $routineStats['ok'] ?? 0 }}, {{ $routineStats['ng'] ?? 0 }}],
-            backgroundColor: ['#198754', '#dc3545'],
+            backgroundColor: ['#71A62F', '#ED1B2F'],
         }]
     },
     options: {
@@ -507,7 +507,7 @@ new Chart(bodyCtx, {
                 {{ $bodyStats['kurang'] ?? 0 }},
                 {{ $bodyStats['tidak'] ?? 0 }}
             ],
-            backgroundColor: ['#198754', '#0dcaf0', '#ffc107', '#dc3545'],
+            backgroundColor: ['#71A62F', '#0B50A1', '#D8CE3A', '#ED1B2F'],
         }]
     },
     options: {

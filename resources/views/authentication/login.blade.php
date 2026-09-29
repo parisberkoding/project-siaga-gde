@@ -12,8 +12,7 @@
   <link href="{{ asset('DashboardTemplates/assets/img/geodipa-logo-croped.png') }}" rel="icon">
 
   <!-- Google Fonts -->
-  <link href="https://fonts.gstatic.com" rel="preconnect">
-  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
 
   <!-- Vendor CSS Files -->
   <link href="{{ asset('DashboardTemplates/assets/vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
@@ -23,6 +22,14 @@
 
   <!-- Template Main CSS File -->
   <link href="{{ asset('DashboardTemplates/assets/css/style.css') }}" rel="stylesheet">
+
+  <!-- GDE UI Templates — design system Geodipa (dimuat setelah NiceAdmin agar menimpanya) -->
+  <link href="{{ asset('gde-ui-templates/fonts/poppins.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-tokens.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-base.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-components.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-app.css') }}" rel="stylesheet">
+  <link href="{{ asset('gde-ui-templates/css/gde-compat.css') }}" rel="stylesheet">
 </head>
 
 <body>

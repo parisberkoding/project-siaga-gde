@@ -10,9 +10,7 @@
   <!-- Favicons -->
   <link href="{{ asset('DashboardTemplates/assets/img/geodipa-logo-croped.png') }}" rel="icon">
 
-  <!-- Google Fonts -->
-  <link href="https://fonts.gstatic.com" rel="preconnect">
-  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+  <!-- Google Fonts (dihapus: tipografi kini lokal lewat GDE UI Templates) -->
 
   <!-- Vendor CSS Files (NiceAdmin) -->
   <link href="{{ asset('DashboardTemplates/assets/vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
@@ -20,6 +18,9 @@
 
   <!-- Template Main CSS File -->
   <link href="{{ asset('DashboardTemplates/assets/css/style.css') }}" rel="stylesheet">
+
+  <!-- GDE UI Templates — design system Geodipa (dimuat terakhir agar menimpa NiceAdmin) -->
+  @include('partials.gde-head')
 
   @stack('head')
 </head>
@@ -34,6 +35,8 @@
   <script src="{{ asset('DashboardTemplates/assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 
   @stack('scripts')
+
+  @include('partials.gde-scripts')
 </body>
 
 </html>

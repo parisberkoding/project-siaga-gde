@@ -12,9 +12,9 @@
         'kesiapan'    => 'bi-shield-check',
     ];
     $categoryColors = [
-        'keselamatan' => '#dc3545',
-        'kelengkapan' => '#ffc107',
-        'kesiapan'    => '#012970',
+        'keselamatan' => '#ED1B2F',
+        'kelengkapan' => '#D8CE3A',
+        'kesiapan'    => '#093D7D',
     ];
 @endphp
 
@@ -22,7 +22,7 @@
 <div class="card {{ !$loop->first ? 'mt-3' : '' }}">
     <div class="card-body pt-3">
 
-        <div class="category-header mb-3" style="background: linear-gradient(135deg, {{ $categoryColors[$category] ?? '#012970' }} 0%, {{ $categoryColors[$category] ?? '#1a3a8a' }}cc 100%);">
+        <div class="category-header mb-3" style="background: linear-gradient(135deg, {{ $categoryColors[$category] ?? '#093D7D' }} 0%, {{ $categoryColors[$category] ?? '#0B50A1' }}cc 100%);">
             <i class="bi {{ $categoryIcons[$category] ?? 'bi-check-square' }} me-1"></i>
             {{ strtoupper($category) }} — Pengecekan Mingguan
         </div>

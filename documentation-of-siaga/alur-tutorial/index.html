@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alur Tutorial SIAGA — Ikhtisar 6 Alur Penggunaan</title>
+<meta name="description" content="Panduan alur penggunaan SIAGA: permohonan BBM, SPD, cetak surat, dispatcher, makan siang, dan routine checking.">
+<link rel="icon" href="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="../assets/css/docs.css">
+<link rel="stylesheet" href="../assets/css/mock.css">
+</head>
+<body data-base="../">
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <button class="icon-btn btn-menu" id="docMenuBtn" aria-label="Buka navigasi" aria-expanded="false"><i class="bi bi-list"></i></button>
+    <a class="brand" href="../index.html">
+      <img class="brand__logo" src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="Logo Geo Dipa Energi">
+      <span>
+        <span class="brand__name">SIAGA</span>
+        <span class="brand__sub">Sistem Informasi Administrasi General Affairs</span>
+      </span>
+    </a>
+    <span class="brand__divider"></span>
+    <span class="brand__doc">Alur Tutorial</span>
+    <div class="topbar__spacer"></div>
+    <div class="searchbox">
+      <i class="bi bi-search"></i>
+      <input type="search" id="docSearch" placeholder="Cari halaman…  ( / )" aria-label="Cari halaman dokumentasi">
+      <div class="search-results" id="docSearchResults"></div>
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" data-print title="Cetak / simpan PDF"><i class="bi bi-printer"></i></button>
+      <a class="icon-btn" href="../index.html" title="Kembali ke beranda dokumentasi"><i class="bi bi-house"></i></a>
+    </div>
+  </div>
+</header>
+
+<div class="scrim" id="docScrim"></div>
+
+<section class="hero">
+  <div class="hero__inner">
+    <span class="hero__tag"><span class="dot"></span> Panduan Penggunaan</span>
+    <h1>Alur Tutorial SIAGA</h1>
+    <p class="lead">
+      Enam alur kerja utama SIAGA, dijelaskan langkah demi langkah. Setiap langkah disertai
+      <em>klip</em> tampilan aplikasi beserta penanda dan tooltip, sehingga Anda dapat mengikuti
+      panduan ini sambil membuka aplikasi yang sebenarnya.
+    </p>
+    <div class="hero__meta">
+      <span><b>6 alur</b> utama</span>
+      <span><b>Untuk</b> Requester/Driver, Admin GA, Dispatcher</span>
+      <span><b>Kebutuhan</b> akun SIAGA aktif</span>
+    </div>
+  </div>
+</section>
+
+<main class="shell">
+  <aside class="sidebar" id="docSidebar">
+    <p class="sidebar__label">Alur Tutorial</p>
+    <ul class="nav-list">
+      <li><a class="nav-link is-active" href="index.html"><span class="nav-link__num">&#9679;</span><span class="nav-link__txt">Ikhtisar alur</span></a></li>
+      <li><a class="nav-link" href="01-permohonan-bbm.html"><i class="bi bi-fuel-pump"></i><span class="nav-link__txt">1. Permohonan BBM</span></a></li>
+      <li><a class="nav-link" href="02-spd.html"><i class="bi bi-envelope-paper"></i><span class="nav-link__txt">2. Pengajuan SPD</span></a></li>
+      <li><a class="nav-link" href="03-cetak-surat.html"><i class="bi bi-printer"></i><span class="nav-link__txt">3. Cetak Surat</span></a></li>
+      <li><a class="nav-link" href="04-dispatcher.html"><i class="bi bi-truck"></i><span class="nav-link__txt">4. Dispatcher</span></a></li>
+      <li><a class="nav-link" href="05-makan-siang.html"><i class="bi bi-cup-hot"></i><span class="nav-link__txt">5. Makan Siang</span></a></li>
+      <li><a class="nav-link" href="06-checking.html"><i class="bi bi-clipboard-check"></i><span class="nav-link__txt">6. Routine Checking</span></a></li>
+    </ul>
+
+    <p class="sidebar__label">Dokumen lain</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="../software-documentation/index.html"><i class="bi bi-journal-code"></i><span class="nav-link__txt">Software Documentation</span></a></li>
+      <li><a class="nav-link" href="../index.html"><i class="bi bi-house"></i><span class="nav-link__txt">Beranda dokumentasi</span></a></li>
+    </ul>
+
+    <div class="sidebar__cta">
+      <strong>Cara membaca</strong>
+      <p>Angka merah pada gambar = langkah. Arahkan kursor ke angka untuk melihat tooltip.</p>
+      <a href="01-permohonan-bbm.html"><i class="bi bi-play-fill"></i> Mulai alur 1</a>
+    </div>
+  </aside>
+
+  <div class="content">
+    <div class="wrap">
+
+      <nav>
+        <ol class="crumbs">
+          <li><a href="../index.html">Documentation</a></li>
+          <li>Alur Tutorial</li>
+        </ol>
+      </nav>
+
+      <div class="page-head">
+        <span class="eyebrow"><span class="dot"></span> Ikhtisar</span>
+        <h2>Daftar alur penggunaan</h2>
+        <p class="lead">
+          Alur disusun mengikuti urutan pekerjaan sehari-hari: mulai dari pengajuan oleh pemohon,
+          proses persetujuan oleh General Affairs, hingga pencetakan dokumen dan pemantauan oleh dispatcher.
+        </p>
+      </div>
+
+      <div class="callout callout--info">
+        <span class="callout__icon"><i class="bi bi-info-circle"></i></span>
+        <div class="callout__body">
+          <strong>Cara membaca tutorial</strong>
+          Setiap halaman alur berisi beberapa klip tampilan aplikasi. Angka merah
+          (<span style="display:inline-flex;width:20px;height:20px;border-radius:50%;background:var(--gde-red);color:#fff;font-size:.66rem;font-weight:800;align-items:center;justify-content:center;vertical-align:-4px;">1</span>)
+          menandai langkah; arahkan kursor atau klik angka tersebut untuk melihat penjelasan, dan elemen
+          yang dituju akan tersorot. Tampilan pada klip adalah <em>replika</em> antarmuka SIAGA dengan
+          contoh data, bukan tangkapan layar data produksi.
+        </div>
+      </div>
+
+      <!-- ============ DAFTAR ALUR ============ -->
+      <div class="grid grid--2" style="margin-bottom:26px;">
+
+        <a class="linkcard" href="01-permohonan-bbm.html">
+          <span class="linkcard__num">01</span>
+          <span>
+            <h3>Permohonan BBM</h3>
+            <p>Requester membuat permohonan bahan bakar, Admin GA menyetujui, sistem menerbitkan voucher, driver mengunggah bukti transaksi dan foto odometer.</p>
+            <span class="linkcard__meta">
+              <span class="badge">21 langkah</span>
+              <span class="badge badge--blue">Requester/Driver</span>
+              <span class="badge badge--gray">Admin GA</span>
+            </span>
+            <span class="linkcard__more">Buka tutorial <i class="bi bi-arrow-right-short"></i></span>
+          </span>
+        </a>
+
+        <a class="linkcard" href="02-spd.html">
+          <span class="linkcard__num">02</span>
+          <span>
+            <h3>Pengajuan SPD &amp; LPJ</h3>
+            <p>Membuat surat perjalanan dinas, mengajukan perpanjangan berantai, menyusun laporan pertanggungjawaban, hingga validasi oleh Superadmin.</p>
+            <span class="linkcard__meta">
+              <span class="badge">9 langkah</span>
+              <span class="badge badge--blue">Requester/Driver</span>
+              <span class="badge badge--gray">Superadmin</span>
+            </span>
+            <span class="linkcard__more">Buka tutorial <i class="bi bi-arrow-right-short"></i></span>
+          </span>
+        </a>
+
+        <a class="linkcard" href="03-cetak-surat.html">
+          <span class="linkcard__num">03</span>
+          <span>
+            <h3>Cetak Surat &amp; Laporan</h3>
+            <p>Mencetak surat tugas, mencetak bundel SPD + LPJ beserta lampiran struk, dan memverifikasi QR tanda tangan digital.</p>
+            <span class="linkcard__meta">
+              <span class="badge">6 langkah</span>
+              <span class="badge badge--blue">Semua peran</span>
+            </span>
+            <span class="linkcard__more">Buka tutorial <i class="bi bi-arrow-right-short"></i></span>
+          </span>
+        </a>
+
+        <a class="linkcard" href="04-dispatcher.html">
+          <span class="linkcard__num">04</span>
+          <span>
+            <h3>Dispatcher &amp; Administrasi Kendaraan</h3>
+            <p>Dashboard dispatcher, generate periode pengecekan, penugasan PIC per kendaraan, pemantauan jadwal, dan ekspor checklist.</p>
+            <span class="linkcard__meta">
+              <span class="badge">7 langkah</span>
+              <span class="badge badge--blue">Dispatcher</span>
+            </span>
+            <span class="linkcard__more">Buka tutorial <i class="bi bi-arrow-right-short"></i></span>
+          </span>
+        </a>
+
+        <a class="linkcard" href="05-makan-siang.html">
+          <span class="linkcard__num">05</span>
+          <span>
+            <h3>Booking &amp; Absen Makan Siang</h3>
+            <p>Booking mandiri lokasi makan, absensi QR di kantin, forecast porsi H+1, hingga penguncian distribusi ke vendor katering.</p>
+            <span class="linkcard__meta">
+              <span class="badge">8 langkah</span>
+              <span class="badge badge--blue">Karyawan</span>
+              <span class="badge badge--gray">Admin GA</span>
+            </span>
+            <span class="linkcard__more">Buka tutorial <i class="bi bi-arrow-right-short"></i></span>
+          </span>
+        </a>
+
+        <a class="linkcard" href="06-checking.html">
+          <span class="linkcard__num">06</span>
+          <span>
+            <h3>Routine Checking Kendaraan</h3>
+            <p>Pengecekan harian, mingguan, bulanan, dan body inspection; penandaan item bermasalah; hingga pengajuan penggantian suku cadang.</p>
+            <span class="linkcard__meta">
+              <span class="badge">8 langkah</span>
+              <span class="badge badge--blue">Dispatcher</span>
+            </span>
+            <span class="linkcard__more">Buka tutorial <i class="bi bi-arrow-right-short"></i></span>
+          </span>
+        </a>
+
+      </div>
+
+      <!-- ============ MATRIKS PERAN ============ -->
+      <div class="section-block" id="peran">
+        <h2><span class="num"><i class="bi bi-people"></i></span> Alur mana yang perlu saya ikuti?</h2>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>Peran Anda</th><th>Alur yang perlu diikuti</th><th>Keterangan</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">Requester / Driver</td>
+                <td>1, 2, 3</td>
+                <td>Mengajukan BBM, membuat SPD, melaporkan LPJ, mengunggah bukti transaksi dan odometer.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">General Affairs / Admin</td>
+                <td>1, 3, 4, 5, 6</td>
+                <td>Menyetujui permohonan, mengelola VPR dan jadwal service, mengelola katering.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Dispatcher</td>
+                <td>4, 6</td>
+                <td>Menetapkan PIC, melakukan pengecekan kendaraan, mengekspor checklist.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Superadmin / Manager</td>
+                <td>2, 3</td>
+                <td>Validasi surat tugas dan LPJ, mencetak laporan, memantau dashboard bisnis.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Karyawan umum</td>
+                <td>5</td>
+                <td>Booking dan absensi makan siang (tersedia halaman publik tanpa login).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--tip">
+          <span class="callout__icon"><i class="bi bi-lightbulb"></i></span>
+          <div class="callout__body">
+            <strong>Butuh penjelasan teknis?</strong>
+            Setiap alur di sini bersesuaian dengan use case pada dokumen teknis. Contoh: alur 1 bersesuaian
+            dengan <code>UC-BBM-01</code> sampai <code>UC-BBM-06</code>.
+            <div style="margin-top:10px;"><a class="btn btn--ghost btn--sm" href="../software-documentation/03-model-use-case.html">Lihat katalog use case <i class="bi bi-arrow-right-short"></i></a></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="foot__inner">
+    <p>&copy; <span data-year>2026</span> PT Geo Dipa Energi (Persero) Unit Patuha — Divisi General Affairs.</p>
+    <div class="foot__links">
+      <a href="../index.html">Beranda dokumentasi</a>
+      <a href="01-permohonan-bbm.html">Alur 1 — BBM</a>
+      <a href="../software-documentation/index.html">Software Documentation</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/js/docs.js"></script>
+</body>
+</html>

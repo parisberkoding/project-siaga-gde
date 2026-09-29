@@ -573,7 +573,7 @@
         card.innerHTML = `
             <div class="card-body p-2 d-flex gap-2">
                 <div class="flex-shrink-0">
-                    <img class="mp-preview" alt="Preview" style="max-height:70px; max-width:90px; border-radius:4px; object-fit:cover; background:#f8f9fa;">
+                    <img class="mp-preview" alt="Preview" style="max-height:70px; max-width:90px; border-radius:4px; object-fit:cover; background:#F8FAFC;">
                 </div>
                 <div class="flex-grow-1 small">
                     <span class="badge bg-warning text-dark">${reasonBadge}</span>

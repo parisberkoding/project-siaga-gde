@@ -11,13 +11,13 @@
         margin: 0 auto;
         border-radius: 12px;
         overflow: hidden;
-        border: 2px solid #198754;
+        border: 2px solid #71A62F;
         background: #000;
         transform: scaleX(-1);
     }
     .scan-card {
         border-radius: 16px;
-        border: 1px solid #e9ecef;
+        border: 1px solid #E4E9F0;
         box-shadow: 0 4px 20px rgba(0,0,0,0.06);
     }
     .scan-status {
@@ -31,7 +31,7 @@
     .pulse-ring {
         width: 14px; height: 14px;
         border-radius: 50%;
-        background: #198754;
+        background: #71A62F;
         animation: pulse 1.2s infinite;
         flex-shrink: 0;
     }
@@ -51,10 +51,10 @@
         content: '';
         flex: 1;
         height: 1px;
-        background: #dee2e6;
+        background: #E4E9F0;
     }
     .badge-dispatcher {
-        background: #198754;
+        background: #71A62F;
         color: #fff;
         padding: 4px 12px;
         border-radius: 20px;
@@ -97,14 +97,14 @@
             <div class="card scan-card">
                 <div class="card-body p-4">
                     <div class="text-center mb-3">
-                        <i class="bi bi-qr-code-scan" style="font-size: 2.5rem; color: #198754;"></i>
+                        <i class="bi bi-qr-code-scan" style="font-size: 2.5rem; color: #4A7A1C;"></i>
                         <h5 class="fw-bold mt-2 mb-1">Scan Barcode Kendaraan</h5>
                         <p class="text-muted small mb-0">Scan QR untuk memulai pemeriksaan kendaraan</p>
                     </div>
 
                     <div class="scan-status mb-3" id="scanStatus">
                         <div class="pulse-ring"></div>
-                        <span style="color: #198754;">Memulai kamera...</span>
+                        <span style="color: #4A7A1C;">Memulai kamera...</span>
                     </div>
 
                     <div id="reader"></div>
@@ -142,7 +142,7 @@
     const resultUrl = "{{ route('dispatcher.dispatcher-scanner.result') }}";
     const statusEl  = document.getElementById('scanStatus');
 
-    function setStatus(msg, color = '#198754', showPulse = true) {
+    function setStatus(msg, color = '#71A62F', showPulse = true) {
         statusEl.innerHTML = (showPulse ? '<div class="pulse-ring" style="background:' + color + '"></div>' : '') +
             '<span style="color:' + color + '">' + msg + '</span>';
     }
@@ -165,7 +165,7 @@
             if (scanned) return;
             scanned = true;
 
-            setStatus('QR Code ditemukan! Mengalihkan...', '#198754', true);
+            setStatus('QR Code ditemukan! Mengalihkan...', '#71A62F', true);
 
             html5QrCode.stop().catch(() => {});
 
@@ -176,9 +176,9 @@
             // Diabaikan
         }
     ).then(() => {
-        setStatus('Kamera aktif — scan QR kendaraan untuk memulai pemeriksaan', '#198754', true);
+        setStatus('Kamera aktif — scan QR kendaraan untuk memulai pemeriksaan', '#71A62F', true);
     }).catch((err) => {
-        setStatus('Kamera tidak dapat diakses. Gunakan input manual di bawah.', '#dc3545', false);
+        setStatus('Kamera tidak dapat diakses. Gunakan input manual di bawah.', '#ED1B2F', false);
         console.error('Kamera error:', err);
     });
 })();

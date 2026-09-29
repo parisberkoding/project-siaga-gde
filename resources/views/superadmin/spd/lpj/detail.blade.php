@@ -185,7 +185,7 @@
                                                        target="_blank" title="Klik untuk perbesar">
                                                         <img src="{{ asset('storage/' . $detail->strukItem->path_image) }}"
                                                              alt="{{ $detail->strukItem->item_code }}"
-                                                             style="height: 60px; width: auto; max-width: 120px; object-fit: cover; border: 1px solid #dee2e6; border-radius: 6px; cursor: zoom-in;"
+                                                             style="height: 60px; width: auto; max-width: 120px; object-fit: cover; border: 1px solid #E4E9F0; border-radius: 6px; cursor: zoom-in;"
                                                              onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
                                                         <span class="d-none btn btn-sm btn-outline-primary">
                                                             <i class="bi bi-image"></i> Lihat struk

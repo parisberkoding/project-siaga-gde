@@ -7,22 +7,22 @@
     /* ===== INFO CARDS ===== */
     .info-card { padding-bottom: 10px; transition: transform 0.25s ease, box-shadow 0.25s ease; }
     .info-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(13, 44, 114, 0.12) !important; }
-    .info-card h6 { font-size: 28px; color: #012970; font-weight: 700; margin: 0; padding: 0; }
+    .info-card h6 { font-size: 28px; color: #093D7D; font-weight: 700; margin: 0; padding: 0; }
     .card-icon {
         font-size: 32px; line-height: 0; width: 64px; height: 64px;
         flex-shrink: 0; flex-grow: 0; border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
     }
-    .sales-card .card-icon        { color: #4154f1; background: #f6f6fe; }
-    .revenue-card .card-icon      { color: #2eca6a; background: #e0f8e9; }
-    .customers-card .card-icon    { color: #ff771d; background: #ffecdf; }
-    .transactions-card .card-icon { color: #9747ff; background: #f3e8ff; }
-    .danger-card .card-icon       { color: #dc3545; background: #fbe4e6; }
-    .warning-card .card-icon      { color: #ff771d; background: #ffecdf; }
+    .sales-card .card-icon        { color: #0B50A1; background: #EAF1FA; }
+    .revenue-card .card-icon      { color: #4A7A1C; background: #F2F9E8; }
+    .customers-card .card-icon    { color: #B35B00; background: #ffecdf; }
+    .transactions-card .card-icon { color: #6D28D9; background: #f3e8ff; }
+    .danger-card .card-icon       { color: #C4142A; background: #fbe4e6; }
+    .warning-card .card-icon      { color: #B35B00; background: #ffecdf; }
 
-    .card { border-radius: 10px; }
+    .card { border-radius: var(--gde-r-lg); }
     .card-header { border-radius: 10px 10px 0 0 !important; }
-    .border-dashed { border: 2px dashed #dee2e6; }
+    .border-dashed { border: 2px dashed #E4E9F0; }
 </style>
 
 <div class="pagetitle">

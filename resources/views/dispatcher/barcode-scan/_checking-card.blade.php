@@ -27,7 +27,7 @@
             <span class="ms-2 text-muted" style="font-size:12px;">{{ $detail->checking_detail_code }}</span>
         </div>
         <div class="text-end">
-            <div class="fw-semibold" style="font-size:13px; color:#012970;">
+            <div class="fw-semibold" style="font-size:13px; color:#093D7D;">
                 {{ $detail->checked_at ? $detail->checked_at->translatedFormat('d M Y, H:i') : '—' }}
             </div>
             @if($detail->checked_at)

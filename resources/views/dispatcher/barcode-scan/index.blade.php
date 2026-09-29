@@ -11,13 +11,13 @@
         margin: 0 auto;
         border-radius: 12px;
         overflow: hidden;
-        border: 2px solid #4154f1;
+        border: 2px solid #0B50A1;
         background: #000;
         transform: scaleX(-1); s
     }
     .scan-card {
         border-radius: 16px;
-        border: 1px solid #e9ecef;
+        border: 1px solid #E4E9F0;
         box-shadow: 0 4px 20px rgba(0,0,0,0.06);
     }
     .scan-status {
@@ -31,7 +31,7 @@
     .pulse-ring {
         width: 14px; height: 14px;
         border-radius: 50%;
-        background: #4154f1;
+        background: #0B50A1;
         animation: pulse 1.2s infinite;
         flex-shrink: 0;
     }
@@ -51,7 +51,7 @@
         content: '';
         flex: 1;
         height: 1px;
-        background: #dee2e6;
+        background: #E4E9F0;
     }
 </style>
 
@@ -87,7 +87,7 @@
             <div class="card scan-card">
                 <div class="card-body p-4">
                     <div class="text-center mb-3">
-                        <i class="bi bi-qr-code-scan" style="font-size: 2.5rem; color: #4154f1;"></i>
+                        <i class="bi bi-qr-code-scan" style="font-size: 2.5rem; color: #0B50A1;"></i>
                         <h5 class="fw-bold mt-2 mb-1">Arahkan Kamera ke QR Code</h5>
                         <p class="text-muted small mb-0">Posisikan QR code kendaraan di dalam kotak panduan</p>
                     </div>
@@ -135,7 +135,7 @@
     const resultUrl = "{{ route('dispatcher.scan-vehicle.result') }}";
     const statusEl  = document.getElementById('scanStatus');
 
-    function setStatus(msg, color = '#4154f1', showPulse = true) {
+    function setStatus(msg, color = '#0B50A1', showPulse = true) {
         statusEl.innerHTML = (showPulse ? '<div class="pulse-ring" style="background:' + color + '"></div>' : '') +
             '<span style="color:' + color + '">' + msg + '</span>';
     }
@@ -158,7 +158,7 @@
             if (scanned) return;
             scanned = true;
 
-            setStatus('QR Code ditemukan! Mengalihkan...', '#198754', true);
+            setStatus('QR Code ditemukan! Mengalihkan...', '#71A62F', true);
 
             html5QrCode.stop().catch(() => {});
 
@@ -170,9 +170,9 @@
             // Diabaikan — error scan per-frame adalah hal normal
         }
     ).then(() => {
-        setStatus('Kamera aktif — arahkan ke QR code kendaraan', '#4154f1', true);
+        setStatus('Kamera aktif — arahkan ke QR code kendaraan', '#0B50A1', true);
     }).catch((err) => {
-        setStatus('Kamera tidak dapat diakses. Gunakan input manual di bawah.', '#dc3545', false);
+        setStatus('Kamera tidak dapat diakses. Gunakan input manual di bawah.', '#ED1B2F', false);
         console.error('Kamera error:', err);
     });
 })();

@@ -290,15 +290,15 @@
 <style>
 .role-card {
     display: block;
-    border: 2px solid #dee2e6;
+    border: 2px solid #E4E9F0;
     border-radius: 10px;
     cursor: pointer;
     transition: all 0.2s ease;
     background: #fff;
     margin: 0;
 }
-.role-card:hover { border-color: #4154f1; background: #f8f9ff; }
-.role-card.selected, .role-card input:checked ~ div { border-color: #4154f1; background: #f0f2ff; }
+.role-card:hover { border-color: #0B50A1; background: #f8f9ff; }
+.role-card.selected, .role-card input:checked ~ div { border-color: #0B50A1; background: #f0f2ff; }
 .role-card input[type="radio"] { display: none; }
 </style>
 

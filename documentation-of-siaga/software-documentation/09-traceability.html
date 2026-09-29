@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bagian 9: Traceability Matrix &amp; Matriks RBAC — SIAGA</title>
+<meta name="description" content="Matriks ketertelusuran SIAGA dari tujuan bisnis, use case, aturan bisnis, decision table, test case, hingga bukti, dilengkapi matriks RBAC dan penjelasan middleware.">
+<link rel="icon" href="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="../assets/css/docs.css">
+</head>
+<body data-base="../">
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <button class="icon-btn btn-menu" id="docMenuBtn" aria-label="Buka navigasi" aria-expanded="false"><i class="bi bi-list"></i></button>
+    <a class="brand" href="../index.html">
+      <img class="brand__logo" src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="Logo Geo Dipa Energi">
+      <span>
+        <span class="brand__name">SIAGA</span>
+        <span class="brand__sub">Sistem Informasi Administrasi General Affairs</span>
+      </span>
+    </a>
+    <span class="brand__divider"></span>
+    <span class="brand__doc">Software Documentation</span>
+    <div class="topbar__spacer"></div>
+    <div class="searchbox">
+      <i class="bi bi-search"></i>
+      <input type="search" id="docSearch" placeholder="Cari halaman…  ( / )" aria-label="Cari halaman dokumentasi">
+      <div class="search-results" id="docSearchResults"></div>
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" data-print title="Cetak / simpan PDF"><i class="bi bi-printer"></i></button>
+      <a class="icon-btn" href="../index.html" title="Kembali ke beranda dokumentasi"><i class="bi bi-house"></i></a>
+    </div>
+  </div>
+</header>
+
+<div class="scrim" id="docScrim"></div>
+
+<main class="shell">
+  <aside class="sidebar" id="docSidebar">
+    <p class="sidebar__label">Software Documentation</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="index.html"><span class="nav-link__num">&#9679;</span><span class="nav-link__txt">Ikhtisar &amp; daftar isi</span></a></li>
+      <li><a class="nav-link" href="01-ruang-lingkup.html"><span class="nav-link__num">1</span><span class="nav-link__txt">Ruang lingkup &amp; visi produk</span></a></li>
+      <li><a class="nav-link" href="02-arsitektur-teknologi.html"><span class="nav-link__num">2</span><span class="nav-link__txt">Arsitektur &amp; teknologi</span></a></li>
+      <li><a class="nav-link" href="03-model-use-case.html"><span class="nav-link__num">3</span><span class="nav-link__txt">Model use case</span></a></li>
+      <li><a class="nav-link" href="04-spesifikasi-use-case.html"><span class="nav-link__num">4</span><span class="nav-link__txt">Spesifikasi use case</span></a></li>
+      <li><a class="nav-link" href="05-desain-perilaku.html"><span class="nav-link__num">5</span><span class="nav-link__txt">Desain perilaku</span><span class="nav-badge">Activity · Sequence</span></a></li>
+      <li><a class="nav-link" href="06-desain-struktur.html"><span class="nav-link__num">6</span><span class="nav-link__txt">Desain struktur</span><span class="nav-badge">Class · ERD</span></a></li>
+      <li><a class="nav-link" href="07-validasi-logika.html"><span class="nav-link__num">7</span><span class="nav-link__txt">Validasi logika</span></a></li>
+      <li><a class="nav-link" href="08-pengujian.html"><span class="nav-link__num">8</span><span class="nav-link__txt">Pengujian &amp; test case</span></a></li>
+      <li><a class="nav-link is-active" href="09-traceability.html"><span class="nav-link__num">9</span><span class="nav-link__txt">Traceability &amp; RBAC</span></a></li>
+      <li><a class="nav-link" href="10-glosarium.html"><span class="nav-link__num">10</span><span class="nav-link__txt">Glosarium</span></a></li>
+      <li><a class="nav-link" href="11-plantuml-changelog.html"><span class="nav-link__num">11</span><span class="nav-link__txt">PlantUML &amp; changelog</span></a></li>
+    </ul>
+
+    <p class="sidebar__label">Dokumen lain</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="../alur-tutorial/index.html"><i class="bi bi-signpost-split"></i><span class="nav-link__txt">Alur Tutorial</span></a></li>
+      <li><a class="nav-link" href="../index.html"><i class="bi bi-house"></i><span class="nav-link__txt">Beranda dokumentasi</span></a></li>
+    </ul>
+  </aside>
+
+  <div class="content">
+    <div class="wrap">
+      <nav>
+        <ol class="crumbs">
+          <li><a href="../index.html">Documentation</a></li>
+          <li>Software Documentation</li>
+          <li>Bagian 9</li>
+        </ol>
+      </nav>
+
+      <div class="page-head">
+        <span class="eyebrow"><span class="dot"></span> Bagian 9</span>
+        <h2>Traceability Matrix &amp; Matriks RBAC</h2>
+        <p class="lead">
+          Bagian ini mengikat setiap artefak dokumen menjadi satu rantai yang dapat ditelusuri dua arah:
+          dari tujuan bisnis sampai bukti pengujian, dan sebaliknya dari setiap test case kembali ke aturan bisnis
+          yang melandasi serta peran yang berhak menjalankannya.
+        </p>
+      </div>
+
+      <!-- ================= PRINSIP ================= -->
+      <div class="section-block" id="prinsip">
+        <h2><span class="num"><i class="bi bi-link-45deg"></i></span> Mengapa ketertelusuran penting</h2>
+
+        <p>
+          Model use case, aturan bisnis, decision table, dan test case pada bagian-bagian sebelumnya masih berupa
+          artefak terpisah. Traceability matrix menghubungkannya sehingga setiap perubahan requirement dapat
+          diukur dampaknya, dan setiap hasil pengujian dapat dipertanggungjawabkan asalnya.
+        </p>
+
+        <div class="grid grid--3">
+          <div class="card card--soft">
+            <div class="card__head">
+              <span class="icon-sq icon-sq--blue"><i class="bi bi-clipboard-check"></i></span>
+              <div><h3>Audit internal</h3><p>General Affairs &amp; auditor dapat membuktikan bahwa tiap kebijakan tertulis benar-benar dijalankan kode dan diuji.</p></div>
+            </div>
+          </div>
+          <div class="card card--soft">
+            <div class="card__head">
+              <span class="icon-sq icon-sq--yellow"><i class="bi bi-arrow-repeat"></i></span>
+              <div><h3>Perubahan requirement</h3><p>Dampak satu perubahan terlihat langsung: use case mana, aturan mana, dan test case mana yang wajib diperbarui.</p></div>
+            </div>
+          </div>
+          <div class="card card--soft">
+            <div class="card__head">
+              <span class="icon-sq icon-sq--red"><i class="bi bi-clipboard2-data"></i></span>
+              <div><h3>Bukti pengujian</h3><p>Setiap status cakupan dapat dilacak ke test case dan bukti pelaksanaannya, bukan sekadar klaim lulus.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <figure>
+          <div class="fig fig--tint">
+<pre class="mermaid">
+flowchart LR
+    subgraph S1[Tujuan Bisnis]
+        direction TB
+        N1[Pengendalian kuota &amp; biaya BBM]
+        N2[Ketepatan porsi katering]
+        N3[Kepatuhan perjalanan dinas]
+        N4[Kesiapan &amp; keamanan armada]
+    end
+    subgraph S2[Use Case]
+        direction TB
+        N5[UC-BBM-01 s.d. UC-BBM-06]
+        N6[UC-LNC-01 s.d. UC-LNC-09]
+        N7[UC-SPD-01 s.d. UC-LPJ-02]
+        N8[UC-CHK-01 s.d. UC-VPR-04]
+    end
+    subgraph S3[Spesifikasi]
+        direction TB
+        N9[Bagian 4 - alur utama, alternatif, pengecualian]
+    end
+    subgraph S4[Diagram]
+        direction TB
+        N10[Activity - Bagian 5]
+        N11[Sequence - Bagian 5]
+        N12[Class - Bagian 6]
+        N13[ERD - Bagian 6]
+    end
+    subgraph S5[Aturan Bisnis]
+        direction TB
+        N14[BR-BBM / BR-SPD / BR-LPJ]
+        N15[BR-CHK / BR-VPR / BR-LNC]
+        N16[BR-EFF / BR-MST / BR-RBAC]
+    end
+    subgraph S6[Decision Table]
+        direction TB
+        N17[DT-01 s.d. DT-12 - Bagian 7]
+    end
+    subgraph S7[Test Case]
+        direction TB
+        N18[TC-MODUL-nn - Bagian 8]
+    end
+    subgraph S8[Bukti]
+        direction TB
+        N19[Laporan uji, tangkapan layar, log audit]
+    end
+
+    N1 --> N5
+    N1 --> N8
+    N2 --> N6
+    N3 --> N7
+    N4 --> N8
+    N5 --> N9
+    N6 --> N9
+    N7 --> N9
+    N8 --> N9
+    N9 --> N10
+    N9 --> N11
+    N9 --> N12
+    N9 --> N13
+    N10 --> N14
+    N10 --> N15
+    N11 --> N16
+    N12 --> N14
+    N13 --> N16
+    N14 --> N17
+    N15 --> N17
+    N16 --> N17
+    N17 --> N18
+    N18 --> N19
+
+    classDef goal fill:#EAF1FA,stroke:#0B50A1,stroke-width:1.5px,color:#0B50A1
+    classDef uc fill:#F2F9E8,stroke:#8DC63F,stroke-width:1.5px,color:#3F6120
+    classDef proof fill:#FFFDE8,stroke:#D8CE3A,stroke-width:1.5px,color:#7A6A00
+    class N1,N2,N3,N4 goal
+    class N5,N6,N7,N8 uc
+    class N19 proof
+</pre>
+          </div>
+          <figcaption><b>Gambar 9.1</b> — Alur ketertelusuran artefak SIAGA: tujuan bisnis &rarr; use case &rarr; spesifikasi &rarr; diagram &rarr; aturan bisnis &rarr; decision table &rarr; test case &rarr; bukti.</figcaption>
+        </figure>
+
+        <div class="callout callout--info">
+          <span class="callout__icon"><i class="bi bi-info-circle"></i></span>
+          <div class="callout__body">
+            <strong>Arah pembacaan matriks</strong>
+            Baris dibaca dari kiri ke kanan untuk membuktikan sebuah use case benar-benar diuji, dan dari kanan ke kiri
+            untuk membuktikan sebuah test case tidak menguji perilaku yang tidak diminta.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= MATRIKS UC ================= -->
+      <div class="section-block" id="matriks-uc">
+        <h2><span class="num"><i class="bi bi-table"></i></span> Matriks traceability use case</h2>
+
+        <p>
+          Matriks berikut memuat seluruh <b>45 use case kanonik</b> dari katalog Bagian 3, dikelompokkan per modul agar tetap
+          terbaca. Kolom <em>Aturan Bisnis</em> memakai prefiks <code>BR-&lt;MODUL&gt;-&lt;nn&gt;</code> dan kolom
+          <em>Decision Table</em> memakai <code>DT-&lt;nn&gt;</code>.
+        </p>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Usulan</strong>
+            Kolom <em>Aturan Bisnis</em>, <em>Decision Table</em>, dan <em>Test Case</em> pada tabel-tabel di bawah
+            adalah pemetaan usulan yang diturunkan dari <code>PRD.md</code> dan <code>DOKUMENTASI_PROJECT.md</code>.
+            Nomor final menunggu penutupan Bagian 7 (decision table) dan Bagian 8 (test case); status
+            <span class="badge badge--yellow">Sebagian</span> menandai baris yang belum punya rujukan lengkap.
+          </div>
+        </div>
+
+        <h3>Modul BBM — permohonan bahan bakar</h3>
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <thead>
+              <tr><th>Kode UC</th><th>Nama Use Case</th><th>Modul/PRD</th><th>Aturan Bisnis</th><th>Diagram terkait</th><th>Decision Table</th><th>Test Case</th><th>Status cakupan</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">UC-BBM-01</td><td>Mengajukan Permohonan BBM</td><td>BBM · PRD 4.1</td>
+                <td><code>BR-BBM-01</code>, <code>BR-BBM-02</code>, <code>BR-BBM-05</code></td>
+                <td>Activity, Sequence</td><td><code>DT-01</code></td><td><code>TC-BBM-01</code>–<code>04</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-BBM-02</td><td>Meninjau &amp; Menyetujui Permohonan</td><td>BBM · PRD 4.1</td>
+                <td><code>BR-BBM-01</code>, <code>BR-BBM-02</code></td>
+                <td>Activity, Sequence</td><td><code>DT-01</code></td><td><code>TC-BBM-05</code>–<code>08</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-BBM-03</td><td>Melakukan Persetujuan Massal</td><td>BBM · PRD 4.1</td>
+                <td><code>BR-BBM-01</code></td>
+                <td>Sequence</td><td><code>DT-01</code></td><td><code>TC-BBM-09</code></td>
+                <td><span class="badge badge--yellow">Sebagian</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-BBM-04</td><td>Menerbitkan Voucher BBM</td><td>BBM · PRD 4.1</td>
+                <td><code>BR-BBM-03</code></td>
+                <td>Activity, Class</td><td><code>DT-02</code></td><td><code>TC-BBM-10</code>–<code>12</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-BBM-05</td><td>Mengunggah Bukti Transaksi &amp; Odometer</td><td>BBM · PRD 4.1</td>
+                <td><code>BR-BBM-04</code>, <code>BR-SYS-01</code></td>
+                <td>Activity, Sequence</td><td><code>DT-02</code>, <code>DT-03</code></td><td><code>TC-BBM-13</code>–<code>15</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-BBM-06</td><td>Mencetak Laporan BBM</td><td>BBM · PRD 4.1</td>
+                <td><code>BR-BBM-06</code></td>
+                <td>Class, ERD</td><td><code>DT-03</code></td><td><code>TC-BBM-16</code></td>
+                <td><span class="badge badge--yellow">Sebagian</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Modul SPD &amp; LPJ — perjalanan dinas</h3>
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <thead>
+              <tr><th>Kode UC</th><th>Nama Use Case</th><th>Modul/PRD</th><th>Aturan Bisnis</th><th>Diagram terkait</th><th>Decision Table</th><th>Test Case</th><th>Status cakupan</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">UC-SPD-01</td><td>Membuat Surat Perjalanan Dinas</td><td>SPD · PRD 4.2</td>
+                <td><code>BR-SPD-01</code>, <code>BR-SPD-02</code></td>
+                <td>Activity, Sequence</td><td><code>DT-04</code></td><td><code>TC-SPD-01</code>–<code>03</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-SPD-02</td><td>Melihat Daftar &amp; Detail Surat Tugas</td><td>SPD · PRD 4.2</td>
+                <td><code>BR-SPD-01</code></td>
+                <td>Class, ERD</td><td>—</td><td><code>TC-SPD-04</code></td>
+                <td><span class="badge badge--yellow">Sebagian</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-SPD-03</td><td>Mengajukan Perpanjangan Perjalanan (ETD)</td><td>SPD · PRD 4.2</td>
+                <td><code>BR-SPD-03</code></td>
+                <td>Activity, Sequence</td><td><code>DT-05</code></td><td><code>TC-SPD-05</code>–<code>06</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-SPD-04</td><td>Memvalidasi Surat Tugas</td><td>SPD · PRD 4.2</td>
+                <td><code>BR-SPD-01</code>, <code>BR-SPD-05</code></td>
+                <td>Sequence</td><td><code>DT-04</code></td><td><code>TC-SPD-07</code></td>
+                <td><span class="badge badge--yellow">Sebagian</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-SPD-05</td><td>Mencetak Surat Tugas &amp; Bundel PDF</td><td>SPD · PRD 4.2</td>
+                <td><code>BR-SPD-04</code>, <code>BR-SPD-05</code></td>
+                <td>Activity, Class</td><td><code>DT-04</code></td><td><code>TC-SPD-08</code>–<code>09</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-LPJ-01</td><td>Membuat Laporan Pertanggungjawaban</td><td>LPJ · PRD 4.2</td>
+                <td><code>BR-LPJ-01</code>, <code>BR-LPJ-02</code>, <code>BR-LPJ-03</code></td>
+                <td>Activity, Sequence</td><td><code>DT-06</code></td><td><code>TC-LPJ-01</code>–<code>04</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-LPJ-02</td><td>Memvalidasi Laporan Pertanggungjawaban</td><td>LPJ · PRD 4.2</td>
+                <td><code>BR-LPJ-01</code>, <code>BR-LPJ-02</code></td>
+                <td>Activity</td><td><code>DT-06</code></td><td><code>TC-LPJ-05</code>–<code>07</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Modul pengecekan kendaraan &amp; VPR</h3>
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <thead>
+              <tr><th>Kode UC</th><th>Nama Use Case</th><th>Modul/PRD</th><th>Aturan Bisnis</th><th>Diagram terkait</th><th>Decision Table</th><th>Test Case</th><th>Status cakupan</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">UC-CHK-01</td><td>Melakukan Pengecekan Harian</td><td>CHK · PRD 4.3</td>
+                <td><code>BR-CHK-01</code>, <code>BR-CHK-03</code></td>
+                <td>Activity, Sequence</td><td><code>DT-07</code></td><td><code>TC-CHK-01</code>–<code>02</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-CHK-02</td><td>Melakukan Pengecekan Mingguan</td><td>CHK · PRD 4.3</td>
+                <td><code>BR-CHK-01</code>, <code>BR-CHK-03</code></td>
+                <td>Activity</td><td><code>DT-07</code></td><td><code>TC-CHK-03</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-CHK-03</td><td>Melakukan Pengecekan Bulanan</td><td>CHK · PRD 4.3</td>
+                <td><code>BR-CHK-01</code>, <code>BR-CHK-03</code></td>
+                <td>Activity</td><td><code>DT-07</code></td><td><code>TC-CHK-04</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-CHK-04</td><td>Melakukan Body Inspection</td><td>CHK · PRD 4.3</td>
+                <td><code>BR-CHK-02</code>, <code>BR-SYS-01</code></td>
+                <td>Activity, Class</td><td><code>DT-08</code></td><td><code>TC-CHK-05</code>–<code>07</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-CHK-05</td><td>Menetapkan PIC &amp; Jadwal Pengecekan</td><td>CHK · PRD 4.3</td>
+                <td><code>BR-CHK-03</code></td>
+                <td>Sequence, ERD</td><td><code>DT-07</code></td><td><code>TC-CHK-08</code></td>
+                <td><span class="badge badge--yellow">Sebagian</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-CHK-06</td><td>Mengonfirmasi Hasil Pengecekan</td><td>CHK · PRD 4.3</td>
+                <td><code>BR-CHK-01</code></td>
+                <td>Sequence</td><td><code>DT-07</code></td><td><code>TC-CHK-09</code></td>
+                <td><span class="badge badge--yellow">Sebagian</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-CHK-07</td><td>Memindai QR Riwayat Kesehatan Kendaraan</td><td>CHK · PRD 4.3</td>
+                <td><code>BR-CHK-04</code></td>
+                <td>Activity</td><td>—</td><td><code>TC-CHK-10</code></td>
+                <td><span class="badge badge--yellow">Sebagian</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-VPR-01</td><td>Mengajukan Penggantian Suku Cadang</td><td>VPR · PRD 4.4</td>
+                <td><code>BR-VPR-01</code></td>
+                <td>Activity, Sequence</td><td><code>DT-09</code></td><td><code>TC-VPR-01</code>–<code>02</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-VPR-02</td><td>Menyetujui &amp; Menjadwalkan Service</td><td>VPR · PRD 4.4</td>
+                <td><code>BR-VPR-02</code>, <code>BR-SYS-02</code></td>
+                <td>Activity</td><td><code>DT-09</code></td><td><code>TC-VPR-03</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-VPR-03</td><td>Mencatat Realisasi Service</td><td>VPR · PRD 4.4</td>
+                <td><code>BR-VPR-03</code>, <code>BR-SYS-01</code></td>
+                <td>Activity, Sequence</td><td><code>DT-09</code></td><td><code>TC-VPR-04</code>–<code>05</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-VPR-04</td><td>Memonitor Transaksi Perbaikan</td><td>VPR · PRD 4.4</td>
+                <td><code>BR-VPR-02</code></td>
+                <td>Class, ERD</td><td><code>DT-09</code></td><td><code>TC-VPR-06</code></td>
+                <td><span class="badge badge--yellow">Sebagian</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Modul lunch management</h3>
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <thead>
+              <tr><th>Kode UC</th><th>Nama Use Case</th><th>Modul/PRD</th><th>Aturan Bisnis</th><th>Diagram terkait</th><th>Decision Table</th><th>Test Case</th><th>Status cakupan</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">UC-LNC-01</td><td>Mengelola Master Pekerja &amp; Alias</td><td>LNC · PRD 4.5</td>
+                <td><code>BR-LNC-05</code></td>
+                <td>Class, ERD</td><td>—</td><td><code>TC-LNC-01</code>–<code>02</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-LNC-02</td><td>Menghasilkan Forecast Porsi H+1</td><td>LNC · PRD 4.5</td>
+                <td><code>BR-LNC-01</code>, <code>BR-LNC-05</code></td>
+                <td>Activity, Sequence</td><td><code>DT-10</code></td><td><code>TC-LNC-03</code>–<code>05</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-LNC-03</td><td>Melakukan Override Manual Lokasi Makan</td><td>LNC · PRD 4.5</td>
+                <td><code>BR-LNC-01</code></td>
+                <td>Activity</td><td><code>DT-10</code></td><td><code>TC-LNC-06</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-LNC-04</td><td>Mengunci &amp; Mendistribusikan Porsi ke Vendor</td><td>LNC · PRD 4.5</td>
+                <td><code>BR-LNC-02</code></td>
+                <td>Activity, Sequence</td><td><code>DT-10</code></td><td><code>TC-LNC-07</code>–<code>08</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-LNC-05</td><td>Melakukan Absensi Makan Siang</td><td>LNC · PRD 4.5</td>
+                <td><code>BR-LNC-04</code>, <code>BR-LNC-05</code></td>
+                <td>Activity, Sequence</td><td><code>DT-11</code></td><td><code>TC-LNC-09</code>–<code>11</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-LNC-06</td><td>Melakukan Booking Mandiri Lokasi Makan</td><td>LNC · PRD 4.5</td>
+                <td><code>BR-LNC-01</code></td>
+                <td>Sequence</td><td><code>DT-11</code></td><td><code>TC-LNC-12</code></td>
+                <td><span class="badge badge--yellow">Sebagian</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-LNC-07</td><td>Mereservasi Makan Siang Tamu</td><td>LNC · PRD 4.5</td>
+                <td><code>BR-LNC-03</code></td>
+                <td>Activity</td><td><code>DT-11</code></td><td><code>TC-LNC-13</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-LNC-08</td><td>Melihat Dashboard Vendor</td><td>LNC · PRD 4.5</td>
+                <td><code>BR-LNC-02</code>, <code>BR-RBAC-02</code></td>
+                <td>Class, ERD</td><td>—</td><td><code>TC-LNC-14</code></td>
+                <td><span class="badge badge--yellow">Sebagian</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-LNC-09</td><td>Melihat Analitik Katering</td><td>LNC · PRD 4.5</td>
+                <td><code>BR-LNC-02</code></td>
+                <td>Class</td><td>—</td><td><code>TC-LNC-15</code></td>
+                <td><span class="badge badge--gray">Rencana</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Modul analisis efisiensi, AI, master data, RBAC, dan use case bersama</h3>
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <thead>
+              <tr><th>Kode UC</th><th>Nama Use Case</th><th>Modul/PRD</th><th>Aturan Bisnis</th><th>Diagram terkait</th><th>Decision Table</th><th>Test Case</th><th>Status cakupan</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">UC-EFF-01</td><td>Menghitung Ulang Metrik Efisiensi Trip</td><td>EFF · PRD 4.6</td>
+                <td><code>BR-EFF-01</code>, <code>BR-EFF-02</code></td>
+                <td>Activity, Sequence</td><td><code>DT-12</code></td><td><code>TC-EFF-01</code>–<code>02</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-EFF-02</td><td>Memvalidasi Hasil Analisis Trip</td><td>EFF · PRD 4.6</td>
+                <td><code>BR-EFF-02</code></td>
+                <td>Activity</td><td><code>DT-12</code></td><td><code>TC-EFF-03</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-EFF-03</td><td>Mengelola Baseline Konsumsi BBM</td><td>EFF · PRD 4.6</td>
+                <td><code>BR-EFF-03</code></td>
+                <td>Class, ERD</td><td><code>DT-12</code></td><td><code>TC-EFF-04</code></td>
+                <td><span class="badge badge--yellow">Sebagian</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-AI-01</td><td>Mengobrol dengan Asisten Gaga</td><td>AI · PRD 4.7</td>
+                <td><code>BR-AI-01</code>, <code>BR-AI-02</code></td>
+                <td>Sequence</td><td>—</td><td><code>TC-AI-01</code>–<code>02</code></td>
+                <td><span class="badge badge--yellow">Sebagian</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-AI-02</td><td>Mengelola Sesi Percakapan AI</td><td>AI · PRD 4.7</td>
+                <td><code>BR-AI-02</code></td>
+                <td>Class, ERD</td><td>—</td><td><code>TC-AI-03</code></td>
+                <td><span class="badge badge--gray">Rencana</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-MST-01</td><td>Mengelola Unit Bisnis</td><td>MST · PRD 4.8</td>
+                <td><code>BR-MST-01</code>, <code>BR-MST-02</code></td>
+                <td>Class, ERD</td><td><code>DT-07</code></td><td><code>TC-MST-01</code>–<code>02</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-MST-02</td><td>Mengelola Site / Lokasi</td><td>MST · PRD 4.8</td>
+                <td><code>BR-MST-01</code>, <code>BR-MST-02</code>, <code>BR-MST-03</code></td>
+                <td>Class, ERD</td><td><code>DT-07</code></td><td><code>TC-MST-03</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-MST-03</td><td>Mengelola Master Kendaraan &amp; Alat</td><td>MST · PRD 4.8</td>
+                <td><code>BR-MST-02</code>, <code>BR-MST-03</code></td>
+                <td>Class, ERD</td><td><code>DT-07</code></td><td><code>TC-MST-04</code>–<code>05</code></td>
+                <td><span class="badge badge--yellow">Sebagian</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-RBAC-01</td><td>Mengelola Pengguna</td><td>RBAC · PRD 2</td>
+                <td><code>BR-RBAC-01</code>, <code>BR-RBAC-02</code></td>
+                <td>Sequence, Class</td><td>—</td><td><code>TC-RBAC-01</code>–<code>02</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-RBAC-02</td><td>Mengelola Role &amp; Permission</td><td>RBAC · PRD 2</td>
+                <td><code>BR-RBAC-01</code>, <code>BR-RBAC-02</code></td>
+                <td>Class, ERD</td><td>—</td><td><code>TC-RBAC-03</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-RBAC-03</td><td>Mengelola Harga BBM (Master Gasoline)</td><td>RBAC · PRD 4.1</td>
+                <td><code>BR-BBM-06</code></td>
+                <td>Class, ERD</td><td>—</td><td><code>TC-RBAC-04</code></td>
+                <td><span class="badge badge--yellow">Sebagian</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-RBAC-04</td><td>Melihat Log Aktivitas</td><td>RBAC · PRD 2</td>
+                <td><code>BR-RBAC-02</code></td>
+                <td>Class</td><td>—</td><td><code>TC-RBAC-05</code></td>
+                <td><span class="badge badge--gray">Rencana</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-SYS-01</td><td>Autentikasi Pengguna</td><td>SYS · PRD 2</td>
+                <td><code>BR-RBAC-02</code></td>
+                <td>Sequence</td><td>—</td><td><code>TC-SYS-01</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-SYS-02</td><td>Memeriksa Hak Akses (RBAC)</td><td>SYS · PRD 2</td>
+                <td><code>BR-RBAC-01</code>, <code>BR-RBAC-02</code></td>
+                <td>Sequence</td><td>—</td><td><code>TC-SYS-02</code>–<code>03</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-SYS-03</td><td>Menyimpan Berkas Terproteksi</td><td>SYS · PRD 5.1</td>
+                <td><code>BR-SYS-01</code></td>
+                <td>Sequence, Class</td><td>—</td><td><code>TC-SYS-04</code></td>
+                <td><span class="badge badge--solid">Lengkap</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-SYS-04</td><td>Mengirim Notifikasi</td><td>SYS · PRD 4.4</td>
+                <td><code>BR-SYS-02</code></td>
+                <td>Sequence</td><td>—</td><td><code>TC-SYS-05</code></td>
+                <td><span class="badge badge--gray">Rencana</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p style="font-size:.83rem;color:var(--muted);">
+          Rekapitulasi: <b>49 kode use case</b> tercatat — terdiri atas 45 use case modul dan 4 use case bersama
+          (<code>UC-SYS-01</code> s.d. <code>UC-SYS-04</code>). Dari jumlah tersebut, <b>31</b> berstatus lengkap,
+          <b>14</b> sebagian, dan <b>4</b> masih rencana. Seluruh kode dan nama use case mengikuti katalog kanonik
+          Bagian 3 tanpa perubahan.
+        </p>
+      </div>
+
+      <!-- ================= MATRIKS TUJUAN ================= -->
+      <div class="section-block" id="matriks-tujuan">
+        <h2><span class="num"><i class="bi bi-bullseye"></i></span> Tujuan bisnis &rarr; use case pendukung</h2>
+
+        <p>
+          Tabel ini menutup rantai dari sisi hulu: setiap tujuan bisnis Divisi General Affairs harus memiliki
+          use case yang mewujudkannya, dan setiap tujuan harus punya indikator keberhasilan yang dapat diukur.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>Tujuan</th><th>Use case pendukung</th><th>Indikator keberhasilan</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">Pengendalian kuota BBM</td>
+                <td><code>UC-BBM-01</code>, <code>UC-BBM-02</code>, <code>UC-BBM-03</code>, <code>UC-BBM-04</code>, <code>UC-RBAC-03</code></td>
+                <td>Jumlah permohonan melebihi kapasitas tangki yang lolos persetujuan = 0; setiap penyesuaian nominal tercatat pada <em>authorizer notes</em>.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Ketepatan porsi katering</td>
+                <td><code>UC-LNC-01</code>, <code>UC-LNC-02</code>, <code>UC-LNC-03</code>, <code>UC-LNC-04</code>, <code>UC-LNC-07</code></td>
+                <td>Selisih porsi terkunci terhadap realisasi absensi dalam ambang toleransi; vendor menerima rekap final sebelum jam penyajian.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Kepatuhan pelaporan perjalanan dinas</td>
+                <td><code>UC-SPD-01</code>, <code>UC-SPD-03</code>, <code>UC-SPD-04</code>, <code>UC-LPJ-01</code>, <code>UC-LPJ-02</code></td>
+                <td>Persentase LPJ yang diunggah sebelum <code>lpj_deadline</code> meningkat; jumlah status <code>is_late</code> dan <code>is_over_budget</code> terpantau per unit.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Kesiapan &amp; keamanan armada</td>
+                <td><code>UC-CHK-01</code>, <code>UC-CHK-02</code>, <code>UC-CHK-03</code>, <code>UC-CHK-04</code>, <code>UC-CHK-05</code>, <code>UC-CHK-07</code>, <code>UC-VPR-01</code>, <code>UC-VPR-02</code>, <code>UC-VPR-03</code></td>
+                <td>Tidak ada jadwal pengecekan berstatus <em>Overdue</em> tanpa tindak lanjut; temuan NG terkonversi menjadi VPR pada periode yang sama.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Efisiensi biaya BBM</td>
+                <td><code>UC-EFF-01</code>, <code>UC-EFF-02</code>, <code>UC-EFF-03</code>, <code>UC-BBM-05</code></td>
+                <td>Trip berkategori <em>suspicious</em> dan indikator <em>premature refueling</em> ditinjau superadmin; baseline per jenis kendaraan tervalidasi.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Transparansi &amp; audit akses</td>
+                <td><code>UC-SYS-01</code>, <code>UC-SYS-02</code>, <code>UC-RBAC-01</code>, <code>UC-RBAC-02</code>, <code>UC-RBAC-04</code></td>
+                <td>Setiap perubahan role &amp; permission tercatat di log aktivitas; tidak ada akses modul di luar matriks RBAC.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Kelayakan data master</td>
+                <td><code>UC-MST-01</code>, <code>UC-MST-02</code>, <code>UC-MST-03</code>, <code>UC-LNC-01</code></td>
+                <td>Tidak ada site tanpa unit bisnis; penghapusan unit/site yang masih memiliki relasi ditolak sistem.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================= RBAC ================= -->
+      <div class="section-block" id="rbac">
+        <h2><span class="num"><i class="bi bi-shield-lock"></i></span> Matriks RBAC</h2>
+
+        <p>
+          SIAGA memakai <em>permission group</em> sebagai satuan izin terkecil yang diberikan ke peran. Matriks berikut
+          merangkum tingkat akses tiap kelompok izin terhadap tujuh peran pengguna yang didefinisikan pada PRD Bagian 2.
+        </p>
+
+        <div class="grid grid--4" style="margin-bottom:22px;">
+          <div class="kpi"><div class="kpi__label">Tingkat akses</div><div class="kpi__value">4</div><div class="kpi__hint">Penuh · Kelola · Baca · —</div></div>
+          <div class="kpi"><div class="kpi__label">Permission group</div><div class="kpi__value kpi__value--green">8</div><div class="kpi__hint">Dashboard s.d. Settings</div></div>
+          <div class="kpi"><div class="kpi__label">Peran</div><div class="kpi__value">7</div><div class="kpi__hint">Termasuk Vendor</div></div>
+          <div class="kpi"><div class="kpi__label">Middleware</div><div class="kpi__value kpi__value--red">2</div><div class="kpi__hint">CheckPermission + checkrole</div></div>
+        </div>
+
+        <h3>Kelompok izin &times; peran</h3>
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <thead>
+              <tr>
+                <th>Permission Group</th>
+                <th>Superadmin</th>
+                <th>General Affairs</th>
+                <th>Dispatcher</th>
+                <th>Requester/Driver</th>
+                <th>Manager</th>
+                <th>View Only</th>
+                <th>Vendor</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">Dashboard</td>
+                <td><span class="badge badge--solid">Penuh</span></td><td><span class="badge badge--blue">Kelola</span></td><td><span class="badge badge--blue">Kelola</span></td><td><span class="badge badge--gray">Baca</span></td><td><span class="badge badge--gray">Baca</span></td><td><span class="badge badge--gray">Baca</span></td><td><span class="badge badge--gray">Baca</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead">BBM</td>
+                <td><span class="badge badge--solid">Penuh</span></td><td><span class="badge badge--blue">Kelola</span></td><td><span class="badge badge--gray">Baca</span></td><td><span class="badge badge--blue">Kelola</span></td><td><span class="badge badge--gray">Baca</span></td><td><span class="badge badge--gray">Baca</span></td><td>—</td>
+              </tr>
+              <tr>
+                <td class="rowhead">SPD</td>
+                <td><span class="badge badge--solid">Penuh</span></td><td><span class="badge badge--blue">Kelola</span></td><td><span class="badge badge--gray">Baca</span></td><td><span class="badge badge--blue">Kelola</span></td><td><span class="badge badge--gray">Baca</span></td><td><span class="badge badge--gray">Baca</span></td><td>—</td>
+              </tr>
+              <tr>
+                <td class="rowhead">LPJ</td>
+                <td><span class="badge badge--solid">Penuh</span></td><td><span class="badge badge--blue">Kelola</span></td><td><span class="badge badge--gray">Baca</span></td><td><span class="badge badge--blue">Kelola</span></td><td><span class="badge badge--gray">Baca</span></td><td><span class="badge badge--gray">Baca</span></td><td>—</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Vehicle</td>
+                <td><span class="badge badge--solid">Penuh</span></td><td><span class="badge badge--blue">Kelola</span></td><td><span class="badge badge--blue">Kelola</span></td><td><span class="badge badge--gray">Baca</span></td><td><span class="badge badge--gray">Baca</span></td><td><span class="badge badge--gray">Baca</span></td><td>—</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Users</td>
+                <td><span class="badge badge--solid">Penuh</span></td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+              </tr>
+              <tr>
+                <td class="rowhead">RBAC</td>
+                <td><span class="badge badge--solid">Penuh</span></td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Settings</td>
+                <td><span class="badge badge--solid">Penuh</span></td><td><span class="badge badge--gray">Baca</span></td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--tip">
+          <span class="callout__icon"><i class="bi bi-lightbulb"></i></span>
+          <div class="callout__body">
+            <strong>Cara membaca tingkat akses</strong>
+            <b>Penuh</b> = buat, ubah, hapus, dan konfigurasi; <b>Kelola</b> = buat/ubah data operasional tanpa konfigurasi sistem;
+            <b>Baca</b> = hanya melihat dan mengekspor; <b>—</b> = tidak memiliki akses pada kelompok izin tersebut.
+          </div>
+        </div>
+
+        <h3>Peran &rarr; ruang lingkup data</h3>
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>Peran</th><th>Scope data</th><th>Konsekuensi pada query</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="rowhead">Superadmin</td><td><span class="badge badge--solid-blue">Global</span></td><td>Tanpa pembatas unit; laporan konsolidasi seluruh unit dan site.</td></tr>
+              <tr><td class="rowhead">General Affairs (GA)</td><td><span class="badge badge--blue">Unit Scope</span></td><td>Bila <code>unit_id</code> terisi, data dibatasi pada site di bawah unit tersebut; GA Pusat tanpa <code>unit_id</code> memproses seluruh unit.</td></tr>
+              <tr><td class="rowhead">Dispatcher</td><td><span class="badge badge--blue">Unit Scope</span></td><td>Hanya kendaraan, jadwal, dan pengecekan pada unit tempat ia ditugaskan.</td></tr>
+              <tr><td class="rowhead">Requester / Driver</td><td><span class="badge badge--gray">Personal</span></td><td>Hanya permohonan, SPD, dan LPJ miliknya sendiri atau yang ditugaskan kepadanya.</td></tr>
+              <tr><td class="rowhead">Manager</td><td><span class="badge badge--blue">Global / Unit Scope</span></td><td>Membaca dashboard bisnis dan menyetujui hal tertentu sesuai otorisasi manajemen.</td></tr>
+              <tr><td class="rowhead">View Only</td><td><span class="badge badge--blue">Global / Unit Scope</span></td><td>Read-only pada laporan dan statistik; tidak ada operasi tulis.</td></tr>
+              <tr><td class="rowhead">Vendor</td><td><span class="badge badge--yellow">Site</span></td><td>Hanya rekap porsi katering yang telah dikunci untuk site vendor bersangkutan.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================= MIDDLEWARE ================= -->
+      <div class="section-block" id="middleware">
+        <h2><span class="num"><i class="bi bi-diagram-2"></i></span> Middleware &amp; strategi dual-write</h2>
+
+        <p>
+          Penegakan hak akses berlapis: <code>checkrole</code> menjaga kompatibilitas peran lama, sedangkan
+          <code>CheckPermission</code> memeriksa izin granular dari RBAC v2. Keduanya dijalankan pada setiap request
+          terproteksi sebelum controller dieksekusi.
+        </p>
+
+        <div class="grid grid--2">
+          <div class="card">
+            <div class="card__head">
+              <span class="icon-sq icon-sq--blue"><i class="bi bi-shield-check"></i></span>
+              <div><h3>CheckPermission — RBAC v2</h3><p>Pemeriksaan izin granular berbasis relasi <code>user_roles</code> &rarr; <code>role_permissions</code> &rarr; <code>permissions</code>.</p></div>
+            </div>
+            <ul class="list-check" style="font-size:.84rem;">
+              <li>Memeriksa <em>slug</em> permission seperti <code>bbm.approve</code>, <code>spd.update</code>, <code>vehicle.check</code>.</li>
+              <li>Menjadi jalur utama otorisasi modul setelah RBAC Phase 2 diaktifkan.</li>
+              <li>Memanfaatkan <em>permission group</em> untuk menyusun menu sidebar dinamis.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="card__head">
+              <span class="icon-sq icon-sq--yellow"><i class="bi bi-person-badge"></i></span>
+              <div><h3>checkrole — legacy</h3><p>Pemeriksaan berbasis kolom tunggal <code>user.role</code> warisan arsitektur awal.</p></div>
+            </div>
+            <ul class="list-check" style="font-size:.84rem;">
+              <li>Membatasi rute per peran: <code>superadmin</code>, <code>general_affairs</code>, <code>dispatcher</code>, <code>requester</code>.</li>
+              <li>Masih dipertahankan agar rute dan view lama tidak rusak.</li>
+              <li>Menjadi jaring pengaman saat data pivot belum lengkap.</li>
+            </ul>
+          </div>
+        </div>
+
+        <h3>Dual-write strategy</h3>
+        <p>
+          Saat peran pengguna diubah, sistem menulis ke <b>dua tempat</b>: kolom legacy <code>user.role</code> dan tabel
+          pivot <code>user_roles</code>. Permintaan tulis mengikuti aturan bisnis <code>BR-RBAC-01</code>.
+        </p>
+
+        <ol class="steps">
+          <li><strong>Request masuk</strong><p>Rute terproteksi melewati middleware <code>auth</code>; permintaan tanpa sesi valid diarahkan ke halaman login (<code>UC-SYS-01</code>).</p></li>
+          <li><strong>checkrole diperiksa</strong><p>Middleware legacy memastikan peran pengguna termasuk dalam daftar peran yang diizinkan rute tersebut.</p></li>
+          <li><strong>CheckPermission diperiksa</strong><p>Izin granular dicocokkan dengan slug permission yang diminta aksi; kegagalan menghasilkan respons akses ditolak (<code>UC-SYS-02</code>).</p></li>
+          <li><strong>Unit scope diterapkan</strong><p>Untuk peran dengan <em>Unit Scope</em>, query difilter berdasarkan <code>unit_id</code> pengguna dan relasi site di bawahnya.</p></li>
+          <li><strong>Controller &amp; view dieksekusi</strong><p>Controller memproses aksi, view menyusun menu sidebar sesuai himpunan permission yang dimiliki pengguna.</p></li>
+        </ol>
+
+        <div class="callout callout--info">
+          <span class="callout__icon"><i class="bi bi-info-circle"></i></span>
+          <div class="callout__body">
+            <strong>Peran pada permintaan publik</strong>
+            Halaman absensi makan siang (<code>UC-LNC-05</code>) diakses tanpa login, sehingga tidak melewati kedua middleware.
+            Perlindungannya bergantung pada <em>rate limiting</em> dan validasi identitas berbasis QR/alias (<code>BR-LNC-04</code>, <code>BR-LNC-05</code>).
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= GAP ================= -->
+      <div class="section-block" id="gap">
+        <h2><span class="num"><i class="bi bi-exclamation-diamond"></i></span> Celah ketertelusuran</h2>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-flag"></i></span>
+          <div class="callout__body">
+            <strong>Perlu tindak lanjut</strong>
+            Daftar berikut adalah celah yang terbaca dari matriks di atas. Tidak ada di antaranya yang menghambat operasional,
+            namun semuanya perlu ditutup sebelum dokumen ini dinyatakan bebas audit.
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>Jenis celah</th><th>Objek</th><th>Dampak</th><th>Rekomendasi</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">Use case tanpa decision table</td>
+                <td><code>UC-SPD-02</code>, <code>UC-RBAC-04</code></td>
+                <td>Kombinasi kondisi daftar kosong/tidak ditemukan tidak dienumerasi eksplisit.</td>
+                <td>Tambahkan satu tabel keputusan tipis atau nyatakan resmi bahwa use case ini tidak memiliki percabangan logika.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Use case tanpa test case final</td>
+                <td><code>UC-LNC-09</code>, <code>UC-AI-02</code>, <code>UC-SYS-04</code></td>
+                <td>Cakupan pengujian analitik, sesi AI, dan notifikasi masih berupa rencana.</td>
+                <td>Prioritaskan test case analitik katering dan manajemen sesi AI pada siklus pengujian berikutnya.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Aturan bisnis tanpa decision table</td>
+                <td><code>BR-BBM-06</code> (sinkronisasi harga harian)</td>
+                <td>Kegagalan API atau harga kosong belum punya jalur alternatif teruji.</td>
+                <td>Susun decision table untuk kondisi berhasil, gagal, dan waktu tunggu API beserta perilaku <em>fallback</em>.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Aturan bisnis tanpa ambang terukur</td>
+                <td><code>BR-LNC-05</code> (fuzzy name matching)</td>
+                <td>Ambang kemiripan nama tidak dinyatakan sebagai angka, sehingga hasil pencocokan sulit diuji.</td>
+                <td>Nyatakan ambang kemiripan dan kandidat ganda sebagai parameter pada decision table.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Aturan non-fungsional tanpa test case lintas mesin</td>
+                <td><code>BR-SYS-03</code> (kompatibilitas SQLite)</td>
+                <td>Query dapat lulus di MySQL namun gagal pada basis data uji SQLite.</td>
+                <td>Tambahkan test case yang menjalankan seluruh laporan dan agregasi tanggal pada SQLite.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Use case berbasis penyedia eksternal</td>
+                <td><code>UC-AI-01</code> (asisten Gaga)</td>
+                <td>Perilaku model bahasa tidak deterministik sehingga sulit dinyatakan lulus/gagal.</td>
+                <td>Uji pada tingkat kontrak: skema keluaran Markdown, sanitasi GFM, dan batas laju panggilan API.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Diagram struktur belum lengkap</td>
+                <td><code>UC-RBAC-04</code> (log aktivitas)</td>
+                <td>Tabel dan relasi entitas log belum dipetakan pada ERD.</td>
+                <td>Lengkapi pemetaan entitas log aktivitas pada Bagian 6 dan hubungkan ke matriks ini.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Ketertelusuran bentuk test case belum seragam</td>
+                <td>Kolom <em>Test Case</em> seluruh tabel</td>
+                <td>Rentang kode seperti <code>TC-BBM-01</code>–<code>04</code> belum menunjuk berkas uji konkret.</td>
+                <td>Tambahkan kolom tautan berkas uji pada Bagian 8 agar baris matriks dapat diklik sampai ke kode.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="callout callout--info">
+        <span class="callout__icon"><i class="bi bi-arrow-right-circle"></i></span>
+        <div class="callout__body">
+          <strong>Lanjut ke Bagian 10 — Glosarium Proyek</strong>
+          Bagian berikut menetapkan makna resmi setiap istilah yang dipakai pada matriks ini, sehingga
+          &ldquo;voucher&rdquo;, &ldquo;slot&rdquo;, &ldquo;scope&rdquo;, dan &ldquo;forecast&rdquo; tidak ditafsirkan berbeda antar pembaca.
+          <div style="margin-top:10px;"><a class="btn btn--primary btn--sm" href="10-glosarium.html">Buka Bagian 10 <i class="bi bi-arrow-right-short"></i></a></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="foot__inner">
+    <p>&copy; <span data-year>2026</span> PT Geo Dipa Energi (Persero) Unit Patuha — Divisi General Affairs.</p>
+    <div class="foot__links">
+      <a href="../index.html">Beranda dokumentasi</a>
+      <a href="index.html">Ikhtisar SDD</a>
+      <a href="../alur-tutorial/index.html">Alur Tutorial</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/js/docs.js"></script>
+<script src="../assets/js/diagrams.js" defer></script>
+</body>
+</html>

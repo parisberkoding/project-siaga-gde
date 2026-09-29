@@ -15,7 +15,7 @@
         transition: background 0.15s;
     }
     .check-item-row:hover {
-        background: #f8f9fa;
+        background: #F8FAFC;
     }
     .check-item-row:last-child {
         border-bottom: none;
@@ -31,7 +31,7 @@
         justify-content: center;
         min-width: 56px;
         height: 42px;
-        border: 2px solid #dee2e6;
+        border: 2px solid #E4E9F0;
         border-radius: 8px;
         cursor: pointer;
         font-weight: 600;
@@ -41,19 +41,19 @@
         -webkit-tap-highlight-color: transparent;
     }
     .status-toggle-ok:checked + label {
-        background: #198754;
-        border-color: #198754;
+        background: #71A62F;
+        border-color: #4A7A1C;
         color: #fff;
     }
     .status-toggle-ng:checked + label {
-        background: #dc3545;
-        border-color: #dc3545;
+        background: #ED1B2F;
+        border-color: #C4142A;
         color: #fff;
     }
 
     /* Category header */
     .category-header {
-        background: linear-gradient(135deg, #012970 0%, #1a3a8a 100%);
+        background: linear-gradient(135deg, #093D7D 0%, #0B50A1 100%);
         color: #fff;
         padding: 10px 16px;
         border-radius: 8px;
@@ -77,7 +77,7 @@
 
     /* Notes input - expandable */
     .item-notes {
-        border: 1px solid #dee2e6;
+        border: 1px solid #E4E9F0;
         border-radius: 6px;
         padding: 6px 10px;
         font-size: 13px;
@@ -86,15 +86,15 @@
         transition: border-color 0.15s;
     }
     .item-notes:focus {
-        border-color: #4154f1;
-        box-shadow: 0 0 0 0.15rem rgba(65, 84, 241, 0.1);
+        border-color: #0B50A1;
+        box-shadow: 0 0 0 0.15rem rgba(11, 80, 161, 0.1);
         outline: none;
     }
 
     /* Frequency tabs - mobile friendly */
     .freq-tab {
         padding: 8px 16px;
-        border: 2px solid #dee2e6;
+        border: 2px solid #E4E9F0;
         border-radius: 8px;
         cursor: pointer;
         font-weight: 500;
@@ -106,17 +106,17 @@
         align-items: center;
         gap: 6px;
     }
-    .freq-tab:hover { border-color: #4154f1; color: #4154f1; }
-    .freq-tab.active { background: #4154f1; border-color: #4154f1; color: #fff; }
-    .freq-tab.tab-overdue { border-color: #dc3545; }
-    .freq-tab.tab-overdue.active { background: #dc3545; border-color: #dc3545; }
-    .freq-tab.tab-due { border-color: #ffc107; }
-    .freq-tab.tab-due.active { background: #ffc107; border-color: #ffc107; color: #000; }
+    .freq-tab:hover { border-color: #0B50A1; color: #0B50A1; }
+    .freq-tab.active { background: #0B50A1; border-color: #0B50A1; color: #fff; }
+    .freq-tab.tab-overdue { border-color: #C4142A; }
+    .freq-tab.tab-overdue.active { background: #ED1B2F; border-color: #C4142A; }
+    .freq-tab.tab-due { border-color: #D8CE3A; }
+    .freq-tab.tab-due.active { background: #D8CE3A; border-color: #D8CE3A; color: #000; }
 
     /* Standard description tooltip */
     .standard-desc {
         font-size: 12px;
-        color: #6c757d;
+        color: #64748B;
         font-style: italic;
     }
 

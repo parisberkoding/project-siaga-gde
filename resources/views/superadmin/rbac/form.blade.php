@@ -191,18 +191,18 @@
 <style>
 .perm-item {
     display: block;
-    border: 1.5px solid #dee2e6;
+    border: 1.5px solid #E4E9F0;
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.15s;
     background: #fff;
 }
 .perm-item:hover {
-    border-color: #4154f1;
+    border-color: #0B50A1;
     background: #f8f9ff;
 }
 .perm-item.checked {
-    border-color: #198754;
+    border-color: #4A7A1C;
     background: #f0fdf4;
 }
 .perm-item input[type="checkbox"] {

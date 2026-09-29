@@ -10,7 +10,7 @@
     }
     .ack-badge .pulse-dot {
         width: 10px; height: 10px;
-        background: #dc3545;
+        background: #ED1B2F;
         border-radius: 50%;
         display: inline-block;
         animation: pulse 1.5s infinite;
@@ -22,7 +22,7 @@
     }
 
     .check-card {
-        border: 1px solid #e9ecef;
+        border: 1px solid #E4E9F0;
         border-radius: 10px;
         padding: 14px 16px;
         margin-bottom: 10px;
@@ -33,8 +33,8 @@
         display: block;
     }
     .check-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); color: inherit; }
-    .check-card.unread { border-left: 4px solid #dc3545; background: #fffbfb; }
-    .check-card.read { border-left: 4px solid #198754; opacity: 0.75; }
+    .check-card.unread { border-left: 4px solid #ED1B2F; background: #fffbfb; }
+    .check-card.read { border-left: 4px solid #71A62F; opacity: 0.75; }
 
     .result-mini-badge {
         display: inline-block;
@@ -50,7 +50,7 @@
         margin-bottom: 16px;
         border-radius: 8px;
         overflow: hidden;
-        border: 1px solid #dee2e6;
+        border: 1px solid #E4E9F0;
         width: fit-content;
     }
     .tab-toggle a {
@@ -58,22 +58,22 @@
         font-size: 13px;
         font-weight: 600;
         text-decoration: none;
-        color: #6c757d;
+        color: #64748B;
         background: #fff;
-        border-right: 1px solid #dee2e6;
+        border-right: 1px solid #E4E9F0;
         display: flex;
         align-items: center;
         gap: 6px;
     }
     .tab-toggle a:last-child { border-right: none; }
-    .tab-toggle a.active { background: #4154f1; color: #fff; }
+    .tab-toggle a.active { background: #0B50A1; color: #fff; }
     .tab-toggle a .badge-count {
         padding: 1px 7px;
         border-radius: 10px;
         font-size: 10px;
     }
     .tab-toggle a.active .badge-count { background: rgba(255,255,255,0.3); }
-    .tab-toggle a:not(.active) .badge-count { background: #e9ecef; color: #6c757d; }
+    .tab-toggle a:not(.active) .badge-count { background: #E4E9F0; color: #64748B; }
 </style>
 
 <div class="pagetitle">
@@ -242,10 +242,10 @@
                                 {{-- Results Mini --}}
                                 <div class="d-flex flex-wrap gap-1">
                                     @if($check->type === 'routine')
-                                        <span class="result-mini-badge" style="background: #d1e7dd; color: #198754;">
+                                        <span class="result-mini-badge" style="background: #d1e7dd; color: #4A7A1C;">
                                             OK {{ $check->ok_count }}
                                         </span>
-                                        <span class="result-mini-badge" style="background: #f8d7da; color: #dc3545;">
+                                        <span class="result-mini-badge" style="background: #f8d7da; color: #C4142A;">
                                             NG {{ $check->ng_count }}
                                         </span>
                                     @else
@@ -255,10 +255,10 @@
                                             $kurangC= $check->itemResults->where('status','kurang')->count();
                                             $tidakC = $check->itemResults->where('status','tidak')->count();
                                         @endphp
-                                        @if($baikC)  <span class="result-mini-badge" style="background:#d1e7dd;color:#198754;">B{{ $baikC }}</span> @endif
-                                        @if($cukupC) <span class="result-mini-badge" style="background:#cff4fc;color:#0dcaf0;">C{{ $cukupC }}</span> @endif
+                                        @if($baikC)  <span class="result-mini-badge" style="background:#d1e7dd;color:#4A7A1C;">B{{ $baikC }}</span> @endif
+                                        @if($cukupC) <span class="result-mini-badge" style="background:#cff4fc;color:#0B50A1;">C{{ $cukupC }}</span> @endif
                                         @if($kurangC)<span class="result-mini-badge" style="background:#fff3cd;color:#997404;">K{{ $kurangC }}</span> @endif
-                                        @if($tidakC) <span class="result-mini-badge" style="background:#f8d7da;color:#dc3545;">T{{ $tidakC }}</span> @endif
+                                        @if($tidakC) <span class="result-mini-badge" style="background:#f8d7da;color:#C4142A;">T{{ $tidakC }}</span> @endif
                                     @endif
                                 </div>
                             </div>

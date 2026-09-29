@@ -3,13 +3,13 @@
 .toggle-sidebar-btn {
   font-size: 28px;
   cursor: pointer;
-  color: #012970;
+  color: #093D7D;
   padding: 0 15px;
   transition: color 0.3s;
 }
 
 .toggle-sidebar-btn:hover {
-  color: #4154f1;
+  color: #0B50A1;
 }
 
 /* Logo Section */
@@ -24,7 +24,7 @@
 .header .logo span {
   font-size: 20px;
   font-weight: 600;
-  color: #012970;
+  color: #093D7D;
   white-space: nowrap;
 }
 
@@ -34,33 +34,33 @@
 }
 
 .nav-profile:hover {
-  color: #4154f1;
+  color: #0B50A1;
 }
 
 .nav-profile i.bi-person-circle {
-  color: #4154f1;
+  color: #0B50A1;
 }
 
 .nav-profile span {
-  color: #012970;
+  color: #093D7D;
 }
 
 /* Dropdown Menu */
 .dropdown-menu.profile {
   min-width: 260px;
-  box-shadow: 0px 0 30px rgba(1, 41, 112, 0.1);
+  box-shadow: 0px 0 30px rgba(9, 61, 125, 0.1);
 }
 
 .dropdown-header h6 {
   font-size: 16px;
   margin-bottom: 3px;
   font-weight: 600;
-  color: #012970;
+  color: #093D7D;
 }
 
 .dropdown-header span {
   font-size: 13px;
-  color: #6c757d;
+  color: #64748B;
 }
 
 .dropdown-item {
@@ -69,8 +69,8 @@
 }
 
 .dropdown-item:hover {
-  background-color: #f6f9ff;
-  color: #4154f1;
+  background-color: #F4F7FB;
+  color: #0B50A1;
 }
 
 .dropdown-item i {
@@ -79,7 +79,7 @@
 }
 
 .dropdown-item:hover i {
-  color: #4154f1;
+  color: #0B50A1;
 }
 
 /* Responsive */
@@ -164,7 +164,7 @@
       </div>
       <div class="modal-body">
         <div class="text-center mb-4">
-          <i class="bi bi-person-circle" style="font-size: 5rem; color: #4154f1;"></i>
+          <i class="bi bi-person-circle" style="font-size: 5rem; color: #0B50A1;"></i>
         </div>
         <table class="table table-borderless">
           <tbody>

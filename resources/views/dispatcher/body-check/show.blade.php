@@ -17,7 +17,7 @@
     }
     .summary-box .label {
         font-size: 12px;
-        color: #6c757d;
+        color: #64748B;
     }
 
     .result-row {
@@ -36,30 +36,30 @@
         font-weight: 600;
         font-size: 12px;
     }
-    .status-badge-lg.baik   { background: #d1e7dd; color: #198754; }
-    .status-badge-lg.cukup  { background: #cff4fc; color: #0dcaf0; }
+    .status-badge-lg.baik   { background: #d1e7dd; color: #4A7A1C; }
+    .status-badge-lg.cukup  { background: #cff4fc; color: #0B50A1; }
     .status-badge-lg.kurang { background: #fff3cd; color: #997404; }
-    .status-badge-lg.tidak  { background: #f8d7da; color: #dc3545; }
+    .status-badge-lg.tidak  { background: #f8d7da; color: #C4142A; }
 
     .info-pair {
         margin-bottom: 6px;
     }
     .info-pair .info-label {
         font-size: 12px;
-        color: #6c757d;
+        color: #64748B;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
     .info-pair .info-value {
         font-weight: 600;
-        color: #012970;
+        color: #093D7D;
     }
 
     /* BBM Gauge Display */
     .bbm-bar {
         height: 16px;
         border-radius: 8px;
-        background: #e9ecef;
+        background: #E4E9F0;
         overflow: hidden;
         position: relative;
     }
@@ -76,7 +76,7 @@
         gap: 12px;
     }
     .damage-card {
-        border: 1px solid #e9ecef;
+        border: 1px solid #E4E9F0;
         border-radius: 10px;
         overflow: hidden;
         transition: box-shadow 0.2s;
@@ -222,7 +222,7 @@
                                 <small class="text-muted">E</small>
                                 <div class="bbm-bar flex-grow-1">
                                     @php
-                                        $bbmColor = $detail->bbm_level > 50 ? '#198754' : ($detail->bbm_level > 25 ? '#ffc107' : '#dc3545');
+                                        $bbmColor = $detail->bbm_level > 50 ? '#71A62F' : ($detail->bbm_level > 25 ? '#D8CE3A' : '#ED1B2F');
                                     @endphp
                                     <div class="fill" style="width: {{ $detail->bbm_level }}%; background: {{ $bbmColor }};"></div>
                                 </div>
@@ -280,13 +280,13 @@
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="summary-box" style="background: #d1e7dd;">
-                                <h3 style="color: #198754;">{{ $summary['baik'] }}</h3>
+                                <h3 style="color: #4A7A1C;">{{ $summary['baik'] }}</h3>
                                 <div class="label">Baik</div>
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="summary-box" style="background: #cff4fc;">
-                                <h3 style="color: #0dcaf0;">{{ $summary['cukup'] }}</h3>
+                                <h3 style="color: #0B50A1;">{{ $summary['cukup'] }}</h3>
                                 <div class="label">Cukup</div>
                             </div>
                         </div>
@@ -298,7 +298,7 @@
                         </div>
                         <div class="col-6">
                             <div class="summary-box" style="background: #f8d7da;">
-                                <h3 style="color: #dc3545;">{{ $summary['tidak'] }}</h3>
+                                <h3 style="color: #C4142A;">{{ $summary['tidak'] }}</h3>
                                 <div class="label">Tidak</div>
                             </div>
                         </div>
@@ -322,7 +322,7 @@
                     @php
                         // Score: Baik=3, Cukup=2, Kurang=1, Tidak=0
                         $score = ($summary['baik']*3 + $summary['cukup']*2 + $summary['kurang']*1) / ($summary['total'] * 3) * 100;
-                        $scoreColor = $score >= 70 ? '#198754' : ($score >= 40 ? '#ffc107' : '#dc3545');
+                        $scoreColor = $score >= 70 ? '#71A62F' : ($score >= 40 ? '#D8CE3A' : '#ED1B2F');
                     @endphp
                     <div class="mt-3">
                         <div class="d-flex justify-content-between small text-muted mb-1">

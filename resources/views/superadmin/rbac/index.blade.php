@@ -131,7 +131,7 @@
 .empty-state {
     text-align: center;
     padding: 40px 20px;
-    color: #6c757d;
+    color: #64748B;
 }
 .empty-state i {
     font-size: 3rem;

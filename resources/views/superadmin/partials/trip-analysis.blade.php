@@ -12,7 +12,7 @@
 
 .info-card h6 {
     font-size: 28px;
-    color: #012970;
+    color: #093D7D;
     font-weight: 700;
     margin: 0;
     padding: 0;
@@ -28,22 +28,22 @@
 }
 
 .sales-card .card-icon {
-    color: #4154f1;
-    background: #f6f6fe;
+    color: #0B50A1;
+    background: #EAF1FA;
 }
 
 .revenue-card .card-icon {
-    color: #2eca6a;
-    background: #e0f8e9;
+    color: #4A7A1C;
+    background: #F2F9E8;
 }
 
 .customers-card .card-icon {
-    color: #ff771d;
+    color: #B35B00;
     background: #ffecdf;
 }
 
 .warning-card .card-icon {
-    color: #ffbb2c;
+    color: #8A6A00;
     background: #fff4de;
 }
 
@@ -64,37 +64,37 @@
 }
 
 .trip-checkbox:checked {
-    background-color: #0d6efd;
-    border-color: #0d6efd;
+    background-color: #0B50A1;
+    border-color: #0B50A1;
 }
 
 /* Alert Level Badges */
 .badge-alert-normal {
-    background-color: #198754;
+    background-color: #4A7A1C;
 }
 
 .badge-alert-warning {
-    background-color: #ffc107;
+    background-color: #D8CE3A;
     color: #000;
 }
 
 .badge-alert-critical {
-    background-color: #dc3545;
+    background-color: #C4142A;
 }
 
 /* Efficiency Status */
 .efficiency-good {
-    color: #198754;
+    color: #4A7A1C;
     font-weight: 600;
 }
 
 .efficiency-fair {
-    color: #ffc107;
+    color: #D8CE3A;
     font-weight: 600;
 }
 
 .efficiency-poor {
-    color: #dc3545;
+    color: #C4142A;
     font-weight: 600;
 }
 
@@ -105,8 +105,8 @@
 
 .form-control:focus,
 .form-select:focus {
-    border-color: #4154f1;
-    box-shadow: 0 0 0 0.2rem rgba(65, 84, 241, 0.15);
+    border-color: #0B50A1;
+    box-shadow: 0 0 0 0.2rem rgba(11, 80, 161, 0.15);
 }
 
 /* Bulk Actions Bar */
@@ -242,8 +242,8 @@
                     <h5 class="card-title">Rata-rata Deviasi</h5>
                     <div class="d-flex align-items-center">
                         <div class="card-icon rounded-circle d-flex align-items-center justify-content-center"
-                             style="color: {{ $stats['avgDeviation'] < -20 ? '#dc3545' : ($stats['avgDeviation'] < -10 ? '#ffc107' : '#198754') }};
-                                    background: {{ $stats['avgDeviation'] < -20 ? '#ffe5e9' : ($stats['avgDeviation'] < -10 ? '#fff4de' : '#e0f8e9') }};">
+                             style="color: {{ $stats['avgDeviation'] < -20 ? '#ED1B2F' : ($stats['avgDeviation'] < -10 ? '#D8CE3A' : '#71A62F') }};
+                                    background: {{ $stats['avgDeviation'] < -20 ? '#ffe5e9' : ($stats['avgDeviation'] < -10 ? '#fff4de' : '#F2F9E8') }};">
                             <i class="bi bi-graph-down"></i>
                         </div>
                         <div class="ps-3">

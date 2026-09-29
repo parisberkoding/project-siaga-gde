@@ -4,7 +4,7 @@
 
 @section('content')
 
-<link href="https://cdn.jsdelivr.net/npm/simple-datatables@10.3.0/dist/style.css" rel="stylesheet" integrity="sha384-CinX6s1UC1GpaQwL9eKshF7JhtC8H2xchDD0dWqlCgZ8t+GCCcjluxCgmsbVpdEh" crossorigin="anonymous">
+<link href="{{ asset('gde-ui-templates/vendor/simple-datatables-10.3.0.css') }}" rel="stylesheet">
 <style>
   /* NiceAdmin Info Card Style */
   .info-card {
@@ -13,7 +13,7 @@
 
   .info-card h6 {
     font-size: 28px;
-    color: #012970;
+    color: #093D7D;
     font-weight: 700;
     margin: 0;
     padding: 0;
@@ -29,30 +29,30 @@
   }
 
   .sales-card .card-icon {
-    color: #4154f1;
-    background: #f6f6fe;
+    color: #0B50A1;
+    background: #EAF1FA;
   }
 
   .revenue-card .card-icon {
-    color: #2eca6a;
-    background: #e0f8e9;
+    color: #4A7A1C;
+    background: #F2F9E8;
   }
 
   .customers-card .card-icon {
-    color: #ff771d;
+    color: #B35B00;
     background: #ffecdf;
   }
 
   .warning-card .card-icon {
-    color: #ffbb2c;
+    color: #8A6A00;
     background: #fff6e1;
   }
 
   .card {
-    margin-bottom: 30px;
-    border: none;
-    border-radius: 5px;
-    box-shadow: 0px 0 30px rgba(1, 41, 112, 0.1);
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--gde-line);
+    border-radius: var(--gde-r-lg);
+    box-shadow: var(--gde-sh-1);
   }
 
   .card-body {
@@ -76,9 +76,9 @@
     border-radius: 8px;
     margin-bottom: 15px;
     display: none;
-    border: 1px solid #dee2e6;
+    border: 1px solid #E4E9F0;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    color: #212529;
+    color: #16202E;
   }
 
   .bulk-action-bar.show {
@@ -116,8 +116,8 @@
   }
 
   .nav-tabs .nav-link.active {
-    color: #4154f1;
-    border-bottom: 2px solid #4154f1;
+    color: #0B50A1;
+    border-bottom: 2px solid #0B50A1;
     background: transparent;
   }
 </style>

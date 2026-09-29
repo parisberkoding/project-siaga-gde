@@ -6,7 +6,7 @@
 
 <style>
     .vehicle-header-card {
-        background: linear-gradient(135deg, #012970 0%, #4154f1 100%);
+        background: linear-gradient(135deg, #093D7D 0%, #0B50A1 100%);
         border-radius: 16px;
         color: #fff;
         padding: 24px;
@@ -24,7 +24,7 @@
 
     .check-type-card {
         border-radius: 16px;
-        border: 2px solid #e9ecef;
+        border: 2px solid #E4E9F0;
         padding: 24px 16px;
         text-align: center;
         transition: all 0.2s;
@@ -58,21 +58,21 @@
     }
     .check-type-card p {
         font-size: 13px;
-        color: #6c757d;
+        color: #64748B;
         margin-bottom: 0;
     }
 
-    .card-daily .icon-circle   { background: #d1e7dd; color: #198754; }
-    .card-daily:hover          { border-color: #198754; }
+    .card-daily .icon-circle   { background: #d1e7dd; color: #4A7A1C; }
+    .card-daily:hover          { border-color: #4A7A1C; }
     .card-weekly .icon-circle  { background: #fff3cd; color: #997404; }
     .card-weekly:hover         { border-color: #997404; }
     .card-monthly .icon-circle { background: #f8d7da; color: #842029; }
     .card-monthly:hover        { border-color: #842029; }
-    .card-body-check .icon-circle { background: #e8f4f8; color: #0d6efd; }
-    .card-body-check:hover     { border-color: #0d6efd; }
+    .card-body-check .icon-circle { background: #e8f4f8; color: #0B50A1; }
+    .card-body-check:hover     { border-color: #0B50A1; }
 
     .badge-dispatcher {
-        background: #198754;
+        background: #71A62F;
         color: #fff;
         padding: 4px 12px;
         border-radius: 20px;
@@ -151,7 +151,7 @@
                 <div class="icon-circle">
                     <i class="bi bi-calendar-day"></i>
                 </div>
-                <h5 style="color: #198754;">Harian</h5>
+                <h5 style="color: #4A7A1C;">Harian</h5>
                 <p>Pemeriksaan harian kendaraan</p>
             </a>
         </div>
@@ -187,7 +187,7 @@
                 <div class="icon-circle">
                     <i class="bi bi-car-front"></i>
                 </div>
-                <h5 style="color: #0d6efd;">Body</h5>
+                <h5 style="color: #0B50A1;">Body</h5>
                 <p>Pemeriksaan body kendaraan</p>
             </a>
         </div>

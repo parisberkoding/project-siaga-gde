@@ -14,7 +14,7 @@
         padding: 12px 0;
         transition: background 0.15s;
     }
-    .check-item-row:hover { background: #f8f9fa; }
+    .check-item-row:hover { background: #F8FAFC; }
     .check-item-row:last-child { border-bottom: none; }
 
     /* 4-level radio buttons — big tap targets */
@@ -25,7 +25,7 @@
         justify-content: center;
         min-width: 52px;
         height: 40px;
-        border: 2px solid #dee2e6;
+        border: 2px solid #E4E9F0;
         border-radius: 8px;
         cursor: pointer;
         font-weight: 600;
@@ -36,14 +36,14 @@
         text-align: center;
         padding: 0 6px;
     }
-    .scale-baik:checked + label   { background: #198754; border-color: #198754; color: #fff; }
-    .scale-cukup:checked + label  { background: #0dcaf0; border-color: #0dcaf0; color: #fff; }
-    .scale-kurang:checked + label { background: #ffc107; border-color: #ffc107; color: #000; }
-    .scale-tidak:checked + label  { background: #dc3545; border-color: #dc3545; color: #fff; }
+    .scale-baik:checked + label   { background: #71A62F; border-color: #4A7A1C; color: #fff; }
+    .scale-cukup:checked + label  { background: #0B50A1; border-color: #0B50A1; color: #fff; }
+    .scale-kurang:checked + label { background: #D8CE3A; border-color: #D8CE3A; color: #000; }
+    .scale-tidak:checked + label  { background: #ED1B2F; border-color: #C4142A; color: #fff; }
 
     /* Category header */
     .category-header {
-        background: linear-gradient(135deg, #012970 0%, #1a3a8a 100%);
+        background: linear-gradient(135deg, #093D7D 0%, #0B50A1 100%);
         color: #fff;
         padding: 10px 16px;
         border-radius: 8px;
@@ -60,7 +60,7 @@
 
     /* Item notes */
     .item-notes {
-        border: 1px solid #dee2e6;
+        border: 1px solid #E4E9F0;
         border-radius: 6px;
         padding: 6px 10px;
         font-size: 13px;
@@ -69,14 +69,14 @@
         transition: border-color 0.15s;
     }
     .item-notes:focus {
-        border-color: #4154f1;
-        box-shadow: 0 0 0 0.15rem rgba(65, 84, 241, 0.1);
+        border-color: #0B50A1;
+        box-shadow: 0 0 0 0.15rem rgba(11, 80, 161, 0.1);
         outline: none;
     }
 
     .standard-desc {
         font-size: 12px;
-        color: #6c757d;
+        color: #64748B;
         font-style: italic;
     }
 
@@ -85,8 +85,8 @@
     /* ═══════════════════════════════════════════ */
 
     .damage-row {
-        background: #f8f9fa;
-        border: 1px solid #e9ecef;
+        background: #F8FAFC;
+        border: 1px solid #E4E9F0;
         border-radius: 10px;
         padding: 0;
         margin-bottom: 12px;
@@ -97,7 +97,7 @@
     .damage-photo-preview {
         width: 100%;
         height: 180px;
-        background: #dee2e6;
+        background: #E4E9F0;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -114,7 +114,7 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        color: #6c757d;
+        color: #64748B;
         gap: 6px;
     }
     .damage-photo-preview .preview-placeholder i {
@@ -152,12 +152,12 @@
     }
     .bbm-gauge input[type="range"] {
         flex: 1;
-        accent-color: #4154f1;
+        accent-color: #0B50A1;
     }
     .bbm-value {
         font-weight: 700;
         font-size: 16px;
-        color: #012970;
+        color: #093D7D;
         min-width: 40px;
         text-align: center;
     }

@@ -33,7 +33,7 @@
 
     <hr class="my-3">
     <div class="text-center">
-      <a href="#" id="guest-toggle" class="text-muted text-decoration-none" style="transition: all 0.2s;" onmouseover="this.style.textDecoration='underline'; this.style.color='#0d6efd';" onmouseout="this.style.textDecoration='none'; this.style.color='#6c757d';">
+      <a href="#" id="guest-toggle" class="text-muted text-decoration-none" style="transition: all 0.2s;" onmouseover="this.style.textDecoration='underline'; this.style.color='#0B50A1';" onmouseout="this.style.textDecoration='none'; this.style.color='#64748B';">
         <i class="bi bi-people me-1"></i>Klik di sini untuk absen tamu
       </a>
     </div>

@@ -6,7 +6,7 @@
 
 <style>
     .vehicle-header-card {
-        background: linear-gradient(135deg, #012970 0%, #4154f1 100%);
+        background: linear-gradient(135deg, #093D7D 0%, #0B50A1 100%);
         border-radius: 16px;
         color: #fff;
         padding: 24px;
@@ -19,7 +19,7 @@
     }
 
     .check-timeline-item {
-        border: 1px solid #e9ecef;
+        border: 1px solid #E4E9F0;
         border-radius: 12px;
         padding: 14px 16px;
         margin-bottom: 10px;
@@ -37,8 +37,8 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
-    .type-body    { background: #e8f4f8; color: #0d6efd; }
-    .type-daily   { background: #d1e7dd; color: #198754; }
+    .type-body    { background: #e8f4f8; color: #0B50A1; }
+    .type-daily   { background: #d1e7dd; color: #4A7A1C; }
     .type-weekly  { background: #fff3cd; color: #997404; }
     .type-monthly { background: #f8d7da; color: #842029; }
 
@@ -51,7 +51,7 @@
         font-size: 12px;
         font-weight: 600;
     }
-    .stat-ok  { background: #d1e7dd; color: #198754; }
+    .stat-ok  { background: #d1e7dd; color: #4A7A1C; }
     .stat-ng  { background: #f8d7da; color: #842029; }
 
     .empty-state {
@@ -61,16 +61,16 @@
     }
 
     .nav-pills .nav-link.active {
-        background-color: #4154f1;
+        background-color: #0B50A1;
     }
     .nav-pills .nav-link {
-        color: #4154f1;
+        color: #0B50A1;
     }
     .tab-count-badge {
         font-size: 11px;
         padding: 2px 7px;
         border-radius: 20px;
-        background: #e9ecef;
+        background: #E4E9F0;
         color: #495057;
         margin-left: 4px;
     }
@@ -170,19 +170,19 @@
     <div class="row g-3 mb-4">
         <div class="col-6 col-md-3">
             <div class="card text-center py-3">
-                <div style="font-size:22px; font-weight:800; color:#4154f1;">{{ $totalAll }}</div>
+                <div style="font-size:22px; font-weight:800; color:#0B50A1;">{{ $totalAll }}</div>
                 <div class="text-muted" style="font-size:12px;">Total Pengecekan</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
             <div class="card text-center py-3">
-                <div style="font-size:22px; font-weight:800; color:#0d6efd;">{{ $checkingsByType['body']->count() }}</div>
+                <div style="font-size:22px; font-weight:800; color:#0B50A1;">{{ $checkingsByType['body']->count() }}</div>
                 <div class="text-muted" style="font-size:12px;">Body Check</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
             <div class="card text-center py-3">
-                <div style="font-size:22px; font-weight:800; color:#198754;">{{ $checkingsByType['daily']->count() + $checkingsByType['weekly']->count() + $checkingsByType['monthly']->count() }}</div>
+                <div style="font-size:22px; font-weight:800; color:#4A7A1C;">{{ $checkingsByType['daily']->count() + $checkingsByType['weekly']->count() + $checkingsByType['monthly']->count() }}</div>
                 <div class="text-muted" style="font-size:12px;">Routine Check</div>
             </div>
         </div>
@@ -193,7 +193,7 @@
                         ->merge($checkingsByType['weekly'])->merge($checkingsByType['monthly']);
                     $lastCheck = $allCheckings->sortByDesc('checked_at')->first();
                 @endphp
-                <div style="font-size:14px; font-weight:700; color:#012970;">
+                <div style="font-size:14px; font-weight:700; color:#093D7D;">
                     {{ $lastCheck ? $lastCheck->checked_at->translatedFormat('d M Y') : '—' }}
                 </div>
                 <div class="text-muted" style="font-size:12px;">Terakhir Diperiksa</div>

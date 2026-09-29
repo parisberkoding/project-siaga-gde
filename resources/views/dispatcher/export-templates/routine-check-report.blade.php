@@ -5,22 +5,22 @@
     <title>Routine Check Report - {{ $periodLabel }}</title>
     <style>
         body { font-family: 'DejaVu Sans', sans-serif; font-size: 9px; color: #333; }
-        .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #012970; padding-bottom: 10px; }
-        .header h1 { font-size: 16px; margin: 0; color: #012970; }
+        .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #093D7D; padding-bottom: 10px; }
+        .header h1 { font-size: 16px; margin: 0; color: #093D7D; }
         .header p { margin: 3px 0; font-size: 10px; color: #666; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
         th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: left; }
-        th { background-color: #012970; color: white; font-size: 8px; text-transform: uppercase; }
+        th { background-color: #093D7D; color: white; font-size: 8px; text-transform: uppercase; }
         td { font-size: 8px; }
         .check-section { margin-bottom: 20px; page-break-inside: avoid; }
-        .check-title { background: #e8f0fe; padding: 6px 10px; font-size: 10px; font-weight: bold; color: #012970; margin-bottom: 5px; }
-        .badge-ok { background: #198754; color: white; padding: 1px 5px; border-radius: 3px; font-size: 7px; }
-        .badge-ng { background: #dc3545; color: white; padding: 1px 5px; border-radius: 3px; font-size: 7px; }
-        .summary-box { background: #f8f9fa; padding: 8px; margin-bottom: 10px; border-radius: 4px; }
+        .check-title { background: #EAF1FA; padding: 6px 10px; font-size: 10px; font-weight: bold; color: #093D7D; margin-bottom: 5px; }
+        .badge-ok { background: #71A62F; color: white; padding: 1px 5px; border-radius: 3px; font-size: 7px; }
+        .badge-ng { background: #ED1B2F; color: white; padding: 1px 5px; border-radius: 3px; font-size: 7px; }
+        .summary-box { background: #F8FAFC; padding: 8px; margin-bottom: 10px; border-radius: 4px; }
         .summary-box span { margin-right: 15px; font-size: 9px; }
-        .sub-type-daily { background: #0d6efd; color: white; padding: 1px 5px; border-radius: 3px; }
-        .sub-type-weekly { background: #0dcaf0; color: #333; padding: 1px 5px; border-radius: 3px; }
-        .sub-type-monthly { background: #6c757d; color: white; padding: 1px 5px; border-radius: 3px; }
+        .sub-type-daily { background: #0B50A1; color: white; padding: 1px 5px; border-radius: 3px; }
+        .sub-type-weekly { background: #0B50A1; color: #333; padding: 1px 5px; border-radius: 3px; }
+        .sub-type-monthly { background: #64748B; color: white; padding: 1px 5px; border-radius: 3px; }
         .footer { text-align: center; font-size: 8px; color: #999; margin-top: 20px; border-top: 1px solid #ddd; padding-top: 5px; }
     </style>
 </head>

@@ -18,8 +18,8 @@
     border-radius: 16px;
     overflow: hidden;
     background: #111;
-    border: 3px solid #0d6efd;
-    box-shadow: 0 0 20px rgba(13, 110, 253, 0.2);
+    border: 3px solid #0B50A1;
+    box-shadow: 0 0 20px rgba(11, 80, 161, 0.2);
   }
   #reader {
     width: 100% !important;
@@ -36,7 +36,7 @@
     left: 0;
     width: 100%;
     height: 3px;
-    background: linear-gradient(to right, transparent, #0d6efd, transparent);
+    background: linear-gradient(to right, transparent, #0B50A1, transparent);
     animation: scanning 2.5s linear infinite;
     z-index: 10;
     pointer-events: none;
@@ -53,11 +53,11 @@
   }
   .btn-manual:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
+    box-shadow: 0 4px 12px rgba(11, 80, 161, 0.15);
   }
   .footer-hint {
     font-size: 0.85rem;
-    color: #6c757d;
+    color: #64748B;
   }
   .header-logo {
     transition: transform 0.3s ease;

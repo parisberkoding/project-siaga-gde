@@ -6,17 +6,17 @@
 
 <style>
     .schedule-card {
-        border: 1px solid #e9ecef;
+        border: 1px solid #E4E9F0;
         border-radius: 10px;
         padding: 16px;
         margin-bottom: 12px;
         transition: all 0.2s;
     }
     .schedule-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .schedule-card.overdue { border-left: 4px solid #dc3545; }
-    .schedule-card.today { border-left: 4px solid #ffc107; }
-    .schedule-card.upcoming { border-left: 4px solid #4154f1; }
-    .schedule-card.completed { border-left: 4px solid #198754; opacity: 0.8; }
+    .schedule-card.overdue { border-left: 4px solid #ED1B2F; }
+    .schedule-card.today { border-left: 4px solid #D8CE3A; }
+    .schedule-card.upcoming { border-left: 4px solid #0B50A1; }
+    .schedule-card.completed { border-left: 4px solid #71A62F; opacity: 0.8; }
 
     .calendar-header {
         display: flex;
@@ -29,7 +29,7 @@
         align-items: center;
         gap: 12px;
     }
-    .month-nav h5 { margin: 0; color: #012970; font-weight: 700; }
+    .month-nav h5 { margin: 0; color: #093D7D; font-weight: 700; }
 </style>
 
 <div class="pagetitle">
@@ -240,7 +240,7 @@
                         {{-- Upcoming --}}
                         @php $upcomingItems = $schedules->where('group', 'upcoming'); @endphp
                         @if($upcomingItems->count() > 0)
-                        <h6 class="fw-bold mt-3 mb-2" style="color: #4154f1;">
+                        <h6 class="fw-bold mt-3 mb-2" style="color: #0B50A1;">
                             <i class="bi bi-calendar-event me-1"></i> Terjadwal
                         </h6>
                         @foreach($upcomingItems as $item)
