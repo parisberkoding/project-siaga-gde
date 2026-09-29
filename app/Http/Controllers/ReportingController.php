@@ -105,6 +105,12 @@ class ReportingController extends Controller
      */
     public function analyzeStruk(Request $request)
     {
+        // Permohonan acuan validasi (opsional; hanya mode operasional).
+        $permohonan = null;
+        if ($request->filled('permohonan_id')) {
+            $permohonan = Permohonan::with('vehicle')->find($request->input('permohonan_id'));
+        }
+
         // Multi-file: images[]
         if ($request->hasFile('images')) {
             $validator = Validator::make($request->all(), [
@@ -166,6 +172,7 @@ class ReportingController extends Controller
             return response()->json([
                 'success'      => true,
                 'results'      => $results,
+                'validation'   => $this->buildStrukValidation($permohonan, $results),
                 'has_api_limit' => in_array(ImageAnalysisService::STATUS_API_LIMIT, $statuses, true),
             ]);
         }
@@ -211,6 +218,10 @@ class ReportingController extends Controller
                 'kategori' => $result['kategori'],
                 'metadata' => $result['metadata'],
                 'text'     => $result['text'],
+                'validation' => $this->buildStrukValidation($permohonan, [[
+                    'kategori' => $result['kategori'],
+                    'metadata' => $result['metadata'],
+                ]]),
             ]);
         } catch (\Throwable $e) {
             return response()->json([
@@ -420,6 +431,50 @@ class ReportingController extends Controller
             return back()->withInput()->with('error', 'Minimal upload 1 foto struk/tambahan.');
         }
 
+        // ── Validasi kecocokan struk dengan permohonan (server-side guard) ──
+        // Nominal BBM total vs bill_amounts (toleransi 1%); plat nomor opsional.
+        $expectedNominal = (float) ($permohonan->bill_amounts ?? 0);
+        $expectedPlateRaw = $permohonan->vehicle?->consumerial_code;
+        $expectedPlate = ImageAnalysisService::normalizePlate($expectedPlateRaw);
+
+        $totalBbmNominal = 0.0;
+        $detectedPlates = [];
+        foreach ($request->input('struk_kategoris', []) as $idx => $kat) {
+            if ($kat !== 'BBM') {
+                continue;
+            }
+
+            $nominal = $request->input("nominals.{$idx}");
+            if ($nominal !== null && $nominal !== '') {
+                $totalBbmNominal += (float) $nominal;
+            }
+
+            $raw = $request->input("metadata_s.{$idx}");
+            $meta = is_string($raw) ? json_decode($raw, true) : (is_array($raw) ? $raw : null);
+            $plate = ImageAnalysisService::normalizePlate($meta['metadata']['plat_nomor'] ?? ($meta['plat_nomor'] ?? null));
+            if ($plate) {
+                $detectedPlates[] = $plate;
+            }
+        }
+
+        $tolerance = $expectedNominal > 0 ? $expectedNominal * 0.01 : 0;
+        if ($expectedNominal > 0 && ($totalBbmNominal <= 0 || abs($totalBbmNominal - $expectedNominal) > $tolerance)) {
+            return back()->withInput()->with('error',
+                'Struk berbeda — nominal struk BBM Rp ' . number_format($totalBbmNominal, 0, ',', '.')
+                . ' tidak sesuai dengan nominal permohonan Rp ' . number_format($expectedNominal, 0, ',', '.')
+                . '. Harap upload struk yang sebenarnya.');
+        }
+
+        if ($expectedPlate) {
+            $mismatch = array_values(array_filter(array_unique($detectedPlates), fn ($p) => $p !== $expectedPlate));
+            if (! empty($mismatch)) {
+                return back()->withInput()->with('error',
+                    'Struk berbeda — plat nomor pada struk (' . implode(', ', $mismatch)
+                    . ') tidak sesuai dengan kendaraan permohonan (' . $expectedPlate
+                    . '). Harap upload struk yang sebenarnya.');
+            }
+        }
+
         try {
             DB::beginTransaction();
 
@@ -453,6 +508,18 @@ class ReportingController extends Controller
                 $metadataRaw = $allMetadata[$idx] ?? '';
                 $metadata = ! empty($metadataRaw) ? json_decode($metadataRaw, true) : null;
                 $source = ($allSources[$idx] ?? 'ai') === 'manual' ? 'manual' : 'ai';
+
+                // Inject plat nomor dari data permohonan bila AI tidak membacanya
+                // (opsional: hanya sebagai pelengkap metadata).
+                if ($kategori === 'BBM') {
+                    $metadata = is_array($metadata) ? $metadata : [];
+                    if (empty($metadata['metadata']) || ! is_array($metadata['metadata'])) {
+                        $metadata['metadata'] = [];
+                    }
+                    if (empty($metadata['metadata']['plat_nomor']) && $expectedPlateRaw) {
+                        $metadata['metadata']['plat_nomor'] = $expectedPlateRaw;
+                    }
+                }
 
                 $path = $this->storeStrukImage($file, 'OPRS-' . $requestNumber);
                 $paths[] = $path;
@@ -501,6 +568,86 @@ class ReportingController extends Controller
             DB::rollBack();
             return back()->withInput()->with('error', 'Gagal mengirim laporan: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Bandingkan hasil OCR struk dengan data permohonan:
+     *  - Nominal BBM (total) vs Permohonan::bill_amounts, toleransi 1%.
+     *  - Plat nomor yang terbaca vs kendaraan permohonan (opsional: hanya bila
+     *    plat berhasil terbaca; bila tidak terbaca tidak memblokir).
+     *
+     * @param  array<int, array{kategori?: ?string, metadata?: array}>  $results
+     * @return array<string, mixed>|null
+     */
+    protected function buildStrukValidation(?Permohonan $permohonan, array $results): ?array
+    {
+        if (! $permohonan) {
+            return null;
+        }
+
+        $expectedNominal = (float) ($permohonan->bill_amounts ?? 0);
+        $expectedPlate = ImageAnalysisService::normalizePlate(
+            $permohonan->vehicle?->consumerial_code
+        );
+
+        $actualNominal = 0.0;
+        $detectedPlates = [];
+
+        foreach ($results as $result) {
+            if (($result['kategori'] ?? null) !== 'BBM') {
+                continue;
+            }
+
+            $nominal = $result['metadata']['nominal'] ?? null;
+            if ($nominal !== null && $nominal !== '') {
+                $actualNominal += (float) $nominal;
+            }
+
+            $plate = ImageAnalysisService::normalizePlate($result['metadata']['plat_nomor'] ?? null);
+            if ($plate) {
+                $detectedPlates[] = $plate;
+            }
+        }
+
+        $tolerance = $expectedNominal > 0 ? $expectedNominal * 0.01 : 0;
+        $nominalChecked = $expectedNominal > 0 && $actualNominal > 0;
+        $nominalDiff = $actualNominal - $expectedNominal;
+        $nominalOk = ! $nominalChecked || abs($nominalDiff) <= $tolerance;
+
+        $mismatchedPlates = $expectedPlate
+            ? array_values(array_filter($detectedPlates, fn ($p) => $p !== $expectedPlate))
+            : [];
+        $plateOk = empty($mismatchedPlates);
+
+        $valid = $nominalOk && $plateOk;
+        $message = '';
+
+        if (! $valid) {
+            $parts = [];
+            if (! $nominalOk) {
+                $parts[] = 'Nominal struk BBM Rp ' . number_format($actualNominal, 0, ',', '.')
+                    . ' tidak sesuai dengan nominal permohonan Rp ' . number_format($expectedNominal, 0, ',', '.') . '.';
+            }
+            if (! $plateOk) {
+                $parts[] = 'Plat nomor pada struk (' . implode(', ', array_unique($mismatchedPlates))
+                    . ') berbeda dengan kendaraan permohonan (' . $expectedPlate . ').';
+            }
+            $message = implode(' ', $parts) . ' Struk berbeda — harap upload struk yang sebenarnya.';
+        }
+
+        return [
+            'expected_nominal' => $expectedNominal,
+            'expected_plate'   => $expectedPlate,
+            'actual_nominal'   => $actualNominal,
+            'detected_plates'  => array_values(array_unique($detectedPlates)),
+            'nominal_checked'  => $nominalChecked,
+            'nominal_ok'       => $nominalOk,
+            'nominal_diff'     => $nominalDiff,
+            'tolerance'        => $tolerance,
+            'plate_ok'         => $plateOk,
+            'valid'            => $valid,
+            'message'          => $message,
+        ];
     }
 
     /**

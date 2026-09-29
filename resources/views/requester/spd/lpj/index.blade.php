@@ -179,10 +179,12 @@
                                             <i class="bi bi-file-earmark-pdf"></i>
                                         </a>
                                         @if($lpj->status == 'rejected')
+                                            @can('permission', 'lpj.update')
                                             <a href="{{ route('requester.lpj.edit', $lpj) }}"
                                                class="btn btn-sm btn-outline-warning" title="Revisi LPJ">
                                                 <i class="bi bi-pencil"></i> Revisi
                                             </a>
+                                            @endcan
                                         @endif
                                     </div>
                                 </td>

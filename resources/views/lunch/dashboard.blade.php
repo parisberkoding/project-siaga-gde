@@ -48,7 +48,9 @@
                         </div>
                         <h6 class="mt-2 mb-1">Master Pekerja</h6>
                         <small class="text-muted d-block mb-2">{{ $stepStatus['employee_count'] }} pekerja terdaftar</small>
+                        @can('permission', 'lunch.manage')
                         <a href="{{ route('lunch.employee-defaults.index') }}" class="btn btn-sm btn-outline-primary w-100">Kelola Pekerja</a>
+                        @endcan
                     </div>
                 </div>
                 {{-- Step 2: Forecast H+1 --}}
@@ -66,12 +68,14 @@
                         <small class="text-muted d-block mb-2">
                             {{ $stepStatus['forecast_tomorrow'] ? 'Sudah digenerate' : 'Belum digenerate' }}
                         </small>
+                        @can('permission', 'lunch.manage')
                         <form method="POST" action="{{ route('lunch.forecasts.generate') }}" class="d-inline w-100">
                             @csrf
                             <button class="btn btn-sm btn-outline-success w-100" onclick="return confirm('Generate forecast untuk besok?')">
                                 <i class="bi bi-magic"></i> Generate
                             </button>
                         </form>
+                        @endcan
                     </div>
                 </div>
                 {{-- Step 3: Distribusi --}}

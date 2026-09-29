@@ -128,6 +128,7 @@
                                     @endif
                                 </div>
                                 <div class="d-flex flex-column gap-1 ms-2">
+                                    @can('permission', 'lunch.manage')
                                     <button class="btn btn-success btn-sm py-0"
                                             onclick="h2Confirm({{ $guest->id }})">
                                         <i class="bi bi-check-circle"></i> Jadi
@@ -136,6 +137,7 @@
                                             onclick="h2Cancel({{ $guest->id }})">
                                         <i class="bi bi-x-circle"></i> Batal
                                     </button>
+                                    @endcan
                                 </div>
                             </div>
                         </div>
@@ -197,7 +199,7 @@
             $isPast   = $cellDate->lt($today);
             $isToday  = $cellDate->isSameDay($today);
             $dayGuests = $inMonth ? ($guests->get($dateStr) ?? collect()) : collect();
-            $canAdd   = $inMonth && !$isPast;
+            $canAdd   = $inMonth && !$isPast && auth()->user()->can('permission', 'lunch.manage');
         @endphp
 
         <div class="calendar-cell
@@ -325,6 +327,7 @@
             </div>
             <div class="modal-footer d-flex justify-content-between">
                 {{-- Tombol hapus (hanya jika pending) --}}
+                @can('permission', 'lunch.manage')
                 <form method="POST" id="deleteForm" style="display:inline;">
                     @csrf @method('DELETE')
                     <button type="submit" class="btn btn-outline-danger btn-sm" id="btnDelete"
@@ -332,6 +335,7 @@
                         <i class="bi bi-trash"></i> Hapus
                     </button>
                 </form>
+                @endcan
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>

@@ -52,9 +52,11 @@
                 <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#deletedVehiclesCollapse" aria-expanded="false">
                     <i class="bi bi-trash me-1"></i>Data Terhapus
                 </button>
+                @can('permission', 'vehicle.create')
                 <a href="{{ route('vehicles.create') }}" class="btn btn-primary btn-sm">
                     <i class="bi bi-plus-circle me-1"></i>Tambah
                 </a>
+                @endcan
             </div>
         </div>
 
@@ -152,10 +154,13 @@
                                    class="btn btn-info" title="Detail">
                                     <i class="bi bi-info-circle"></i>
                                 </a>
+                                @can('permission', 'vehicle.update')
                                 <a href="{{ route('vehicles.edit', $vehicle->id) }}"
                                    class="btn btn-warning" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
+                                @endcan
+                                @can('permission', 'vehicle.delete')
                                 <form action="{{ route('vehicles.delete', $vehicle->id) }}"
                                   method="POST"
                                   style="display: inline;"
@@ -165,6 +170,7 @@
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </form>
+                            @endcan
                             </div>
                         </td>
                     </tr>
@@ -219,6 +225,7 @@
                                 <td><small>{{ $vehicle->creator->nama_lengkap ?? 'Unknown' }}</small></td>
                                 <td><small>{{ $vehicle->deleted_at->format('d/m/Y H:i') }}</small></td>
                                 <td>
+                                    @can('permission', 'vehicle.delete')
                                     <form action="{{ route('vehicles.restore', $vehicle->id) }}"
                                           method="POST"
                                           onsubmit="return confirm('Pulihkan {{ $vehicle->consumerial_type }} {{ $vehicle->consumerial_code }}?')">
@@ -227,6 +234,7 @@
                                             <i class="bi bi-arrow-counterclockwise me-1"></i>Pulihkan
                                         </button>
                                     </form>
+                                    @endcan
                                 </td>
                             </tr>
                             @empty

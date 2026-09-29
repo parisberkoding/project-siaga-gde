@@ -1596,7 +1596,7 @@ class SuperadminController extends Controller
         $query = User::query();
 
         if ($role) {
-            $query->where('role', $role);
+            $query->whereHas('roles', fn ($q) => $q->where('code', $role));
         }
 
         if ($search) {

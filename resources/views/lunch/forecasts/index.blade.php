@@ -26,6 +26,7 @@
             </form>
         </div>
         <div class="col-md-8 text-md-end">
+            @can('permission', 'lunch.manage')
             <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#overrideModal">
                 <i class="bi bi-pencil-square me-1"></i>Manual Override
             </button>
@@ -35,6 +36,7 @@
                 <input type="hidden" name="date" value="{{ $date }}">
                 <button class="btn btn-primary"><i class="bi bi-magic me-1"></i>Generate Forecast</button>
             </form>
+            @endcan
         </div>
     </div>
 

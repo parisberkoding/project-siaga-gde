@@ -1,0 +1,22 @@
+# ─────────────────────────────────────────────────────────────
+#  OPSIONAL — mode development (kode live tanpa rebuild)
+#
+#  Cara pakai:
+#     cp docker-compose.override.yml.example docker-compose.override.yml
+#     docker compose up -d
+#
+#  File `docker-compose.override.yml` sudah masuk .gitignore sehingga
+#  tidak akan ter-commit. Hapus file itu untuk kembali ke mode image
+#  (kode di-bake, perubahan butuh --build).
+#
+#  Catatan: hanya source PHP/Blade yang live. Perubahan CSS/JS tetap
+#  perlu `docker compose build app` karena aset di-build di dalam image.
+# ─────────────────────────────────────────────────────────────
+services:
+  app:
+    volumes:
+      - ./app:/var/www/html/app
+      - ./resources:/var/www/html/resources
+      - ./routes:/var/www/html/routes
+      - ./config:/var/www/html/config
+      - ./database:/var/www/html/database

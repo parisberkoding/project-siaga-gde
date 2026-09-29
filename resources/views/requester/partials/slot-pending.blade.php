@@ -62,12 +62,14 @@
         @endif
 
         {{-- ✅ Tombol Cancel --}}
+        @can('permission', 'bbm.request')
         <button type="button"
                 class="btn btn-danger btn-sm w-100 mt-2"
                 data-bs-toggle="modal"
                 data-bs-target="#cancelModal{{ $slotNum }}">
             <i class="bi bi-x-circle"></i> Batalkan Permohonan
         </button>
+        @endcan
     </div>
 </div>
 

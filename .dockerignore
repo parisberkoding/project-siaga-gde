@@ -1,0 +1,37 @@
+# Build context exclusions (kecepatan build + jangan bake secret/sampah).
+.git
+.gitignore
+.dockerignore
+
+# Secrets & env (di-mount saat runtime, bukan di-bake)
+.env
+.env.*
+!.env.example
+auth.json
+
+# Dependency (di-install ulang di image)
+/vendor
+/node_modules
+
+# Hasil build & cache runtime
+/public/build
+/public/hot
+/public/storage
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/logs/*
+/bootstrap/cache/*.php
+
+# File besar / tidak perlu
+*.log
+*.zip
+*.xlsx
+*.doc
+*.docx
+*.md
+.DS_Store
+/faris/*
+/tests
+phpunit.xml
+phpstan.neon

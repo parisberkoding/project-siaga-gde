@@ -82,6 +82,10 @@ it('mengembalikan status api_error utk respons tidak terparse', function () {
 it('meneruskan status & has_api_limit pada endpoint analyze-struk', function () {
     $this->seed(\Database\Seeders\RbacSeeder::class);
     $admin = User::factory()->create(['role' => 'superadmin']);
+    $role = \App\Models\Role::where('code', 'superadmin')->first();
+    if ($role) {
+        $admin->roles()->attach($role->id, ['is_primary' => true]);
+    }
 
     Http::fake(['*' => Http::response(['error' => ['status' => 'RESOURCE_EXHAUSTED']], 429)]);
 

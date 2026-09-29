@@ -43,7 +43,8 @@ Baca gambar dengan teliti, lalu kembalikan HANYA JSON valid tanpa teks lain:
     "tanggal": "YYYY-MM-DD",
     "nominal": <angka integer atau null>,
     "volume": <angka liter, hanya jika BBM, atau null>,
-    "harga_per_liter": <angka rupiah per liter, hanya jika terbaca, atau null>
+    "harga_per_liter": <angka rupiah per liter, hanya jika terbaca, atau null>,
+    "plat_nomor": "nomor polisi kendaraan yang tertulis di struk, huruf kapital tanpa spasi (contoh: B1234XYZ), atau null"
   },
   "text": "hasil OCR penuh / deskripsi gambar"
 }
@@ -58,6 +59,7 @@ Aturan:
 - nominal = total pembayaran yang tertulis di struk. Untuk Tambahan, nominal = null.
 - Jika angka tidak terbaca, gunakan null. JANGAN menebak.
 - Tanggal dalam format YYYY-MM-DD. Jika tidak terbaca, gunakan null.
+- plat_nomor = nomor polisi kendaraan bila tercantum di struk (umum pada struk BBM fleet/Pertamina). Tulis huruf kapital tanpa spasi/tanda baca. Jika tidak ada atau tidak terbaca, gunakan null. JANGAN menebak.
 - text = seluruh teks yang terbaca dari gambar, atau deskripsi singkat untuk foto non-struk.
 PROMPT;
 
@@ -149,7 +151,7 @@ PROMPT;
         return [
             'status'   => $status,
             'kategori' => 'Lainnya',
-            'metadata' => ['tanggal' => null, 'nominal' => null, 'volume' => null, 'harga_per_liter' => null],
+            'metadata' => ['tanggal' => null, 'nominal' => null, 'volume' => null, 'harga_per_liter' => null, 'plat_nomor' => null],
             'text'     => '',
         ];
     }
@@ -259,7 +261,7 @@ PROMPT;
         $fallback = [
             'status'   => self::STATUS_API_ERROR,
             'kategori' => 'Lainnya',
-            'metadata' => ['tanggal' => null, 'nominal' => null, 'volume' => null, 'harga_per_liter' => null],
+            'metadata' => ['tanggal' => null, 'nominal' => null, 'volume' => null, 'harga_per_liter' => null, 'plat_nomor' => null],
             'text'     => $content,
         ];
 
@@ -300,8 +302,24 @@ PROMPT;
                 'harga_per_liter'  => isset($metadata['harga_per_liter']) && $metadata['harga_per_liter'] !== null && $metadata['harga_per_liter'] !== ''
                     ? (float) $metadata['harga_per_liter']
                     : null,
+                'plat_nomor'       => self::normalizePlate($metadata['plat_nomor'] ?? null),
             ],
             'text' => is_string($decoded['text'] ?? null) ? $decoded['text'] : $content,
         ];
+    }
+
+    /**
+     * Normalisasi nomor polisi: huruf kapital, buang semua karakter non-alfanumerik.
+     * Contoh: "B 1234 XYZ" → "B1234XYZ". Mengembalikan null bila kosong.
+     */
+    public static function normalizePlate($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $clean = preg_replace('/[^A-Za-z0-9]/', '', (string) $value);
+
+        return $clean === '' ? null : strtoupper($clean);
     }
 }

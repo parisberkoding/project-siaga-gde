@@ -78,7 +78,7 @@
         // ── BBM / Permohonan ──
         ['label' => 'Permohonan BBM', 'icon' => 'bi bi-fuel-pump', 'id' => 'bbm-nav', 'active' => ['requester-index', 'requester-history', 'admin-dashboard', 'superadmin.permohonan*'], 'children' => [
             ['label' => 'Permohonan Baru', 'icon' => 'bi bi-circle', 'route' => 'requester-index', 'active' => ['requester-index'], 'perms' => ['bbm.request']],
-            ['label' => 'Riwayat Permohonan', 'icon' => 'bi bi-circle', 'route' => 'requester-history', 'active' => ['requester-history'], 'perms' => ['bbm.report']],
+            ['label' => 'Riwayat Permohonan', 'icon' => 'bi bi-circle', 'route' => 'requester-history', 'active' => ['requester-history'], 'perms' => ['bbm.view', 'bbm.report']],
             ['label' => 'Approval BBM', 'icon' => 'bi bi-circle', 'route' => 'admin-dashboard', 'active' => ['admin-dashboard'], 'perms' => ['bbm.approve']],
             ['label' => 'Kelola Permohonan', 'icon' => 'bi bi-circle', 'route' => 'superadmin.permohonan', 'active' => ['superadmin.permohonan*'], 'perms' => ['bbm.approve']],
         ]],
@@ -185,7 +185,7 @@
             ['label' => 'Lap. Keuangan Service', 'icon' => 'bi bi-circle', 'route' => 'superadmin.financial-report.index', 'active' => ['superadmin.financial-report.*'], 'perms' => ['vehicle.report']],
             ['label' => 'Lap. Transaksi Sparepart', 'icon' => 'bi bi-circle', 'route' => 'superadmin.transaction-report.index', 'active' => ['superadmin.transaction-report.*'], 'perms' => ['vehicle.report']],
             ['label' => 'Vehicle Health', 'icon' => 'bi bi-circle', 'route' => 'superadmin.vehicle-health.index', 'active' => ['superadmin.vehicle-health.*'], 'perms' => ['vehicle.report']],
-            ['label' => 'AI Assistant (Beta)', 'icon' => 'bi bi-circle', 'route' => 'ai-assistant.index', 'active' => ['ai-assistant.*'], 'perms' => ['dashboard.view']],
+            ['label' => 'AI Assistant (Beta)', 'icon' => 'bi bi-circle', 'route' => 'ai-assistant.index', 'active' => ['ai-assistant.*'], 'perms' => ['ai.view']],
         ]],
     ]));
   @endphp

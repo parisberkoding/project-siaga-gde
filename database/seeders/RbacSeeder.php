@@ -53,6 +53,7 @@ class RbacSeeder extends Seeder
             ['code' => 'rbac',      'name' => 'RBAC & Hak Akses', 'icon' => 'bi bi-shield-lock',  'order' => 9],
             ['code' => 'lunch',     'name' => 'Lunch Management', 'icon' => 'bi bi-egg-fried',    'order' => 11],
             ['code' => 'settings',  'name' => 'Pengaturan',       'icon' => 'bi bi-gear',         'order' => 10],
+            ['code' => 'ai',        'name' => 'AI Assistant',     'icon' => 'bi bi-robot',        'order' => 12],
         ];
 
         foreach ($groups as $g) {
@@ -130,6 +131,9 @@ class RbacSeeder extends Seeder
             // Settings
             ['settings', 'view',   'settings', 'Melihat pengaturan'],
             ['settings', 'manage', 'settings', 'Mengelola pengaturan'],
+
+            // AI Assistant
+            ['ai', 'view', 'ai', 'Mengakses AI Assistant'],
         ];
 
         foreach ($defs as [$module, $action, $groupCode, $desc]) {
@@ -167,6 +171,7 @@ class RbacSeeder extends Seeder
                     'vehicle.view', 'vehicle.sparepart', 'vehicle.scan',
                     'lunch.view', 'lunch.export', 'lunch.manage',
                     'settings.view',
+                    'ai.view',
                 ],
             ],
             'dispatcher' => [
@@ -199,6 +204,7 @@ class RbacSeeder extends Seeder
                     'lpj.view', 'lpj.validate', 'lpj.export',
                     'vehicle.view',
                     'pelaporan.view',
+                    'ai.view',
                 ],
             ],
             'view_only' => [

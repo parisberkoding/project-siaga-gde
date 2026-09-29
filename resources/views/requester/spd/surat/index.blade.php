@@ -104,18 +104,22 @@
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="card-title mb-0"><i class="bi bi-file-earmark-text"></i> Daftar Surat Tugas</h5>
+                @can('permission', 'spd.create')
                 <a href="{{ route('requester.surat.create') }}" class="btn btn-primary">
                     <i class="bi bi-plus-lg"></i> Buat Surat Baru
                 </a>
+                @endcan
             </div>
 
             @if($suratList->isEmpty())
                 <div class="text-center py-5">
                     <i class="bi bi-file-earmark-x text-muted" style="font-size: 4rem;"></i>
                     <p class="text-muted mt-3 mb-3">Belum ada surat tugas</p>
+                    @can('permission', 'spd.create')
                     <a href="{{ route('requester.surat.create') }}" class="btn btn-primary">
                         <i class="bi bi-plus-lg"></i> Buat Surat Pertama
                     </a>
+                    @endcan
                 </div>
             @else
                 <div class="table-responsive">
@@ -192,16 +196,20 @@
                                                 <i class="bi bi-eye"></i>
                                             </a> --}}
                                             @if($surat->status == 'approved' && !$surat->lpjPenggantian)
+                                                @can('permission', 'lpj.create')
                                                 <a href="{{ route('requester.lpj.create', $surat) }}"
                                                    class="btn btn-sm btn-outline-success" title="Buat LPJ">
                                                     <i class="bi bi-file-earmark-plus"></i>
                                                 </a>
+                                                @endcan
                                             @endif
                                             @if($surat->status == 'approved' && !$surat->is_extension)
+                                                @can('permission', 'spd.create')
                                                 <a href="{{ route('requester.perpanjangan.create') }}?surat_id={{ $surat->id }}"
                                                    class="btn btn-sm btn-outline-info" title="Ajukan Perpanjangan">
                                                     <i class="bi bi-clock-history"></i>
                                                 </a>
+                                                @endcan
                                             @endif
                                         </div>
                                     </td>

@@ -186,6 +186,8 @@
                                     @foreach($activePermohonan as $p)
                                         <option value="{{ $p->id }}"
                                                 data-vehicle="{{ $p->vehicle?->consumerial_code }}"
+                                                data-plate="{{ $p->vehicle?->consumerial_code }}"
+                                                data-bill="{{ $p->bill_amounts }}"
                                                 data-gasoline="{{ $p->gasoline_type }}"
                                                 data-budget="{{ $p->vehicle?->detail?->nominal_full_tank }}">
                                             {{ $p->request_number }} - {{ $p->vehicle?->consumerial_code }} ({{ $p->gasoline_type }}) - Rp {{ number_format($p->bill_amounts, 0, ',', '.') }}
@@ -204,6 +206,12 @@
 
                             {{-- Preview & hasil AI per file --}}
                             <div id="aiResultsOp" class="d-flex flex-column gap-2 mb-3"></div>
+
+                            {{-- Validasi struk vs permohonan --}}
+                            <div id="strukValidationAlertOp" class="alert alert-danger py-2 small d-none">
+                                <strong><i class="bi bi-exclamation-triangle"></i> Struk berbeda.</strong>
+                                <span id="strukValidationMsgOp"></span>
+                            </div>
 
                             {{-- Peringatan API limit --}}
                             <div id="aiLimitAlertOp" class="alert alert-warning py-2 small d-none">
@@ -334,8 +342,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // ── Operasional: multi-file upload + batch AI analysis ──
     const fotoFilesOp = document.getElementById('fotoFilesOp');
     // State per indeks file:
-    // { status:'ai_ok'|'manual', kategori, nominal, volume, tanggal, el:{...} }
+    // { status:'ai_ok'|'manual', kategori, nominal, volume, tanggal, platNomor, el:{...} }
     let fileState = {};
+    let strukValidationFailed = false;
 
     function num(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
 
@@ -411,7 +420,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const ket = s.status === 'ai_ok' ? (s.text || '').substring(0, 200) : '';
             const meta = JSON.stringify({
                 kategori: kat,
-                metadata: { tanggal: s.tanggal || null, nominal: nom === '' ? null : num(nom), volume: num(s.volume) || null },
+                metadata: {
+                    tanggal: s.tanggal || null,
+                    nominal: nom === '' ? null : num(nom),
+                    volume: num(s.volume) || null,
+                    plat_nomor: s.platNomor || null,
+                },
                 text: s.status === 'ai_ok' ? (s.text || '') : '',
                 source: s.status,
             });
@@ -479,13 +493,24 @@ document.addEventListener('DOMContentLoaded', function() {
             const status = document.getElementById('aiStatusOp');
             const fieldsWrap = document.getElementById('fileFieldsWrap');
 
+            // Wajib pilih permohonan dulu agar validasi struk bisa dijalankan.
+            if (selectPermohonan && !selectPermohonan.value) {
+                this.value = '';
+                status.textContent = 'Pilih Permohonan BBM terlebih dahulu sebelum upload struk.';
+                status.className = 'small text-danger';
+                return;
+            }
+
             // Reset
             container.innerHTML = '';
             fieldsWrap.innerHTML = '';
             status.textContent = '';
             status.className = 'small';
             fileState = {};
+            strukValidationFailed = false;
             document.getElementById('aiLimitAlertOp').classList.add('d-none');
+            const valAlertReset = document.getElementById('strukValidationAlertOp');
+            if (valAlertReset) valAlertReset.classList.add('d-none');
 
             if (files.length === 0) return;
 
@@ -530,6 +555,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const fd = new FormData();
             files.forEach(f => fd.append('images[]', f));
+            if (selectPermohonan && selectPermohonan.value) {
+                fd.append('permohonan_id', selectPermohonan.value);
+            }
 
             try {
                 const res = await fetch(analyzeUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }, body: fd });
@@ -575,6 +603,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             nominal: metadata.nominal || 0,
                             volume: metadata.volume || 0,
                             tanggal: metadata.tanggal || '',
+                            platNomor: metadata.plat_nomor || '',
                             text,
                             el: null,
                         };
@@ -603,7 +632,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         // api_limit / api_error → mode isi manual untuk foto ini
                         if (r.status === 'api_limit') hasApiLimit = true; else hasApiError = true;
 
-                        fileState[idx] = { status: 'manual', kategori: '', nominal: '', volume: '', tanggal: '', text: '', el: null };
+                        fileState[idx] = { status: 'manual', kategori: '', nominal: '', volume: '', tanggal: '', platNomor: '', text: '', el: null };
 
                         card.classList.remove('border-light');
                         card.classList.add('needs-manual', 'border-warning');
@@ -624,6 +653,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 syncHiddenFields(fieldsWrap);
                 recomputeTotals();
+
+                // ── Validasi kecocokan struk vs permohonan (nominal & plat) ──
+                if (data.validation) {
+                    const valAlert = document.getElementById('strukValidationAlertOp');
+                    const valMsg = document.getElementById('strukValidationMsgOp');
+                    strukValidationFailed = !data.validation.valid;
+                    if (strukValidationFailed) {
+                        if (valMsg) valMsg.textContent = ' ' + (data.validation.message || 'Harap upload struk yang sebenarnya.');
+                        if (valAlert) valAlert.classList.remove('d-none');
+                        Object.entries(fileState).forEach(([idx, s]) => {
+                            if (s && effKategori(s) === 'BBM') {
+                                const c = document.getElementById('fileCard' + idx);
+                                if (c) { c.classList.remove('border-light'); c.classList.add('border-danger'); }
+                            }
+                        });
+                    } else if (valAlert) {
+                        valAlert.classList.add('d-none');
+                    }
+                }
 
                 if (hasApiLimit || hasApiError) {
                     const alertEl = document.getElementById('aiLimitAlertOp');
@@ -653,6 +701,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const formOperational = document.getElementById('formOperational');
     if (formOperational) {
         formOperational.addEventListener('submit', function(e) {
+            // Blokir submit bila validasi struk vs permohonan gagal.
+            if (strukValidationFailed) {
+                e.preventDefault();
+                const msg = document.getElementById('strukValidationMsgOp');
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Struk Berbeda',
+                        text: (msg && msg.textContent) ? msg.textContent.trim() : 'Harap upload struk yang sebenarnya.',
+                        confirmButtonText: 'OK',
+                    });
+                }
+                return;
+            }
+
             const problems = [];
 
             Object.entries(fileState).forEach(([idx, s]) => {

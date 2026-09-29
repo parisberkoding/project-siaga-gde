@@ -62,10 +62,12 @@
                 Gunakan fitur pelaporan BBM untuk mengupload struk & foto pendukung.
                 Data permohonan <code>{{ $request->request_number }}</code> otomatis terisi.
             </small> -->
+            @can('permission', 'pelaporan.create')
             <a href="{{ route('pelaporan.index', ['mode' => 'operational', 'permohonan_id' => $request->id]) }}"
                class="btn btn-primary w-100">
                 <i class="bi bi-send"></i> Lapor Pembelian 
             </a>
+            @endcan
         </div>
 
         {{-- ════════════════════════════════════════════════════════════════

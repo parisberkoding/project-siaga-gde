@@ -26,9 +26,12 @@
             </form>
         </div>
         <div class="col-md-8 text-md-end">
+            @can('permission', 'lunch.export')
             <a href="{{ route('lunch.export-form') }}" class="btn btn-outline-success">
                 <i class="bi bi-file-earmark-excel me-1"></i>Export Vendor
             </a>
+            @endcan
+            @can('permission', 'lunch.manage')
             <form method="POST" action="{{ route('lunch.distributions.generate') }}" class="d-inline">
                 @csrf
                 <input type="hidden" name="date" value="{{ $date }}">
@@ -40,6 +43,7 @@
                 <input type="hidden" name="date" value="{{ $date }}">
                 <button class="btn btn-warning"><i class="bi bi-lock me-1"></i>Kunci Angka Vendor</button>
             </form>
+            @endcan
         </div>
     </div>
 

@@ -211,15 +211,19 @@
                     </div>
                     <div class="card-body">
                         @if(!$surat->lpjPenggantian)
+                            @can('permission', 'lpj.create')
                             <a href="{{ route('requester.lpj.create', $surat) }}" class="btn btn-success w-100 mb-2">
                                 <i class="bi bi-file-earmark-plus"></i> Buat Laporan LPJ
                             </a>
+                            @endcan
                         @endif
 
                         @if(!$surat->is_extension)
+                            @can('permission', 'spd.create')
                             <a href="{{ route('requester.perpanjangan.create') }}?surat_id={{ $surat->id }}" class="btn btn-info w-100 mb-2">
                                 <i class="bi bi-clock-history"></i> Ajukan Perpanjangan
                             </a>
+                            @endcan
                         @endif
                     </div>
                 </div>

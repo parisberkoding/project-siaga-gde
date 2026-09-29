@@ -282,9 +282,11 @@
                             <i class="bi bi-x-circle"></i> Laporan ditolak
                             <br><small>{{ $laporan->rejection_reason }}</small>
                         </div>
+                        @can('permission', 'lpj.update')
                         <a href="{{ route('requester.lpj.edit', $laporan) }}" class="btn btn-warning w-100 mt-2">
                             <i class="bi bi-pencil"></i> Revisi LPJ
                         </a>
+                        @endcan
                     @endif
                 </div>
             </div>

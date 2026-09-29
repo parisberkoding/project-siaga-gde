@@ -25,18 +25,22 @@
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="card-title mb-0"><i class="bi bi-clock-history"></i> Daftar Pengajuan Perpanjangan</h5>
+                @can('permission', 'spd.create')
                 <a href="{{ route('requester.perpanjangan.create') }}" class="btn btn-primary">
                     <i class="bi bi-plus-lg"></i> Ajukan Perpanjangan
                 </a>
+                @endcan
             </div>
 
             @if($extensionList->isEmpty())
                 <div class="text-center py-5">
                     <i class="bi bi-clock text-muted" style="font-size: 4rem;"></i>
                     <p class="text-muted mt-3 mb-3">Belum ada pengajuan perpanjangan</p>
+                    @can('permission', 'spd.create')
                     <a href="{{ route('requester.perpanjangan.create') }}" class="btn btn-primary">
                         <i class="bi bi-plus-lg"></i> Ajukan Perpanjangan
                     </a>
+                    @endcan
                 </div>
             @else
                 <div class="table-responsive">

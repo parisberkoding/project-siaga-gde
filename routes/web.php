@@ -140,18 +140,27 @@ Route::middleware(['auth', 'permission:pelaporan.view,pelaporan.create'])->prefi
 Route::middleware(['auth'])->group(function () {
     // ── Permohonan BBM (requester) ──
     Route::middleware('permission:bbm.request,bbm.view,bbm.report')->group(function () {
-        Route::get('/requester/view-request-bbm', [RequestManagementController::class, 'requester_index'])->name('requester-index');
-        Route::post('/requester/create-request-bbm', [RequestManagementController::class, 'requester_create'])->name('requester-create');
-        Route::put('/requester/cancel/{id}', [RequestManagementController::class, 'requester_cancel_request'])->name('requester-cancel');
+        // Halaman form permohonan baru → butuh izin membuat permohonan
+        Route::get('/requester/view-request-bbm', [RequestManagementController::class, 'requester_index'])
+            ->middleware('permission:bbm.request')->name('requester-index');
+        Route::post('/requester/create-request-bbm', [RequestManagementController::class, 'requester_create'])
+            ->middleware('permission:bbm.request')->name('requester-create');
+        Route::put('/requester/cancel/{id}', [RequestManagementController::class, 'requester_cancel_request'])
+            ->middleware('permission:bbm.request')->name('requester-cancel');
+
+        // Riwayat & detail (read-only)
         Route::get('/requester/bbm-history', [RequestManagementController::class, 'requester_history'])->name('requester-history');
         Route::get('/requester/request/{id}', [RequestManagementController::class, 'requester_show'])->name('requester-show');
-        Route::post('/requester/request/{id}/upload-proof', [RequestManagementController::class, 'requestper_upload_proof'])->name('requester-upload-proof');
 
-        // Submit Report Route
-        Route::post('/requester/request/{id}/submit-report', [RequestManagementController::class, 'requester_submit_report'])->name('requester.submit-report');
+        // Pelaporan bukti pembelian → butuh izin report
+        Route::post('/requester/request/{id}/upload-proof', [RequestManagementController::class, 'requestper_upload_proof'])
+            ->middleware('permission:bbm.report')->name('requester-upload-proof');
+
+        Route::post('/requester/request/{id}/submit-report', [RequestManagementController::class, 'requester_submit_report'])
+            ->middleware('permission:bbm.report')->name('requester.submit-report');
 
         Route::put('/requester/cancel-request/{id}', [RequestManagementController::class, 'requester_cancel_request'])
-            ->name('requester.cancel-request');
+            ->middleware('permission:bbm.request')->name('requester.cancel-request');
 
         // Thermer Print Routes
         Route::get('voucher/{id}/thermer/response', [VoucherController::class, 'thermerJsonResponse'])
@@ -173,8 +182,8 @@ Route::middleware(['auth'])->group(function () {
     // ────────────────────────────────────────────────────────────────────────
     Route::prefix('perpanjangan')->name('requester.perpanjangan.')->middleware('permission:spd.create,spd.view')->group(function () {
         Route::get('/main-perpanjangan', [SpdController::class, 'indexPerpanjanganRequester'])->name('index');
-        Route::get('/create', [SpdController::class, 'createPerpanjangan'])->name('create');
-        Route::post('/store', [SpdController::class, 'storePerpanjangan'])->name('store');
+        Route::get('/create', [SpdController::class, 'createPerpanjangan'])->middleware('permission:spd.create')->name('create');
+        Route::post('/store', [SpdController::class, 'storePerpanjangan'])->middleware('permission:spd.create')->name('store');
     });
 
     // ────────────────────────────────────────────────────────────────────────
@@ -182,11 +191,11 @@ Route::middleware(['auth'])->group(function () {
     // ────────────────────────────────────────────────────────────────────────
     Route::prefix('lpj')->name('requester.lpj.')->middleware('permission:lpj.create,lpj.view')->group(function () {
         Route::get('/main-lpj', [SpdController::class, 'indexLaporanRequester'])->name('index');
-        Route::get('/create/{surat}', [SpdController::class, 'createLaporan'])->name('create');
-        Route::post('/store', [SpdController::class, 'storeLaporan'])->name('store');
+        Route::get('/create/{surat}', [SpdController::class, 'createLaporan'])->middleware('permission:lpj.create')->name('create');
+        Route::post('/store', [SpdController::class, 'storeLaporan'])->middleware('permission:lpj.create')->name('store');
         Route::get('/show/{laporan}', [SpdController::class, 'showLaporanRequester'])->name('show');
-        Route::get('/{laporan}/edit', [SpdController::class, 'editLaporanRequester'])->name('edit');
-        Route::put('/{laporan}', [SpdController::class, 'updateLaporanRequester'])->name('update');
+        Route::get('/{laporan}/edit', [SpdController::class, 'editLaporanRequester'])->middleware('permission:lpj.update')->name('edit');
+        Route::put('/{laporan}', [SpdController::class, 'updateLaporanRequester'])->middleware('permission:lpj.update')->name('update');
     });
 
     // ────────────────────────────────────────────────────────────────────────
@@ -287,7 +296,7 @@ Route::middleware(['auth', 'permission:bbm.export'])->group(function () {
     Route::get('/print-report', [SuperadminController::class, 'printReport'])->name('superadmin.print-report');
     Route::get('/print-report/form', [SuperadminController::class, 'printReportPage'])->name('superadmin.print-report.form');
 });
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'permission:ai.view'])->group(function () {
     Route::get('/ai-assistant', [AiAssistantController::class, 'index'])->name('ai-assistant.index');
     Route::post('/ai-assistant/send', [AiAssistantController::class, 'send'])->name('ai-assistant.send');
     Route::delete('/ai-assistant/sessions/{session}', [AiAssistantController::class, 'destroySession'])->name('ai-assistant.sessions.destroy');
@@ -671,43 +680,37 @@ Route::prefix('lunch-attendance')->name('lunch.attendance.')->group(function () 
 // Transaction → Learning → Forecast H+1
 // ────────────────────────────────────────────────────────────────────────
 Route::middleware(['auth', 'permission:lunch.view,lunch.export'])->prefix('lunch')->name('lunch.')->group(function () {
-    // Dashboard
+    // ── Halaman read-only (lunch.view / lunch.export) ──
     Route::get('/', [LunchDashboardController::class, 'index'])->name('dashboard');
-
-    // Forecast (generate H+1, manual override)
     Route::get('/forecasts', [LunchForecastController::class, 'index'])->name('forecasts.index');
-    Route::post('/forecasts/generate', [LunchForecastController::class, 'generate'])->name('forecasts.generate');
-    Route::post('/forecasts/override', [LunchForecastController::class, 'override'])->name('forecasts.override');
-
-    // Distribution (angka vendor per site) + export Excel
     Route::get('/distributions', [LunchDistributionController::class, 'index'])->name('distributions.index');
-    Route::post('/distributions/generate', [LunchDistributionController::class, 'generate'])->name('distributions.generate');
-    Route::post('/distributions/lock', [LunchDistributionController::class, 'lock'])->name('distributions.lock');
-    Route::get('/export', [LunchDistributionController::class, 'exportForm'])->name('export-form');
-    Route::post('/export', [LunchDistributionController::class, 'export'])->name('export');
-
-    // QR lokasi (cetak untuk ditempel di site)
     Route::get('/qr-codes', [LunchDistributionController::class, 'qrCodes'])->name('qr-codes');
     Route::get('/qr-codes/{site}.svg', [LunchDistributionController::class, 'qrImage'])->name('qr-image');
-
-    // Transactions (kehadiran QR / ground truth)
     Route::get('/transactions', [LunchTransactionController::class, 'index'])->name('transactions.index');
     Route::get('/transactions/feed', [LunchTransactionController::class, 'feed'])->name('transactions.feed');
-
-    // Analytics
     Route::get('/analytics', [LunchAnalyticsController::class, 'index'])->name('analytics.index');
-
-    // Guest Reservation — kalender & konfirmasi tamu
     Route::get('/guests', [CateringGuestController::class, 'calendar'])->name('guests.calendar');
-    Route::post('/guests', [CateringGuestController::class, 'store'])->name('guests.store');
-    Route::put('/guests/{cateringGuest}', [CateringGuestController::class, 'update'])->name('guests.update');
-    Route::delete('/guests/{cateringGuest}', [CateringGuestController::class, 'destroy'])->name('guests.destroy');
-    Route::post('/guests/{cateringGuest}/h2-confirm', [CateringGuestController::class, 'h2Confirm'])->name('guests.h2-confirm');
-    Route::post('/guests/{cateringGuest}/h2-cancel', [CateringGuestController::class, 'h2Cancel'])->name('guests.h2-cancel');
-
-    // Self-Booking — booking mandiri makan siang (kalender multi-hari)
-    Route::post('/self-booking', [SelfBookingController::class, 'store'])->name('self-booking.store');
     Route::get('/self-booking', [SelfBookingController::class, 'index'])->name('self-booking.index');
+
+    // ── Aksi mutasi: butuh lunch.manage (view-only TIDAK boleh) ──
+    Route::middleware('permission:lunch.manage')->group(function () {
+        Route::post('/forecasts/generate', [LunchForecastController::class, 'generate'])->name('forecasts.generate');
+        Route::post('/forecasts/override', [LunchForecastController::class, 'override'])->name('forecasts.override');
+        Route::post('/distributions/generate', [LunchDistributionController::class, 'generate'])->name('distributions.generate');
+        Route::post('/distributions/lock', [LunchDistributionController::class, 'lock'])->name('distributions.lock');
+        Route::post('/guests', [CateringGuestController::class, 'store'])->name('guests.store');
+        Route::put('/guests/{cateringGuest}', [CateringGuestController::class, 'update'])->name('guests.update');
+        Route::delete('/guests/{cateringGuest}', [CateringGuestController::class, 'destroy'])->name('guests.destroy');
+        Route::post('/guests/{cateringGuest}/h2-confirm', [CateringGuestController::class, 'h2Confirm'])->name('guests.h2-confirm');
+        Route::post('/guests/{cateringGuest}/h2-cancel', [CateringGuestController::class, 'h2Cancel'])->name('guests.h2-cancel');
+        Route::post('/self-booking', [SelfBookingController::class, 'store'])->name('self-booking.store');
+    });
+
+    // ── Export data: butuh lunch.export ──
+    Route::middleware('permission:lunch.export')->group(function () {
+        Route::get('/export', [LunchDistributionController::class, 'exportForm'])->name('export-form');
+        Route::post('/export', [LunchDistributionController::class, 'export'])->name('export');
+    });
 });
 
 // ────────────────────────────────────────────────────────────────────────

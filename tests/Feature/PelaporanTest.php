@@ -138,6 +138,7 @@ it('menyimpan laporan BBM operasional via foto_files[] tanpa foto_struk (fix str
         'requester_id' => $user->id,
         'consumerial_tools_id' => $vehicle->id,
         'status'       => 'approved',
+        'bill_amounts' => 400000,
     ]);
 
     $this->actingAs($user)
@@ -166,6 +167,106 @@ it('menyimpan laporan BBM operasional via foto_files[] tanpa foto_struk (fix str
 
     // 2 file → 2 struk_items
     expect(\App\Models\StrukItem::where('nomor_surat_spd', null)->count())->toBe(2);
+});
+
+it('menolak laporan BBM operasional bila nominal struk tidak sesuai permohonan', function () {
+    $user = $this->admin;
+    $vehicle = VehicleAndToolsConsumers::factory()->create([
+        'consumerial_type' => 'KENDARAAN',
+        'is_approved'      => true,
+        'is_active'        => true,
+    ]);
+
+    $permohonan = Permohonan::factory()->create([
+        'requester_id'         => $user->id,
+        'consumerial_tools_id' => $vehicle->id,
+        'status'               => 'approved',
+        'bill_amounts'         => 300000,
+    ]);
+
+    $this->actingAs($user)
+        ->from(route('pelaporan.index'))
+        ->post(route('pelaporan.operational.store'), [
+            'permohonan_id'   => $permohonan->id,
+            'purchase_date'   => now()->format('Y-m-d'),
+            'volume_bbm'      => 30,
+            'nominal'         => 150000,
+            'foto_files'      => [UploadedFile::fake()->image('struk.jpg')],
+            'struk_kategoris' => [0 => 'BBM'],
+            'nominals'        => [0 => 150000],
+            'keterangan_s'    => [0 => 'Struk BBM'],
+            'metadata_s'      => [0 => json_encode(['kategori' => 'BBM', 'metadata' => ['nominal' => 150000], 'text' => 'OCR'])],
+        ])
+        ->assertSessionHas('error');
+
+    expect($permohonan->fresh()->status)->toBe('approved');
+    expect($permohonan->transactionProof)->toBeNull();
+});
+
+it('menerima laporan BBM operasional bila nominal dalam toleransi 1%', function () {
+    $user = $this->admin;
+    $vehicle = VehicleAndToolsConsumers::factory()->create([
+        'consumerial_type' => 'KENDARAAN',
+        'is_approved'      => true,
+        'is_active'        => true,
+    ]);
+
+    $permohonan = Permohonan::factory()->create([
+        'requester_id'         => $user->id,
+        'consumerial_tools_id' => $vehicle->id,
+        'status'               => 'approved',
+        'bill_amounts'         => 300000,
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('pelaporan.operational.store'), [
+            'permohonan_id'   => $permohonan->id,
+            'purchase_date'   => now()->format('Y-m-d'),
+            'volume_bbm'      => 30,
+            'nominal'         => 301500,
+            'foto_files'      => [UploadedFile::fake()->image('struk.jpg')],
+            'struk_kategoris' => [0 => 'BBM'],
+            'nominals'        => [0 => 301500],
+            'keterangan_s'    => [0 => 'Struk BBM'],
+            'metadata_s'      => [0 => json_encode(['kategori' => 'BBM', 'metadata' => ['nominal' => 301500], 'text' => 'OCR'])],
+        ])
+        ->assertSessionHas('success');
+
+    expect($permohonan->fresh()->status)->toBe('completed');
+});
+
+it('menolak laporan BBM operasional bila plat nomor struk berbeda', function () {
+    $user = $this->admin;
+    $vehicle = VehicleAndToolsConsumers::factory()->create([
+        'consumerial_type' => 'KENDARAAN',
+        'consumerial_code' => 'B 1234 XYZ',
+        'is_approved'      => true,
+        'is_active'        => true,
+    ]);
+
+    $permohonan = Permohonan::factory()->create([
+        'requester_id'         => $user->id,
+        'consumerial_tools_id' => $vehicle->id,
+        'status'               => 'approved',
+        'bill_amounts'         => 300000,
+    ]);
+
+    $this->actingAs($user)
+        ->from(route('pelaporan.index'))
+        ->post(route('pelaporan.operational.store'), [
+            'permohonan_id'   => $permohonan->id,
+            'purchase_date'   => now()->format('Y-m-d'),
+            'volume_bbm'      => 30,
+            'nominal'         => 300000,
+            'foto_files'      => [UploadedFile::fake()->image('struk.jpg')],
+            'struk_kategoris' => [0 => 'BBM'],
+            'nominals'        => [0 => 300000],
+            'keterangan_s'    => [0 => 'Struk BBM'],
+            'metadata_s'      => [0 => json_encode(['kategori' => 'BBM', 'metadata' => ['nominal' => 300000, 'plat_nomor' => 'D9999ZZ'], 'text' => 'OCR'])],
+        ])
+        ->assertSessionHas('error');
+
+    expect($permohonan->fresh()->status)->toBe('approved');
 });
 
 it('mengembalikan kategorisasi AI pada /pelaporan/analyze-struk (fallback)', function () {

@@ -52,18 +52,22 @@
                     <i class="bi bi-list-ul me-1"></i> Daftar User
                 </a>
             </li>
+            @can('permission', 'users.create')
             <li class="nav-item">
                 <a class="nav-link {{ Request::routeIs('users.create') ? 'active' : '' }}"
                    href="{{ route('users.create') }}">
                     <i class="bi bi-plus-circle me-1"></i> Tambah User
                 </a>
             </li>
+            @endcan
+            @can('permission', 'users.delete')
             <li class="nav-item">
                 <a class="nav-link {{ $tab == 'deleted' ? 'active' : '' }}"
                    href="{{ route('users', ['tab' => 'deleted']) }}">
                     <i class="bi bi-trash me-1"></i> Data Terhapus
                 </a>
             </li>
+            @endcan
         </ul>
 
         <!-- Tab Content: Daftar User -->
@@ -155,6 +159,7 @@
                             </td>
                             <td><small>{{ $user->created_at->format('d/m/Y H:i') }}</small></td>
                             <td>
+                                @can('permission', 'users.update')
                                 <button class="btn btn-warning btn-sm btn-action"
                                         onclick="openEditModal({{ $user->id }}, '{{ $user->username }}', '{{ e($user->nama_lengkap) }}', '{{ $user->email }}', '{{ e($user->jabatan ?? '') }}', '{{ $user->roles->first()->code ?? $user->role }}', '{{ $user->default_site_id ?? '' }}', '{{ $user->unit_id ?? '' }}')"
                                         title="Edit">
@@ -165,6 +170,8 @@
                                         title="Reset Password">
                                     <i class="bi bi-key"></i>
                                 </button>
+                                @endcan
+                                @can('permission', 'users.delete')
                                 <form action="{{ route('users.delete', $user->id) }}"
                                       method="POST"
                                       style="display: inline;"
@@ -174,6 +181,7 @@
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
+                                @endcan
                             </td>
                         </tr>
                         @empty
