@@ -7,13 +7,19 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Role;
 use App\Models\Permission;
 use App\Models\PermissionGroup;
+use App\Models\Unit;
 
 class RbacController extends Controller
 {
     public function index()
     {
         $title = 'Role & Hak Akses';
-        $roles = Role::withCount('users')->with('permissions')->orderBy('name')->get();
+        $roles = Role::withCount('users')
+            ->with(['permissions', 'unit'])
+            ->orderByRaw('unit_id IS NOT NULL')   // role global dulu, lalu role per unit
+            ->orderBy('name')
+            ->get();
+
         return view('superadmin.rbac.index', compact('title', 'roles'));
     }
 
@@ -21,7 +27,8 @@ class RbacController extends Controller
     {
         $title = 'Tambah Role Baru';
         $groups = PermissionGroup::with('permissions')->orderBy('order')->get();
-        return view('superadmin.rbac.form', compact('title', 'groups'));
+        $units = Unit::orderBy('name')->get();
+        return view('superadmin.rbac.form', compact('title', 'groups', 'units'));
     }
 
     public function store(Request $request)
@@ -30,6 +37,7 @@ class RbacController extends Controller
             'code'        => 'required|alpha_dash|unique:roles,code|max:100',
             'name'        => 'required|max:255',
             'description' => 'nullable|max:500',
+            'unit_id' => 'nullable|exists:units,id',
             'permissions' => 'nullable|array',
             'permissions.*' => 'exists:permissions,id',
         ], [
@@ -46,6 +54,10 @@ class RbacController extends Controller
                 'code'        => $validated['code'],
                 'name'        => $validated['name'],
                 'description' => $validated['description'] ?? null,
+                // Kosong = role global (berlaku semua unit). Diisi = role
+                // khusus unit tersebut, dan hanya bisa diberikan ke user
+                // di unit itu (lihat Role::isAssignableTo).
+                'unit_id'     => $validated['unit_id'] ?? null,
                 'is_active'   => true,
                 'is_system'   => false,
             ]);
@@ -78,8 +90,9 @@ class RbacController extends Controller
 
         $groups = PermissionGroup::with('permissions')->orderBy('order')->get();
         $rolePermissionIds = $role->permissions->pluck('id')->toArray();
+        $units = Unit::orderBy('name')->get();
 
-        return view('superadmin.rbac.form', compact('title', 'role', 'groups', 'rolePermissionIds'));
+        return view('superadmin.rbac.form', compact('title', 'role', 'groups', 'rolePermissionIds', 'units'));
     }
 
     public function update(Request $request, $id)
@@ -94,6 +107,7 @@ class RbacController extends Controller
         $validated = $request->validate([
             'name'        => 'required|max:255',
             'description' => 'nullable|max:500',
+            'unit_id'     => 'nullable|exists:units,id',
             'is_active'   => 'boolean',
             'permissions' => 'nullable|array',
             'permissions.*' => 'exists:permissions,id',
@@ -107,6 +121,7 @@ class RbacController extends Controller
             $role->update([
                 'name'        => $validated['name'],
                 'description' => $validated['description'] ?? null,
+                'unit_id'     => $validated['unit_id'] ?? null,
                 'is_active'   => $request->boolean('is_active', $role->is_active),
             ]);
 

@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\CheckRole::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
             'central' => \App\Http\Middleware\EnsureCentralUnit::class,
+            'feature' => \App\Http\Middleware\EnsureFeatureIsProduction::class,
             'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
             ]);
 

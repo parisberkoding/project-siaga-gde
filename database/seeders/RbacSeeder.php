@@ -142,6 +142,10 @@ class RbacSeeder extends Seeder
             // supaya hak "atur modul unit" dan "atur hak akses SSO" bisa
             // didelegasikan/dicabut secara terpisah. Keduanya khusus Pusat.
             ['settings', 'sso_mapping', 'settings', 'Mengelola pemetaan jabatan SSO ke role (khusus Pusat)'],
+            // Feature stage: menaikkan/menurunkan halaman antara development
+            // dan production. Dipakai role `developers` — aktivitas rilis
+            // fitur, terpisah dari pengaturan hak akses unit.
+            ['features', 'manage', 'settings', 'Mengelola tahap fitur (development/production)'],
 
             // AI Assistant
             ['ai', 'view', 'ai', 'Mengakses AI Assistant'],
@@ -236,6 +240,16 @@ class RbacSeeder extends Seeder
                     'lunch.view',
                 ],
             ],
+            // Developers — mengaktifkan/menonaktifkan fitur (development <-> production).
+            'developers' => [
+                'name' => 'Developers',
+                'description' => 'Mengelola tahap rilis fitur: menaikkan ke production atau menurunkan ke development.',
+                'is_system' => true,
+                'permissions' => [
+                    'features.manage',
+                ],
+            ],
+
             // User yang berangkat (penumpang) — memvalidasi kebenaran perjalanan dinas.
             'pengguna_spd' => [
                 'name' => 'Pengguna Perjalanan (User Berangkat)',

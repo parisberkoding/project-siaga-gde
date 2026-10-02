@@ -177,7 +177,7 @@ class ModuleSeeder extends Seeder
 
         // Modul Pengaturan (selalu aktif)
         'settings' => [
-            'settings.view', 'settings.manage', 'settings.modules', 'settings.sso_mapping',
+            'settings.view', 'settings.manage', 'settings.modules', 'settings.sso_mapping', 'features.manage',
         ],
     ];
 

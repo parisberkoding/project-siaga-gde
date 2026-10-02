@@ -123,11 +123,12 @@
         ['label' => 'Role & Permission', 'icon' => 'bi bi-shield-lock', 'route' => 'superadmin.rbac.index', 'active' => ['superadmin.rbac.*'], 'perms' => ['rbac.roles']],
 
         // ── Pengaturan & Data Master ──
-        ['label' => 'Pengaturan & Data Master', 'icon' => 'bi bi-gear', 'id' => 'master-nav', 'active' => ['master-gasoline.*', 'superadmin.units.*', 'superadmin.sites.*', 'superadmin.sso.*'], 'children' => [
+        ['label' => 'Pengaturan & Data Master', 'icon' => 'bi bi-gear', 'id' => 'master-nav', 'active' => ['master-gasoline.*', 'superadmin.units.*', 'superadmin.sites.*', 'superadmin.sso.*', 'superadmin.features.*'], 'children' => [
             ['label' => 'Harga BBM (Master Gasoline)', 'icon' => 'bi bi-fuel-pump', 'route' => 'master-gasoline.index', 'active' => ['master-gasoline.*'], 'perms' => ['settings.view']],
             ['label' => 'Unit Bisnis', 'icon' => 'bi bi-diagram-3', 'route' => 'superadmin.units.index', 'active' => ['superadmin.units.*'], 'perms' => ['settings.manage']],
             ['label' => 'Site / Lokasi', 'icon' => 'bi bi-geo-alt', 'route' => 'superadmin.sites.index', 'active' => ['superadmin.sites.*'], 'perms' => ['settings.manage']],
             ['label' => 'Pemetaan Jabatan SSO', 'icon' => 'bi bi-person-badge', 'route' => 'superadmin.sso.mappings.index', 'active' => ['superadmin.sso.*'], 'perms' => ['settings.sso_mapping']],
+            ['label' => 'Tahap Fitur', 'icon' => 'bi bi-toggle2', 'route' => 'superadmin.features.index', 'active' => ['superadmin.features.*'], 'perms' => ['features.manage']],
         ]],
 
         // ── Scanner Kendaraan (dispatcher + admin read-only) ──

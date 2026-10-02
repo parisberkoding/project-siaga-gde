@@ -53,6 +53,7 @@
                     <tr>
                         <th>Role</th>
                         <th>Deskripsi</th>
+                        <th class="text-center">Cakupan</th>
                         <th class="text-center">Permission</th>
                         <th class="text-center">User</th>
                         <th class="text-center">Status</th>
@@ -68,6 +69,17 @@
                             <br><small class="text-muted">code: <code>{{ $role->code }}</code></small>
                         </td>
                         <td><small>{{ $role->description ?? '—' }}</small></td>
+                        <td class="text-center">
+                            @if($role->isGlobal())
+                                <span class="badge bg-dark" title="Berlaku di semua unit">
+                                    <i class="bi bi-globe2 me-1"></i>Global
+                                </span>
+                            @else
+                                <span class="badge bg-primary" title="Hanya untuk unit ini">
+                                    <i class="bi bi-diagram-3 me-1"></i>{{ $role->unit->code ?? '—' }}
+                                </span>
+                            @endif
+                        </td>
                         <td class="text-center">
                             <span class="badge bg-info">{{ $role->permissions->count() }}</span>
                         </td>

@@ -470,4 +470,64 @@ class User extends Authenticatable
         return $this->hasPermission("{$module}.{$action}");
     }
 
+    /* =========================================================
+     * PENUGASAN ROLE (satu-satunya jalur resmi)
+     * =======================================================*/
+
+    /**
+     * Berikan tepat satu role RBAC kepada user ini, sambil menegakkan aturan
+     * segmentasi unit (item 4).
+     *
+     * Semua pemanggil WAJIB lewat sini alih-alih `roles()->sync()` langsung,
+     * supaya aturan "role ber-unit hanya untuk user di unit itu" tidak bisa
+     * dilewati di satu tempat pun.
+     *
+     * @param  bool  $replace  true = ganti seluruh role (satu user satu role),
+     *                         false = tambahkan tanpa menghapus yang ada
+     *
+     * @throws \InvalidArgumentException bila role tidak berlaku untuk unit user
+     */
+    public function assignRole(Role|int $role, bool $replace = true): void
+    {
+        $role = $role instanceof Role ? $role : Role::findOrFail($role);
+
+        if (! $role->isAssignableTo($this->unit_id)) {
+            throw new \InvalidArgumentException(
+                "Role \"{$role->name}\" khusus untuk unit lain dan tidak dapat diberikan "
+                .'kepada user di unit ini.'
+            );
+        }
+
+        $pivot = [$role->id => ['is_primary' => true]];
+
+        if ($replace) {
+            $this->roles()->sync($pivot);
+        } else {
+            $this->roles()->syncWithoutDetaching($pivot);
+        }
+
+        // Kolom legacy `role` masih dipakai beberapa bagian aplikasi (sidebar
+        // dan middleware CheckRole), jadi ikut disamakan.
+        $this->role = (string) $role->code;
+        $this->save();
+
+        $this->forgetAuthorizationCache();
+    }
+
+    /**
+     * Buang cache otorisasi per-instance.
+     *
+     * Wajib dipanggil setiap kali role / unit berubah dalam satu request —
+     * kalau tidak, pengecekan permission berikutnya masih memakai hasil lama.
+     */
+    public function forgetAuthorizationCache(): void
+    {
+        $this->permissionCodesCache = null;
+        $this->moduleCodesResolved = false;
+        $this->enabledModuleCodesCache = null;
+        $this->unitIsCentralCache = null;
+        $this->unsetRelation('roles');
+        $this->unsetRelation('unit');
+    }
+
 }

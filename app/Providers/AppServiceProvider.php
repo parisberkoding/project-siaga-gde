@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use App\Models\User;
@@ -39,6 +40,17 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('permission', function (User $user, string|array $permission, bool $requireAll = false) {
             return $user->hasPermission($permission, $requireAll);
         });
+
+        // ── Item 6: gateway feature stage di level view ──
+        // Mendukung penggunaan di Blade:
+        //   @featureProduction('spd.lpj') ... @elsefeatureProduction ... @endfeatureProduction
+        //   @featureDevelopment('ai.assistant') ... @endfeatureDevelopment
+        //   @featureVisible('spd.lpj') ... @endfeatureVisible
+        Blade::if('featureProduction', fn (string $code) => feature_is_production($code));
+
+        Blade::if('featureDevelopment', fn (string $code) => ! feature_is_production($code));
+
+        Blade::if('featureVisible', fn (string $code) => feature_is_visible($code));
 
         // Helper: auth()->user()->can('module.action')
         // Sudah ter-cover oleh Gate di atas untuk string tunggal.

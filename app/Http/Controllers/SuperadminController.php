@@ -1712,6 +1712,14 @@ class SuperadminController extends Controller
             }
         }
 
+        // Item 4 — segmentasi role per unit: role yang dimiliki sebuah unit
+        // hanya boleh diberikan kepada user di unit tersebut. Diperiksa
+        // SEBELUM transaksi supaya tidak ada perubahan setengah jalan.
+        if (! $role->isAssignableTo($unitId)) {
+            return redirect()->back()->withInput()
+                ->with('error', "Role \"{$role->name}\" khusus untuk unit lain dan tidak dapat diberikan kepada user di unit ini.");
+        }
+
         try {
             DB::beginTransaction();
 
@@ -1730,7 +1738,9 @@ class SuperadminController extends Controller
             $user->save();
 
             // Satu user = satu role RBAC (source of truth permission).
-            $user->roles()->sync([$role->id => ['is_primary' => true]]);
+            // Lewat assignRole() agar aturan segmentasi unit tetap ditegakkan
+            // dan cache otorisasi ikut dibersihkan.
+            $user->assignRole($role);
 
             // Mode Aktivasi: link master pekerja → akun
             if ($employee) {
@@ -1790,6 +1800,17 @@ class SuperadminController extends Controller
             'role_code.exists' => 'Role tidak valid',
         ]);
 
+        $role = Role::where('code', $validated['role_code'])->firstOrFail();
+        $newUnitId = $validated['unit_id'] ?? null;
+
+        // Item 4 — tolak pemindahan user ke unit lain yang tidak memiliki
+        // role tersebut, atau pemberian role milik unit lain. Diperiksa
+        // sebelum menulis apa pun.
+        if (! $role->isAssignableTo($newUnitId)) {
+            return redirect()->back()->withInput()
+                ->with('error', "Role \"{$role->name}\" khusus untuk unit lain dan tidak dapat diberikan kepada user di unit ini.");
+        }
+
         try {
             DB::beginTransaction();
 
@@ -1800,12 +1821,11 @@ class SuperadminController extends Controller
                 'role' => $validated['role_code'],
                 'jabatan' => $validated['jabatan'] ?? null,
                 'default_site_id' => $validated['default_site_id'] ?? null,
-                'unit_id' => $validated['unit_id'] ?? null,
+                'unit_id' => $newUnitId,
             ]);
 
-            $role = Role::where('code', $validated['role_code'])->firstOrFail();
             // Ganti role (bukan menumpuk) supaya permission lama tidak tertinggal.
-            $user->roles()->sync([$role->id => ['is_primary' => true]]);
+            $user->assignRole($role);
 
             DB::commit();
 

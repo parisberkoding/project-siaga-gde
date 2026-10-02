@@ -78,6 +78,28 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label fw-semibold">
+                                Cakupan Unit <small class="text-muted fw-normal">(opsional)</small>
+                            </label>
+                            <select name="unit_id" class="form-select @error('unit_id') is-invalid @enderror">
+                                <option value="">Global — berlaku di semua unit</option>
+                                @foreach($units ?? [] as $unit)
+                                    <option value="{{ $unit->id }}"
+                                        {{ (string) old('unit_id', $role->unit_id ?? '') === (string) $unit->id ? 'selected' : '' }}>
+                                        {{ $unit->code }} — {{ $unit->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <small class="text-muted">
+                                <strong>Global</strong> = role berlaku di semua unit.
+                                Pilih unit tertentu untuk membuat role yang <strong>hanya bisa diberikan
+                                kepada user di unit itu</strong> — inilah cara memisahkan role Pusat dari role unit.
+                            </small>
+                            @error('unit_id')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">
                                 Deskripsi <small class="text-muted fw-normal">(opsional)</small>
                             </label>
                             <textarea name="description" class="form-control" rows="2"

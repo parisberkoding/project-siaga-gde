@@ -28,6 +28,7 @@ use App\Http\Controllers\SpdDailyReportController;
 use App\Http\Controllers\SpdPrintController;
 use App\Http\Controllers\SsoController;
 use App\Http\Controllers\SsoRoleMappingController;
+use App\Http\Controllers\FeatureController;
 use App\Http\Controllers\StorageFileController;
 use App\Http\Controllers\SuperadminController;
 use App\Http\Controllers\VehicleCheckingSuperadminController;
@@ -530,6 +531,19 @@ Route::middleware(['auth', 'permission:settings.sso_mapping', 'central'])
             Route::post('/{mapping}/update', [SsoRoleMappingController::class, 'update'])->name('update');
             Route::post('/{mapping}/delete', [SsoRoleMappingController::class, 'destroy'])->name('delete');
         });
+    });
+
+// Tahap Fitur (development/production) — role developers
+// TIDAK memakai `central`: aktivitas naik/turun tahap fitur adalah milik
+// role `developers`, bukan superadmin Pusat. Siapa pun yang memegang
+// permission features.manage boleh mengelolanya.
+Route::middleware(['auth', 'permission:features.manage'])
+    ->prefix('sa/features')->name('superadmin.features.')
+    ->group(function () {
+        Route::get('/', [FeatureController::class, 'index'])->name('index');
+        Route::post('/', [FeatureController::class, 'store'])->name('store');
+        Route::post('/{feature}/activate', [FeatureController::class, 'activate'])->name('activate');
+        Route::post('/{feature}/deactivate', [FeatureController::class, 'deactivate'])->name('deactivate');
     });
 
 // Vehicle Checking Superadmin — Health, Financial, Transaction Reports (superadmin only)

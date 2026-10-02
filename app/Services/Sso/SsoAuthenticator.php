@@ -380,7 +380,31 @@ class SsoAuthenticator
         }
 
         // Downgrade / perubahan setara -> berlaku langsung (keamanan lebih dulu).
-        $this->assignRole($user, $mapping->role_id);
+        //
+        // Lewat User::assignRole() supaya aturan segmentasi unit (item 4)
+        // ditegakkan di jalur SSO juga, bukan hanya di Manajemen User.
+        try {
+            $user->assignRole($mapping->role_id);
+        } catch (\InvalidArgumentException $e) {
+            // Mapping diarahkan ke role milik unit LAIN -> konfigurasi salah.
+            // Fail-closed: jangan beri akses apa pun, dan minta Pusat
+            // memperbaiki pemetaannya.
+            SsoSyncLog::record(
+                SsoSyncLog::DECISION_UNMAPPED,
+                subject: $info->subject,
+                userId: $user->id,
+                rawClaims: $info->raw,
+                mappedRoleId: $mapping->role_id,
+                note: 'Pemetaan mengarah ke role yang tidak berlaku untuk unit user ini: '.$e->getMessage(),
+                provider: $info->provider,
+            );
+
+            return SsoResult::needsReview(
+                $user,
+                'Pemetaan jabatan & unit Anda belum tepat sehingga hak akses tidak dapat diberikan. '
+                .'Hubungi Superadmin Pusat.'
+            );
+        }
 
         SsoSyncLog::record(
             SsoSyncLog::DECISION_MAPPED,
@@ -417,16 +441,6 @@ class SsoAuthenticator
         }
 
         return $target->permissions()->count() > ($current?->permissions()->count() ?? 0);
-    }
-
-    /**
-     * Satu user = satu role RBAC (source of truth permission).
-     */
-    private function assignRole(User $user, int $roleId): void
-    {
-        $user->roles()->sync([$roleId => ['is_primary' => true]]);
-        $user->role = (string) Role::whereKey($roleId)->value('code');
-        $user->save();
     }
 
     /* =========================================================
