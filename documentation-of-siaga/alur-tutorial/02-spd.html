@@ -99,7 +99,7 @@
               <li><span class="meta-list__k">Peran terlibat</span><span class="meta-list__v">Requester/Driver, Superadmin</span></li>
               <li><span class="meta-list__k">Prasyarat</span><span class="meta-list__v">Akun SIAGA aktif, kendaraan terdaftar di master data, dan Master Pekerja terisi untuk pejabat pemberi tugas</span></li>
               <li><span class="meta-list__k">Hasil akhir</span><span class="meta-list__v">Surat Tugas bernomor otomatis berstatus <em>approved</em> dan LPJ tervalidasi dengan rekap biaya</span></li>
-              <li><span class="meta-list__k">Menu aplikasi</span><span class="meta-list__v">SPD Management › Buat Surat Tugas, Perpanjangan, Laporan LPJ</span></li>
+              <li><span class="meta-list__k">Menu aplikasi</span><span class="meta-list__v">SPD Management › Buat Surat Tugas, <b>SPD Berjalan</b>, Perpanjangan, Laporan LPJ</span></li>
               <li><span class="meta-list__k">Use case terkait</span><span class="meta-list__v"><code>UC-SPD-01</code> … <code>UC-LPJ-02</code></span></li>
             </ul>
 
@@ -170,12 +170,13 @@ flowchart LR
                       <ul class="app__nav">
                         <li><span class="nav"><i class="bi bi-speedometer2"></i>Dashboard</span></li>
                         <li><span class="nav"><i class="bi bi-fuel-pump"></i>Permohonan BBM</span></li>
-                        <li><span class="nav"><i class="bi bi-journal-text"></i>Pelaporan BBM &amp; SPD</span></li>
                         <li>
                           <span class="nav is-active"><i class="bi bi-envelope-paper"></i>SPD Management<i class="bi bi-chevron-up chev"></i></span>
                           <ul class="app__nav">
                             <li><span class="nav sub is-active"><i class="bi bi-circle"></i>Buat Surat Tugas</span></li>
                             <li><span class="nav sub"><i class="bi bi-circle"></i>Perpanjangan</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>SPD Berjalan</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Validasi Perjalanan (User)</span></li>
                             <li><span class="nav sub"><i class="bi bi-circle"></i>Laporan LPJ</span></li>
                           </ul>
                         </li>
@@ -303,12 +304,13 @@ flowchart LR
                       <ul class="app__nav">
                         <li><span class="nav"><i class="bi bi-speedometer2"></i>Dashboard</span></li>
                         <li><span class="nav"><i class="bi bi-fuel-pump"></i>Permohonan BBM</span></li>
-                        <li><span class="nav"><i class="bi bi-journal-text"></i>Pelaporan BBM &amp; SPD</span></li>
                         <li>
                           <span class="nav is-active"><i class="bi bi-envelope-paper"></i>SPD Management<i class="bi bi-chevron-up chev"></i></span>
                           <ul class="app__nav">
                             <li><span class="nav sub is-active"><i class="bi bi-circle"></i>Buat Surat Tugas</span></li>
                             <li><span class="nav sub"><i class="bi bi-circle"></i>Perpanjangan</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>SPD Berjalan</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Validasi Perjalanan (User)</span></li>
                             <li><span class="nav sub"><i class="bi bi-circle"></i>Laporan LPJ</span></li>
                           </ul>
                         </li>
@@ -531,12 +533,13 @@ flowchart LR
                       <ul class="app__nav">
                         <li><span class="nav"><i class="bi bi-speedometer2"></i>Dashboard</span></li>
                         <li><span class="nav"><i class="bi bi-fuel-pump"></i>Permohonan BBM</span></li>
-                        <li><span class="nav"><i class="bi bi-journal-text"></i>Pelaporan BBM &amp; SPD</span></li>
                         <li>
                           <span class="nav is-active"><i class="bi bi-envelope-paper"></i>SPD Management<i class="bi bi-chevron-up chev"></i></span>
                           <ul class="app__nav">
                             <li><span class="nav sub"><i class="bi bi-circle"></i>Buat Surat Tugas</span></li>
                             <li><span class="nav sub is-active"><i class="bi bi-circle"></i>Perpanjangan</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>SPD Berjalan</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Validasi Perjalanan (User)</span></li>
                             <li><span class="nav sub"><i class="bi bi-circle"></i>Laporan LPJ</span></li>
                           </ul>
                         </li>
@@ -650,12 +653,13 @@ flowchart LR
                       <ul class="app__nav">
                         <li><span class="nav"><i class="bi bi-speedometer2"></i>Dashboard</span></li>
                         <li><span class="nav"><i class="bi bi-fuel-pump"></i>Permohonan BBM</span></li>
-                        <li><span class="nav"><i class="bi bi-journal-text"></i>Pelaporan BBM &amp; SPD</span></li>
                         <li>
                           <span class="nav is-active"><i class="bi bi-envelope-paper"></i>SPD Management<i class="bi bi-chevron-up chev"></i></span>
                           <ul class="app__nav">
                             <li><span class="nav sub"><i class="bi bi-circle"></i>Buat Surat Tugas</span></li>
                             <li><span class="nav sub"><i class="bi bi-circle"></i>Perpanjangan</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>SPD Berjalan</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Validasi Perjalanan (User)</span></li>
                             <li><span class="nav sub is-active"><i class="bi bi-circle"></i>Laporan LPJ</span></li>
                           </ul>
                         </li>
@@ -779,6 +783,19 @@ flowchart LR
             </ul>
           </div>
         </aside>
+      </div>
+
+      <!-- ================= CATATAN PENTING ================= -->
+      <div class="callout callout--info">
+        <span class="callout__icon"><i class="bi bi-car-front"></i></span>
+        <div class="callout__body">
+          <strong>Mulai melaporkan dari menu “SPD Berjalan”</strong>
+          Bagi driver/requester, daftar surat yang <b>sudah disetujui dan belum dibuat laporannya</b>
+          kini muncul langsung di <b>SPD Management › SPD Berjalan</b> — tanpa perlu memilih mode.
+          Pada setiap baris cukup klik <b>Lapor &amp; Validasi SPD</b> untuk mengunggah struk dan
+          menyelesaikan LPJ. Surat yang sudah punya LPJ otomatis hilang dari daftar ini dan dapat
+          dilihat pada <b>SPD Management › Laporan SPD (LPJ)</b>.
+        </div>
       </div>
 
       <!-- ================= CATATAN PENTING ================= -->

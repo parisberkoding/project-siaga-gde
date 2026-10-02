@@ -160,16 +160,16 @@ class SuratSpdExtension extends Model
     }
 
     /**
-     * Scope unit bisnis: delegasikan ke surat extension-nya (scopeInUnit SuratSpd).
+     * Scope unit bisnis: delegasikan ke surat extension-nya (unit_id SuratSpd).
      * Null = tanpa scope (global / pusat).
      */
-    public function scopeInUnit($query, ?array $siteIds)
+    public function scopeInUnit($query, ?int $unitId)
     {
-        if ($siteIds === null) {
+        if ($unitId === null) {
             return;
         }
 
-        $query->whereHas('extensionSurat', fn ($q) => $q->inUnit($siteIds));
+        $query->whereHas('extensionSurat', fn ($q) => $q->where('surat_spds.unit_id', $unitId));
     }
 
     // ============================================================

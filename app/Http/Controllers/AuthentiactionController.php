@@ -54,6 +54,18 @@ class AuthentiactionController extends Controller
             ])->withInput($request->only('username'));
         }
 
+        // User ber-provider SSO DILARANG login lewat form lokal.
+        //
+        // Tanpa penolakan ini, pencabutan akses di SSO tidak ada artinya selama
+        // password lokalnya masih hidup — deprovisioning menjadi ilusi.
+        // Diperiksa SEBELUM verifikasi password supaya jalur ini tidak pernah
+        // bergantung pada benar/salahnya password.
+        if ($user->usesSso()) {
+            return back()->withErrors([
+                'username' => 'Akun ini menggunakan SSO Geodipa. Silakan login melalui tombol SSO.'
+            ])->withInput($request->only('username'));
+        }
+
         if (!Hash::check($validated['password'], $user->password)) {
             RateLimiter::hit($throttleKey, 900);
             return back()->withErrors([
@@ -61,9 +73,11 @@ class AuthentiactionController extends Controller
             ])->withInput($request->only('username'));
         }
 
-        if (isset($user->is_active) && !$user->is_active) {
+        // Akun nonaktif. Pesannya dibedakan dari "password salah" agar user
+        // tidak mengira dirinya salah memasukkan password.
+        if (! $user->isActiveAccount()) {
             return back()->withErrors([
-                'username' => 'Akun Anda tidak aktif. Hubungi administrator.'
+                'username' => 'Akun Anda telah dinonaktifkan. Hubungi Superadmin Pusat.'
             ])->withInput($request->only('username'));
         }
 
@@ -88,36 +102,14 @@ class AuthentiactionController extends Controller
     }
 
     /**
-     * Tentukan route default berdasarkan role (dipakai sebagai fallback intended)
+     * Tentukan route default setelah login.
+     *
+     * Logikanya dipindah ke PostLoginRedirect agar login lokal dan login SSO
+     * memakai aturan yang sama.
      */
     protected function defaultRouteForRole(User $user): string
     {
-        // Normalisasi legacy role column ke kode RBAC
-        $effectiveRole = match ($user->role) {
-            'admin', 'admin_bbm', 'general_affairs' => 'general_affairs',
-            'driver', 'requester'                   => 'requester',
-            'non_ga_staff', 'view_only', ''         => 'view_only',
-            default                                 => $user->role,
-        };
-
-        // Cek RBAC pivot kalau legacy role tidak cocok
-        if (in_array($effectiveRole, ['view_only', ''])) {
-            $rbacCodes = $user->roles()->pluck('code')->all();
-            if (in_array('superadmin', $rbacCodes)) $effectiveRole = 'superadmin';
-            elseif (in_array('general_affairs', $rbacCodes)) $effectiveRole = 'general_affairs';
-            elseif (in_array('manager', $rbacCodes)) $effectiveRole = 'manager';
-            elseif (in_array('dispatcher', $rbacCodes)) $effectiveRole = 'dispatcher';
-            elseif (in_array('requester', $rbacCodes)) $effectiveRole = 'requester';
-        }
-
-        return match($effectiveRole) {
-            'requester'        => route('requester-index'),
-            'general_affairs'  => route('admin-dashboard'),
-            'dispatcher'       => route('dispatcher.dispatcher-dashboard'),
-            'manager'          => route('superadmin.dashboard.bisnis'),
-            'superadmin'       => route('superadmin-dashboard'),
-            default            => route('profile'),
-        };
+        return app(\App\Services\PostLoginRedirect::class)->routeFor($user);
     }
 
     /**

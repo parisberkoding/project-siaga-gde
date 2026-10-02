@@ -14,11 +14,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
+            'central' => \App\Http\Middleware\EnsureCentralUnit::class,
             'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
             ]);
 
         $middleware->web(append: [
             \App\Http\Middleware\VerifyDeviceFingerprint::class,
+            // Nonaktifkan akun harus langsung berlaku, tidak menunggu sesi
+            // kedaluwarsa. Ditempatkan setelah fingerprint supaya sidik jari
+            // tidak diset untuk sesi yang akan segera diputus.
+            \App\Http\Middleware\EnsureAccountIsActive::class,
             \Spatie\Csp\AddCspHeaders::class,
             \App\Http\Middleware\SecurityHeaders::class,
         ]);

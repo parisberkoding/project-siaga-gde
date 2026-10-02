@@ -582,7 +582,20 @@
         <div class="signature-section">
             <div class="signature-location">{{ $surat->tanggal_surat }}</div>
             <div class="signature-title">Yang Memberi Perintah,</div>
-            <div class="signature-name" style="margin-top: 25mm">{{ $surat->pemberi_tugas_nama }}</div>
+
+            {{-- QR Signature --}}
+            @if(!empty($qrSvgContent))
+                <div style="margin-bottom: 4px;">
+                    <div class="signature-barcode text-center" style="width: 70px; height: 70px; margin: 0 auto;">
+                        {!! $qrSvgContent !!}
+                        <div class="text-muted" style="font-size: 8px; color: #666;">Scan untuk verifikasi</div>
+                    </div>
+                </div>
+            @else
+                <div style="margin-bottom: 4px; color: #888; font-size: 7pt;">QR Code belum tersedia</div>
+            @endif
+
+            <div class="signature-name">{{ $surat->pemberi_tugas_nama }}</div>
             <div style="margin-top: 2px; font-size: 10pt;">{{ $surat->pemberi_tugas_jabatan }}</div>
         </div>
     </div>
@@ -640,7 +653,7 @@
     {{-- QR Signature --}}
     @if(!empty($qrSvgContent))
     <div style="margin-bottom: 4px;">
-       <div class="signature-barcode text-center" style="width: 100px; height: 100px; margin: 0 auto;">
+       <div class="signature-barcode text-center" style="width: 70px; height: 70px; margin: 0 auto;">
         {!! $qrSvgContent !!}
         <div class="text-muted" style="font-size: 8px; color: #666;">
             Scan untuk verifikasi

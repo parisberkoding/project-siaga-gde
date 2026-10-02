@@ -10,6 +10,7 @@ use App\Models\SuratSpd;
 use App\Models\SuratSpdBudget;
 use App\Models\SuratSpdDetail;
 use App\Models\SuratSpdExtension;
+use App\Models\SuratSpdFundAddition;
 use App\Models\User;
 use App\Models\VehicleAndToolsConsumers;
 use App\Services\ImageCompressor;
@@ -55,7 +56,10 @@ class SpdController extends Controller
      */
     public function storeSurat(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        // Aturan pemakai/penumpang: user_id (bila diisi) harus user yang valid.
+        $passengerRules = $this->passengerValidationRules();
+
+        $validator = Validator::make($request->all(), array_merge([
             'tempat_tujuan' => 'required|string',
             'melayani_bidang' => 'required|string|max:255',
             'jumlah_pemakai' => 'required|integer|min:1|max:7',
@@ -63,8 +67,10 @@ class SpdController extends Controller
             'tanggal_berangkat' => 'required|date|after_or_equal:today',
             'tanggal_kembali' => 'required|date|after_or_equal:tanggal_berangkat',
             'catatan' => 'nullable|string',
+            'jenis_spd' => 'nullable|in:dalam_kota,luar_kota,lainnya',
+            'jenis_spd_lainnya' => 'nullable|string|max:255',
             // BUDGET TIDAK DIPERLUKAN - ditentukan superadmin
-        ]);
+        ], $passengerRules));
 
         if ($validator->fails()) {
             return redirect()->back()
@@ -91,6 +97,9 @@ class SpdController extends Controller
                 'catatan' => $request->catatan,
                 'is_extension' => false,
                 'status' => 'pending',
+                'unit_id' => Auth::user()->unit_id,
+                'jenis_spd' => $request->jenis_spd,
+                'jenis_spd_lainnya' => $request->jenis_spd === 'lainnya' ? $request->jenis_spd_lainnya : null,
             ]);
 
             // Add nama lengkap penumpang (1-7)
@@ -101,6 +110,7 @@ class SpdController extends Controller
                     SuratSpdDetail::create([
                         'surat_spd_id' => $surat->id,
                         'nama_lengkap' => $namaLengkap,
+                        'user_id' => $request->input("user_id_{$i}") ?: null,
                         'urutan' => $urutan++,
                     ]);
                 }
@@ -159,6 +169,38 @@ class SpdController extends Controller
         return view('requester.spd.surat.show', compact('surat'));
     }
 
+    /**
+     * SPD Berjalan — daftar surat tugas yang masih harus dilaporkan driver.
+     *
+     * Hanya surat berstatus approved yang belum punya LPJ. Ditampilkan langsung
+     * sebagai daftar (tanpa pemilihan mode) agar driver langsung tahu surat mana
+     * yang harus dibuat laporannya.
+     *
+     * @return \Illuminate\View\View
+     */
+    public function indexSpdBerjalan()
+    {
+        $suratList = SuratSpd::forUser(Auth::id())
+            ->where('status', 'approved')
+            ->whereDoesntHave('lpjPenggantian')
+            ->with(['vehicle', 'parentSurat', 'budgets', 'dailyReports.strukItems'])
+            ->orderBy('tanggal_kembali', 'desc')
+            ->get();
+
+        // Informasi laporan harian per surat (draft/submitted) untuk panel driver.
+        $suratList = $suratList->map(function ($surat) {
+            $submitted = $surat->dailyReports->where('status', 'submitted');
+            $surat->daily_submitted_count = $submitted->count();
+            $surat->daily_item_count = (int) $submitted->sum(fn ($r) => $r->strukItems->count());
+            $surat->has_draft_daily = $surat->dailyReports->contains('status', 'draft');
+            $surat->daily_reports_available = $surat->dailyReports->isNotEmpty();
+
+            return $surat;
+        });
+
+        return view('requester.spd.berjalan.index', compact('suratList'));
+    }
+
     // ╔═══════════════════════════════════════════════════════════════════════════╗
     // ║                                                                           ║
     // ║                    SECTION 2: SURAT SPD - SUPERADMIN                      ║
@@ -172,23 +214,23 @@ class SpdController extends Controller
      */
     public function indexSuratSuperadmin()
     {
-        $siteIds = Auth::user()?->unitSiteIds();
+        $unitId = Auth::user()?->unit_id;
 
         $pending_list = SuratSpd::pending()
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->with(['user', 'vehicle'])
             ->orderBy('created_at', 'desc')
             ->get();
 
         $approved_list = SuratSpd::approved()
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->with(['user', 'vehicle', 'approver', 'lpjPenggantian'])
             ->orderBy('approved_at', 'desc')
             ->limit(50)
             ->get();
 
         $rejected_list = SuratSpd::rejected()
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->with(['user', 'vehicle', 'rejector'])
             ->orderBy('rejected_at', 'desc')
             ->limit(50)
@@ -200,8 +242,8 @@ class SpdController extends Controller
             'rejected_list'
         ))->with([
             'pending_count' => $pending_list->count(),
-            'approved_count' => SuratSpd::approved()->inUnit($siteIds)->count(),
-            'rejected_count' => SuratSpd::rejected()->inUnit($siteIds)->count(),
+            'approved_count' => SuratSpd::approved()->inUnit($unitId)->count(),
+            'rejected_count' => SuratSpd::rejected()->inUnit($unitId)->count(),
         ]);
     }
 
@@ -223,6 +265,7 @@ class SpdController extends Controller
             'parentSurat',
             'childExtensions',
             'lpjPenggantian',
+            'fundAdditions',
         ])->findOrFail($surat->id);
 
         return view('superadmin.spd.surat.detail', compact('surat'));
@@ -261,6 +304,20 @@ class SpdController extends Controller
             $surat->status = 'approved';
             $surat->approved_by = Auth::id();
             $surat->approved_at = Carbon::now();
+
+            // Kode GL (SAP) & uang diberikan ke driver — diisi saat penerbitan surat.
+            if ($request->filled('kode_gl')) {
+                $surat->kode_gl = $request->kode_gl;
+            }
+            if ($request->filled('uang_diberikan')) {
+                $surat->uang_diberikan = $request->uang_diberikan;
+            }
+
+            // Override jenis SPD oleh admin (permohonan mendadak / perubahan manajemen).
+            if ($request->filled('jenis_spd')) {
+                $surat->jenis_spd = $request->jenis_spd;
+                $surat->jenis_spd_lainnya = $request->jenis_spd === 'lainnya' ? ($request->jenis_spd_lainnya ?? null) : null;
+            }
 
             // Set LPJ deadline (3 hari setelah tanggal kembali)
             $surat->lpj_deadline = Carbon::parse($surat->tanggal_kembali)->addDays(3);
@@ -342,7 +399,7 @@ class SpdController extends Controller
      */
     public function storeSuratSuperadmin(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        $validator = Validator::make($request->all(), array_merge([
             // Pengemudi: hibrid — pilih dari Master Pekerja atau input manual
             'pengemudi_nama' => 'required|string|max:255',
             'pengemudi_employee_id' => 'nullable|exists:employee_defaults,id',
@@ -360,12 +417,16 @@ class SpdController extends Controller
             'tanggal_kembali' => 'required|date|after_or_equal:tanggal_berangkat',
             'catatan' => 'nullable|string',
             'type' => 'required|in:biasa,mendadak',
+            'jenis_spd' => 'nullable|in:dalam_kota,luar_kota,lainnya',
+            'jenis_spd_lainnya' => 'nullable|string|max:255',
+            'kode_gl' => 'nullable|string|max:255',
+            'uang_diberikan' => 'nullable|numeric|min:0',
             // Budget per hari
             'budgets' => 'nullable|array',
             'budgets.*.tanggal' => 'required_with:budgets|date',
             'budgets.*.nominal' => 'required_with:budgets|numeric|min:0',
             'budgets.*.catatan' => 'nullable|string|max:255',
-        ], [
+        ], $this->passengerValidationRules()), [
             'pengemudi_nama.required' => 'Nama pengemudi harus diisi.',
             'pemberi_tugas_nama.required' => 'Nama pemberi tugas harus diisi.',
             'pemberi_tugas_jabatan.required' => 'Jabatan pemberi tugas harus diisi.',
@@ -419,6 +480,11 @@ class SpdController extends Controller
                 'approved_at' => Carbon::now(),
                 'total_budget' => $totalBudget,
                 'lpj_deadline' => Carbon::parse($request->tanggal_kembali)->addDays(3),
+                'unit_id' => Auth::user()->unit_id,
+                'jenis_spd' => $request->jenis_spd,
+                'jenis_spd_lainnya' => $request->jenis_spd === 'lainnya' ? $request->jenis_spd_lainnya : null,
+                'kode_gl' => $request->kode_gl,
+                'uang_diberikan' => $request->uang_diberikan,
             ]);
 
             // Simpan nama penumpang
@@ -429,6 +495,7 @@ class SpdController extends Controller
                     SuratSpdDetail::create([
                         'surat_spd_id' => $surat->id,
                         'nama_lengkap' => $namaLengkap,
+                        'user_id' => $request->input("user_id_{$i}") ?: null,
                         'urutan' => $urutan++,
                     ]);
                 }
@@ -472,17 +539,17 @@ class SpdController extends Controller
      */
     public function reportSpending()
     {
-        $siteIds = Auth::user()?->unitSiteIds();
+        $unitId = Auth::user()?->unit_id;
 
         $suratList = SuratSpd::with(['vehicle', 'user', 'lpjPenggantian', 'budgets'])
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
-        $totalBudget = SuratSpd::inUnit($siteIds)->sum('total_budget');
-        $totalApproved = SuratSpd::approved()->inUnit($siteIds)->count();
-        $totalLpj = LpjPenggantian::approved()->inUnit($siteIds)->count();
-        $totalSpending = LpjPenggantian::approved()->inUnit($siteIds)->sum('total_pengeluaran');
+        $totalBudget = SuratSpd::inUnit($unitId)->sum('total_budget');
+        $totalApproved = SuratSpd::approved()->inUnit($unitId)->count();
+        $totalLpj = LpjPenggantian::approved()->inUnit($unitId)->count();
+        $totalSpending = LpjPenggantian::approved()->inUnit($unitId)->sum('total_pengeluaran');
 
         return view('superadmin.spd.surat.report', compact(
             'suratList', 'totalBudget', 'totalApproved', 'totalLpj', 'totalSpending'
@@ -670,25 +737,25 @@ class SpdController extends Controller
      */
     public function indexPerpanjanganSuperadmin()
     {
-        $siteIds = Auth::user()?->unitSiteIds();
+        $unitId = Auth::user()?->unit_id;
 
         // Pending approval
         $ext_pending = SuratSpdExtension::pending()
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->with(['originalSurat.user', 'extensionSurat'])
             ->orderBy('created_at', 'desc')
             ->get();
 
         // Approved tapi belum acknowledged
         $ext_need_acknowledge = SuratSpdExtension::needAcknowledge()
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->with(['originalSurat.user', 'extensionSurat', 'approver'])
             ->orderBy('approved_at', 'desc')
             ->get();
 
         // Sudah acknowledged (selesai)
         $ext_acknowledged = SuratSpdExtension::acknowledged()
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->with(['originalSurat.user', 'extensionSurat', 'approver', 'acknowledger'])
             ->orderBy('acknowledged_at', 'desc')
             ->limit(50)
@@ -696,7 +763,7 @@ class SpdController extends Controller
 
         // Rejected
         $ext_rejected = SuratSpdExtension::rejected()
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->with(['originalSurat.user', 'extensionSurat', 'rejector'])
             ->limit(50)
             ->get();
@@ -705,9 +772,9 @@ class SpdController extends Controller
         $stats = [
             'pending' => $ext_pending->count(),
             'need_acknowledge' => $ext_need_acknowledge->count(),
-            'acknowledged' => SuratSpdExtension::acknowledged()->inUnit($siteIds)->count(),
-            'rejected' => SuratSpdExtension::rejected()->inUnit($siteIds)->count(),
-            'done' => SuratSpdExtension::acknowledged()->inUnit($siteIds)->count(),
+            'acknowledged' => SuratSpdExtension::acknowledged()->inUnit($unitId)->count(),
+            'rejected' => SuratSpdExtension::rejected()->inUnit($unitId)->count(),
+            'done' => SuratSpdExtension::acknowledged()->inUnit($unitId)->count(),
         ];
 
         return view('superadmin.spd.perpanjangan.index', compact(
@@ -865,7 +932,7 @@ class SpdController extends Controller
             'items.*.tanggal' => 'required|date',
             // Alur baru: setiap item = 1 gambar struk + kategori (AI/manual).
             // tipe_penggunaan lama tetap dipakai sebagai fallback.
-            'items.*.struk_kategori' => 'nullable|in:BBM,Tol,Parkir,Lainnya',
+            'items.*.struk_kategori' => 'nullable|in:BBM,Tol,Parkir,Hotel + Makan,Lainnya',
             'items.*.kategori_source' => 'nullable|in:ai,manual',
             'items.*.tipe_penggunaan' => 'nullable|in:BBM,Tol,Parkir,Lain-lain',
             'items.*.nominal' => 'required|numeric|min:0',
@@ -1052,7 +1119,7 @@ class SpdController extends Controller
             'kebutuhan_bbm_liter' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
             'items.*.tanggal' => 'required|date',
-            'items.*.struk_kategori' => 'nullable|in:BBM,Tol,Parkir,Lainnya',
+            'items.*.struk_kategori' => 'nullable|in:BBM,Tol,Parkir,Hotel + Makan,Lainnya',
             'items.*.kategori_source' => 'nullable|in:ai,manual',
             'items.*.tipe_penggunaan' => 'nullable|in:BBM,Tol,Parkir,Lain-lain',
             'items.*.nominal' => 'required|numeric|min:0',
@@ -1238,23 +1305,23 @@ class SpdController extends Controller
      */
     public function indexLaporanSuperadmin()
     {
-        $siteIds = Auth::user()?->unitSiteIds();
+        $unitId = Auth::user()?->unit_id;
 
         $pending_list = LpjPenggantian::pending()
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->with(['user', 'suratSpd.vehicle'])
             ->orderBy('created_at', 'desc')
             ->get();
 
         $approved_list = LpjPenggantian::approved()
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->with(['user', 'suratSpd.vehicle', 'approverPengguna'])
             ->orderBy('approved_pengguna_at', 'desc')
             ->limit(50)
             ->get();
 
         $rejected_list = LpjPenggantian::rejected()
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->with(['user', 'suratSpd.vehicle', 'rejector'])
             ->orderBy('rejected_at', 'desc')
             ->limit(50)
@@ -1263,18 +1330,98 @@ class SpdController extends Controller
         // Stats
         $stats = [
             'pending' => $pending_list->count(),
-            'approved' => LpjPenggantian::approved()->inUnit($siteIds)->count(),
-            'rejected' => LpjPenggantian::rejected()->inUnit($siteIds)->count(),
-            'late' => LpjPenggantian::late()->inUnit($siteIds)->count(),
-            'over_budget' => LpjPenggantian::overBudget()->inUnit($siteIds)->count(),
+            'approved' => LpjPenggantian::approved()->inUnit($unitId)->count(),
+            'rejected' => LpjPenggantian::rejected()->inUnit($unitId)->count(),
+            'late' => LpjPenggantian::late()->inUnit($unitId)->count(),
+            'over_budget' => LpjPenggantian::overBudget()->inUnit($unitId)->count(),
         ];
 
         // Total amount bulan ini
         $total_approved_amount = LpjPenggantian::approved()
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->whereMonth('approved_pengguna_at', Carbon::now()->month)
             ->whereYear('approved_pengguna_at', Carbon::now()->year)
             ->sum('total_pengeluaran');
+
+        return view('superadmin.spd.lpj.index', compact(
+            'pending_list',
+            'approved_list',
+            'rejected_list',
+            'stats',
+            'total_approved_amount'
+        ));
+    }
+
+    /**
+     * List LPJ untuk validasi kebenaran perjalanan oleh User (penumpang).
+     */
+    public function indexLaporanPengguna()
+    {
+        $unitId = Auth::user()?->unit_id;
+
+        $pending_list = LpjPenggantian::pending()
+            ->inUnit($unitId)
+            ->whereNull('approved_by_pengguna')
+            ->with(['user', 'suratSpd.vehicle'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $approved_list = collect();
+        $rejected_list = collect();
+
+        $stats = [
+            'pending' => $pending_list->count(),
+            'approved' => 0,
+            'rejected' => 0,
+            'late' => 0,
+            'over_budget' => 0,
+        ];
+
+        $total_approved_amount = 0;
+
+        return view('superadmin.spd.lpj.index', compact(
+            'pending_list',
+            'approved_list',
+            'rejected_list',
+            'stats',
+            'total_approved_amount'
+        ));
+    }
+
+    /**
+     * List LPJ untuk validasi final oleh Management.
+     */
+    public function indexLaporanManagement()
+    {
+        $unitId = Auth::user()?->unit_id;
+
+        $pending_list = LpjPenggantian::pending()
+            ->inUnit($unitId)
+            ->whereNotNull('approved_by_pengguna')
+            ->whereNotNull('approved_by_divisi_ga')
+            ->whereNull('approved_by_management')
+            ->with(['user', 'suratSpd.vehicle'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $approved_list = LpjPenggantian::approved()
+            ->inUnit($unitId)
+            ->with(['user', 'suratSpd.vehicle'])
+            ->orderBy('approved_management_at', 'desc')
+            ->limit(50)
+            ->get();
+
+        $rejected_list = collect();
+
+        $stats = [
+            'pending' => $pending_list->count(),
+            'approved' => $approved_list->count(),
+            'rejected' => 0,
+            'late' => 0,
+            'over_budget' => 0,
+        ];
+
+        $total_approved_amount = 0;
 
         return view('superadmin.spd.lpj.index', compact(
             'pending_list',
@@ -1298,10 +1445,12 @@ class SpdController extends Controller
             'suratSpd.parentSurat',
             'suratSpd.vehicle',
             'suratSpd.details',
+            'suratSpd.fundAdditions',
             'vehicle',
             'user',
             'approverPengguna',
             'approverDivisiGa',
+            'approverManagement',
             'rejector',
         ])->findOrFail($laporan->id);
 
@@ -1357,6 +1506,140 @@ class SpdController extends Controller
     }
 
     /**
+     * Validasi kebenaran perjalanan oleh User (penumpang) — tahap 1 dari 3.
+     */
+    public function approveLaporanPengguna(Request $request, LpjPenggantian $laporan)
+    {
+        $request->validate([
+            'pernyataan' => 'accepted',
+        ], [
+            'pernyataan.accepted' => 'Centang pernyataan bahwa perjalanan dinas ini benar adanya.',
+        ]);
+
+        $laporan = LpjPenggantian::pending()->findOrFail($laporan->id);
+        $laporan->approveByPengguna(Auth::id());
+
+        return redirect()->route('lpj.pengguna.show', $laporan)
+            ->with('success', 'Validasi kebenaran perjalanan berhasil. Menunggu validasi Divisi GA.');
+    }
+
+    /**
+     * Halaman validasi perjalanan oleh User (penumpang) + QR tanda tangan.
+     */
+    public function showValidasiPengguna(LpjPenggantian $laporan)
+    {
+        $laporan = LpjPenggantian::with([
+            'details.strukItem',
+            'suratSpd.vehicle',
+            'suratSpd.details',
+            'suratSpd.parentSurat',
+            'vehicle',
+            'user',
+            'approverPengguna',
+            'approverDivisiGa',
+            'approverManagement',
+            'rejector',
+        ])->findOrFail($laporan->id);
+
+        // QR tanda tangan hanya dibuat setelah user (penumpang) memvalidasi.
+        $qrSvg = $laporan->approved_by_pengguna ? $this->generateValidationQr($laporan) : null;
+
+        return view('requester.spd.validasi-pengguna.show', compact('laporan', 'qrSvg'));
+    }
+
+    /**
+     * QR tanda tangan validasi user — berisi pernyataan + rincian perjalanan.
+     */
+    private function generateValidationQr(LpjPenggantian $laporan): ?string
+    {
+        try {
+            $qrData = json_encode([
+                'pernyataan'       => 'Saya mengetahui bahwa perjalanan dinas ini benar adanya dengan rincian sebagaimana terlampir.',
+                'lpj_number'       => $laporan->lpj_number,
+                'nomor_surat'      => $laporan->suratSpd?->nomor_surat,
+                'user'             => $laporan->approverPengguna?->nama_lengkap ?? $laporan->nama,
+                'tujuan'           => $laporan->suratSpd?->tempat_tujuan,
+                'tanggal_validasi' => optional($laporan->approved_pengguna_at)->format('Y-m-d H:i'),
+            ]);
+
+            return $this->generateQrSvgWithLogo($qrData);
+        } catch (\Throwable $e) {
+            \Log::warning('QR validasi pengguna gagal: '.$e->getMessage(), [
+                'lpj_id' => $laporan->id,
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Validasi oleh Divisi GA — tahap 2 dari 3.
+     */
+    public function approveLaporanDivisiGa(LpjPenggantian $laporan)
+    {
+        $laporan = LpjPenggantian::pending()->findOrFail($laporan->id);
+
+        // Tidak strict: Divisi GA boleh memvalidasi tanpa menunggu tahap User.
+        // Kedua tanda tangan tetap dicatat terpisah untuk akuntabilitas.
+        $laporan->approveByDivisiGa(Auth::id());
+
+        return redirect()->back()
+            ->with('success', 'Validasi Divisi GA berhasil.');
+    }
+
+    /**
+     * Validasi final oleh Management (supervisor tertinggi) — tahap 3 dari 3.
+     */
+    public function approveLaporanManagement(LpjPenggantian $laporan)
+    {
+        $laporan = LpjPenggantian::pending()->findOrFail($laporan->id);
+
+        if (! $laporan->approved_by_pengguna || ! $laporan->approved_by_divisi_ga) {
+            return redirect()->back()
+                ->with('error', 'Validasi User & Divisi GA harus selesai terlebih dahulu.');
+        }
+
+        $laporan->approveByManagement(Auth::id());
+
+        return redirect()->back()
+            ->with('success', 'LPJ disetujui penuh. Dokumen siap dicetak.');
+    }
+
+    /**
+     * Tambah dana pada surat SPD yang sudah disetujui (penambahan uang).
+     */
+    public function storeFundAddition(Request $request, SuratSpd $surat)
+    {
+        $request->validate([
+            'nominal_tambahan' => 'required|numeric|min:0',
+            'alasan' => 'required|string|min:5',
+            'bank_reference' => 'nullable|string|max:255',
+            'bukti_transfer' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
+        ]);
+
+        if (! in_array($surat->status, ['approved', 'completed'])) {
+            return redirect()->back()
+                ->with('error', 'Hanya surat yang sudah disetujui yang bisa menerima penambahan dana.');
+        }
+
+        $path = null;
+        if ($request->hasFile('bukti_transfer')) {
+            $path = $request->file('bukti_transfer')->store('spd/fund_additions', 'public');
+        }
+
+        SuratSpdFundAddition::create([
+            'surat_spd_id' => $surat->id,
+            'nominal_tambahan' => $request->nominal_tambahan,
+            'alasan' => $request->alasan,
+            'bukti_transfer_path' => $path,
+            'bank_reference' => $request->bank_reference,
+            'created_by' => Auth::id(),
+        ]);
+
+        return redirect()->back()->with('success', 'Penambahan dana berhasil dicatat.');
+    }
+
+    /**
      * Update data keuangan LPJ (diisi admin GA / orang keuangan).
      * Driver tidak mengisi data ini saat membuat laporan harian.
      *
@@ -1407,6 +1690,57 @@ class SpdController extends Controller
     // ║                       SECTION 7: HELPER / AJAX                            ║
     // ║                                                                           ║
     // ╚═══════════════════════════════════════════════════════════════════════════╝
+
+    /**
+     * Aturan validasi kolom pemakai/penumpang (nama + user_id opsional).
+     * user_id wajib user yang valid bila diisi — ID dari autocomplete tetap
+     * diverifikasi di server agar tidak bisa dipalsukan.
+     *
+     * @return array<string, string>
+     */
+    private function passengerValidationRules(): array
+    {
+        $rules = [];
+        for ($i = 1; $i <= 7; $i++) {
+            $rules["nama_lengkap_{$i}"] = 'nullable|string|max:255';
+            $rules["user_id_{$i}"] = 'nullable|integer|exists:users,id';
+        }
+
+        return $rules;
+    }
+
+    /**
+     * Autocomplete pemakai/penumpang SPD (dari Master Pekerja).
+     * Mengembalikan nama + user_id (akun) bila pekerja terhubung ke user SIAGA.
+     * user_id boleh null — penumpang tanpa akun tetap bisa dipilih.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function passengerLookup(Request $request)
+    {
+        $q = trim((string) $request->get('q', ''));
+
+        if (mb_strlen($q) < 2) {
+            return response()->json(['results' => []]);
+        }
+
+        $employees = EmployeeDefault::query()
+            ->active()
+            ->where('employee_name', 'like', '%'.$q.'%')
+            ->orderBy('employee_name')
+            ->limit(10)
+            ->get(['id', 'employee_name', 'position', 'division', 'user_id']);
+
+        return response()->json([
+            'results' => $employees->map(fn ($e) => [
+                'id'       => $e->id,
+                'name'     => $e->employee_name,
+                'position' => $e->position,
+                'division' => $e->division,
+                'user_id'  => $e->user_id,
+            ])->values(),
+        ]);
+    }
 
     /**
      * Get detail surat untuk AJAX (digunakan di form LPJ)

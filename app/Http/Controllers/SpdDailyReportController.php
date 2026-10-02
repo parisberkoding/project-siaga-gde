@@ -270,6 +270,9 @@ class SpdDailyReportController extends Controller
         $text = $result['text'];
         $nominal = (float) ($metadata['nominal'] ?? 0);
 
+        // Validasi tambahan: cocokkan plat struk dengan plat kendaraan SPD dari DB.
+        $metadata = array_merge($metadata, $this->comparePlateWithVehicle($surat, $metadata));
+
         $path = $this->storeStrukImage($request->file('struk'), $surat->nomor_surat);
         // FLOW BARU (seamless): tanggal transaksi diambil dari hasil AI bila terbaca;
         // fallback ke tanggal request, lalu ke tanggal laporan draft.
@@ -302,8 +305,11 @@ class SpdDailyReportController extends Controller
                 'kategori'   => $item->struk_kategori,
                 'nominal'    => $nominal,
                 'tanggal'    => $item->tanggal ? $item->tanggal->format('Y-m-d') : null,
-                'url'        => \Storage::disk('public')->url($item->path_image),
+                'url'        => url('files/storage/' . $item->path_image),
                 'keterangan' => $item->keterangan,
+                'plat_nomor'     => $metadata['plat_nomor'] ?? null,
+                'plat_kendaraan' => $metadata['plat_kendaraan'] ?? null,
+                'plat_cocok'     => $metadata['plat_cocok'] ?? null,
             ],
             'daily_report_id' => $daily->id,
         ]);
@@ -336,7 +342,7 @@ class SpdDailyReportController extends Controller
             // Data isi-manual per indeks gambar (frontend mengirim ini untuk foto
             // yang gagal dianalisis AI, mis. karena rate-limit) — dilewati OCR.
             'manual_data'              => 'nullable|array',
-            'manual_data.*.kategori'   => 'required|in:BBM,Tol,Parkir,Lainnya,Tambahan',
+            'manual_data.*.kategori'   => 'required|in:BBM,Tol,Parkir,Hotel + Makan,Lainnya,Tambahan',
             'manual_data.*.nominal'    => 'nullable|numeric|min:0',
             'manual_data.*.tanggal'    => 'nullable|date',
             'manual_data.*.keterangan' => 'nullable|string|max:500',
@@ -431,6 +437,9 @@ class SpdDailyReportController extends Controller
                     $metadata = $result['metadata'];
                     $text = $result['text'];
 
+                    // Validasi tambahan: cocokkan plat struk dengan plat kendaraan SPD dari DB.
+                    $metadata = array_merge($metadata, $this->comparePlateWithVehicle($surat, $metadata));
+
                     // FLOW BARU (seamless): tanggal transaksi otomatis dari AI (metadata tanggal),
                     // bukan pilih manual — item dikelompokkan per tanggal struk.
                     $aiTanggal = $this->parseAiTanggal($metadata['tanggal'] ?? null);
@@ -453,7 +462,11 @@ class SpdDailyReportController extends Controller
                     'metadata_json'       => ! empty($metadata) ? $metadata : null,
                     'nominal'             => $nominal,
                     'tanggal'             => $itemDate,
-                    'keterangan'          => $text !== '' ? mb_substr($text, 0, 500) : self::defaultKeterangan($kategori),
+                    // Hanya keterangan yang DIKETIK USER yang disimpan ke field ini.
+                    // Hasil OCR AI tidak lagi ditulis ke keterangan (hanya ke ocr_text).
+                    'keterangan'          => $source === 'manual' && $text !== ''
+                        ? mb_substr($text, 0, 500)
+                        : self::defaultKeterangan($kategori),
                     'ocr_text'            => ($source === 'ai' && $text) ? $text : null,
                     'urutan'              => $urutan,
                 ]);
@@ -465,8 +478,11 @@ class SpdDailyReportController extends Controller
                     'kategori'   => $item->struk_kategori,
                     'nominal'    => $nominal,
                     'tanggal'    => $item->tanggal ? $item->tanggal->format('Y-m-d') : null,
-                    'url'        => \Storage::disk('public')->url($item->path_image),
+                    'url'        => url('files/storage/' . $item->path_image),
                     'keterangan' => $item->keterangan,
+                    'plat_nomor'     => $metadata['plat_nomor'] ?? null,
+                    'plat_kendaraan' => $metadata['plat_kendaraan'] ?? null,
+                    'plat_cocok'     => $metadata['plat_cocok'] ?? null,
                 ];
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('uploadItems: file #' . $index . ' gagal diproses.', [
@@ -510,7 +526,7 @@ class SpdDailyReportController extends Controller
 
         $validator = Validator::make($request->all(), [
             'nominal'        => 'required|numeric|min:0',
-            'struk_kategori' => 'required|in:BBM,Tol,Parkir,Lainnya,Tambahan',
+            'struk_kategori' => 'required|in:BBM,Tol,Parkir,Hotel + Makan,Lainnya,Tambahan',
             'keterangan'     => 'nullable|string|max:500',
         ]);
 
@@ -663,11 +679,11 @@ class SpdDailyReportController extends Controller
 
         // Gabungkan item dari seluruh laporan (draft + submitted) — SEGMENTASI FLOW BARU.
         $allItems = $reports->flatMap(fn ($r) => $r->strukItems);
-        $financialItems = $allItems->whereIn('struk_kategori', ['BBM', 'Tol', 'Parkir', 'Lainnya']);
+        $financialItems = $allItems->whereIn('struk_kategori', ['BBM', 'Tol', 'Parkir', 'Hotel + Makan', 'Lainnya']);
 
         if ($financialItems->isEmpty()) {
             return redirect()->back()
-                ->with('error', 'Belum ada item pengeluaran (BBM/Tol/Parkir/Lainnya) pada laporan harian.');
+                ->with('error', 'Belum ada item pengeluaran (BBM/Tol/Parkir/Hotel + Makan/Lainnya) pada laporan harian.');
         }
 
         $totalPengeluaran = (float) $financialItems->sum('nominal');
@@ -791,12 +807,40 @@ class SpdDailyReportController extends Controller
     protected static function defaultKeterangan(string $kategori): string
     {
         return match ($kategori) {
-            'BBM'      => 'Pengisian BBM',
-            'Tol'      => 'Pembayaran Tol',
-            'Parkir'   => 'Biaya Parkir',
-            'Tambahan' => 'Dokumentasi Tambahan',
-            default    => 'Pengeluaran Lainnya',
+            'BBM'           => 'Pengisian BBM',
+            'Tol'           => 'Pembayaran Tol',
+            'Parkir'        => 'Biaya Parkir',
+            'Hotel + Makan' => 'Biaya Hotel / Makan',
+            'Tambahan'      => 'Dokumentasi Tambahan',
+            default         => 'Pengeluaran Lainnya',
         };
+    }
+
+    /**
+     * Bandingkan nomor polisi yang tertulis di struk (plat_nomor hasil AI)
+     * dengan nomor polisi kendaraan SPD dari database (vehicle.consumerial_code).
+     *
+     * Normalisasi: "D 1077 ALV" → "D1077ALV" (kapital, buang semua non-alfanumerik).
+     * Justru berguna sebagai validasi tambahan — bila plat cocok, bukti pengeluaran
+     * dianggap terverifikasi untuk kendaraan yang sama.
+     *
+     * @return array{plat_nomor: ?string, plat_kendaraan: ?string, plat_cocok: ?bool}
+     */
+    protected function comparePlateWithVehicle(SuratSpd $surat, array $metadata): array
+    {
+        $platStruk   = ImageAnalysisService::normalizePlate($metadata['plat_nomor'] ?? null);
+        $platKendaraan = ImageAnalysisService::normalizePlate($surat->vehicle?->consumerial_code);
+
+        $cocok = null;
+        if ($platStruk !== null && $platKendaraan !== null) {
+            $cocok = strtoupper($platStruk) === strtoupper($platKendaraan);
+        }
+
+        return [
+            'plat_nomor'      => $platStruk,
+            'plat_kendaraan'  => $platKendaraan,
+            'plat_cocok'      => $cocok,
+        ];
     }
 
     /**

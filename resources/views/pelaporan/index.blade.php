@@ -417,7 +417,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!s) return;
             const kat = effKategori(s);
             const nom = s.status === 'ai_ok' ? (s.nominal || 0) : (s.nominal === '' ? '' : s.nominal);
-            const ket = s.status === 'ai_ok' ? (s.text || '').substring(0, 200) : '';
+            // Keterangan hanya diisi user (hasil OCR AI tidak lagi ditulis ke field keterangan).
+            const ket = '';
             const meta = JSON.stringify({
                 kategori: kat,
                 metadata: {
@@ -450,6 +451,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <option value="BBM">Struk BBM</option>
                         <option value="Tol">Struk Tol</option>
                         <option value="Parkir">Struk Parkir</option>
+                        <option value="Hotel + Makan">Hotel / Makan</option>
                         <option value="Lainnya">Struk Lainnya</option>
                         <option value="Tambahan">Tambahan (bukan struk)</option>
                     </select>

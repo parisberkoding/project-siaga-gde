@@ -66,6 +66,61 @@
                             <label class="form-check-label" for="isActive">Unit aktif</label>
                         </div>
 
+                        {{-- ── Modul yang di-enable untuk unit ini ── --}}
+                        @isset($modules)
+                        <hr class="my-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold mb-1">
+                                <i class="bi bi-grid-3x3-gap me-1"></i>Modul yang Di-enable untuk Unit Ini
+                            </label>
+                            <p class="text-muted small mb-0">
+                                Semua role yang berafiliasi dengan unit ini hanya dapat mengakses modul yang dicentang.
+                                Modul yang dimatikan akan hilang dari menu, dan akses langsung ke URL-nya ditolak.
+                                Data yang sudah ada <strong>tidak dihapus</strong> — hanya tidak dapat diakses.
+                            </p>
+                        </div>
+
+                        @if(! $canManageModules)
+                            <div class="alert alert-secondary border-0 small py-2 mb-3">
+                                <i class="bi bi-lock me-1"></i>
+                                Hanya superadmin unit <strong>Pusat</strong> yang dapat mengubah daftar modul.
+                                Daftar di bawah hanya dapat dilihat.
+                            </div>
+                        @else
+                            {{-- Penanda bahwa form ini benar-benar disubmit, sehingga
+                                 "semua centang dilepas" bisa dibedakan dari "bukan submit form".
+                                 Tanpa ini, melepas semua centang akan dikembalikan ke default. --}}
+                            <input type="hidden" name="modules_present" value="1">
+                        @endif
+
+                        <div class="row g-2">
+                            @foreach($modules as $module)
+                                @php
+                                    $isOn = $module->is_always_on || in_array($module->id, $enabledModuleIds ?? [], true);
+                                    $locked = $module->is_always_on || ! $canManageModules;
+                                @endphp
+                                <div class="col-md-6">
+                                    <div class="border rounded p-2 h-100 {{ $isOn ? 'border-primary bg-primary bg-opacity-10' : 'bg-light' }}">
+                                        <div class="form-check mb-1">
+                                            <input class="form-check-input" type="checkbox"
+                                                   name="modules[]" value="{{ $module->id }}"
+                                                   id="mod{{ $module->id }}"
+                                                   {{ $isOn ? 'checked' : '' }}
+                                                   {{ $locked ? 'disabled' : '' }}>
+                                            <label class="form-check-label fw-semibold" for="mod{{ $module->id }}">
+                                                <i class="{{ $module->icon }} me-1"></i>{{ $module->name }}
+                                                @if($module->is_always_on)
+                                                    <span class="badge bg-secondary ms-1">selalu aktif</span>
+                                                @endif
+                                            </label>
+                                        </div>
+                                        <div class="small text-muted">{{ $module->description }}</div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        @endisset
+
                         <div class="d-flex gap-2 mt-4">
                             <button type="submit" class="btn btn-primary px-4">
                                 <i class="bi bi-save me-2"></i>Simpan

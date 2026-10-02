@@ -42,6 +42,11 @@ class SuratSpd extends Model
         'rejected_by',
         'rejected_at',
         'rejection_reason',
+        'unit_id',
+        'kode_gl',
+        'uang_diberikan',
+        'jenis_spd',
+        'jenis_spd_lainnya',
     ];
 
     protected $casts = [
@@ -53,6 +58,7 @@ class SuratSpd extends Model
         'lpj_deadline' => 'datetime',  // ✅ ADDED
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
+        'uang_diberikan' => 'decimal:2',
     ];
 
     /**
@@ -79,10 +85,10 @@ class SuratSpd extends Model
             // Calculate total budget
             $surat->calculateTotalBudget();
 
-            // Set tanggal surat jika belum ada (format Indonesia, mengikuti site user)
+            // Set tanggal surat jika belum ada (format Indonesia, mengikuti kota unit)
             if (empty($surat->tanggal_surat)) {
-                $siteName = optional($surat->user?->defaultSite)->name ?: 'Patuha';
-                $surat->tanggal_surat = $siteName.', '.Carbon::now()->locale('id')->translatedFormat('d F Y');
+                $city = $surat->resolveUnit()?->city ?: 'Patuha';
+                $surat->tanggal_surat = $city.', '.Carbon::now()->locale('id')->translatedFormat('d F Y');
             }
         });
 
@@ -128,7 +134,7 @@ class SuratSpd extends Model
 
     /**
      * Generate nomor surat otomatis
-     * Format: [nomer].TGS/PTH1.30-GDE/[bulan_romawi]/[tahun]
+     * Format: [nomer].TGS/[KODE_UNIT]1.30-GDE/[bulan_romawi]/[tahun]
      */
     public function generateNomorSurat()
     {
@@ -143,13 +149,34 @@ class SuratSpd extends Model
         $nomorUrut = $lastSurat ? ($lastSurat->nomor_urut + 1) : 1;
         $this->nomor_urut = $nomorUrut;
 
+        // Kode unit untuk nomor surat (fallback 'PTH' agar format lama tidak berubah).
+        $unitCode = $this->resolveUnit()?->code ?: 'PTH';
+
         // Format: 001.TGS/PTH1.30-GDE/XII/2025
         $this->nomor_surat = sprintf(
-            '%03d.TGS/PTH1.30-GDE/%s/%s',
+            '%03d.TGS/%s1.30-GDE/%s/%s',
             $nomorUrut,
+            strtoupper($unitCode),
             $bulan,
             $tahun
         );
+    }
+
+    /**
+     * Resolve unit surat SPD (dari unit_id, fallback ke unit user pembuat).
+     * Dipakai untuk menentukan kode & kota pada nomor/tanggal surat.
+     */
+    public function resolveUnit(): ?Unit
+    {
+        if ($this->unit_id) {
+            return Unit::find($this->unit_id);
+        }
+
+        if ($this->user_id) {
+            return User::find($this->user_id)?->unit;
+        }
+
+        return null;
     }
 
     /**
@@ -197,6 +224,14 @@ class SuratSpd extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Unit bisnis surat SPD (scope data antar unit).
+     */
+    public function unit()
+    {
+        return $this->belongsTo(Unit::class);
     }
 
     /**
@@ -356,19 +391,16 @@ class SuratSpd extends Model
     }
 
     /**
-     * Scope unit bisnis: surat SPD milik user/pengemudi yang default site-nya
-     * berada di salah satu site dalam unit. Null = tanpa scope (global / pusat).
+     * Scope unit bisnis: surat SPD milik unit tertentu.
+     * Null = tanpa scope (global / pusat) — melihat semua unit.
      */
-    public function scopeInUnit($query, ?array $siteIds)
+    public function scopeInUnit($query, ?int $unitId)
     {
-        if ($siteIds === null) {
+        if ($unitId === null) {
             return;
         }
 
-        $query->where(function ($q) use ($siteIds) {
-            $q->whereHas('user', fn ($uq) => $uq->whereIn('default_site_id', $siteIds))
-              ->orWhereHas('employeeDefault', fn ($eq) => $eq->whereIn('default_site_id', $siteIds));
-        });
+        $query->where('surat_spds.unit_id', $unitId);
     }
 
     // ============================================================
@@ -619,5 +651,24 @@ class SuratSpd extends Model
     public function barcodeSignature()
     {
         return $this->hasOne(SpdBarcodeSignature::class, 'spd_id');
+    }
+
+    /**
+     * Riwayat penambahan dana pada surat SPD (setelah disetujui).
+     */
+    public function fundAdditions()
+    {
+        return $this->hasMany(SuratSpdFundAddition::class, 'surat_spd_id')->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * Total uang yang diberikan ke driver = uang awal + seluruh penambahan dana.
+     */
+    public function getTotalUangDiberikanAttribute(): float
+    {
+        $awal = (float) ($this->uang_diberikan ?? 0);
+        $tambahan = (float) $this->fundAdditions()->sum('nominal_tambahan');
+
+        return $awal + $tambahan;
     }
 }

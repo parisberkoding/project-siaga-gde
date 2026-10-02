@@ -23,7 +23,8 @@ class Permohonan extends Model
         'authorizer_id',
         'authorization_date',
         'authorizer_notes',
-        'consumerial_tools_id'
+        'consumerial_tools_id',
+        'unit_id',
     ];
 
     protected $casts = [
@@ -73,6 +74,12 @@ class Permohonan extends Model
         return $this->belongsTo(GasolineType::class, 'gasoline_type');
     }
 
+    // Relasi ke Unit (scope data antar unit)
+    public function unit()
+    {
+        return $this->belongsTo(Unit::class);
+    }
+
     /**
      * Gunakan request_number sebagai route key agar ID tidak tampil di URL.
      */
@@ -108,15 +115,15 @@ class Permohonan extends Model
     }
 
     /**
-     * Scope unit bisnis: hanya permohonan yang kendaraannya berada di site dalam unit.
-     * Null = tanpa scope (global / pusat).
+     * Scope unit bisnis: hanya permohonan milik unit tertentu.
+     * Null = tanpa scope (global / pusat) — melihat semua unit.
      */
-    public function scopeInUnit($query, ?array $siteIds)
+    public function scopeInUnit($query, ?int $unitId)
     {
-        if ($siteIds === null) {
+        if ($unitId === null) {
             return;
         }
 
-        $query->whereHas('vehicle.detail', fn ($q) => $q->whereIn('site_id', $siteIds));
+        $query->where('permohonans.unit_id', $unitId);
     }
 }

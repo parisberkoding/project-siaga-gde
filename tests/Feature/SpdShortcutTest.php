@@ -51,6 +51,33 @@ it('shortcut SPD: pengemudi manual (tanpa akun) tetap bisa dibuat', function () 
     expect($surat->employee_default_id)->toBeNull();
 });
 
+it('shortcut SPD menyimpan Kode GL & uang diberikan', function () {
+    $this->actingAs($this->superadmin)
+        ->post(route('surat.superadmin.store-shortcut'), [
+            'pemberi_tugas_level' => 'manager',
+            'pemberi_tugas_nama' => 'Budi Manager',
+            'pemberi_tugas_jabatan' => 'Operations Manager',
+            'pengemudi_nama' => 'Pengemudi GL',
+            'tempat_tujuan' => 'Bandung',
+            'melayani_bidang' => 'Operasional',
+            'jumlah_pemakai' => 1,
+            'vehicle_id' => $this->vehicle->id,
+            'tanggal_berangkat' => now()->addDay()->format('Y-m-d'),
+            'tanggal_kembali' => now()->addDays(3)->format('Y-m-d'),
+            'type' => 'biasa',
+            'jenis_spd' => 'luar_kota',
+            'kode_gl' => '5121000',
+            'uang_diberikan' => 1500000,
+        ])
+        ->assertRedirect();
+
+    $surat = SuratSpd::latest('id')->first();
+    expect($surat)->not->toBeNull();
+    expect($surat->kode_gl)->toBe('5121000');
+    expect((float) $surat->uang_diberikan)->toBe(1500000.0);
+    expect($surat->jenis_spd)->toBe('luar_kota');
+});
+
 it('shortcut SPD: pengemudi dari Master Pekerja terlink ke employee_default', function () {
     $emp = EmployeeDefault::create([
         'employee_name' => 'Supir Andi',
@@ -108,4 +135,15 @@ it('menyajikan form shortcut dengan opsi Master Pekerja', function () {
         ->assertStatus(200)
         ->assertSee('Pekerja Shortcut', false)
         ->assertSee('Manager Shortcut', false);
+});
+
+it('shortcut SPD menampilkan field Kode GL & nominal pemberian', function () {
+    $this->actingAs($this->superadmin)
+        ->get(route('surat.superadmin.create-shortcut'))
+        ->assertStatus(200)
+        ->assertSee('Kode GL', false)
+        ->assertSee('name="kode_gl"', false)
+        ->assertSee('name="uang_diberikan"', false)
+        ->assertSee('Jenis SPD', false)
+        ->assertSee('name="jenis_spd"', false);
 });

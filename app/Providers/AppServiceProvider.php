@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use App\Models\User;
+use App\Services\Sso\Contracts\SsoProvider;
+use App\Services\Sso\Providers\NotConfiguredProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -14,7 +16,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Adapter SSO dipilih lewat konfigurasi, sehingga saat IT Pusat
+        // menetapkan protokolnya cukup ubah SSO_DRIVER — tidak ada kode yang
+        // perlu disentuh. Default `not_configured` menolak dengan pesan jelas.
+        $this->app->bind(SsoProvider::class, function ($app) {
+            $driver = (string) config('sso.driver', 'not_configured');
+            $class = config("sso.providers.{$driver}") ?: NotConfiguredProvider::class;
 
+            return $app->make($class);
+        });
     }
 
     /**

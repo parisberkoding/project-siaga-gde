@@ -249,6 +249,24 @@
         }
         .ttd .role { font-size: 9.5pt; margin-top: 2px; }
 
+        /* ── Ringkasan Dana (Diberikan / Pengembalian) ── */
+        .ringkasan-dana {
+            margin-bottom: 24px;
+            padding: 12px 16px;
+            border: 1px solid #000;
+            border-radius: 6px;
+            width: 60%;
+            page-break-inside: avoid;
+        }
+        .ringkasan-dana .ringkasan-row {
+            display: flex;
+            margin: 4px 0;
+            font-size: 11pt;
+        }
+        .ringkasan-dana .ringkasan-label { width: 140px; }
+        .ringkasan-dana .ringkasan-colon { width: 12px; }
+        .ringkasan-dana .ringkasan-value { font-weight: bold; }
+
         /* ── Lampiran Foto (masonry grid) ── */
         .photo-page-header {
             text-align: center;
@@ -314,7 +332,7 @@
             font-size: 9pt;
             line-height: 1.4;
             background: #fafafa;
-            border-bottom: 1px solid #ddd;
+            border-top: 1px solid #ddd;
         }
 
         .items .credential .cat {
@@ -608,8 +626,16 @@
     <div style="margin-top: 20px; text-align: right; page-break-inside: avoid;">
         <div>{{ $surat->tanggal_surat }}</div>
         <div style="font-weight: bold; margin-top: 8px;">Yang Memberi Perintah,</div>
-        
-        <div style="margin: 14mm 0 2px; font-weight: bold; text-decoration: underline; margin-top: 100px;">{{ $surat->pemberi_tugas_nama }}</div>
+
+        {{-- QR / Barcode tanda tangan digital --}}
+        @if(!empty($qrSvgContent))
+            <div style="width: 70px; height: 70px; margin: 6px 0 0 auto;">
+                {!! $qrSvgContent !!}
+            </div>
+            <div style="font-size: 8px; color: #666; margin-top: 2px;">Scan untuk verifikasi</div>
+        @endif
+
+        <div style="margin: 10mm 0 2px; font-weight: bold; text-decoration: underline;">{{ $surat->pemberi_tugas_nama }}</div>
         <div>{{ $surat->pemberi_tugas_jabatan }}</div>
     </div>
     </div>
@@ -738,21 +764,29 @@
         </tfoot>
     </table>
 
+    <div class="ringkasan-dana">
+        <div class="ringkasan-row">
+            <span class="ringkasan-label">Diberikan</span>
+            <span class="ringkasan-colon">:</span>
+            <span class="ringkasan-value">Rp {{ number_format((float) $laporan->jumlah_diberikan, 0, ',', '.') }}</span>
+        </div>
+        <div class="ringkasan-row">
+            <span class="ringkasan-label">Pengembalian</span>
+            <span class="ringkasan-colon">:</span>
+            <span class="ringkasan-value">Rp {{ number_format((float) $laporan->pengembalian, 0, ',', '.') }}</span>
+        </div>
+    </div>
+
     <div class="ttd-wrap">
         <div class="ttd">
             <div class="title">User</div>
-            <div class="name">{{ $laporan->nama ?: '_________________' }}</div>
-            <div class="role">Pengemudi / User</div>
+            <div class="name">{{ $laporan->approverPengguna?->nama_lengkap ?: ($laporan->nama ?: '_________________') }}</div>
+            <div class="role">User yang berangkat / mengetahui</div>
         </div>
         <div class="ttd">
-            <div class="title">General Affairs</div>
+            <div class="title">Divisi GA</div>
             <div class="name">{{ $laporan->approverDivisiGa?->nama_lengkap ?: '_________________' }}</div>
-            <div class="role">Divisi GA</div>
-        </div>
-        <div class="ttd">
-            <div class="title">Manager / Asst. Manager</div>
-            <div class="name">_________________</div>
-            <div class="role">Management</div>
+            <div class="role">Admin / Supervisor / Manager / Asst. Manager</div>
         </div>
     </div>
     </div>
@@ -781,38 +815,20 @@
                     <div class="grid-divider">{{ $entry['item']->struk_kategori }}</div>
                 @endif
                 <div class="items">
-                    <div class="credential">
-                        @php
-                            $meta = $entry['item']->metadata_json ?: [];
-                            $volume = isset($meta['volume']) && $meta['volume'] !== '' && $meta['volume'] !== null
-                                ? (float) $meta['volume'] : null;
-                            $harga = isset($meta['harga_per_liter']) && $meta['harga_per_liter'] !== '' && $meta['harga_per_liter'] !== null
-                                ? (float) $meta['harga_per_liter'] : null;
-                        @endphp
-                        <div><span class="cat">Jenis :</span> {{ $entry['item']->struk_kategori }}
-                            @if($volume !== null)<span class="vol"> · {{ number_format($volume, 2, ',', '.') }} L</span>@endif
-                        </div>
-                        <div><span class="cat">Keterangan :</span> {{ $entry['item']->keterangan ?: '-' }}
-                            @if($harga !== null)<span class="vol"> ({{ number_format($harga, 0, ',', '.') }}/L)</span>@endif
-                        </div>
-                        <div><span class="cat">Nominal :</span> Rp {{ number_format((float) $entry['item']->nominal, 0, ',', '.') }}</div>
-                        <div><span class="cat">Tanggal Laporan :</span>
-                            {{ $entry['item']->tanggal ? $entry['item']->tanggal->locale('id')->translatedFormat('l, d F Y') : '-' }}
-                        </div>
-                        @if($entry['item']->edited_at)
-                            <div class="edit-note">
-                                <div><span class="cat">1. Awal :</span> {{ optional($entry['item']->created_at)->locale('id')->translatedFormat('l, d F Y') }}</div>
-                                <div><span class="cat">2. Diedit :</span> {{ $entry['item']->edited_at->locale('id')->translatedFormat('l, d F Y') }}</div>
-                            </div>
-                        @endif
-                        <div class="code">{{ $entry['item']->item_code }}</div>
-                    </div>
+                    {{-- Foto ditampilkan lebih dulu, info ringkas di bawahnya --}}
                     <div class="photo-wrap">
                         @if($entry['image_base64'])
                             <img src="data:{{ $entry['mime'] }};base64,{{ $entry['image_base64'] }}" alt="Struk">
                         @else
                             <div class="no-photo">Foto tidak tersedia</div>
                         @endif
+                    </div>
+                    <div class="credential">
+                        <div><span class="cat">Jenis Lampiran :</span> {{ $entry['item']->struk_kategori }}</div>
+                        <div><span class="cat">Nominal :</span> Rp {{ number_format((float) $entry['item']->nominal, 0, ',', '.') }}</div>
+                        <div><span class="cat">Tanggal Upload :</span>
+                            {{ $entry['item']->created_at ? $entry['item']->created_at->locale('id')->translatedFormat('l, d F Y') : '-' }}
+                        </div>
                     </div>
                 </div>
                 @php $prevKategori = $entry['item']->struk_kategori; @endphp

@@ -17,6 +17,7 @@ class Approved_Request extends Model  // Ubah dari Approved_Request
         'authorizer_id',
         'approval_notes',
         'status',
+        'unit_id',
     ];
 
     // Relasi ke Permohonan
@@ -31,6 +32,12 @@ class Approved_Request extends Model  // Ubah dari Approved_Request
         return $this->belongsTo(User::class, 'authorizer_id');
     }
 
+    // Relasi ke Unit (scope data antar unit)
+    public function unit()
+    {
+        return $this->belongsTo(Unit::class);
+    }
+
     public function scopeApproved($query)
     {
         return $query->where('status', 'approved');
@@ -42,15 +49,15 @@ class Approved_Request extends Model  // Ubah dari Approved_Request
     }
 
     /**
-     * Scope unit bisnis: voucher dari permohonan kendaraan di site dalam unit.
-     * Null = tanpa scope (global / pusat).
+     * Scope unit bisnis: voucher milik unit tertentu.
+     * Null = tanpa scope (global / pusat) — melihat semua unit.
      */
-    public function scopeInUnit($query, ?array $siteIds)
+    public function scopeInUnit($query, ?int $unitId)
     {
-        if ($siteIds === null) {
+        if ($unitId === null) {
             return;
         }
 
-        $query->whereHas('permohonan', fn ($q) => $q->inUnit($siteIds));
+        $query->where('approved_requests.unit_id', $unitId);
     }
 }

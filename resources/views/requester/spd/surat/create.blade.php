@@ -53,6 +53,25 @@
                             @enderror
                         </div>
 
+                        <div class="mb-3">
+                            <label class="form-label">Jenis SPD <span class="text-danger">*</span></label>
+                            <select class="form-select @error('jenis_spd') is-invalid @enderror" name="jenis_spd" id="jenis_spd">
+                                <option value="">-- Pilih Jenis SPD --</option>
+                                <option value="luar_kota" @if(old('jenis_spd') == 'luar_kota') selected @endif>SPD Luar Kota</option>
+                                <option value="dalam_kota" @if(old('jenis_spd') == 'dalam_kota') selected @endif>SPD Dalam Kota</option>
+                                <option value="lainnya" @if(old('jenis_spd') == 'lainnya') selected @endif>Lainnya</option>
+                            </select>
+                            @error('jenis_spd')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="mb-3" id="jenis_spd_lainnya_wrapper" style="display: none;">
+                            <label class="form-label">Jenis SPD Lainnya</label>
+                            <input type="text" class="form-control" name="jenis_spd_lainnya"
+                                   placeholder="Contoh: Dinas Internasional" value="{{ old('jenis_spd_lainnya') }}">
+                        </div>
+
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Melayani Bidang <span class="text-danger">*</span></label>
@@ -137,9 +156,12 @@
                                 <div class="mb-2 row-nama" id="rowNama{{ $i }}" style="{{ $i > 1 ? 'display: none;' : '' }}">
                                     <div class="input-group">
                                         <span class="input-group-text">{{ $i }}.</span>
-                                        <input type="text" class="form-control" name="nama_lengkap_{{ $i }}"
-                                               placeholder="Nama lengkap pemakai ke-{{ $i }}"
+                                        <input type="text" class="form-control pemakai-input" name="nama_lengkap_{{ $i }}"
+                                               data-index="{{ $i }}" autocomplete="off"
+                                               placeholder="Ketik nama pemakai ke-{{ $i }}…"
                                                value="{{ old('nama_lengkap_' . $i) }}">
+                                        <input type="hidden" name="user_id_{{ $i }}" id="userId{{ $i }}"
+                                               value="{{ old('user_id_' . $i) }}">
                                     </div>
                                 </div>
                             @endfor
@@ -215,6 +237,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const jumlahPemakai = document.getElementById('jumlahPemakai');
     const infoLama = document.getElementById('infoLama');
     const lamaHari = document.getElementById('lamaHari');
+    const jenisSpd = document.getElementById('jenis_spd');
+    const jenisSpdLainnya = document.getElementById('jenis_spd_lainnya_wrapper');
+
+    // Toggle input "Lainnya" pada dropdown jenis SPD
+    function updateJenisSpd() {
+        if (jenisSpd && jenisSpdLainnya) {
+            jenisSpdLainnya.style.display = jenisSpd.value === 'lainnya' ? 'block' : 'none';
+        }
+    }
+    if (jenisSpd) {
+        jenisSpd.addEventListener('change', updateJenisSpd);
+        updateJenisSpd();
+    }
 
     // Summary elements
     const summaryLama = document.getElementById('summaryLama');
@@ -267,4 +302,7 @@ document.addEventListener('DOMContentLoaded', function() {
     calculate();
 });
 </script>
+
+{{-- Autocomplete nama pemakai (Master Pekerja) --}}
+@include('partials.pemakai-autocomplete')
 @endsection

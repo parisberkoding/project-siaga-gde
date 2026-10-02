@@ -14,7 +14,12 @@ return new class extends Migration
         Schema::create('approved_requests', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('permohonan_id');
+
+            $table->unsignedBigInteger('unit_id')->nullable();
+
             $table->foreign('permohonan_id')->references('id')->on('permohonans')->onDelete('cascade');
+
+            $table->foreign('unit_id')->references('id')->on('units')->onDelete('cascade');
 
             $table->timestamp('approval_date')->useCurrent();
             $table->string('voucher_code')->unique();

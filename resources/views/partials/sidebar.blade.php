@@ -83,15 +83,21 @@
             ['label' => 'Kelola Permohonan', 'icon' => 'bi bi-circle', 'route' => 'superadmin.permohonan', 'active' => ['superadmin.permohonan*'], 'perms' => ['bbm.approve']],
         ]],
 
-        // ── Pelaporan BBM & SPD (driver → lapor pembelian / OCR struk) ──
-        ['label' => 'Pelaporan BBM & SPD', 'icon' => 'bi bi-journal-text', 'route' => 'pelaporan.index', 'active' => ['pelaporan.*'], 'perms' => ['pelaporan.view', 'pelaporan.create']],
+        // ── Pelaporan BBM & SPD (SEMENTARA DISEMBUNYIKAN dari navigasi) ──
+        // Halaman /pelaporan masih dapat diakses langsung (route tetap hidup),
+        // tetapi tidak ditampilkan di sidebar agar driver tidak bingung dengan
+        // pemilihan mode. Alur driver kini lewat SPD Management → "SPD Berjalan".
+        // ['label' => 'Pelaporan BBM & SPD', 'icon' => 'bi bi-journal-text', 'route' => 'pelaporan.index', 'active' => ['pelaporan.*'], 'perms' => ['pelaporan.view', 'pelaporan.create']],
 
         // ── SPD Management (anak di-filter per permission) ──
-        ['label' => 'SPD Management', 'icon' => 'bi bi-envelope-paper', 'id' => 'spd-nav', 'active' => ['requester.surat.*', 'requester.lpj.*', 'surat.superadmin.*', 'perpanjangan.superadmin.*', 'lpj.superadmin.*'], 'children' => [
+        ['label' => 'SPD Management', 'icon' => 'bi bi-envelope-paper', 'id' => 'spd-nav', 'active' => ['requester.surat.*', 'requester.spd.berjalan', 'requester.lpj.*', 'surat.superadmin.*', 'perpanjangan.superadmin.*', 'lpj.superadmin.*', 'lpj.pengguna.*'], 'children' => [
             // Driver / Requester
             ['label' => 'Buat Surat Tugas', 'icon' => 'bi bi-circle', 'route' => 'requester.surat.create', 'active' => ['requester.surat.create'], 'perms' => ['spd.create']],
             ['label' => 'Daftar Surat Tugas', 'icon' => 'bi bi-circle', 'route' => 'requester.surat.index', 'active' => ['requester.surat.index', 'requester.surat.show'], 'perms' => ['spd.view']],
+            ['label' => 'SPD Berjalan', 'icon' => 'bi bi-circle', 'route' => 'requester.spd.berjalan', 'active' => ['requester.spd.berjalan'], 'perms' => ['lpj.create', 'spd.view']],
             ['label' => 'Laporan SPD (LPJ)', 'icon' => 'bi bi-circle', 'route' => 'requester.lpj.index', 'active' => ['requester.lpj.*'], 'perms' => ['lpj.create', 'lpj.view']],
+            // User yang berangkat (penumpang)
+            ['label' => 'Validasi Perjalanan (User)', 'icon' => 'bi bi-circle', 'route' => 'lpj.pengguna.index', 'active' => ['lpj.pengguna.*'], 'perms' => ['spd.validate_trip']],
             // Admin / Superadmin
             ['label' => 'Buat Surat (Shortcut)', 'icon' => 'bi bi-circle', 'route' => 'surat.superadmin.create-shortcut', 'active' => ['surat.superadmin.create-shortcut', 'surat.superadmin.store-shortcut'], 'perms' => ['spd.manage']],
             ['label' => 'Validasi Surat Tugas', 'icon' => 'bi bi-circle', 'route' => 'surat.superadmin.index', 'active' => ['surat.superadmin.index', 'surat.superadmin.show'], 'perms' => ['spd.manage']],
@@ -117,10 +123,11 @@
         ['label' => 'Role & Permission', 'icon' => 'bi bi-shield-lock', 'route' => 'superadmin.rbac.index', 'active' => ['superadmin.rbac.*'], 'perms' => ['rbac.roles']],
 
         // ── Pengaturan & Data Master ──
-        ['label' => 'Pengaturan & Data Master', 'icon' => 'bi bi-gear', 'id' => 'master-nav', 'active' => ['master-gasoline.*', 'superadmin.units.*', 'superadmin.sites.*'], 'children' => [
+        ['label' => 'Pengaturan & Data Master', 'icon' => 'bi bi-gear', 'id' => 'master-nav', 'active' => ['master-gasoline.*', 'superadmin.units.*', 'superadmin.sites.*', 'superadmin.sso.*'], 'children' => [
             ['label' => 'Harga BBM (Master Gasoline)', 'icon' => 'bi bi-fuel-pump', 'route' => 'master-gasoline.index', 'active' => ['master-gasoline.*'], 'perms' => ['settings.view']],
             ['label' => 'Unit Bisnis', 'icon' => 'bi bi-diagram-3', 'route' => 'superadmin.units.index', 'active' => ['superadmin.units.*'], 'perms' => ['settings.manage']],
             ['label' => 'Site / Lokasi', 'icon' => 'bi bi-geo-alt', 'route' => 'superadmin.sites.index', 'active' => ['superadmin.sites.*'], 'perms' => ['settings.manage']],
+            ['label' => 'Pemetaan Jabatan SSO', 'icon' => 'bi bi-person-badge', 'route' => 'superadmin.sso.mappings.index', 'active' => ['superadmin.sso.*'], 'perms' => ['settings.sso_mapping']],
         ]],
 
         // ── Scanner Kendaraan (dispatcher + admin read-only) ──

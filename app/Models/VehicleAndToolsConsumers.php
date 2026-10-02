@@ -29,6 +29,7 @@ class VehicleAndToolsConsumers extends Model
         'is_active',
         'approved_by',
         'created_by',
+        'unit_id',
     ];
 
     /**
@@ -127,16 +128,24 @@ class VehicleAndToolsConsumers extends Model
     }
 
     /**
-     * Scope unit bisnis: hanya kendaraan yang detailnya berada di site dalam unit.
-     * Null = tanpa scope (global / pusat).
+     * Unit bisnis kendaraan/alat (scope data antar unit).
      */
-    public function scopeInUnit($query, ?array $siteIds)
+    public function unit()
     {
-        if ($siteIds === null) {
+        return $this->belongsTo(Unit::class);
+    }
+
+    /**
+     * Scope unit bisnis: hanya kendaraan milik unit tertentu.
+     * Null = tanpa scope (global / pusat) — melihat semua unit.
+     */
+    public function scopeInUnit($query, ?int $unitId)
+    {
+        if ($unitId === null) {
             return;
         }
 
-        $query->whereHas('detail', fn ($q) => $q->whereIn('site_id', $siteIds));
+        $query->where('vehicle_and_tools_consumers.unit_id', $unitId);
     }
 
     /**

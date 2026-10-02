@@ -169,7 +169,7 @@
                                 </div>
                                 <div class="row g-2">
                                     @foreach($groupItems as $item)
-                                    <div class="col-md-6">
+                                    <div class="col-12">
                                         @include('pelaporan.spd.partials.struk-item-card', ['item' => $item])
                                     </div>
                                     @endforeach
@@ -203,7 +203,7 @@
                         <div class="card-body">
                             <div class="row g-2">
                                 @foreach($report->strukItems as $item)
-                                <div class="col-md-6">
+                                <div class="col-12">
                                     @include('pelaporan.spd.partials.struk-item-card', ['item' => $item])
                                 </div>
                                 @endforeach
@@ -299,8 +299,23 @@
         return 'Rp ' + new Intl.NumberFormat('id-ID').format(num || 0);
     }
 
-    const kategoriBadges = { 'BBM': 'bg-danger', 'Tol': 'bg-primary', 'Parkir': 'bg-info', 'Lainnya': 'bg-secondary', 'Tambahan': 'bg-warning text-dark' };
-    const kategoriOptions = ['BBM', 'Tol', 'Parkir', 'Lainnya', 'Tambahan'];
+    const kategoriBadges = { 'BBM': 'bg-danger', 'Tol': 'bg-primary', 'Parkir': 'bg-info', 'Hotel + Makan': 'bg-success', 'Lainnya': 'bg-secondary', 'Tambahan': 'bg-warning text-dark' };
+    const kategoriOptions = ['BBM', 'Tol', 'Parkir', 'Hotel + Makan', 'Lainnya', 'Tambahan'];
+
+    // Badge hasil perbandingan plat struk vs plat kendaraan SPD (dari DB).
+    function renderPlateBadge(item) {
+        if (item.plat_cocok === undefined || item.plat_cocok === null) return '';
+        if (item.plat_cocok === true) {
+            return `<span class="badge text-bg-success" title="Plat kendaraan SPD tercocokkan dengan struk.">
+                        <i class="bi bi-shield-check"></i> Plat cocok ${(item.plat_nomor || '').toUpperCase()}</span>`;
+        }
+        if (item.plat_cocok === false) {
+            return `<span class="badge text-bg-danger" title="Plat pada struk berbeda dari plat kendaraan SPD (${(item.plat_kendaraan || '')}).">
+                        <i class="bi bi-shield-exclamation"></i> Plat beda</span>`;
+        }
+        return `<span class="badge text-bg-light border text-muted" title="Nomor polisi tidak terbaca pada struk / tidak dapat dibandingkan.">
+                    <i class="bi bi-shield"></i> Plat tidak terbaca</span>`;
+    }
 
     function recalcTotals() {
         let grand = 0;
@@ -403,7 +418,7 @@
             });
             const data = await res.json();
             if (data.success) {
-                const col = card.closest('.col-md-6');
+                const col = card.closest('.col-12');
                 if (col) col.remove();
                 else card.remove();
                 recalcTotals();
@@ -428,48 +443,49 @@
         const badge = kategoriBadges[item.kategori] || 'bg-secondary';
         const options = kategoriOptions.map(k =>
             `<option value="${k}" ${k === item.kategori ? 'selected' : ''}>${k}</option>`).join('');
+        const tanggal = item.tanggal ? item.tanggal.split('T')[0] : null;
+        const tanggalLabel = tanggal
+            ? new Date(tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+            : '';
         return `
-            <div class="card border-light shadow-sm h-100" data-slug="${item.slug}">
-                <div class="card-body p-2">
-                    <div class="d-flex align-items-start gap-2">
-                        <div class="flex-shrink-0">
-                            <a href="${item.url}" target="_blank">
-                                <img src="${item.url}" alt="Struk" style="max-height:80px; max-width:100px; border-radius:4px; object-fit:cover;">
-                            </a>
-                        </div>
-                        <div class="flex-grow-1 small">
-                            <div class="d-flex align-items-center gap-1 flex-wrap">
-                                <span class="badge ${badge}">${item.kategori}</span>
-                                <strong class="text-dark">${formatRupiah(item.nominal)}</strong>
-                            </div>
-                            <div class="text-muted" style="font-size:0.7rem;">${item.item_code}</div>
-                            <div class="text-muted" style="font-size:0.7rem;">${item.tanggal || ''}</div>
-                            ${item.keterangan ? `<div class="text-muted text-truncate" style="font-size:0.75rem;" title="${item.keterangan}">${item.keterangan}</div>` : ''}
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-danger btn-del-item" title="Hapus file">
-                            <i class="bi bi-trash"></i>
-                        </button>
+            <div class="card border-0 gde-struk" data-slug="${item.slug}">
+                <button type="button" class="btn btn-sm btn-outline-danger gde-struk__del btn-del-item" title="Hapus file" aria-label="Hapus">
+                    <i class="bi bi-trash"></i>
+                </button>
+                <a href="${item.url}" target="_blank" rel="noopener" class="gde-struk__thumb" title="Lihat struk">
+                    <img src="${item.url}" alt="Struk ${item.item_code}" loading="lazy">
+                </a>
+                <div class="gde-struk__summary">
+                    <div class="gde-struk__row">
+                        <span class="badge ${badge}">${item.kategori}</span>
+                        <span class="gde-struk__nominal">${formatRupiah(item.nominal)}</span>
                     </div>
-
-                    <hr class="my-1">
-                    <div class="d-flex gap-1 align-items-end">
-                        <div class="flex-grow-1">
-                            <label class="small text-muted mb-0">Nominal (Rp)</label>
-                            <input type="number" class="form-control form-control-sm item-nominal" value="${item.nominal}" min="0" step="0.01">
+                    <div class="gde-struk__row mt-2">
+                        <span class="gde-struk__code" title="${item.item_code}">${item.item_code}</span>
+                        ${tanggalLabel ? `<span class="gde-struk__date"><i class="bi bi-calendar3"></i> ${tanggalLabel}</span>` : ''}
+                        ${renderPlateBadge(item)}
+                    </div>
+                    ${item.keterangan ? `<div class="gde-struk__ket mt-2" title="${item.keterangan}">${item.keterangan}</div>` : ''}
+                </div>
+                <div class="gde-struk__edit">
+                    <div class="gde-struk__edit-grid">
+                        <div>
+                            <label class="form-label">Nominal (Rp)</label>
+                            <input type="number" class="form-control form-control-sm item-nominal" value="${item.nominal}" min="0" step="0.01" inputmode="decimal">
                         </div>
                         <div>
-                            <label class="small text-muted mb-0">Kategori</label>
+                            <label class="form-label">Kategori</label>
                             <select class="form-select form-select-sm item-kategori">${options}</select>
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline-primary btn-save-item">
-                            <i class="bi bi-check2"></i>
+                        <button type="button" class="btn btn-primary btn-sm gde-btn--block btn-save-item" title="Simpan perubahan">
+                            <i class="bi bi-check2"></i> Simpan
                         </button>
                     </div>
-                    <div class="mt-1">
-                        <label class="small text-muted mb-0">Keterangan</label>
-                        <input type="text" class="form-control form-control-sm item-keterangan" value="${item.keterangan || ''}" placeholder="cth: pengisian BBM di Patuha">
+                    <div>
+                        <label class="form-label">Keterangan</label>
+                        <input type="text" class="form-control form-control-sm item-keterangan" value="${item.keterangan || ''}" maxlength="500" placeholder="cth: pengisian BBM di Patuha">
                     </div>
-                    <div class="small text-success autosave-status d-none mt-1">
+                    <div class="gde-struk__autosave autosave-status d-none">
                         <i class="bi bi-check-circle"></i> Tersimpan otomatis
                     </div>
                 </div>
@@ -515,7 +531,7 @@
     function appendItemCard(item) {
         const row = ensureDateGroup(dateGroupKeyOf(item));
         const col = document.createElement('div');
-        col.className = 'col-md-6';
+        col.className = 'col-12';
         col.innerHTML = buildItemCardHtml(item);
         row.appendChild(col);
         bindItemCard(col.querySelector('.card[data-slug]'));

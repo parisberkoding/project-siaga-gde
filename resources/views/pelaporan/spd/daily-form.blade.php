@@ -103,7 +103,7 @@
                                     <div class="card-body p-2">
                                         <div class="d-flex align-items-start gap-2">
                                             <div class="flex-shrink-0">
-                                                <img src="{{ asset('storage/' . $item->path_image) }}" alt="Struk"
+                                                <img src="{{ url('files/storage/' . $item->path_image) }}" alt="Struk {{ $item->item_code }}"
                                                      style="max-height:70px; max-width:90px; border-radius:4px; object-fit:cover;">
                                             </div>
                                             <div class="flex-grow-1 small">
@@ -111,7 +111,7 @@
                                                     <span class="badge {{ $item->getKategoriBadgeClass() }}">{{ \App\Models\StrukItem::KATEGORI_PREFIX[$item->struk_kategori] ?? $item->struk_kategori }} · {{ $item->struk_kategori }}</span>
                                                     <strong class="text-dark">Rp {{ number_format((float) $item->nominal, 0, ',', '.') }}</strong>
                                                 </div>
-                                                <div class="text-muted" style="font-size:0.75rem;">{{ $item->item_code }}</div>
+                                                <div class="text-muted text-truncate" style="font-size:0.75rem;" title="{{ $item->item_code }}">{{ $item->item_code }}</div>
                                                 @if($item->keterangan)
                                                     <div class="text-muted text-truncate" style="font-size:0.75rem;">{{ $item->keterangan }}</div>
                                                 @endif
@@ -196,14 +196,14 @@
             <div class="card-body p-2">
                 <div class="d-flex align-items-start gap-2">
                     <div class="flex-shrink-0">
-                        <img src="${item.url}" alt="Struk" style="max-height:70px; max-width:90px; border-radius:4px; object-fit:cover;">
+                        <img src="${item.url}" alt="Struk ${item.item_code}" style="max-height:70px; max-width:90px; border-radius:4px; object-fit:cover;">
                     </div>
                     <div class="flex-grow-1 small">
                         <div class="d-flex align-items-center gap-1">
                             <span class="badge ${kategoriBadges[item.kategori] || 'bg-secondary'}">${item.kategori}</span>
                             <strong class="text-dark">${formatRupiah(item.nominal)}</strong>
                         </div>
-                        <div class="text-muted" style="font-size:0.75rem;">${item.item_code}</div>
+                        <div class="text-muted text-truncate" style="font-size:0.75rem;" title="${item.item_code}">${item.item_code}</div>
                         ${item.keterangan ? `<div class="text-muted text-truncate" style="font-size:0.75rem;">${item.keterangan}</div>` : ''}
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-danger btn-delete-item">

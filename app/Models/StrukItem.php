@@ -64,17 +64,18 @@ class StrukItem extends Model
     /**
      * Kategori yang diizinkan (self-label) — di luar itu = Lainnya
      */
-    public const KATEGORI = ['BBM', 'Tol', 'Parkir', 'Lainnya', 'Tambahan'];
+    public const KATEGORI = ['BBM', 'Tol', 'Parkir', 'Hotel + Makan', 'Lainnya', 'Tambahan'];
 
     /**
-     * Prefix kode per kategori: S.BBM, S.TOL, S.PRK, S.LAINNYA, S.TBH
+     * Prefix kode per kategori: S.BBM, S.TOL, S.PRK, S.HTL, S.LAINNYA, S.TBH
      */
     public const KATEGORI_PREFIX = [
-        'BBM'      => 'S.BBM',
-        'Tol'      => 'S.TOL',
-        'Parkir'   => 'S.PRK',
-        'Lainnya'  => 'S.LAINNYA',
-        'Tambahan' => 'S.TBH',
+        'BBM'           => 'S.BBM',
+        'Tol'           => 'S.TOL',
+        'Parkir'        => 'S.PRK',
+        'Hotel + Makan' => 'S.HTL',
+        'Lainnya'       => 'S.LAINNYA',
+        'Tambahan'      => 'S.TBH',
     ];
 
     /**
@@ -99,7 +100,7 @@ class StrukItem extends Model
     {
         $kategori = trim((string) $kategori);
 
-        if (in_array($kategori, ['BBM', 'Tol', 'Parkir', 'Lainnya', 'Tambahan'], true)) {
+        if (in_array($kategori, self::KATEGORI, true)) {
             return $kategori;
         }
 
@@ -112,6 +113,9 @@ class StrukItem extends Model
         }
         if (str_contains($lower, 'parkir') || str_contains($lower, 'parking')) {
             return 'Parkir';
+        }
+        if (str_contains($lower, 'hotel') || str_contains($lower, 'penginapan') || str_contains($lower, 'inn') || str_contains($lower, 'makan') || str_contains($lower, 'restoran') || str_contains($lower, 'restaurant') || str_contains($lower, 'konsumsi') || str_contains($lower, 'food') || str_contains($lower, 'catering') || str_contains($lower, 'kafe') || str_contains($lower, 'cafe')) {
+            return 'Hotel + Makan';
         }
         if (str_contains($lower, 'tambahan') || str_contains($lower, 'odometer') || str_contains($lower, 'odoo') || str_contains($lower, 'dashboard') || str_contains($lower, 'km') || str_contains($lower, 'speedometer')) {
             return 'Tambahan';
@@ -156,11 +160,12 @@ class StrukItem extends Model
     public function getKategoriBadgeClass(): string
     {
         return match ($this->struk_kategori) {
-            'BBM'      => 'bg-danger',
-            'Tol'      => 'bg-primary',
-            'Parkir'   => 'bg-info',
-            'Tambahan' => 'bg-warning text-dark',
-            default    => 'bg-secondary',
+            'BBM'           => 'bg-danger',
+            'Tol'           => 'bg-primary',
+            'Parkir'        => 'bg-info',
+            'Hotel + Makan' => 'bg-success',
+            'Tambahan'      => 'bg-warning text-dark',
+            default         => 'bg-secondary',
         };
     }
 
@@ -170,6 +175,8 @@ class StrukItem extends Model
             return null;
         }
 
-        return \Storage::disk('public')->url($this->path_image);
+        // Struk bisa berisi data sensitif → layani lewat rute terproteksi auth
+        // (StorageFileController, '/files/storage/{path}') alih-alih symlink publik.
+        return url('files/storage/' . $this->path_image);
     }
 }

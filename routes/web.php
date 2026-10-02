@@ -26,6 +26,8 @@ use App\Http\Controllers\SpdController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\SpdDailyReportController;
 use App\Http\Controllers\SpdPrintController;
+use App\Http\Controllers\SsoController;
+use App\Http\Controllers\SsoRoleMappingController;
 use App\Http\Controllers\StorageFileController;
 use App\Http\Controllers\SuperadminController;
 use App\Http\Controllers\VehicleCheckingSuperadminController;
@@ -58,6 +60,15 @@ Route::get('/', function () {
 
 Route::get('/login', [AuthentiactionController::class, 'index'])->name('login');
 Route::post('/login-process', [AuthentiactionController::class, 'authenticate'])->name('login-process');
+
+// ── SSO Geodipa (provider-agnostic) ──
+// Publik seperti /login: memang harus dapat diakses SEBELUM login.
+// Selama SSO_ENABLED=false, kedua route menolak dengan pesan yang jelas dan
+// tidak mengubah perilaku login lokal yang sudah berjalan sama sekali.
+Route::prefix('auth/sso')->name('sso.')->group(function () {
+    Route::get('/redirect', [SsoController::class, 'redirect'])->name('redirect');
+    Route::get('/callback', [SsoController::class, 'callback'])->name('callback');
+});
 
 // Logout: dukung GET & POST, tanpa batasan role (semua user authenticated boleh logout)
 Route::middleware(['auth'])->group(function () {
@@ -176,6 +187,20 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/store', [SpdController::class, 'storeSurat'])->name('store')->middleware('permission:spd.create');
         Route::get('/{surat}', [SpdController::class, 'showSuratRequester'])->name('show')->middleware('permission:spd.view');
     });
+
+    // ────────────────────────────────────────────────────────────────────────
+    // SPD BERJALAN — daftar surat yang masih harus dilaporkan (driver-friendly)
+    // ────────────────────────────────────────────────────────────────────────
+    Route::get('/spd-berjalan', [SpdController::class, 'indexSpdBerjalan'])
+        ->name('requester.spd.berjalan')
+        ->middleware('permission:lpj.create,spd.view');
+
+    // ────────────────────────────────────────────────────────────────────────
+    // AUTOCOMPLETE PEMAKAI/PENUMPANG SPD (nama + user_id)
+    // ────────────────────────────────────────────────────────────────────────
+    Route::get('/spd/passenger-lookup', [SpdController::class, 'passengerLookup'])
+        ->name('spd.passenger.lookup')
+        ->middleware('permission:spd.create,spd.manage');
 
     // ────────────────────────────────────────────────────────────────────────
     // PERPANJANGAN
@@ -418,6 +443,7 @@ Route::middleware(['auth', 'permission:spd.manage'])->prefix('surat')->name('sur
     Route::post('/{surat}/reject', [SpdController::class, 'rejectSurat'])->name('reject');
     Route::get('/{surat}/print', [SpdController::class, 'printSurat'])->name('print');
     Route::post('/{surat}/save-mendadak-budget', [SpdController::class, 'saveMendadakBudget'])->name('save-mendadak-budget');
+    Route::post('/{surat}/fund-additions', [SpdController::class, 'storeFundAddition'])->name('fund-additions.store');
     Route::get('/report/spending', [SpdController::class, 'reportSpending'])->name('report');
 });
 
@@ -435,9 +461,24 @@ Route::middleware(['auth', 'permission:lpj.validate'])->prefix('lpj')->name('lpj
     Route::get('/', [SpdController::class, 'indexLaporanSuperadmin'])->name('index');
     Route::get('/{laporan}', [SpdController::class, 'showLaporanSuperadmin'])->name('show');
     Route::post('/{laporan}/approve', [SpdController::class, 'approveLaporan'])->name('approve');
+    Route::post('/{laporan}/approve-ga', [SpdController::class, 'approveLaporanDivisiGa'])->name('approve-ga');
     Route::post('/{laporan}/reject', [SpdController::class, 'rejectLaporan'])->name('reject');
     Route::get('/{laporan}/print', [SpdController::class, 'printLaporan'])->name('print');
     Route::put('/{laporan}/keuangan', [SpdController::class, 'updateKeuanganLaporan'])->name('keuangan');
+});
+
+// LPJ — Validasi kebenaran perjalanan oleh User (penumpang)
+Route::middleware(['auth', 'permission:spd.validate_trip'])->prefix('lpj-pengguna')->name('lpj.pengguna.')->group(function () {
+    Route::get('/', [SpdController::class, 'indexLaporanPengguna'])->name('index');
+    Route::get('/{laporan}', [SpdController::class, 'showValidasiPengguna'])->name('show');
+    Route::post('/{laporan}/approve', [SpdController::class, 'approveLaporanPengguna'])->name('approve');
+});
+
+// LPJ — Validasi final oleh Management (supervisor tertinggi)
+Route::middleware(['auth', 'permission:lpj.validate_management'])->prefix('lpj-management')->name('lpj.management.')->group(function () {
+    Route::get('/', [SpdController::class, 'indexLaporanManagement'])->name('index');
+    Route::get('/{laporan}', [SpdController::class, 'showLaporanSuperadmin'])->name('show');
+    Route::post('/{laporan}/approve', [SpdController::class, 'approveLaporanManagement'])->name('approve');
 });
 
 // AJAX Superadmin (SPD dashboard stats)
@@ -475,6 +516,21 @@ Route::middleware(['auth', 'permission:settings.manage'])->prefix('sa')->name('s
         Route::post('/{site}/delete', [SiteController::class, 'destroy'])->name('delete');
     });
 });
+
+// Pemetaan Jabatan SSO -> role (khusus superadmin unit PUSAT)
+// `central` menegakkan syarat unitnya, `permission:settings.sso_mapping`
+// menegakkan haknya — keduanya wajib, karena mengubah pemetaan berarti
+// mengubah hak akses seluruh orang dengan jabatan + unit tersebut.
+Route::middleware(['auth', 'permission:settings.sso_mapping', 'central'])
+    ->prefix('sa/sso')->name('superadmin.sso.')
+    ->group(function () {
+        Route::prefix('mappings')->name('mappings.')->group(function () {
+            Route::get('/', [SsoRoleMappingController::class, 'index'])->name('index');
+            Route::post('/', [SsoRoleMappingController::class, 'store'])->name('store');
+            Route::post('/{mapping}/update', [SsoRoleMappingController::class, 'update'])->name('update');
+            Route::post('/{mapping}/delete', [SsoRoleMappingController::class, 'destroy'])->name('delete');
+        });
+    });
 
 // Vehicle Checking Superadmin — Health, Financial, Transaction Reports (superadmin only)
 Route::middleware(['auth', 'permission:vehicle.report'])->prefix('vehicle-checking')->name('superadmin.')->group(function () {

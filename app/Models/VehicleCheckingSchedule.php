@@ -48,16 +48,16 @@ class VehicleCheckingSchedule extends Model
     }
 
     /**
-     * Scope unit bisnis: jadwal pengecekan dari kendaraan yang detailnya berada
-     * di site dalam unit. Null = tanpa scope (global / pusat).
+     * Scope unit bisnis: jadwal pengecekan dari kendaraan milik unit tertentu.
+     * Null = tanpa scope (global / pusat).
      */
-    public function scopeInUnit($query, ?array $siteIds)
+    public function scopeInUnit($query, ?int $unitId)
     {
-        if ($siteIds === null) {
+        if ($unitId === null) {
             return;
         }
 
-        $query->whereHas('vehicle', fn ($q) => $q->inUnit($siteIds));
+        $query->whereHas('vehicle', fn ($q) => $q->where('vehicle_and_tools_consumers.unit_id', $unitId));
     }
 
     public function assignedDispatcher()

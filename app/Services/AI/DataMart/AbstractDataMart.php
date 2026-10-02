@@ -99,12 +99,29 @@ abstract class AbstractDataMart implements DataMartContract
     }
 
     /**
-     * Terapkan scope unit bisnis (inUnit) ke query bila user bukan pusat.
+     * Terapkan scope unit bisnis (inUnit by unit_id) ke query bila user bukan pusat.
+     * Dipakai module yang modelnya sudah punya kolom unit_id (BBM, SPD, vehicle).
      *
      * @param  mixed  $query  \Illuminate\Database\Eloquent\Builder
      * @param  array<string, mixed>  $options
      */
     protected function applyUnitScope($query, array $options): void
+    {
+        $scope = $options['scope'] ?? null;
+
+        if ($scope instanceof DataMartScope && ! $scope->isGlobal()) {
+            $query->inUnit($scope->unitId);
+        }
+    }
+
+    /**
+     * Terapkan scope unit bisnis (inUnit by site ids) ke query.
+     * Dipakai module yang modelnya masih memakai scope berbasis site (Lunch).
+     *
+     * @param  mixed  $query  \Illuminate\Database\Eloquent\Builder
+     * @param  array<string, mixed>  $options
+     */
+    protected function applySiteScope($query, array $options): void
     {
         $scope = $options['scope'] ?? null;
 

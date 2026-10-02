@@ -176,6 +176,64 @@
                             Menyetujui surat tugas akan mengunci data perjalanan dan menetapkan tenggat LPJ.
                         </div>
 
+                    {{-- Kode GL & Nominal Pemberian (diisi saat penerbitan surat) --}}
+                    @if($surat->status == 'pending')
+                        <hr>
+                        <h6 class="text-primary mb-3"><i class="bi bi-credit-card"></i> Kode GL & Nominal Pemberian</h6>
+                        <div class="card border-primary mb-3">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-2">
+                                        <label class="form-label small mb-1">Kode GL (SAP)</label>
+                                        <input type="text" class="form-control form-control-sm" name="kode_gl"
+                                               placeholder="Contoh: 5121000" value="{{ old('kode_gl', $surat->kode_gl) }}">
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <label class="form-label small mb-1">Uang yang diberikan (Rp) <span class="text-danger">*</span></label>
+                                        <input type="number" class="form-control form-control-sm" name="uang_diberikan"
+                                               placeholder="Nominal diberikan ke driver" min="0" step="0.01"
+                                               value="{{ old('uang_diberikan', $surat->uang_diberikan) }}">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-2">
+                                        <label class="form-label small mb-1">Jenis SPD (Override)</label>
+                                        <select class="form-select form-select-sm" name="jenis_spd">
+                                            <option value="">-- Ikuti pilihan driver --</option>
+                                            <option value="dalam_kota" @if($surat->jenis_spd == 'dalam_kota') selected @endif>SPD Dalam Kota</option>
+                                            <option value="luar_kota" @if($surat->jenis_spd == 'luar_kota') selected @endif>SPD Luar Kota</option>
+                                            <option value="lainnya" @if($surat->jenis_spd == 'lainnya') selected @endif>Lainnya</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <label class="form-label small mb-1">Jenis SPD Lainnya</label>
+                                        <input type="text" class="form-control form-control-sm" name="jenis_spd_lainnya"
+                                               placeholder="Isi jika 'Lainnya'" value="{{ old('jenis_spd_lainnya', $surat->jenis_spd_lainnya) }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @else
+                        {{-- Tampilkan Kode GL & uang diberikan setelah disetujui --}}
+                        <hr>
+                        <h6 class="text-primary mb-3"><i class="bi bi-credit-card"></i> Kode GL & Nominal Pemberian</h6>
+                        <div class="row mb-2">
+                            <div class="col-md-4">Kode GL:</div>
+                            <div class="col-md-8"><strong>{{ $surat->kode_gl ?? '-' }}</strong></div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-md-4">Uang Diberikan:</div>
+                            <div class="col-md-8"><strong>Rp {{ number_format($surat->uang_diberikan ?? 0, 0, ',', '.') }}</strong></div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">Jenis SPD:</div>
+                            <div class="col-md-8">
+                                @php $jenisLabels = ['dalam_kota' => 'SPD Dalam Kota', 'luar_kota' => 'SPD Luar Kota', 'lainnya' => $surat->jenis_spd_lainnya ?: 'Lainnya']; @endphp
+                                <span class="badge bg-secondary">{{ $jenisLabels[$surat->jenis_spd] ?? '-' }}</span>
+                            </div>
+                        </div>
+                    @endif
+
                     {{-- Budget Per Tanggal (jika sudah ada) --}}
                     @if($surat->status == 'approved' || $surat->status == 'completed')
                         @if($surat->budgets && $surat->budgets->isNotEmpty())
@@ -349,6 +407,41 @@
                 </div>
             @endif
 
+            {{-- Penambahan Dana --}}
+            @if($surat->status == 'approved' || $surat->status == 'completed')
+                <div class="card border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0"><i class="bi bi-cash-coin"></i> Penambahan Dana</h6>
+                    </div>
+                    <div class="card-body">
+                        @if($surat->fundAdditions && $surat->fundAdditions->isNotEmpty())
+                            <ul class="list-group list-group-flush mb-3">
+                                @foreach($surat->fundAdditions as $fa)
+                                    <li class="list-group-item px-0">
+                                        <div class="d-flex justify-content-between">
+                                            <strong>Rp {{ number_format($fa->nominal_tambahan, 0, ',', '.') }}</strong>
+                                            <small class="text-muted">{{ $fa->created_at->translatedFormat('d M Y') }}</small>
+                                        </div>
+                                        <small>{{ $fa->alasan }}</small>
+                                        @if($fa->bank_reference)
+                                            <br><small class="text-muted">Ref: {{ $fa->bank_reference }}</small>
+                                        @endif
+                                        @if($fa->bukti_transfer_path)
+                                            <br><a href="{{ asset('storage/'.$fa->bukti_transfer_path) }}" target="_blank" class="small">Lihat bukti transfer</a>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @else
+                            <p class="text-muted small mb-3">Belum ada penambahan dana.</p>
+                        @endif
+                        <button type="button" class="btn btn-warning w-100" data-bs-toggle="modal" data-bs-target="#fundAdditionModal">
+                            <i class="bi bi-plus-circle"></i> Tambah Dana
+                        </button>
+                    </div>
+                </div>
+            @endif
+
             {{-- Info Pengajuan --}}
             <div class="card">
                 <div class="card-body">
@@ -465,6 +558,43 @@
                     <i class="bi bi-check-circle"></i> Ya, Setujui Surat
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+{{-- Fund Addition Modal --}}
+<div class="modal fade" id="fundAdditionModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="bi bi-cash-coin"></i> Tambah Dana</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ route('surat.superadmin.fund-additions.store', $surat) }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Nominal Tambahan (Rp) <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" name="nominal_tambahan" min="0" step="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Alasan <span class="text-danger">*</span></label>
+                        <textarea class="form-control" name="alasan" rows="3" required minlength="5" placeholder="Alasan penambahan dana"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Referensi Transaksi Bank</label>
+                        <input type="text" class="form-control" name="bank_reference" placeholder="Nomor referensi / bukti transfer">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Bukti Transfer (Foto, opsional)</label>
+                        <input type="file" class="form-control" name="bukti_transfer" accept="image/*">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-warning"><i class="bi bi-check-circle"></i> Simpan</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

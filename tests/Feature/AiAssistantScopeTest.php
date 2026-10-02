@@ -22,6 +22,7 @@ beforeEach(function () {
 
     $this->unitPatuha = Unit::where('code', 'PATUHA')->first();
     $this->unitPusat  = Unit::where('code', 'PUSAT')->first();
+    $this->unitDieng  = Unit::where('code', 'DIENG')->first();
 
     $this->gaUnit = User::factory()->create([
         'role'    => 'general_affairs',
@@ -54,6 +55,7 @@ function aiScopeFakeVehicle(string $code, int $siteId): VehicleAndToolsConsumers
     $vehicle = VehicleAndToolsConsumers::factory()->create([
         'consumerial_code' => $code,
         'is_approved'      => true,
+        'unit_id'          => Site::find($siteId)?->unit_id,
     ]);
     VehicleDetail::factory()->create([
         'vehicle_and_tools_consumer_id' => $vehicle->id,
@@ -74,6 +76,7 @@ it('user unit hanya melihat data BBM unitnya sendiri lewat AI assistant', functi
         'bill_amounts'         => 100000,
         'status'               => 'completed',
         'request_date'         => now()->format('Y-m-d H:i:s'),
+        'unit_id'              => $this->unitPatuha->id,
     ]);
     Permohonan::factory()->create([
         'requester_id'         => $requester->id,
@@ -81,6 +84,7 @@ it('user unit hanya melihat data BBM unitnya sendiri lewat AI assistant', functi
         'bill_amounts'         => 999999,
         'status'               => 'completed',
         'request_date'         => now()->format('Y-m-d H:i:s'),
+        'unit_id'              => $this->unitDieng->id,
     ]);
 
     $this->actingAs($this->gaUnit)
@@ -103,6 +107,7 @@ it('user pusat melihat SEMUA data lewat AI assistant', function () {
         'bill_amounts'         => 100000,
         'status'               => 'completed',
         'request_date'         => now()->format('Y-m-d H:i:s'),
+        'unit_id'              => $this->unitPatuha->id,
     ]);
     Permohonan::factory()->create([
         'requester_id'         => $requester->id,
@@ -110,6 +115,7 @@ it('user pusat melihat SEMUA data lewat AI assistant', function () {
         'bill_amounts'         => 999999,
         'status'               => 'completed',
         'request_date'         => now()->format('Y-m-d H:i:s'),
+        'unit_id'              => $this->unitDieng->id,
     ]);
 
     $this->actingAs($this->gaPusat)
@@ -195,9 +201,9 @@ it('scope inUnit part replacement & checking schedule membatasi per unit', funct
         'next_due_date' => now()->addDays(7),
     ]);
 
-    expect(\App\Models\VehiclePartsReplacement::inUnit($this->gaUnit->unitSiteIds())->pluck('id'))
+    expect(\App\Models\VehiclePartsReplacement::inUnit($this->gaUnit->unit_id)->pluck('id'))
         ->toContain($pthPart->id)->not->toContain($diengPart->id);
 
-    expect(\App\Models\VehicleCheckingSchedule::inUnit($this->gaUnit->unitSiteIds())->pluck('id'))
+    expect(\App\Models\VehicleCheckingSchedule::inUnit($this->gaUnit->unit_id)->pluck('id'))
         ->toContain($pthCheck->id)->not->toContain($diengCheck->id);
 });

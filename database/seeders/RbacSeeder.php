@@ -84,6 +84,7 @@ class RbacSeeder extends Seeder
             ['spd', 'approve',   'spd', 'Menyetujui surat tugas'],
             ['spd', 'assign',    'spd', 'Assign driver/kendaraan'],
             ['spd', 'manage',    'spd', 'Kelola & validasi surat SPD (superadmin/GA)'],
+            ['spd', 'validate_trip', 'spd', 'Validasi kebenaran perjalanan dinas (User/penumpang)'],
 
             // LPJ
             ['lpj', 'view',    'lpj', 'Melihat LPJ'],
@@ -91,6 +92,7 @@ class RbacSeeder extends Seeder
             ['lpj', 'update',  'lpj', 'Mengubah LPJ'],
             ['lpj', 'delete',  'lpj', 'Menghapus LPJ'],
             ['lpj', 'validate', 'lpj', 'Memvalidasi LPJ'],
+            ['lpj', 'validate_management', 'lpj', 'Validasi final LPJ (Management/Supervisor)'],
             ['lpj', 'export',  'lpj', 'Export LPJ'],
 
             // Pelaporan (single page pelaporan BBM operasional & SPD + AI/OCR struk)
@@ -131,6 +133,15 @@ class RbacSeeder extends Seeder
             // Settings
             ['settings', 'view',   'settings', 'Melihat pengaturan'],
             ['settings', 'manage', 'settings', 'Mengelola pengaturan'],
+            // Gate modul per unit: mengubah matrix modul sebuah unit mengubah
+            // hak akses SELURUH user di unit itu, sehingga dipisah dari
+            // settings.manage agar bisa didelegasikan / dicabut terpisah.
+            // Hanya berlaku untuk superadmin yang unitnya Pusat (is_central).
+            ['settings', 'modules', 'settings', 'Mengelola modul yang di-enable per unit (khusus Pusat)'],
+            // Pemetaan jabatan SSO -> role. Dipisah dari settings.modules
+            // supaya hak "atur modul unit" dan "atur hak akses SSO" bisa
+            // didelegasikan/dicabut secara terpisah. Keduanya khusus Pusat.
+            ['settings', 'sso_mapping', 'settings', 'Mengelola pemetaan jabatan SSO ke role (khusus Pusat)'],
 
             // AI Assistant
             ['ai', 'view', 'ai', 'Mengakses AI Assistant'],
@@ -188,7 +199,7 @@ class RbacSeeder extends Seeder
                 'is_system' => true,
                 'permissions' => [
                     'bbm.view', 'bbm.request', 'bbm.report',
-                    'spd.view', 'spd.create',
+                    'spd.view', 'spd.create', 'spd.validate_trip',
                     'lpj.view', 'lpj.create', 'lpj.update',
                     'pelaporan.view', 'pelaporan.create', 'pelaporan.analyze',
                     'vehicle.acknowledge', 'vehicle.export',
@@ -201,7 +212,7 @@ class RbacSeeder extends Seeder
                 'permissions' => [
                     'dashboard.view',
                     'bbm.view', 'bbm.approve', 'bbm.export',
-                    'lpj.view', 'lpj.validate', 'lpj.export',
+                    'lpj.view', 'lpj.validate', 'lpj.validate_management', 'lpj.export',
                     'vehicle.view',
                     'pelaporan.view',
                     'ai.view',
@@ -223,6 +234,16 @@ class RbacSeeder extends Seeder
                 'is_system' => true,
                 'permissions' => [
                     'lunch.view',
+                ],
+            ],
+            // User yang berangkat (penumpang) — memvalidasi kebenaran perjalanan dinas.
+            'pengguna_spd' => [
+                'name' => 'Pengguna Perjalanan (User Berangkat)',
+                'description' => 'Penumpang SPD: melihat surat & LPJ, memvalidasi kebenaran perjalanan dinas (tahap 1).',
+                'is_system' => false,
+                'permissions' => [
+                    'spd.view', 'spd.validate_trip',
+                    'lpj.view',
                 ],
             ],
         ];

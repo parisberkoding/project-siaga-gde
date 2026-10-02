@@ -48,6 +48,8 @@ class LpjPenggantian extends Model
         'approved_pengguna_at',
         'approved_by_divisi_ga',
         'approved_divisi_ga_at',
+        'approved_by_management',
+        'approved_management_at',
         'rejected_by',
         'rejected_at',
         'rejection_reason',
@@ -72,6 +74,7 @@ class LpjPenggantian extends Model
         'is_over_budget' => 'boolean',
         'approved_pengguna_at' => 'datetime',
         'approved_divisi_ga_at' => 'datetime',
+        'approved_management_at' => 'datetime',
         'rejected_at' => 'datetime',
     ];
 
@@ -230,7 +233,7 @@ class LpjPenggantian extends Model
             ->sum('nominal');
 
         $this->total_biaya_lain = $this->details()
-            ->where('tipe_penggunaan', 'Lain-lain')
+            ->whereIn('tipe_penggunaan', ['Lain-lain', 'Hotel + Makan'])
             ->sum('nominal');
 
         $this->total_pengeluaran = $this->total_biaya_tol +
@@ -340,6 +343,11 @@ class LpjPenggantian extends Model
         return $this->belongsTo(User::class, 'approved_by_divisi_ga');
     }
 
+    public function approverManagement()
+    {
+        return $this->belongsTo(User::class, 'approved_by_management');
+    }
+
     public function rejector()
     {
         return $this->belongsTo(User::class, 'rejected_by');
@@ -380,16 +388,16 @@ class LpjPenggantian extends Model
     }
 
     /**
-     * Scope unit bisnis: LPJ dari surat SPD yang berada di site dalam unit.
-     * Null = tanpa scope (global / pusat).
+     * Scope unit bisnis: LPJ milik unit tertentu (lewat surat SPD).
+     * Null = tanpa scope (global / pusat) — melihat semua unit.
      */
-    public function scopeInUnit($query, ?array $siteIds)
+    public function scopeInUnit($query, ?int $unitId)
     {
-        if ($siteIds === null) {
+        if ($unitId === null) {
             return;
         }
 
-        $query->whereHas('suratSpd', fn ($q) => $q->inUnit($siteIds));
+        $query->whereHas('suratSpd', fn ($q) => $q->where('surat_spds.unit_id', $unitId));
     }
 
     // ============================================================
@@ -420,12 +428,28 @@ class LpjPenggantian extends Model
             'approved_divisi_ga_at' => now(),
         ]);
 
-        // Check if both approved
+        // Check if fully approved
         $this->checkFullApproval();
     }
 
     /**
-     * Check if fully approved
+     * Approve by Management (supervisor tertinggi)
+     */
+    public function approveByManagement($userId)
+    {
+        $this->update([
+            'approved_by_management' => $userId,
+            'approved_management_at' => now(),
+        ]);
+
+        // Check if fully approved
+        $this->checkFullApproval();
+    }
+
+    /**
+     * Check if fully approved — 2 tahap: User (penumpang) + Divisi GA.
+     * Keduanya wajib terisi (boleh oleh orang yang sama, tetap dicatat terpisah
+     * untuk akuntabilitas).
      */
     private function checkFullApproval()
     {
@@ -453,7 +477,7 @@ class LpjPenggantian extends Model
     }
 
     /**
-     * Simple approve (for superadmin - approve both at once)
+     * Simple approve (for superadmin - approve all at once)
      */
     public function approve($userId)
     {
@@ -463,6 +487,8 @@ class LpjPenggantian extends Model
             'approved_pengguna_at' => now(),
             'approved_by_divisi_ga' => $userId,
             'approved_divisi_ga_at' => now(),
+            'approved_by_management' => $userId,
+            'approved_management_at' => now(),
         ]);
 
         // Mark surat as completed
@@ -571,7 +597,8 @@ class LpjPenggantian extends Model
         $spending = ['Tol' => 0.0, 'BBM' => 0.0, 'Parkir' => 0.0, 'Lainnya' => 0.0];
 
         foreach ($this->strukItems as $item) {
-            $kategori = $item->struk_kategori;
+            // "Hotel + Makan" digulung ke kolom Lainnya pada rekap cetak.
+            $kategori = $item->struk_kategori === 'Hotel + Makan' ? 'Lainnya' : $item->struk_kategori;
 
             if (array_key_exists($kategori, $spending)) {
                 $spending[$kategori] += (float) $item->nominal;
@@ -602,8 +629,11 @@ class LpjPenggantian extends Model
                 ];
             }
 
-            if (array_key_exists($item->struk_kategori, $rows[$key])) {
-                $rows[$key][$item->struk_kategori] += (float) $item->nominal;
+            // "Hotel + Makan" digulung ke kolom Lainnya pada rekap cetak.
+            $kategori = $item->struk_kategori === 'Hotel + Makan' ? 'Lainnya' : $item->struk_kategori;
+
+            if (array_key_exists($kategori, $rows[$key])) {
+                $rows[$key][$kategori] += (float) $item->nominal;
             }
         }
 
@@ -614,11 +644,11 @@ class LpjPenggantian extends Model
 
     /**
      * Struk items yang diurutkan sesuai urutan kategori untuk lampiran foto:
-     * Tol -> BBM -> Parkir -> Lainnya -> Tambahan.
+     * Tol -> BBM -> Parkir -> Hotel + Makan -> Lainnya -> Tambahan.
      */
     public function getStrukItemsOrderedForPhotos()
     {
-        $order = ['Tol', 'BBM', 'Parkir', 'Lainnya', 'Tambahan'];
+        $order = ['Tol', 'BBM', 'Parkir', 'Hotel + Makan', 'Lainnya', 'Tambahan'];
 
         return $this->strukItems
             ->sortBy(fn ($item) => array_search($item->struk_kategori, $order, true) ?? 99)

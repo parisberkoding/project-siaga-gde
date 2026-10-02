@@ -17,6 +17,8 @@ return new class extends Migration
             // request number unique
             $table->string('request_number')->unique();
 
+            $table->unsignedBigInteger('unit_id')->nullable();
+
             // foreign key to users table, requester data
             $table->unsignedBigInteger('requester_id');
 
@@ -52,6 +54,11 @@ return new class extends Migration
             $table->foreign('consumerial_tools_id')
                   ->references('id')
                   ->on('vehicle_and_tools_consumers')
+                  ->onDelete('restrict');
+
+            $table->foreign('unit_id')
+                  ->references('id')
+                  ->on('units')
                   ->onDelete('restrict');
         });
     }

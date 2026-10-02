@@ -33,6 +33,9 @@ class DatabaseSeeder extends Seeder
             SuratSpdWithQrSeeder::class,
             RbacSeeder::class,
             UnitSeeder::class,
+            // HARUS setelah RbacSeeder (butuh tabel permissions) dan UnitSeeder
+            // (butuh baris units untuk mengisi matrix unit x modul).
+            ModuleSeeder::class,
             LunchDemoSeeder::class,
             SpdDemoSeeder::class,
             VehicleDemoSeeder::class,

@@ -51,15 +51,15 @@ class Transaction_Proofs extends Model
     }
 
     /**
-     * Scope unit bisnis: bukti transaksi dari permohonan kendaraan di site dalam unit.
-     * Null = tanpa scope (global / pusat).
+     * Scope unit bisnis: bukti transaksi milik unit tertentu (lewat permohonan).
+     * Null = tanpa scope (global / pusat) — melihat semua unit.
      */
-    public function scopeInUnit($query, ?array $siteIds)
+    public function scopeInUnit($query, ?int $unitId)
     {
-        if ($siteIds === null) {
+        if ($unitId === null) {
             return;
         }
 
-        $query->whereHas('permohonan.vehicle.detail', fn ($q) => $q->whereIn('site_id', $siteIds));
+        $query->whereHas('permohonan', fn ($q) => $q->where('permohonans.unit_id', $unitId));
     }
 }

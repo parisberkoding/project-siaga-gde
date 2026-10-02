@@ -49,6 +49,7 @@ beforeEach(function () {
         $vehicle = VehicleAndToolsConsumers::factory()->create([
             'consumerial_code' => $code,
             'is_approved'      => true,
+            'unit_id'          => Site::find($siteId)?->unit_id,
         ]);
         VehicleDetail::factory()->create([
             'vehicle_and_tools_consumer_id' => $vehicle->id,
@@ -70,37 +71,41 @@ it('unitSiteIds mengembalikan site milik unit, null untuk user global', function
     expect($this->globalGa->unitSiteIds())->toBeNull();
 });
 
-it('scope kendaraan inUnit hanya menampilkan site dalam unit', function () {
+it('scope kendaraan inUnit hanya menampilkan unit', function () {
     $vehiclePatuha = ($this->makeVehicle)('B-PTHU-1', $this->sitePTH->id);
     $vehicleDieng  = ($this->makeVehicle)('B-DIEN-1', $this->siteDieng->id);
 
-    $ids = VehicleAndToolsConsumers::inUnit($this->patuhaIds)->pluck('id');
+    $ids = VehicleAndToolsConsumers::inUnit($this->unitPatuha->id)->pluck('id');
 
     expect($ids)->toContain($vehiclePatuha->id)->not->toContain($vehicleDieng->id);
     expect(VehicleAndToolsConsumers::inUnit(null)->pluck('id'))->toHaveCount(2);
 });
 
-it('scope permohonan inUnit mengikuti site kendaraan', function () {
+it('scope permohonan inUnit mengikuti unit kendaraan', function () {
     $permP = Permohonan::factory()->create([
         'request_number'       => 'REQ-PTHU-1',
         'consumerial_tools_id' => ($this->makeVehicle)('B-PTHU-2', $this->sitePTH->id)->id,
+        'unit_id'              => $this->unitPatuha->id,
     ]);
     $permD = Permohonan::factory()->create([
         'request_number'       => 'REQ-DIEN-1',
         'consumerial_tools_id' => ($this->makeVehicle)('B-DIEN-2', $this->siteDieng->id)->id,
+        'unit_id'              => $this->unitDieng->id,
     ]);
 
-    $ids = Permohonan::inUnit($this->patuhaIds)->pluck('id');
+    $ids = Permohonan::inUnit($this->unitPatuha->id)->pluck('id');
 
     expect($ids)->toContain($permP->id)->not->toContain($permD->id);
 });
 
-it('scope bukti transaksi inUnit mengikuti permohonan kendaraan', function () {
+it('scope bukti transaksi inUnit mengikuti unit permohonan', function () {
     $permP = Permohonan::factory()->create([
         'consumerial_tools_id' => ($this->makeVehicle)('B-PTHU-3', $this->sitePTH->id)->id,
+        'unit_id'              => $this->unitPatuha->id,
     ]);
     $permD = Permohonan::factory()->create([
         'consumerial_tools_id' => ($this->makeVehicle)('B-DIEN-3', $this->siteDieng->id)->id,
+        'unit_id'              => $this->unitDieng->id,
     ]);
 
     $proofP = Transaction_Proofs::create([
@@ -120,48 +125,51 @@ it('scope bukti transaksi inUnit mengikuti permohonan kendaraan', function () {
         'struk_bbm_path'    => 'dieng.jpg',
     ]);
 
-    $ids = Transaction_Proofs::inUnit($this->patuhaIds)->pluck('id');
+    $ids = Transaction_Proofs::inUnit($this->unitPatuha->id)->pluck('id');
 
     expect($ids)->toContain($proofP->id)->not->toContain($proofD->id);
 });
 
-it('scope surat SPD inUnit mengikuti default site user/pengemudi', function () {
-    $userP = User::factory()->create(['role' => 'requester', 'default_site_id' => $this->sitePTH->id]);
-    $userD = User::factory()->create(['role' => 'requester', 'default_site_id' => $this->siteDieng->id]);
+it('scope surat SPD inUnit mengikuti unit user/pengemudi', function () {
+    $userP = User::factory()->create(['role' => 'requester', 'unit_id' => $this->unitPatuha->id]);
+    $userD = User::factory()->create(['role' => 'requester', 'unit_id' => $this->unitDieng->id]);
 
-    $spdP = SuratSpd::factory()->create(['nomor_surat' => 'SPD-PTHU-1', 'user_id' => $userP->id]);
-    $spdD = SuratSpd::factory()->create(['nomor_surat' => 'SPD-DIEN-1', 'user_id' => $userD->id]);
+    $spdP = SuratSpd::factory()->create(['nomor_surat' => 'SPD-PTHU-1', 'user_id' => $userP->id, 'unit_id' => $this->unitPatuha->id]);
+    $spdD = SuratSpd::factory()->create(['nomor_surat' => 'SPD-DIEN-1', 'user_id' => $userD->id, 'unit_id' => $this->unitDieng->id]);
 
-    $ids = SuratSpd::inUnit($this->patuhaIds)->pluck('id');
+    $ids = SuratSpd::inUnit($this->unitPatuha->id)->pluck('id');
 
     expect($ids)->toContain($spdP->id)->not->toContain($spdD->id);
 });
 
-it('scope surat SPD inUnit juga memakai default site master karyawan (employee_default)', function () {
-    $userP = User::factory()->create(['role' => 'requester', 'default_site_id' => $this->sitePTH->id]);
+it('scope surat SPD inUnit juga memakai unit master karyawan (employee_default)', function () {
+    $userP = User::factory()->create(['role' => 'requester', 'unit_id' => $this->unitPatuha->id]);
     $employeeD = EmployeeDefault::create([
         'employee_name'   => 'Pengemudi Dieng',
         'default_site_id' => $this->siteDieng->id,
     ]);
 
-    $spdP = SuratSpd::factory()->create(['nomor_surat' => 'SPD-PTHU-2', 'user_id' => $userP->id]);
+    $spdP = SuratSpd::factory()->create(['nomor_surat' => 'SPD-PTHU-2', 'user_id' => $userP->id, 'unit_id' => $this->unitPatuha->id]);
     $spdE = SuratSpd::factory()->create([
         'nomor_surat'       => 'SPD-EMP-1',
         'user_id'           => null,
         'employee_default_id' => $employeeD->id,
+        'unit_id'            => $this->unitDieng->id,
     ]);
 
-    $ids = SuratSpd::inUnit($this->patuhaIds)->pluck('id');
+    $ids = SuratSpd::inUnit($this->unitPatuha->id)->pluck('id');
 
     expect($ids)->toContain($spdP->id)->not->toContain($spdE->id);
 });
 
-it('scope approved request inUnit mengikuti permohonan kendaraan', function () {
+it('scope approved request inUnit mengikuti unit permohonan', function () {
     $permP = Permohonan::factory()->create([
         'consumerial_tools_id' => ($this->makeVehicle)('B-PTHU-4', $this->sitePTH->id)->id,
+        'unit_id'              => $this->unitPatuha->id,
     ]);
     $permD = Permohonan::factory()->create([
         'consumerial_tools_id' => ($this->makeVehicle)('B-DIEN-4', $this->siteDieng->id)->id,
+        'unit_id'              => $this->unitDieng->id,
     ]);
 
     $voucherP = Approved_Request::create([
@@ -171,6 +179,7 @@ it('scope approved request inUnit mengikuti permohonan kendaraan', function () {
         'approved_amount' => 100000,
         'status'         => 'active',
         'authorizer_id'  => $this->ga->id,
+        'unit_id'        => $this->unitPatuha->id,
     ]);
     $voucherD = Approved_Request::create([
         'permohonan_id'  => $permD->id,
@@ -179,9 +188,10 @@ it('scope approved request inUnit mengikuti permohonan kendaraan', function () {
         'approved_amount' => 100000,
         'status'         => 'active',
         'authorizer_id'  => $this->ga->id,
+        'unit_id'        => $this->unitDieng->id,
     ]);
 
-    $ids = Approved_Request::inUnit($this->patuhaIds)->pluck('id');
+    $ids = Approved_Request::inUnit($this->unitPatuha->id)->pluck('id');
 
     expect($ids)->toContain($voucherP->id)->not->toContain($voucherD->id);
 });
@@ -286,16 +296,18 @@ it('scope distribusi & reservasi tamu inUnit per site', function () {
         ->toContain($guestP->id)->not->toContain($guestD->id);
 });
 
-it('GA unit hanya melihat data site unitnya di dashboard GA', function () {
+it('GA unit hanya melihat data unitnya di dashboard GA', function () {
     $permP = Permohonan::factory()->create([
         'request_number'       => 'REQ-HTTP-P',
         'status'               => 'pending',
         'consumerial_tools_id' => ($this->makeVehicle)('B-HTTP-P', $this->sitePTH->id)->id,
+        'unit_id'              => $this->unitPatuha->id,
     ]);
     $permD = Permohonan::factory()->create([
         'request_number'       => 'REQ-HTTP-D',
         'status'               => 'pending',
         'consumerial_tools_id' => ($this->makeVehicle)('B-HTTP-D', $this->siteDieng->id)->id,
+        'unit_id'              => $this->unitDieng->id,
     ]);
 
     $this->actingAs($this->ga)

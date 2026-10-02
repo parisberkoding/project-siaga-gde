@@ -154,6 +154,22 @@
                                 @error('type')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Jenis SPD</label>
+                                <select class="form-select @error('jenis_spd') is-invalid @enderror" name="jenis_spd" id="jenisSpd">
+                                    <option value="">-- Pilih Jenis SPD --</option>
+                                    <option value="luar_kota" {{ old('jenis_spd') == 'luar_kota' ? 'selected' : '' }}>SPD Luar Kota</option>
+                                    <option value="dalam_kota" {{ old('jenis_spd') == 'dalam_kota' ? 'selected' : '' }}>SPD Dalam Kota</option>
+                                    <option value="lainnya" {{ old('jenis_spd') == 'lainnya' ? 'selected' : '' }}>Lainnya</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3" id="jenisSpdLainnyaWrapper" style="display: none;">
+                                <label class="form-label">Jenis SPD Lainnya</label>
+                                <input type="text" class="form-control" name="jenis_spd_lainnya"
+                                       placeholder="Isi jika 'Lainnya'" value="{{ old('jenis_spd_lainnya') }}">
+                            </div>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">Kendaraan <span class="text-danger">*</span></label>
                             <select class="form-select @error('vehicle_id') is-invalid @enderror" name="vehicle_id" required>
@@ -166,6 +182,29 @@
                             </select>
                             @error('vehicle_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
+                    </div>
+                </div>
+
+                {{-- Kode GL & Nominal Pemberian --}}
+                <div class="card border-primary">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-credit-card"></i> Kode GL & Nominal Pemberian</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Kode GL <span class="text-muted">(SAP)</span></label>
+                                <input type="text" class="form-control @error('kode_gl') is-invalid @enderror"
+                                       name="kode_gl" placeholder="Contoh: 5121000" value="{{ old('kode_gl') }}">
+                                @error('kode_gl')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Uang yang Diberikan (Rp)</label>
+                                <input type="number" class="form-control @error('uang_diberikan') is-invalid @enderror"
+                                       name="uang_diberikan" min="0" step="0.01"
+                                       placeholder="Nominal uang diberikan ke driver" value="{{ old('uang_diberikan') }}">
+                                @error('uang_diberikan')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+                        <small class="text-muted">Diisi saat penerbitan surat tugas; dapat ditambah kemudian bila ada penambahan dana.</small>
                     </div>
                 </div>
 
@@ -204,9 +243,12 @@
                                 <div class="mb-2 row-nama" id="rowNama{{ $i }}" style="{{ $i > 1 ? 'display: none;' : '' }}">
                                     <div class="input-group">
                                         <span class="input-group-text">{{ $i }}.</span>
-                                        <input type="text" class="form-control" name="nama_lengkap_{{ $i }}"
-                                               placeholder="Nama lengkap pemakai ke-{{ $i }}"
+                                        <input type="text" class="form-control pemakai-input" name="nama_lengkap_{{ $i }}"
+                                               data-index="{{ $i }}" autocomplete="off"
+                                               placeholder="Ketik nama pemakai ke-{{ $i }}…"
                                                value="{{ old('nama_lengkap_' . $i) }}">
+                                        <input type="hidden" name="user_id_{{ $i }}" id="userId{{ $i }}"
+                                               value="{{ old('user_id_' . $i) }}">
                                     </div>
                                 </div>
                             @endfor
@@ -301,6 +343,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const budgetPlaceholder = document.getElementById('budgetPlaceholder');
     const summaryLama = document.getElementById('summaryLama');
     const summaryPemakai = document.getElementById('summaryPemakai');
+    const jenisSpd = document.getElementById('jenisSpd');
+    const jenisSpdLainnya = document.getElementById('jenisSpdLainnyaWrapper');
+
+    // Toggle input "Lainnya" pada dropdown jenis SPD
+    function updateJenisSpd() {
+        if (jenisSpd && jenisSpdLainnya) {
+            jenisSpdLainnya.style.display = jenisSpd.value === 'lainnya' ? 'block' : 'none';
+        }
+    }
+    if (jenisSpd) {
+        jenisSpd.addEventListener('change', updateJenisSpd);
+        updateJenisSpd();
+    }
     const summaryBudget = document.getElementById('summaryBudget');
 
     function calculate() {
@@ -438,4 +493,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+{{-- Autocomplete nama pemakai (Master Pekerja) --}}
+@include('partials.pemakai-autocomplete')
 @endsection

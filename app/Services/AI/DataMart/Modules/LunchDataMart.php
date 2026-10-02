@@ -98,7 +98,7 @@ class LunchDataMart extends AbstractDataMart
             ->with('site:id,name')
             ->orderByDesc('distribution_date');
 
-        $this->applyUnitScope($query, $options);
+        $this->applySiteScope($query, $options);
 
         if (! empty($filters['date_from'])) {
             $query->whereDate('distribution_date', '>=', $filters['date_from']);

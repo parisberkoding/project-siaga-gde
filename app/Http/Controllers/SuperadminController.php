@@ -1940,7 +1940,7 @@ class SuperadminController extends Controller
         // Query vehicles/tools - HANYA YANG SUDAH APPROVED
         $query = VehicleAndToolsConsumers::with(['creator', 'approver', 'barcode', 'detail.site'])
             ->where('is_approved', true) // Hanya tampilkan yang approved
-            ->inUnit($request->user()?->unitSiteIds());
+            ->inUnit($request->user()?->unit_id);
 
         // ✅ Filter berdasarkan tipe (uppercase)
         if ($type) {
@@ -1962,7 +1962,7 @@ class SuperadminController extends Controller
         // Get deleted vehicles/tools
         $deletedVehicles = VehicleAndToolsConsumers::onlyTrashed()
             ->with(['creator', 'approver'])
-            ->inUnit($request->user()?->unitSiteIds())
+            ->inUnit($request->user()?->unit_id)
             ->orderBy('deleted_at', 'desc')
             ->paginate(15, ['*'], 'deleted_page');
 
@@ -2011,6 +2011,11 @@ class SuperadminController extends Controller
         try {
             DB::beginTransaction();
 
+            // Unit asal kendaraan diturunkan dari site yang dipilih (fallback ke unit user).
+            $siteUnitId = isset($validated['site_id'])
+                ? Site::find($validated['site_id'])?->unit_id
+                : null;
+
             $vehicle = VehicleAndToolsConsumers::create([
                 'consumerial_type' => $validated['consumerial_type'],
                 'consumerial_code' => strtoupper($validated['consumerial_code']),
@@ -2020,6 +2025,7 @@ class SuperadminController extends Controller
                 'is_approved' => true,
                 'approved_by' => auth()->id(),
                 'is_active' => true,
+                'unit_id' => $siteUnitId ?? auth()->user()->unit_id,
             ]);
 
             // Auto-create VehicleDetail dengan field budget & kapasitas (Master Vehicle)
@@ -2185,7 +2191,7 @@ class SuperadminController extends Controller
 
         // Query Permohonan
         $queryPermohonan = Permohonan::with(['requester', 'vehicle', 'authorizer', 'approvedRequest'])
-            ->inUnit($request->user()?->unitSiteIds());
+            ->inUnit($request->user()?->unit_id);
 
         if ($status) {
             $queryPermohonan->where('status', $status);
@@ -2207,7 +2213,7 @@ class SuperadminController extends Controller
 
         // Query Laporan Transaksi
         $queryLaporan = Transaction_Proofs::with(['permohonan.requester', 'permohonan.vehicle'])
-            ->inUnit($request->user()?->unitSiteIds());
+            ->inUnit($request->user()?->unit_id);
 
         if ($search) {
             $queryLaporan->where(function ($q) use ($search) {
@@ -2223,7 +2229,7 @@ class SuperadminController extends Controller
         // Get all vehicles for dropdown (+ detail utk label "Plat - Merk" & budget full tank)
         $vehicles = VehicleAndToolsConsumers::with('detail')
             ->where('is_approved', true)
-            ->inUnit($request->user()?->unitSiteIds())
+            ->inUnit($request->user()?->unit_id)
             ->orderBy('consumerial_type')
             ->orderBy('consumerial_name')
             ->get();
@@ -2543,6 +2549,7 @@ class SuperadminController extends Controller
                         'authorizer_id' => Auth::id(),
                         'status' => 'approved',
                         'approval_notes' => null,
+                        'unit_id' => $permohonan->unit_id,
                     ]);
 
                     $approvedCount++;

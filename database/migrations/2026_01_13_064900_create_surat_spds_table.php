@@ -17,6 +17,9 @@ return new class extends Migration
             $table->string('nomor_surat', 100)->unique();
             $table->string('nomor_urut')->nullable();
 
+            $table->unsignedBigInteger('unit_id')->nullable();
+            $table->foreign('unit_id')->references('id')->on('units')->onDelete('set null');
+
             // Pemberi Tugas
             $table->string('pemberi_tugas_nama');
             $table->string('pemberi_tugas_jabatan');

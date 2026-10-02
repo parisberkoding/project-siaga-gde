@@ -47,6 +47,7 @@
                         <th>Site terkait</th>
                         <th class="text-center">Jumlah Site</th>
                         <th class="text-center">User</th>
+                        <th class="text-center">Modul</th>
                         <th class="text-center">Status</th>
                         <th width="160">Aksi</th>
                     </tr>
@@ -68,6 +69,22 @@
                         </td>
                         <td class="text-center"><span class="badge bg-info">{{ $unit->sites_count }}</span></td>
                         <td class="text-center"><span class="badge bg-secondary">{{ $unit->users_count }}</span></td>
+                        <td class="text-center">
+                            @php $enabledCount = $unit->enabledModules->count(); @endphp
+                            @if($unit->is_central)
+                                <span class="badge bg-dark" title="Unit Pusat melewati gate modul">
+                                    <i class="bi bi-unlock me-1"></i>Pusat
+                                </span>
+                            @elseif($enabledCount === 0)
+                                <span class="badge bg-warning text-dark" title="Unit belum dikonfigurasi — semua permission dipertahankan sementara">
+                                    belum diatur
+                                </span>
+                            @else
+                                <span class="badge bg-primary" title="Modul yang di-enable untuk unit ini">
+                                    {{ $enabledCount }} / {{ $totalModules }}
+                                </span>
+                            @endif
+                        </td>
                         <td class="text-center">
                             @if($unit->is_active)
                                 <span class="badge bg-success">Aktif</span>
@@ -92,7 +109,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7">
+                        <td colspan="8">
                             <div class="text-center text-muted py-4">
                                 <i class="bi bi-inbox" style="font-size:2rem; opacity:0.5"></i>
                                 <div class="mt-2">Belum ada unit. Klik "Tambah Unit" untuk memulai.</div>

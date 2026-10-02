@@ -254,18 +254,13 @@
 
     <div class="signature-section">
         <div class="signature-box">
-            <div class="signature-title">Menyetujui Pengguna</div>
-            <div class="signature-name">( {{ $pengguna_nama ?? '_______________' }} )</div>
+            <div class="signature-title">User (yang berangkat)</div>
+            <div class="signature-name">( {{ $pengguna_nama ?? $laporan->approverPengguna?->nama_lengkap ?? $nama ?? '_______________' }} )</div>
         </div>
 
         <div class="signature-box">
-            <div class="signature-title">Mengetahui Divisi GA</div>
-            <div class="signature-name">( {{ $divisi_ga_nama ?? '_______________' }} )</div>
-        </div>
-
-        <div class="signature-box">
-            <div class="signature-title">Pemohon</div>
-            <div class="signature-name">( {{ $pemohon_nama ?? $nama ?? '_______________' }} )</div>
+            <div class="signature-title">Divisi GA</div>
+            <div class="signature-name">( {{ $divisi_ga_nama ?? $laporan->approverDivisiGa?->nama_lengkap ?? '_______________' }} )</div>
         </div>
     </div>
 

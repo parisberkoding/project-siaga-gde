@@ -256,6 +256,7 @@ class RequestManagementController extends Controller
                     'is_approved' => false,
                     'is_active' => true,
                     'created_by' => $user->id,
+                    'unit_id' => $user->unit_id,
                 ]);
 
                 $vehicleId = $vehicle->id;
@@ -282,6 +283,7 @@ class RequestManagementController extends Controller
                 'status' => $status,
                 'requester_notes' => $validated['requester_notes'] ? $validated['requester_notes'] : null,
                 'consumerial_tools_id' => $vehicleId,
+                'unit_id' => $user->unit_id,
             ]);
 
             DB::commit();
@@ -830,28 +832,28 @@ class RequestManagementController extends Controller
         // ✅ LAZY CHECK: Cek expired vouchers
         $this->checkAndExpireVouchers();
 
-        $siteIds = Auth::user()?->unitSiteIds();
+        $unitId = Auth::user()?->unit_id;
 
         // Get statistics
         $stats = [
-            'pending' => Permohonan::inUnit($siteIds)->where('status', 'pending')->count(),
-            'approved' => Permohonan::inUnit($siteIds)->where('status', 'approved')->count(),
-            'completed' => Permohonan::inUnit($siteIds)->where('status', 'completed')->count(),
-            'rejected' => Permohonan::inUnit($siteIds)->where('status', 'rejected')->count(),
-            'cancelled' => Permohonan::inUnit($siteIds)->where('status', 'cancelled')->count(),
-            'total' => Permohonan::inUnit($siteIds)->count(),
+            'pending' => Permohonan::inUnit($unitId)->where('status', 'pending')->count(),
+            'approved' => Permohonan::inUnit($unitId)->where('status', 'approved')->count(),
+            'completed' => Permohonan::inUnit($unitId)->where('status', 'completed')->count(),
+            'rejected' => Permohonan::inUnit($unitId)->where('status', 'rejected')->count(),
+            'cancelled' => Permohonan::inUnit($unitId)->where('status', 'cancelled')->count(),
+            'total' => Permohonan::inUnit($unitId)->count(),
         ];
 
         // ✅ Load relasi requester dan consumerialTool
         $pendingRequests = Permohonan::with(['requester', 'vehicle'])
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->where('status', 'pending')
             ->orderBy('request_date', 'desc')
             ->get();
 
         // Filter hanya approved/rejected/completed, load relasi
         $myApprovals = Permohonan::with(['requester', 'vehicle', 'authorizer', 'approvedRequest'])
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->whereIn('status', ['approved', 'rejected', 'completed'])
             ->where('authorizer_id', Auth::user()->id)
             ->orderBy('authorization_date', 'desc')
@@ -859,13 +861,13 @@ class RequestManagementController extends Controller
 
         // ✅ Load semua relasi, sort by date
         $allRequests = Permohonan::with(['requester', 'vehicle', 'authorizer', 'approvedRequest'])
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->orderBy('request_date', 'desc')
             ->get();
 
         // ✅ Load transaction reports
         $reports = Transaction_Proofs::with(['permohonan.requester', 'permohonan.vehicle'])
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->whereHas('permohonan', function ($q) {
                 $q->whereNotNull('consumerial_tools_id');
             })
@@ -884,7 +886,7 @@ class RequestManagementController extends Controller
             'permohonan.vehicle',
             'authorizer',
         ])
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->whereDate('approval_date', $voucherDate)
             ->whereIn('status', ['active', 'approved', 'cancelled', 'completed'])
             ->whereHas('permohonan', function ($q) {
@@ -910,46 +912,46 @@ class RequestManagementController extends Controller
     {
         $title = 'Approval Permohonan BBM';
 
-        $siteIds = Auth::user()?->unitSiteIds();
+        $unitId = Auth::user()?->unit_id;
 
         // Get pending requests
         $pendingRequests = Permohonan::with(['requester', 'vehicle'])
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->where('status', 'pending')
             ->orderBy('request_date', 'desc')
             ->get();
 
         // Get statistics
         $stats = [
-            'pending' => Permohonan::inUnit($siteIds)->where('status', 'pending')->count(),
-            'approved' => Permohonan::inUnit($siteIds)->where('status', 'approved')->count(),
-            'completed' => Permohonan::inUnit($siteIds)->where('status', 'completed')->count(),
-            'rejected' => Permohonan::inUnit($siteIds)->where('status', 'rejected')->count(),
-            'cancelled' => Permohonan::inUnit($siteIds)->where('status', 'cancelled')->count(),
-            'total' => Permohonan::inUnit($siteIds)->count(),
+            'pending' => Permohonan::inUnit($unitId)->where('status', 'pending')->count(),
+            'approved' => Permohonan::inUnit($unitId)->where('status', 'approved')->count(),
+            'completed' => Permohonan::inUnit($unitId)->where('status', 'completed')->count(),
+            'rejected' => Permohonan::inUnit($unitId)->where('status', 'rejected')->count(),
+            'cancelled' => Permohonan::inUnit($unitId)->where('status', 'cancelled')->count(),
+            'total' => Permohonan::inUnit($unitId)->count(),
         ];
 
         // Get approvals processed by this admin
         $myApprovals = Permohonan::with(['requester', 'vehicle', 'authorizer'])
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->whereIn('status', ['approved', 'rejected', 'completed'])
             ->where('authorizer_id', Auth::user()->id)
             ->orderBy('authorization_date', 'desc')
             ->get();
 
         $allRequests = Permohonan::with(['requester', 'vehicle', 'authorizer'])
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->orderBy('request_date', 'desc')
             ->paginate(15);
 
         // Get all requests for history
         $allRequests = Permohonan::with(['requester', 'vehicle', 'authorizer'])
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->orderBy('request_date', 'desc')
             ->paginate(20);
 
         $reports = Transaction_Proofs::with(['permohonan.requester', 'permohonan.vehicle'])
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->whereHas('permohonan', function ($q) {
                 $q->whereNotNull('consumerial_tools_id');
             })
@@ -961,7 +963,7 @@ class RequestManagementController extends Controller
             'permohonan.vehicle',
             'authorizer',
         ])
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->whereIn('status', ['active', 'approved', 'cancelled', 'completed'])
             ->whereHas('permohonan', function ($q) {
                 $q->whereNotNull('consumerial_tools_id');
@@ -982,14 +984,14 @@ class RequestManagementController extends Controller
         $date = $request->get('date', now()->subDay()->toDateString());
         $status = $request->get('status', 'all'); // all | active | expired
 
-        $siteIds = Auth::user()?->unitSiteIds();
+        $unitId = Auth::user()?->unit_id;
 
         $query = Approved_Request::with([
             'permohonan.requester',
             'permohonan.vehicle',
             'authorizer',
         ])
-            ->inUnit($siteIds)
+            ->inUnit($unitId)
             ->whereDate('approval_date', $date)
             ->whereIn('status', ['active', 'approved', 'cancelled', 'completed'])
             ->whereHas('permohonan', fn ($q) => $q->whereNotNull('consumerial_tools_id'))
@@ -1111,6 +1113,7 @@ class RequestManagementController extends Controller
                     'authorizer_id' => Auth::id(),
                     'authorizer_notes' => $validated['authorizer_notes'] ? ($newStatus === 'rejected' ? '[ADMIN REJECTION] ' : '[APPROVED] ').$validated['authorizer_notes'] : null,
                     'status' => 'active',
+                    'unit_id' => $permohonan->unit_id,
                 ]);
             }
 
@@ -1216,6 +1219,7 @@ class RequestManagementController extends Controller
                         'authorizer_id' => Auth::id(),
                         'status' => 'approved',
                         'approval_notes' => null,
+                        'unit_id' => $permohonan->unit_id,
                     ]);
 
                     $approvedCount++;

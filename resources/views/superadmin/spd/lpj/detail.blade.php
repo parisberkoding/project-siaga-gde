@@ -330,6 +330,31 @@
 
         {{-- Action Panel (Right Column) --}}
         <div class="col-lg-4">
+            {{-- Progress Validasi (2 Tahap) --}}
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="bi bi-diagram-3"></i> Progress Validasi</h6>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span><i class="bi bi-person-check"></i> User (Penumpang)</span>
+                            {!! $laporan->approved_by_pengguna
+                                ? '<span class="badge bg-success">Disetujui</span>'
+                                : '<span class="badge bg-secondary">Menunggu</span>' !!}
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span><i class="bi bi-shield-check"></i> Divisi GA</span>
+                            {!! $laporan->approved_by_divisi_ga
+                                ? '<span class="badge bg-success">Disetujui</span>'
+                                : '<span class="badge bg-secondary">Menunggu</span>' !!}
+                        </li>
+                    </ul>
+                    <small class="text-muted d-block mt-2">
+                        Dua tanda tangan ini dicatat terpisah. Bila orang yang sama berperan ganda,
+                        tetap divalidasi dua kali untuk akuntabilitas.
+                    </small>
+                </div>
+            </div>
+
             {{-- Validasi Actions --}}
             @if($laporan->status == 'pending')
                 <div class="card border-primary">
@@ -337,10 +362,6 @@
                         <h6 class="mb-0"><i class="bi bi-shield-check"></i> Aksi Validasi</h6>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted small mb-3">
-                            Periksa rincian pengeluaran dengan teliti sebelum memvalidasi.
-                        </p>
-
                         {{-- Warning for late/over budget --}}
                         @if($laporan->is_late || $laporan->is_over_budget)
                             <div class="alert alert-warning py-2 mb-3">
@@ -356,13 +377,35 @@
                             </div>
                         @endif
 
-                        <button type="button" class="btn btn-success w-100 mb-2" data-bs-toggle="modal" data-bs-target="#approveModal">
-                            <i class="bi bi-check-circle"></i> Setujui LPJ
-                        </button>
+                        {{-- Tahap 1: User (penumpang) — tidak strict, tidak menunggu tahap lain --}}
+                        @if(auth()->user()->hasPermission('spd.validate_trip') && !$laporan->approved_by_pengguna)
+                            <form action="{{ route('lpj.pengguna.approve', $laporan) }}" method="POST" class="mb-2">
+                                @csrf
+                                <input type="hidden" name="pernyataan" value="1">
+                                <button type="submit" class="btn btn-success w-100"
+                                        onclick="return confirm('Saya mengetahui bahwa perjalanan dinas ini benar adanya. Validasi sebagai User (penumpang)?');">
+                                    <i class="bi bi-person-check"></i> Validasi sebagai User (Penumpang)
+                                </button>
+                            </form>
+                        @endif
 
-                        <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#rejectModal">
-                            <i class="bi bi-x-circle"></i> Tolak LPJ
-                        </button>
+                        {{-- Tahap 2: Divisi GA — tidak strict (boleh lebih dulu) --}}
+                        @if(auth()->user()->hasPermission('lpj.validate') && !$laporan->approved_by_divisi_ga)
+                            <form action="{{ route('lpj.superadmin.approve-ga', $laporan) }}" method="POST" class="mb-2">
+                                @csrf
+                                <button type="submit" class="btn btn-primary w-100"
+                                        onclick="return confirm('Validasi sebagai Divisi GA (admin/supervisor/manager)?');">
+                                    <i class="bi bi-shield-check"></i> Validasi sebagai Divisi GA
+                                </button>
+                            </form>
+                        @endif
+
+                        {{-- Tolak (Divisi GA) --}}
+                        @if(auth()->user()->hasPermission('lpj.validate'))
+                            <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                                <i class="bi bi-x-circle"></i> Tolak LPJ
+                            </button>
+                        @endif
                     </div>
                 </div>
             @endif

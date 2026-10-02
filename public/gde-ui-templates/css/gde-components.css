@@ -404,3 +404,83 @@
 .gde-page-head h1 { font-size: var(--gde-fs-2xl); margin: var(--gde-sp-2) 0 var(--gde-sp-1); }
 .gde-page-head p { margin: 0; font-size: var(--gde-fs-base); color: var(--gde-muted); max-width: 70ch; }
 .gde-page-actions { display: flex; flex-wrap: wrap; gap: var(--gde-sp-2); }
+
+/* ============================ 19. STRUK ITEM CARD ============================
+   Kartu satu item struk/bukti pengeluaran (pelaporan SPD & BBM).
+   Kebenaran markup JS dijamin lewat kelas klasik (lihat catatan komentar di
+   gde-compat), tapi tata letak diberi ruang lebih lega agar mudah dibaca:
+   thumbnail kiri, ringkasan kanan, lalu baris edit lebar-lebar.
+   ============================================================================ */
+.gde-struk {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gde-sp-4);
+  width: 100%;
+  padding: var(--gde-sp-4);
+  background: var(--gde-surface);
+  border: 1px solid var(--gde-line);
+  border-radius: var(--gde-r-md);
+  box-shadow: var(--gde-sh-1);
+  transition: box-shadow var(--gde-t-base), transform var(--gde-t-base);
+}
+.gde-struk:hover { box-shadow: var(--gde-sh-2); }
+.gde-struk.is-draft { border-left: 4px solid var(--gde-yellow-d); }
+.gde-struk.is-final { border-left: 4px solid var(--gde-green); }
+
+/* Thumbnail kiri, tinggi tetap supaya rapi */
+.gde-struk__thumb {
+  flex: 0 0 88px;
+  width: 88px;
+  height: 88px;
+  border-radius: var(--gde-r-xs);
+  overflow: hidden;
+  background: var(--gde-surface-2);
+  border: 1px solid var(--gde-line-2);
+  display: flex; align-items: center; justify-content: center;
+}
+.gde-struk__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gde-struk__thumb .bi { font-size: 1.6rem; color: var(--gde-muted-2); }
+
+/* Ringkasan (kode, tanggal) — mengisi sisa lebar */
+.gde-struk__summary { flex: 1 1 220px; min-width: 0; }
+.gde-struk__row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gde-sp-2) var(--gde-sp-3); }
+.gde-struk__nominal { font-size: var(--gde-fs-lg); font-weight: var(--gde-fw-bold); color: var(--gde-ink); letter-spacing: -.01em; line-height: 1.1; }
+.gde-struk__code {
+  font-family: var(--gde-font-mono); font-size: var(--gde-fs-xs); color: var(--gde-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+}
+.gde-struk__date {
+  display: inline-flex; align-items: center; gap: var(--gde-sp-1);
+  font-size: var(--gde-fs-xs); color: var(--gde-muted);
+  background: var(--gde-surface-2); padding: .15rem .5rem; border-radius: var(--gde-r-pill);
+  white-space: nowrap;
+}
+.gde-struk__chip {
+  display: inline-flex; align-items: center; gap: var(--gde-sp-1);
+  font-size: var(--gde-fs-xs); font-weight: var(--gde-fw-medium);
+  color: var(--gde-ink-2); background: var(--gde-surface-3);
+  border: 1px solid var(--gde-line); padding: .15rem .55rem; border-radius: var(--gde-r-pill);
+  white-space: nowrap;
+}
+.gde-struk__ket { font-size: var(--gde-fs-sm); color: var(--gde-ink-2); line-height: 1.45; word-break: break-word; }
+
+/* Panel edit (form Bawah) lebarkan penuh */
+.gde-struk__edit { flex: 1 1 100%; display: flex; flex-direction: column; gap: var(--gde-sp-3); border-top: 1px dashed var(--gde-line-2); padding-top: var(--gde-sp-3); }
+.gde-struk__edit-grid { display: grid; grid-template-columns: minmax(160px, 2fr) minmax(150px, 1.4fr) auto; gap: var(--gde-sp-3); align-items: end; }
+.gde-struk__edit label {
+  display: block; font-size: var(--gde-fs-xs); font-weight: var(--gde-fw-semibold);
+  color: var(--gde-muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: var(--gde-sp-1);
+}
+
+/* Auto-save pesan */
+.gde-struk__autosave { display: inline-flex; align-items: center; gap: var(--gde-sp-1); font-size: var(--gde-fs-sm); color: var(--gde-green-d2); font-weight: var(--gde-fw-medium); }
+.gde-struk__autosave.is-hidden { display: none; }
+
+/* Hapus tombol pojok kanan atas */
+.gde-struk__del { position: absolute; top: var(--gde-sp-3); right: var(--gde-sp-3); }
+
+@media (max-width: 575.98px) {
+  .gde-struk__edit-grid { grid-template-columns: 1fr; align-items: stretch; }
+  .gde-struk__edit-grid .gde-btn--block { width: 100%; }
+}

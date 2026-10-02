@@ -15,6 +15,7 @@ class SuratSpdDetail extends Model
     protected $fillable = [
         'surat_spd_id',
         'nama_lengkap',
+        'user_id',
         'urutan',
     ];
 
@@ -24,5 +25,13 @@ class SuratSpdDetail extends Model
     public function suratSpd()
     {
         return $this->belongsTo(SuratSpd::class, 'surat_spd_id');
+    }
+
+    /**
+     * Akun user penumpang (nullable — boleh tidak terdaftar di sistem).
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 }

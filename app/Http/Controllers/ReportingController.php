@@ -267,7 +267,7 @@ class ReportingController extends Controller
             'kebutuhan_bbm_liter' => 'nullable|numeric|min:0',
             'items'        => 'required|array|min:1',
             'items.*.tanggal'         => 'required|date',
-            'items.*.struk_kategori'  => 'required|in:BBM,Tol,Parkir,Lainnya,Tambahan',
+            'items.*.struk_kategori'  => 'required|in:BBM,Tol,Parkir,Hotel + Makan,Lainnya,Tambahan',
             'items.*.nominal'         => 'required|numeric|min:0',
             'items.*.keterangan'      => 'nullable|string',
             'items.*.kategori_source' => 'required|in:ai,manual',

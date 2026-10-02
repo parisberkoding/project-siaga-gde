@@ -1,5 +1,14 @@
 @extends('templates.main')
 
+@php
+    // Route detail mengikuti KONTEKS halaman (bukan hanya permission), agar user
+    // yang punya banyak peran (mis. sekaligus User berangkat & Divisi GA) tidak
+    // nyasar ke tahap validasi yang lain.
+    $showRoute = request()->routeIs('lpj.pengguna.*')
+        ? 'lpj.pengguna.show'
+        : 'lpj.superadmin.show';
+@endphp
+
 @section('content')
 <div class="pagetitle">
     <h1>Validasi Laporan Pertanggungjawaban</h1>
@@ -183,7 +192,7 @@
                                             <td><span class="badge bg-warning text-dark">Menunggu</span></td>
                                             <td class="text-center">
                                                 <div class="btn-group">
-                                                    <a href="{{ route('lpj.superadmin.show', $lpj) }}"
+                                                    <a href="{{ route($showRoute, $lpj) }}"
                                                        class="btn btn-sm btn-primary" title="Detail & Validasi">
                                                         <i class="bi bi-eye"></i> Detail
                                                     </a>
@@ -240,7 +249,7 @@
                                             </td>
                                             <td class="text-center">
                                                 <div class="btn-group">
-                                                    <a href="{{ route('lpj.superadmin.show', $lpj) }}"
+                                                    <a href="{{ route($showRoute, $lpj) }}"
                                                        class="btn btn-sm btn-outline-primary" title="Detail">
                                                         <i class="bi bi-eye"></i>
                                                     </a>
@@ -293,7 +302,7 @@
                                             </td>
                                             <td>{{ Str::limit($lpj->rejection_reason, 40) }}</td>
                                             <td class="text-center">
-                                                <a href="{{ route('lpj.superadmin.show', $lpj) }}"
+                                                <a href="{{ route($showRoute, $lpj) }}"
                                                    class="btn btn-sm btn-outline-primary" title="Detail">
                                                     <i class="bi bi-eye"></i>
                                                 </a>

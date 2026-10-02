@@ -13,9 +13,11 @@ class EmployeeDefault extends Model
     protected $fillable = [
         'user_id',
         'employee_code',
+        'nik',
         'employee_name',
         'slug',
         'division',
+        'employment_type',
         'position',
         'default_site_id',
         'is_active',

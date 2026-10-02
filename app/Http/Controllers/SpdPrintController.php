@@ -43,6 +43,7 @@ class SpdPrintController extends Controller
             'user',
             'approverPengguna',
             'approverDivisiGa',
+            'approverManagement',
             'strukItems',
         ])->findOrFail($laporan->id);
 
