@@ -5,6 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * SuratSpdBudget — dana perjalanan dinas per baris.
+ *
+ * Dipakai untuk dua keperluan sekaligus:
+ *   1. Rencana/budget per tanggal (basis perhitungan over-budget SPD).
+ *   2. Lembar Lampiran Pemberian Dana Perjalanan Dinas — baris pencairan
+ *      (tanggal, bentuk Tunai/Transfer, nomor referensi perbankan, rekening
+ *      tujuan) yang dikelola oleh Divisi GA.
+ */
 class SuratSpdBudget extends Model
 {
     use HasFactory;
@@ -15,13 +24,23 @@ class SuratSpdBudget extends Model
         'surat_spd_id',
         'tanggal',
         'nominal',
+        'bentuk_pencairan',
+        'bank_reference',
+        'rek_tujuan',
         'catatan',
+        'urutan',
     ];
 
     protected $casts = [
         'tanggal' => 'date',
         'nominal' => 'decimal:2',
+        'urutan' => 'integer',
     ];
+
+    /**
+     * Bentuk pencairan yang valid.
+     */
+    public const BENTUK_PENCAIRAN = ['Tunai', 'Transfer'];
 
     // ============================================================
     // RELATIONSHIPS
@@ -33,6 +52,26 @@ class SuratSpdBudget extends Model
     public function suratSpd()
     {
         return $this->belongsTo(SuratSpd::class, 'surat_spd_id');
+    }
+
+    // ============================================================
+    // SCOPES
+    // ============================================================
+
+    /**
+     * Urutan tampil pada dokumen: urutan manual lalu tanggal.
+     */
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('urutan')->orderBy('tanggal');
+    }
+
+    /**
+     * Hanya baris yang sudah punya data pencairan (bentuk terisi).
+     */
+    public function scopePencairan($query)
+    {
+        return $query->whereNotNull('bentuk_pencairan');
     }
 
     // ============================================================
@@ -52,7 +91,7 @@ class SuratSpdBudget extends Model
      */
     public function getFormattedTanggalAttribute(): string
     {
-        return $this->tanggal->translatedFormat('d F Y');
+        return $this->tanggal ? $this->tanggal->translatedFormat('d F Y') : '-';
     }
 
     /**
@@ -60,6 +99,23 @@ class SuratSpdBudget extends Model
      */
     public function getShortTanggalAttribute(): string
     {
-        return $this->tanggal->translatedFormat('d M Y');
+        return $this->tanggal ? $this->tanggal->translatedFormat('d M Y') : '-';
+    }
+
+    /**
+     * Label bentuk pencairan untuk cetak; default Tunai bila belum diisi
+     * (kompatibel dengan data budget lama yang belum punya bentuk pencairan).
+     */
+    public function getBentukPencairanLabelAttribute(): string
+    {
+        return $this->bentuk_pencairan ?: 'Tunai';
+    }
+
+    /**
+     * Benar bila baris ini dicairkan lewat transfer bank.
+     */
+    public function isTransfer(): bool
+    {
+        return $this->bentuk_pencairan === 'Transfer';
     }
 }

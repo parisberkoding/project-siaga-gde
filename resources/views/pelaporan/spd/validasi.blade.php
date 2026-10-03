@@ -299,8 +299,8 @@
         return 'Rp ' + new Intl.NumberFormat('id-ID').format(num || 0);
     }
 
-    const kategoriBadges = { 'BBM': 'bg-danger', 'Tol': 'bg-primary', 'Parkir': 'bg-info', 'Hotel + Makan': 'bg-success', 'Lainnya': 'bg-secondary', 'Tambahan': 'bg-warning text-dark' };
-    const kategoriOptions = ['BBM', 'Tol', 'Parkir', 'Hotel + Makan', 'Lainnya', 'Tambahan'];
+    const kategoriBadges = { 'BBM': 'bg-danger', 'Tol': 'bg-primary', 'Parkir': 'bg-info', 'Makan': 'bg-success', 'Hotel': 'bg-dark', 'Lainnya': 'bg-secondary', 'Tambahan': 'bg-warning text-dark' };
+    const kategoriOptions = ['BBM', 'Tol', 'Parkir', 'Makan', 'Hotel', 'Lainnya', 'Tambahan'];
 
     // Badge hasil perbandingan plat struk vs plat kendaraan SPD (dari DB).
     function renderPlateBadge(item) {

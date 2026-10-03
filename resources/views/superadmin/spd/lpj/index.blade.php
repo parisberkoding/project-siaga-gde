@@ -253,14 +253,16 @@
                                                        class="btn btn-sm btn-outline-primary" title="Detail">
                                                         <i class="bi bi-eye"></i>
                                                     </a>
-                                                    <a href="{{ route('lpj.superadmin.print', $lpj) }}"
-                                                       class="btn btn-sm btn-outline-success" target="_blank" title="Cetak">
+                                                    <a href="{{ route('spd.laporan.export', $lpj) }}"
+                                                       class="btn btn-sm btn-outline-success" target="_blank" title="Cetak SPD + LPJ (1 bundel: Ringkasan Penggunaan, Lembar Persetujuan, Lampiran Penggunaan Dana)">
                                                         <i class="bi bi-printer"></i>
                                                     </a>
-                                                    <a href="{{ route('spd.laporan.export', $lpj) }}"
-                                                       class="btn btn-sm btn-outline-primary" target="_blank" title="Cetak SPD + LPJ (1 bundel: tabel, spending, lampiran)">
-                                                        <i class="bi bi-file-earmark-pdf"></i>
-                                                    </a>
+                                                    @can('permission', 'lpj.pencairan')
+                                                        <a href="{{ route('spd.laporan.pemberian-dana', $lpj) }}"
+                                                           class="btn btn-sm btn-outline-primary" target="_blank" title="Cetak Lembar Lampiran Pemberian Dana (khusus GA)">
+                                                            <i class="bi bi-cash-stack"></i>
+                                                        </a>
+                                                    @endcan
                                                 </div>
                                             </td>
                                         </tr>

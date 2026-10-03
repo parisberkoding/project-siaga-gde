@@ -245,6 +245,10 @@
 
                         <table class="table table-sm table-borderless mb-3">
                             <tr>
+                                <td class="text-muted">Makan:</td>
+                                <td class="text-end"><span id="summaryMakan">Rp 0</span></td>
+                            </tr>
+                            <tr>
                                 <td class="text-muted">Hotel:</td>
                                 <td class="text-end"><span id="summaryHotel">Rp 0</span></td>
                             </tr>
@@ -355,6 +359,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="col-6 col-md-3">
                         <label class="form-label small text-muted mb-1">Kategori</label>
                         <select class="form-select form-select-sm item-tipe" name="items[${itemCount}][tipe_penggunaan]" required>
+                            <option value="Makan" ${tipe === 'Makan' ? 'selected' : ''}>Makan</option>
                             <option value="Hotel" ${tipe === 'Hotel' ? 'selected' : ''}>Hotel</option>
                             <option value="BBM" ${tipe === 'BBM' ? 'selected' : ''}>BBM</option>
                             <option value="Parkir" ${tipe === 'Parkir' ? 'selected' : ''}>Parkir</option>
@@ -472,14 +477,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 const kategori = data.kategori;
                 const metadata = data.metadata || {};
                 const text = data.text || '';
-                const tipeMap = { 'BBM': 'BBM', 'Tol': 'Tol', 'Parkir': 'Parkir', 'Lainnya': 'Lain-lain' };
+                const tipeMap = { 'BBM': 'BBM', 'Tol': 'Tol', 'Parkir': 'Parkir', 'Makan': 'Makan', 'Hotel': 'Hotel', 'Lainnya': 'Lain-lain' };
 
                 card.querySelector('.item-struk-kategori').value = kategori;
                 card.querySelector('.item-kategori-source').value = 'ai';
                 card.querySelector('.item-metadata-json').value = JSON.stringify({ kategori, metadata, text });
 
                 const tipeSelect = card.querySelector('.item-tipe');
-                if (tipeSelect.value === 'BBM' || tipeSelect.value === 'Hotel' || !tipeSelect.value) {
+                if (tipeSelect.value === 'BBM' || tipeSelect.value === 'Hotel' || tipeSelect.value === 'Makan' || !tipeSelect.value) {
                     tipeSelect.value = tipeMap[kategori] || 'Lain-lain';
                 }
                 if (metadata.nominal && !(parseFloat(card.querySelector('.item-nominal').value) > 0)) {
@@ -521,7 +526,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function calculateTotal() {
         let total = 0;
-        let hotel = 0, bbm = 0, tol = 0, Parkir = 0, lain = 0;
+        let hotel = 0, makan = 0, bbm = 0, tol = 0, Parkir = 0, lain = 0;
         const spendPerDate = {};
 
         itemsContainer.querySelectorAll('.item-card').forEach(card => {
@@ -542,6 +547,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             switch(tipe) {
                 case 'Hotel': hotel += nominal; break;
+                case 'Makan': makan += nominal; break;
                 case 'BBM': bbm += nominal; break;
                 case 'Tol': tol += nominal; break;
                 case 'Parkir': Parkir += nominal; break;
@@ -556,6 +562,7 @@ document.addEventListener('DOMContentLoaded', function() {
         totalPengeluaranEl.textContent = formatRupiah(total);
         document.getElementById('summaryPengeluaran').textContent = formatRupiah(total);
         document.getElementById('summaryHotel').textContent = formatRupiah(hotel);
+        document.getElementById('summaryMakan').textContent = formatRupiah(makan);
         document.getElementById('summaryBBM').textContent = formatRupiah(bbm);
         document.getElementById('summaryTol').textContent = formatRupiah(tol);
         document.getElementById('summaryParkir').textContent = formatRupiah(Parkir);

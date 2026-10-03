@@ -932,9 +932,9 @@ class SpdController extends Controller
             'items.*.tanggal' => 'required|date',
             // Alur baru: setiap item = 1 gambar struk + kategori (AI/manual).
             // tipe_penggunaan lama tetap dipakai sebagai fallback.
-            'items.*.struk_kategori' => 'nullable|in:BBM,Tol,Parkir,Hotel + Makan,Lainnya',
+            'items.*.struk_kategori' => 'nullable|in:' . \App\Models\StrukItem::validationListBiaya(),
             'items.*.kategori_source' => 'nullable|in:ai,manual',
-            'items.*.tipe_penggunaan' => 'nullable|in:BBM,Tol,Parkir,Lain-lain',
+            'items.*.tipe_penggunaan' => 'nullable|in:BBM,Tol,Parkir,Makan,Hotel,Lain-lain',
             'items.*.nominal' => 'required|numeric|min:0',
             'items.*.keterangan' => 'nullable|string',
             'items.*.struk' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
@@ -1119,9 +1119,9 @@ class SpdController extends Controller
             'kebutuhan_bbm_liter' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
             'items.*.tanggal' => 'required|date',
-            'items.*.struk_kategori' => 'nullable|in:BBM,Tol,Parkir,Hotel + Makan,Lainnya',
+            'items.*.struk_kategori' => 'nullable|in:' . \App\Models\StrukItem::validationListBiaya(),
             'items.*.kategori_source' => 'nullable|in:ai,manual',
-            'items.*.tipe_penggunaan' => 'nullable|in:BBM,Tol,Parkir,Lain-lain',
+            'items.*.tipe_penggunaan' => 'nullable|in:BBM,Tol,Parkir,Makan,Hotel,Lain-lain',
             'items.*.nominal' => 'required|numeric|min:0',
             'items.*.keterangan' => 'nullable|string',
             'items.*.struk' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
@@ -1666,23 +1666,21 @@ class SpdController extends Controller
     }
 
     /**
-     * Print LPJ
+     * Print LPJ.
      *
-     * @param  int  $id
+     * Sejak dokumen lampiran LPJ SPD disusun ulang (Lembar Ringkasan Penggunaan,
+     * Lembar Persetujuan Penggantian Pertanggungjawaban, Lampiran Penggunaan
+     * Dana), route print ini memakai renderer dokumen gabungan yang sama dengan
+     * `spd.laporan.export` supaya tidak lagi mengeluarkan template lama
+     * (`template-lpj`) yang isinya baris kosong.
+     *
      * @return \Illuminate\View\View
      */
-    public function printLaporan(LpjPenggantian $laporan)
+    public function printLaporan(Request $request, LpjPenggantian $laporan)
     {
-        $laporan = LpjPenggantian::with([
-            'details',
-            'suratSpd.parentSurat',
-            'suratSpd.details',
-            'vehicle',
-            'user',
-        ])->where('status', 'approved')
-            ->findOrFail($laporan->id);
+        $laporan = LpjPenggantian::where('status', 'approved')->findOrFail($laporan->id);
 
-        return view('templates.template-surat.template-lpj', compact('laporan'));
+        return app(SpdPrintController::class)->exportLpj($request, $laporan);
     }
 
     // ╔═══════════════════════════════════════════════════════════════════════════╗

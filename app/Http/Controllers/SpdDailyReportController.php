@@ -342,7 +342,7 @@ class SpdDailyReportController extends Controller
             // Data isi-manual per indeks gambar (frontend mengirim ini untuk foto
             // yang gagal dianalisis AI, mis. karena rate-limit) — dilewati OCR.
             'manual_data'              => 'nullable|array',
-            'manual_data.*.kategori'   => 'required|in:BBM,Tol,Parkir,Hotel + Makan,Lainnya,Tambahan',
+            'manual_data.*.kategori'   => 'required|in:' . \App\Models\StrukItem::validationList(),
             'manual_data.*.nominal'    => 'nullable|numeric|min:0',
             'manual_data.*.tanggal'    => 'nullable|date',
             'manual_data.*.keterangan' => 'nullable|string|max:500',
@@ -526,7 +526,7 @@ class SpdDailyReportController extends Controller
 
         $validator = Validator::make($request->all(), [
             'nominal'        => 'required|numeric|min:0',
-            'struk_kategori' => 'required|in:BBM,Tol,Parkir,Hotel + Makan,Lainnya,Tambahan',
+            'struk_kategori' => 'required|in:' . \App\Models\StrukItem::validationList(),
             'keterangan'     => 'nullable|string|max:500',
         ]);
 
@@ -679,11 +679,11 @@ class SpdDailyReportController extends Controller
 
         // Gabungkan item dari seluruh laporan (draft + submitted) — SEGMENTASI FLOW BARU.
         $allItems = $reports->flatMap(fn ($r) => $r->strukItems);
-        $financialItems = $allItems->whereIn('struk_kategori', ['BBM', 'Tol', 'Parkir', 'Hotel + Makan', 'Lainnya']);
+        $financialItems = $allItems->whereIn('struk_kategori', \App\Models\StrukItem::KATEGORI_BIAYA);
 
         if ($financialItems->isEmpty()) {
             return redirect()->back()
-                ->with('error', 'Belum ada item pengeluaran (BBM/Tol/Parkir/Hotel + Makan/Lainnya) pada laporan harian.');
+                ->with('error', 'Belum ada item pengeluaran (BBM/Tol/Parkir/Makan/Hotel/Lainnya) pada laporan harian.');
         }
 
         $totalPengeluaran = (float) $financialItems->sum('nominal');
@@ -807,12 +807,13 @@ class SpdDailyReportController extends Controller
     protected static function defaultKeterangan(string $kategori): string
     {
         return match ($kategori) {
-            'BBM'           => 'Pengisian BBM',
-            'Tol'           => 'Pembayaran Tol',
-            'Parkir'        => 'Biaya Parkir',
-            'Hotel + Makan' => 'Biaya Hotel / Makan',
-            'Tambahan'      => 'Dokumentasi Tambahan',
-            default         => 'Pengeluaran Lainnya',
+            'BBM'      => 'Pengisian BBM',
+            'Tol'      => 'Pembayaran Tol',
+            'Parkir'   => 'Biaya Parkir',
+            'Makan'    => 'Biaya Makan',
+            'Hotel'    => 'Biaya Hotel',
+            'Tambahan' => 'Dokumentasi Tambahan',
+            default    => 'Pengeluaran Lainnya',
         };
     }
 

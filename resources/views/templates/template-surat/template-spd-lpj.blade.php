@@ -7,6 +7,13 @@
     <style>
         /* ═══════════════════════════════════════════════════════════
            DOKUMEN GABUNGAN SPD + LPJ (A4, margin 3 cm semua sisi)
+
+           Susunan halaman:
+             1. Surat Tugas (SPD)
+             2. Lembar Ringkasan Penggunaan Biaya Perjalanan Dinas
+             3. [KHUSUS GA] Lembar Lampiran Pemberian Dana Perjalanan Dinas
+             4. Lembar Persetujuan Penggantian Pertanggungjawaban
+             5. Lampiran Penggunaan Dana (foto struk)
            ═══════════════════════════════════════════════════════════ */
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -21,7 +28,7 @@
             line-height: 1.3;
             color: #000;
         }
-        
+
         /* Lebar konten: readable di layar (800-1340px), pas di halaman saat cetak */
         .sheet {
             width: 100%;
@@ -55,6 +62,18 @@
             text-align: center;
             font-size: 10pt;
             margin-bottom: 14px;
+        }
+
+        /* Judul dokumen LPJ rata kiri (sesuai mock Lembar Ringkasan) */
+        .doc-title {
+            font-size: 13pt;
+            font-weight: bold;
+            margin: 0 0 2px;
+        }
+
+        .doc-line {
+            font-size: 11pt;
+            margin: 2px 0 22px;
         }
 
         .intro {
@@ -133,141 +152,219 @@
         table.nama .no { width: 30px; }
         table.nama .nm { border-bottom: 1px dotted #000; }
 
-        /* ── Ringkasan LPJ (Page 2) ── */
-        .summary-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px 30px;
-            margin: 10px 0 16px;
+        /* ═══════════════════════════════════════════════════════════
+           LEMBAR RINGKASAN PENGGUNAAN BIAYA PERJALANAN DINAS
+           ═══════════════════════════════════════════════════════════ */
+        table.ringkasan-head {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0 0 18px;
+            font-size: 11pt;
         }
 
-        .summary-grid .item-label {
-            font-weight: bold;
+        table.ringkasan-head td {
+            padding: 2px 4px;
+            vertical-align: top;
         }
 
-        .box {
-            border: 1.2px solid #000;
-            border-radius: 4px;
-            padding: 12px 16px;
-            margin: 12px 0;
+        table.ringkasan-head .lbl { width: 115px; white-space: nowrap; }
+        table.ringkasan-head .sep { width: 14px; }
+        table.ringkasan-head .val { width: 34%; }
+
+        .date-block {
+            width: 62%;
+            border-collapse: collapse;
+            margin: 0 0 16px;
+            font-size: 10.5pt;
             page-break-inside: avoid;
         }
 
-        .box h3 {
-            font-size: 11pt;
-            text-transform: uppercase;
-            text-decoration: underline;
-            margin-bottom: 8px;
+        .date-block th,
+        .date-block td {
+            border: 1px solid #000;
+            padding: 3px 8px;
+            text-align: left;
         }
 
-        /* ── Tabel Rincian (Page 3) ── */
-        table.rincian {
+        .date-block th { font-weight: normal; width: 55%; }
+        .date-block td { text-align: right; }
+
+        .date-block tr.grand th,
+        .date-block tr.grand td {
+            font-weight: bold;
+            font-style: italic;
+        }
+
+        .ringkasan-total {
+            width: 62%;
+            border-collapse: collapse;
+            font-size: 10.5pt;
+            font-weight: bold;
+        }
+
+        .ringkasan-total th,
+        .ringkasan-total td {
+            border: 1px solid #000;
+            padding: 4px 8px;
+            text-align: left;
+        }
+
+        .ringkasan-total td { text-align: right; }
+
+        /* ═══════════════════════════════════════════════════════════
+           LEMBAR LAMPIRAN PEMBERIAN DANA PERJALANAN DINAS (Khusus GA)
+           ═══════════════════════════════════════════════════════════ */
+        table.pencairan {
             width: 100%;
             border-collapse: collapse;
-            margin: 12px 0;
+            margin: 22px 0 0;
             font-size: 10pt;
         }
 
-        table.rincian th,
-        table.rincian td {
+        table.pencairan th,
+        table.pencairan td {
             border: 1px solid #000;
-            padding: 5px 6px;
+            padding: 6px 8px;
+            vertical-align: top;
+        }
+
+        table.pencairan th {
+            font-weight: bold;
+            text-align: left;
+        }
+
+        table.pencairan th.center { text-align: center; }
+
+        table.pencairan td.num { text-align: right; white-space: nowrap; }
+        table.pencairan td.center { text-align: center; }
+
+        table.pencairan tfoot tr.grand td,
+        table.pencairan tfoot tr.grand th {
+            font-weight: bold;
+            font-style: italic;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           LEMBAR PERSETUJUAN PENGGANTIAN PERTANGGUNGJAWABAN
+           ═══════════════════════════════════════════════════════════ */
+        .pj-frame {
+            border: 1.5px solid #000;
+            padding: 0;
+            margin: 0 0 16px;
+        }
+
+        .pj-header {
             text-align: center;
+            padding: 8px 10px;
+            border-bottom: 1.5px solid #000;
+            line-height: 1.35;
         }
 
-        table.rincian th { background: #f0f0f0; font-weight: bold; }
-        table.rincian td.num { text-align: right; }
-        table.rincian tr.total td { font-weight: bold; background: #f7f7f7; }
+        .pj-header .l1 { font-weight: bold; }
 
-        /* ── Halaman Surat SPD — harus muat 1 lembar A4 ── */
-        .spd-page {
+        table.pj-info {
+            width: 100%;
+            border-collapse: collapse;
             font-size: 10.5pt;
-            line-height: 1.25;
+            border-bottom: 1.5px solid #000;
         }
 
-        .spd-page .page-title {
-            font-size: 12pt;
-            margin: 6px 0 2px;
+        table.pj-info td {
+            padding: 3px 8px;
+            vertical-align: top;
         }
 
-        .spd-page .page-subtitle {
+        table.pj-info .lbl { width: 130px; white-space: nowrap; }
+        table.pj-info .sep { width: 14px; }
+        table.pj-info .lbl2 { width: 90px; white-space: nowrap; }
+
+        table.pj-info tr.divider td { border-top: 1px solid #000; }
+
+        .pj-uraian {
+            padding: 4px 8px 10px;
+            border-bottom: 1.5px solid #000;
+            font-size: 10.5pt;
+        }
+
+        .pj-caption {
+            padding: 6px 8px;
+            font-size: 10.5pt;
+            border-bottom: 1px solid #000;
+        }
+
+        table.pj-table {
+            width: 100%;
+            border-collapse: collapse;
             font-size: 9.5pt;
-            margin-bottom: 8px;
         }
 
-        .spd-page .intro {
-            margin: 8px 0 2px;
+        table.pj-table th,
+        table.pj-table td {
+            border: 1px solid #000;
+            padding: 4px 6px;
+            text-align: center;
+            vertical-align: middle;
         }
 
-        .spd-page table.info td {
-            padding: 1px 4px;
+        table.pj-table th { font-weight: bold; }
+        table.pj-table td.num { text-align: right; white-space: nowrap; }
+        table.pj-table tr.subtotal td,
+        table.pj-table tr.subtotal th { font-weight: bold; background: #f7f7f7; }
+        table.pj-table tr.total td,
+        table.pj-table tr.total th { font-weight: bold; }
+        table.pj-table td.right { text-align: right; }
+        table.pj-table td.left { text-align: left; }
+
+        .pj-sign {
+            display: flex;
+            gap: 16px;
+            margin-top: 18px;
+            page-break-inside: avoid;
         }
 
-        .spd-page table.nama td {
-            padding: 1px 4px;
-        }
-
-        .spd-page .closing-text {
-            margin-top: 10px;
-        }
-
-        .spd-page .signature-loc {
-            margin-top: 20px;
-        }
-
-        /* ── Halaman Rincian — TTD selalu di bawah halaman ── */
-        .rincian-page {
+        .pj-sign .box {
+            flex: 1;
+            border: 1.5px solid #000;
+            min-height: 190px;
+            padding: 8px 10px;
+            font-size: 10pt;
             display: flex;
             flex-direction: column;
-            min-height: 237mm;
         }
 
-        .rincian-page .ttd-wrap {
-            margin-top: auto;
-            padding-top: 34px;
+        .pj-sign .box .t { margin-bottom: 6px; }
+
+        .pj-sign .box .bc {
+            width: 78px;
+            height: 78px;
+            margin: 6px 0 6px;
         }
 
-        /* ── Tanda Tangan ── */
-        .ttd-wrap {
-            display: flex;
-            justify-content: space-between;
-            gap: 16px;
-            page-break-inside: avoid;
+        .pj-sign .box .bc svg { width: 100%; height: 100%; }
+
+        .pj-sign .box .bc-empty {
+            width: 78px;
+            height: 78px;
+            margin: 6px 0 6px;
+            border: 1px dashed #999;
         }
 
-        .ttd {
-            flex: 1;
-            text-align: center;
-            min-height: 150px;
+        .pj-sign .box .note {
+            font-size: 8.5pt;
+            color: #333;
+            margin-bottom: 14px;
         }
 
-        .ttd .title { font-weight: bold; margin-bottom: 64px; }
-        .ttd .name {
+        .pj-sign .box .nm {
             border-top: 1px solid #000;
-            padding-top: 6px;
+            padding-top: 4px;
             font-weight: bold;
+            margin-top: auto;
         }
-        .ttd .role { font-size: 9.5pt; margin-top: 2px; }
 
-        /* ── Ringkasan Dana (Diberikan / Pengembalian) ── */
-        .ringkasan-dana {
-            margin-bottom: 24px;
-            padding: 12px 16px;
-            border: 1px solid #000;
-            border-radius: 6px;
-            width: 60%;
-            page-break-inside: avoid;
-        }
-        .ringkasan-dana .ringkasan-row {
-            display: flex;
-            margin: 4px 0;
-            font-size: 11pt;
-        }
-        .ringkasan-dana .ringkasan-label { width: 140px; }
-        .ringkasan-dana .ringkasan-colon { width: 12px; }
-        .ringkasan-dana .ringkasan-value { font-weight: bold; }
+        .pj-sign .box .jb { margin-top: 2px; }
 
-        /* ── Lampiran Foto (masonry grid) ── */
+        /* ── Lampiran Penggunaan Dana (foto struk) ── */
         .photo-page-header {
             text-align: center;
             margin: 4px 0 14px;
@@ -368,6 +465,42 @@
             padding: 20px;
         }
 
+        /* ── Halaman Surat SPD — harus muat 1 lembar A4 ── */
+        .spd-page {
+            font-size: 10.5pt;
+            line-height: 1.25;
+        }
+
+        .spd-page .page-title {
+            font-size: 12pt;
+            margin: 6px 0 2px;
+        }
+
+        .spd-page .page-subtitle {
+            font-size: 9.5pt;
+            margin-bottom: 8px;
+        }
+
+        .spd-page .intro {
+            margin: 8px 0 2px;
+        }
+
+        .spd-page table.info td {
+            padding: 1px 4px;
+        }
+
+        .spd-page table.nama td {
+            padding: 1px 4px;
+        }
+
+        .spd-page .closing-text {
+            margin-top: 10px;
+        }
+
+        .spd-page .signature-loc {
+            margin-top: 20px;
+        }
+
         /* ── Toolbar cetak (hidden saat cetak) ── */
         .no-print {
             position: sticky;
@@ -461,6 +594,17 @@
             box-shadow: 0 4px 10px rgba(22, 163, 74, 0.3);
         }
 
+        .act-btn-ga {
+            background: #4338ca;
+            color: #fff;
+            box-shadow: 0 1px 3px rgba(67, 56, 202, 0.35);
+        }
+
+        .act-btn-ga:hover {
+            background: #3730a3;
+            transform: translateY(-1px);
+        }
+
         .act-btn-close {
             background: #ffffff;
             color: #374151;
@@ -491,6 +635,16 @@
 </head>
 <body>
 
+@php
+    $kolomBiaya = \App\Models\LpjPenggantian::KOLOM_BIAYA;
+    $labelBiaya = \App\Models\StrukItem::KATEGORI_LABEL;
+    $rp = fn ($v) => 'Rp. ' . number_format((float) $v, 0, ',', '.');
+    $balanceAwal = $laporan->balance_awal;
+    $balanceAkhir = $laporan->balance_akhir;
+    $periodeDinas = \Carbon\Carbon::parse($surat->tanggal_berangkat)->translatedFormat('d F Y')
+        . ' s/d ' . \Carbon\Carbon::parse($surat->tanggal_kembali)->translatedFormat('d F Y');
+@endphp
+
 <div class="no-print">
     <div class="toolbar">
         <div class="toolbar-title">
@@ -498,6 +652,16 @@
             <span class="doc-name">Surat SPD &amp; LPJ — {{ $surat->nomor_surat }}</span>
         </div>
         <div class="toolbar-actions">
+            @if($includePemberianDana ?? false)
+                <a href="{{ route('spd.laporan.pemberian-dana', $laporan) }}" target="_blank" class="act-btn act-btn-ga">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3v12"></path>
+                        <path d="m7 10 5 5 5-5"></path>
+                        <path d="M5 21h14"></path>
+                    </svg>
+                    Lembar Pemberian Dana (GA)
+                </a>
+            @endif
             <button onclick="window.print()" class="act-btn act-btn-print">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="6 9 6 2 18 2 18 9"></polyline>
@@ -641,167 +805,270 @@
     </div>
 
     {{-- ═══════════════════════════════════════════════════════════
-         PAGE 2 : RINGKASAN LAPORAN
+         PAGE 2 : LEMBAR RINGKASAN PENGGUNAAN BIAYA PERJALANAN DINAS
          ═══════════════════════════════════════════════════════════ --}}
     <div class="page-break"></div>
 
-    <div class="page-title">Ringkasan Laporan</div>
-    <div class="page-subtitle">Laporan Pertanggungjawaban - {{ $laporan->lpj_number }}</div>
+    <div class="ringkasan-page">
+        <div class="doc-title">Lembar Ringkasan Penggunaan Biaya Perjalanan Dinas</div>
+        <div class="doc-line">No. Surat Dinas : <strong>{{ $surat->nomor_surat }}</strong></div>
 
-    <table class="info">
-        <tr>
-            <td class="label">Nomor Surat Tugas</td>
-            <td>:</td>
-            <td class="value">{{ $surat->nomor_surat }}</td>
-        </tr>
-        <tr>
-            <td class="label">Pengemudi</td>
-            <td>:</td>
-            <td class="value">{{ $laporan->nama ?: $surat->pengemudi_nama }}</td>
-        </tr>
-        <tr>
-            <td class="label">Kendaraan</td>
-            <td>:</td>
-            <td class="value">{{ $laporan->kendaraan_label }}</td>
-        </tr>
-        <tr>
-            <td class="label">Periode SPD</td>
-            <td>:</td>
-            <td class="value">{{ \Carbon\Carbon::parse($surat->tanggal_berangkat)->translatedFormat('d M Y') }} s/d {{ \Carbon\Carbon::parse($surat->tanggal_kembali)->translatedFormat('d M Y') }} ({{ $surat->lama_perjalanan_hari }} hari)</td>
-        </tr>
-    </table>
+        <table class="ringkasan-head">
+            <tr>
+                <td class="lbl">Uang Dari</td>
+                <td class="sep">:</td>
+                <td class="val">{{ $laporan->uang_dari ?: 'KAS' }}</td>
+                <td class="lbl">Pengeluaran</td>
+                <td class="sep">:</td>
+                <td class="val">{{ $rp($laporan->total_pengeluaran) }}</td>
+            </tr>
+            <tr>
+                <td class="lbl">Balance Awal</td>
+                <td class="sep">:</td>
+                <td class="val">{{ $rp($balanceAwal) }}</td>
+                <td class="lbl">Pengembalian</td>
+                <td class="sep">:</td>
+                <td class="val">{{ $rp($laporan->pengembalian) }}</td>
+            </tr>
+            <tr>
+                <td class="lbl">Balance Akhir</td>
+                <td class="sep">:</td>
+                <td class="val">
+                    {{ $rp($balanceAkhir) }}
+                    @if($balanceAkhir < 0)
+                        <span style="font-size: 9pt;">(kekurangan / driver menombok)</span>
+                    @endif
+                </td>
+                <td class="lbl">Kekurangan</td>
+                <td class="sep">:</td>
+                <td class="val">{{ $rp($laporan->kekurangan) }}</td>
+            </tr>
+        </table>
 
-    <div class="box">
-        <h3>Rekapitulasi Pengeluaran</h3>
-        <div class="summary-grid">
-            <div>
-                <span class="item-label">Kebutuhan BBM</span><br>
-                <span>{{ $laporan->kebutuhan_bbm_liter !== null ? number_format((float) $laporan->kebutuhan_bbm_liter, 0, ',', '.') . ' liter' : '-' }}</span>
-            </div>
-            <div>
-                <span class="item-label">Spending BBM</span><br>
-                <span>Rp {{ number_format($spending['BBM'], 0, ',', '.') }}</span>
-            </div>
-            <div>
-                <span class="item-label">Spending Parkir</span><br>
-                <span>Rp {{ number_format($spending['Parkir'], 0, ',', '.') }}</span>
-            </div>
-            <div>
-                <span class="item-label">Spending Tol</span><br>
-                <span>Rp {{ number_format($spending['Tol'], 0, ',', '.') }}</span>
-            </div>
-            <div>
-                <span class="item-label">Spending Lainnya</span><br>
-                <span>Rp {{ number_format($spending['Lainnya'], 0, ',', '.') }}</span>
-            </div>
-            <div>
-                <span class="item-label">Total Pengeluaran</span><br>
-                <strong>Rp {{ number_format($laporan->total_pengeluaran ?: array_sum($spending), 0, ',', '.') }}</strong>
-            </div>
-        </div>
+        {{-- Blok per tanggal — diulang seiring berapa kali input pada tanggalnya --}}
+        @forelse($rincian as $row)
+            <table class="date-block">
+                <tr>
+                    <th>Tanggal</th>
+                    <td>{{ $row['tanggal'] ? $row['tanggal']->translatedFormat('d F Y') : '-' }}</td>
+                </tr>
+                @foreach($kolomBiaya as $kolom)
+                    <tr>
+                        <th>{{ $labelBiaya[$kolom] ?? $kolom }}</th>
+                        <td>{{ $rp($row[$kolom]) }}</td>
+                    </tr>
+                @endforeach
+                <tr class="grand">
+                    <th>Grand Total</th>
+                    <td>{{ $rp($row['subtotal']) }}</td>
+                </tr>
+            </table>
+        @empty
+            <p style="font-size: 10.5pt;">Tidak ada rincian pengeluaran pada LPJ ini.</p>
+        @endforelse
+
+        @if(!empty($rincian))
+            <table class="ringkasan-total">
+                <tr>
+                    <th>Grand Total Pengeluaran</th>
+                    <td>{{ $rp($grandTotalRincian ?? collect($rincian)->sum('subtotal')) }}</td>
+                </tr>
+            </table>
+        @endif
     </div>
 
-    <div class="box">
-        <h3>Rincian Tempuh Kendaraan</h3>
-        <div class="summary-grid">
-            <div>
-                <span class="item-label">Odometer sebelum SPD</span><br>
-                <span>{{ $laporan->odo_before !== null ? number_format((float) $laporan->odo_before, 0, ',', '.') . ' km' : '-' }}</span>
+    {{-- ═══════════════════════════════════════════════════════════
+         PAGE 3 : [KHUSUS GENERAL AFFAIRS]
+                  LEMBAR LAMPIRAN PEMBERIAN DANA PERJALANAN DINAS
+         ═══════════════════════════════════════════════════════════ --}}
+    @if($includePemberianDana ?? false)
+        <div class="page-break"></div>
+
+        <div class="pemberian-page">
+            <div class="doc-title">Lembar Lampiran Pemberian Dana Perjalanan Dinas</div>
+            <div class="doc-line">No. Surat Dinas : <strong>{{ $surat->nomor_surat }}</strong></div>
+
+            <table class="ringkasan-head">
+                <tr>
+                    <td class="lbl">Balance Awal</td>
+                    <td class="sep">:</td>
+                    <td class="val">{{ $rp(($pencairans ?? collect())->sum('nominal')) }}</td>
+                    <td class="lbl">Balance Akhir</td>
+                    <td class="sep">:</td>
+                    <td class="val">
+                        {{ $rp(($pencairans ?? collect())->sum('nominal') - (float) $laporan->total_pengeluaran) }}
+                    </td>
+                </tr>
+            </table>
+
+            <table class="pencairan">
+                <thead>
+                    <tr>
+                        <th class="center" style="width: 5%;">No.</th>
+                        <th style="width: 16%;">Tanggal</th>
+                        <th style="width: 22%;">Nomor Referensi Perbankan</th>
+                        <th class="center" style="width: 16%;">Nominal</th>
+                        <th style="width: 20%;">Bentuk Pencairan<br><span style="font-weight: normal;">Tunai / Transfer</span></th>
+                        <th style="width: 21%;">Rek. Tujuan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($pencairans ?? [] as $pencairan)
+                        <tr>
+                            <td class="center">{{ $loop->iteration }}</td>
+                            <td>{{ $pencairan->tanggal ? $pencairan->tanggal->translatedFormat('d F Y') : '-' }}</td>
+                            <td>{{ $pencairan->bank_reference ?: '-' }}</td>
+                            <td class="num">{{ $rp($pencairan->nominal) }}</td>
+                            <td>{{ $pencairan->bentuk_pencairan_label }}</td>
+                            <td>{{ $pencairan->isTransfer() ? ($pencairan->rek_tujuan ?: '-') : '- (tunai)' }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="center">Belum ada data pencairan dana.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+                <tfoot>
+                    <tr class="grand">
+                        <th colspan="3" class="left">Grand Total</th>
+                        <td class="num">{{ $rp(($pencairans ?? collect())->sum('nominal')) }}</td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    @endif
+
+    {{-- ═══════════════════════════════════════════════════════════
+         PAGE 4 : LEMBAR PERSETUJUAN
+                  PENGGANTIAN PERTANGGUNGJAWABAN
+                  PEMBAYARAN BIAYA PERJALANAN DINAS
+         ═══════════════════════════════════════════════════════════ --}}
+    <div class="page-break"></div>
+
+    <div class="persetujuan-page">
+        <div class="pj-frame">
+            <div class="pj-header">
+                <div class="l1">Lembar Persetujuan</div>
+                <div class="l1">Penggantian Pertanggungjawaban</div>
+                <div class="l1">Pembayaran biaya perjalanan dinas</div>
             </div>
-            <div>
-                <span class="item-label">Odometer setelah SPD</span><br>
-                <span>{{ $laporan->odo_after !== null ? number_format((float) $laporan->odo_after, 0, ',', '.') . ' km' : '-' }}</span>
+
+            <table class="pj-info">
+                <tr>
+                    <td class="lbl">No. Kendaraan</td>
+                    <td class="sep">:</td>
+                    <td>{{ $laporan->kendaraan_label }}</td>
+                    <td class="lbl2">Tanggal</td>
+                    <td class="sep">:</td>
+                    <td>{{ $laporan->created_at ? $laporan->created_at->locale('id')->translatedFormat('d F Y H:i') : '-' }}</td>
+                </tr>
+                <tr>
+                    <td class="lbl">Nama</td>
+                    <td class="sep">:</td>
+                    <td colspan="4">{{ $laporan->nama ?: $surat->pengemudi_nama }}</td>
+                </tr>
+                <tr>
+                    <td class="lbl">Jabatan</td>
+                    <td class="sep">:</td>
+                    <td colspan="4">{{ $laporan->jabatan ?: '-' }}</td>
+                </tr>
+            </table>
+
+            <div class="pj-uraian">
+                <strong>Uraian Perjalanan</strong> : {{ $laporan->uraian ?: '-' }}
             </div>
-            <div>
-                <span class="item-label">Total jarak tempuh</span><br>
-                <strong>{{ $laporan->getTotalJarakTempuh() !== null ? number_format($laporan->getTotalJarakTempuh(), 0, ',', '.') . ' km' : '-' }}</strong>
+
+            <div class="pj-caption">Tanggal : {{ $periodeDinas }}</div>
+
+            <table class="pj-table">
+                <thead>
+                    <tr>
+                        <th style="width: 6%;">No.</th>
+                        <th style="width: 16%;">Tanggal</th>
+                        @foreach($kolomBiaya as $kolom)
+                            <th>{{ $labelBiaya[$kolom] ?? $kolom }}</th>
+                        @endforeach
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($rincian as $row)
+                        <tr>
+                            <td>{{ $loop->iteration }}</td>
+                            <td>{{ $row['tanggal'] ? $row['tanggal']->translatedFormat('d M Y') : '-' }}</td>
+                            @foreach($kolomBiaya as $kolom)
+                                <td class="num">{{ $row[$kolom] > 0 ? $rp($row[$kolom]) : '' }}</td>
+                            @endforeach
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="{{ count($kolomBiaya) + 2 }}">Tidak ada rincian pengeluaran.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+                <tfoot>
+                    <tr class="subtotal">
+                        <td class="left" colspan="2">&lt;end of pada tanggal itu&gt;</td>
+                        @foreach($kolomBiaya as $kolom)
+                            <td class="num">{{ $rp($spending[$kolom] ?? 0) }}</td>
+                        @endforeach
+                    </tr>
+                    <tr class="total">
+                        <td class="right" colspan="7">Grand Total</td>
+                        <td class="num">{{ $rp($grandTotalRincian ?? collect($rincian)->sum('subtotal')) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="pj-sign">
+            <div class="box">
+                <div class="t">Menyetujui Pengguna</div>
+
+                @if(!empty($qrPengguna))
+                    <div class="bc">{!! $qrPengguna !!}</div>
+                @else
+                    <div class="bc-empty"></div>
+                @endif
+
+                <div class="note">
+                    Barcode dari salah satu orang yang berangkat SPD kecuali driver.
+                </div>
+
+                <div class="nm">{{ $laporan->approverPengguna?->nama_lengkap ?: '_________________' }}</div>
+                <div class="jb">{{ $laporan->approverPengguna?->jabatan ?: '_________________' }}</div>
+            </div>
+
+            <div class="box">
+                <div class="t">Menyetujui Divisi GA</div>
+
+                @if(!empty($qrDivisiGa))
+                    <div class="bc">{!! $qrDivisiGa !!}</div>
+                @else
+                    <div class="bc-empty"></div>
+                @endif
+
+                <div class="note">
+                    Barcode dari salah satu divisi GA dari unit yang sama dengan unit driver dan pengguna.
+                </div>
+
+                <div class="nm">{{ $laporan->approverDivisiGa?->nama_lengkap ?: '_________________' }}</div>
+                <div class="jb">{{ $laporan->approverDivisiGa?->jabatan ?: '_________________' }}</div>
             </div>
         </div>
     </div>
 
     {{-- ═══════════════════════════════════════════════════════════
-         PAGE 3 : RINCIAN PENGGUNAAN
-         ═══════════════════════════════════════════════════════════ --}}
-    <div class="page-break"></div>
-
-    <div class="rincian-page">
-    <div class="page-title">Rincian Penggunaan</div>
-    <div class="page-subtitle">{{ $surat->nomor_surat }}</div>
-
-    <table class="rincian">
-        <thead>
-            <tr>
-                <th style="width: 22%;">Tanggal</th>
-                <th>Tol</th>
-                <th>BBM</th>
-                <th>Parkir</th>
-                <th>Lainnya</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($rincian as $row)
-            <tr>
-                <td>{{ $row['tanggal'] ? $row['tanggal']->translatedFormat('d M Y') : '-' }}</td>
-                <td class="num">{{ $row['Tol'] > 0 ? 'Rp ' . number_format($row['Tol'], 0, ',', '.') : '' }}</td>
-                <td class="num">{{ $row['BBM'] > 0 ? 'Rp ' . number_format($row['BBM'], 0, ',', '.') : '' }}</td>
-                <td class="num">{{ $row['Parkir'] > 0 ? 'Rp ' . number_format($row['Parkir'], 0, ',', '.') : '' }}</td>
-                <td class="num">{{ $row['Lainnya'] > 0 ? 'Rp ' . number_format($row['Lainnya'], 0, ',', '.') : '' }}</td>
-            </tr>
-            @empty
-            <tr>
-                <td colspan="5">Tidak ada rincian pengeluaran.</td>
-            </tr>
-            @endforelse
-        </tbody>
-        <tfoot>
-            <tr class="total">
-                <td>Total</td>
-                <td class="num">Rp {{ number_format($spending['Tol'], 0, ',', '.') }}</td>
-                <td class="num">Rp {{ number_format($spending['BBM'], 0, ',', '.') }}</td>
-                <td class="num">Rp {{ number_format($spending['Parkir'], 0, ',', '.') }}</td>
-                <td class="num">Rp {{ number_format($spending['Lainnya'], 0, ',', '.') }}</td>
-            </tr>
-        </tfoot>
-    </table>
-
-    <div class="ringkasan-dana">
-        <div class="ringkasan-row">
-            <span class="ringkasan-label">Diberikan</span>
-            <span class="ringkasan-colon">:</span>
-            <span class="ringkasan-value">Rp {{ number_format((float) $laporan->jumlah_diberikan, 0, ',', '.') }}</span>
-        </div>
-        <div class="ringkasan-row">
-            <span class="ringkasan-label">Pengembalian</span>
-            <span class="ringkasan-colon">:</span>
-            <span class="ringkasan-value">Rp {{ number_format((float) $laporan->pengembalian, 0, ',', '.') }}</span>
-        </div>
-    </div>
-
-    <div class="ttd-wrap">
-        <div class="ttd">
-            <div class="title">User</div>
-            <div class="name">{{ $laporan->approverPengguna?->nama_lengkap ?: ($laporan->nama ?: '_________________') }}</div>
-            <div class="role">User yang berangkat / mengetahui</div>
-        </div>
-        <div class="ttd">
-            <div class="title">Divisi GA</div>
-            <div class="name">{{ $laporan->approverDivisiGa?->nama_lengkap ?: '_________________' }}</div>
-            <div class="role">Admin / Supervisor / Manager / Asst. Manager</div>
-        </div>
-    </div>
-    </div>
-
-    {{-- ═══════════════════════════════════════════════════════════
-         PAGE 4+ : LAMPIRAN FOTO-FOTO
+         PAGE 5+ : LAMPIRAN PENGGUNAAN DANA (FOTO-FOTO STRUK)
          ═══════════════════════════════════════════════════════════ --}}
     @if($photoGrid->isNotEmpty())
         @foreach($photoGrid as $pageIndex => $page)
         <div class="page-break"></div>
 
         <div class="photo-page-header">
-            <h2>Lampiran Foto-Foto</h2>
+            <h2>Lampiran Penggunaan Dana</h2>
             <div class="desc">
-                {{ $surat->nomor_surat }} — Halaman {{ $pageIndex + 1 }} dari {{ $photoGrid->count() }}
+                Bukti foto struk — {{ $surat->nomor_surat }} — Halaman {{ $pageIndex + 1 }} dari {{ $photoGrid->count() }}
             </div>
             <div class="pjum-date">
                 Tanggal PJUM: <strong>{{ \Carbon\Carbon::parse($laporan->tanggal_lpj)->locale('id')->translatedFormat('l, d F Y') }}</strong>
@@ -812,7 +1079,7 @@
             @php $prevKategori = null; @endphp
             @foreach($page as $entry)
                 @if($prevKategori !== null && $entry['item']->struk_kategori !== $prevKategori)
-                    <div class="grid-divider">{{ $entry['item']->struk_kategori }}</div>
+                    <div class="grid-divider">{{ $labelBiaya[$entry['item']->struk_kategori] ?? $entry['item']->struk_kategori }}</div>
                 @endif
                 <div class="items">
                     {{-- Foto ditampilkan lebih dulu, info ringkas di bawahnya --}}
@@ -825,7 +1092,7 @@
                     </div>
                     <div class="credential">
                         <div><span class="cat">Jenis Lampiran :</span> {{ $entry['item']->struk_kategori }}</div>
-                        <div><span class="cat">Nominal :</span> Rp {{ number_format((float) $entry['item']->nominal, 0, ',', '.') }}</div>
+                        <div><span class="cat">Nominal :</span> {{ $rp($entry['item']->nominal) }}</div>
                         <div><span class="cat">Tanggal Upload :</span>
                             {{ $entry['item']->created_at ? $entry['item']->created_at->locale('id')->translatedFormat('l, d F Y') : '-' }}
                         </div>

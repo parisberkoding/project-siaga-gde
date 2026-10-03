@@ -62,21 +62,65 @@ class StrukItem extends Model
     }
 
     /**
-     * Kategori yang diizinkan (self-label) — di luar itu = Lainnya
+     * Kategori yang diizinkan (self-label) — di luar itu = Lainnya.
+     *
+     * Sejak dokumen LPJ SPD baru, "Hotel + Makan" dipecah menjadi dua kategori
+     * mandiri ("Makan" & "Hotel") agar bisa dipetakan ke kolom biaya yang
+     * berbeda pada Lembar Persetujuan & Lembar Ringkasan Penggunaan.
      */
-    public const KATEGORI = ['BBM', 'Tol', 'Parkir', 'Hotel + Makan', 'Lainnya', 'Tambahan'];
+    public const KATEGORI = ['BBM', 'Tol', 'Parkir', 'Makan', 'Hotel', 'Lainnya', 'Tambahan'];
 
     /**
-     * Prefix kode per kategori: S.BBM, S.TOL, S.PRK, S.HTL, S.LAINNYA, S.TBH
+     * Kategori yang dihitung sebagai pengeluaran (Tambahan = dokumentasi, bukan biaya).
+     */
+    public const KATEGORI_BIAYA = ['BBM', 'Tol', 'Parkir', 'Makan', 'Hotel', 'Lainnya'];
+
+    /**
+     * Label kolom biaya pada dokumen cetak LPJ.
+     */
+    public const KATEGORI_LABEL = [
+        'Tol'     => 'Biaya Tol',
+        'Parkir'  => 'Biaya Parkir',
+        'BBM'     => 'Biaya BBM',
+        'Makan'   => 'Biaya Makan',
+        'Hotel'   => 'Biaya Hotel',
+        'Lainnya' => 'Lain-lain',
+        'Tambahan' => 'Dokumentasi Tambahan',
+    ];
+
+    /**
+     * Prefix kode per kategori: S.BBM, S.TOL, S.PRK, S.MKN, S.HTL, S.LAINNYA, S.TBH
      */
     public const KATEGORI_PREFIX = [
-        'BBM'           => 'S.BBM',
-        'Tol'           => 'S.TOL',
-        'Parkir'        => 'S.PRK',
-        'Hotel + Makan' => 'S.HTL',
-        'Lainnya'       => 'S.LAINNYA',
-        'Tambahan'      => 'S.TBH',
+        'BBM'      => 'S.BBM',
+        'Tol'      => 'S.TOL',
+        'Parkir'   => 'S.PRK',
+        'Makan'    => 'S.MKN',
+        'Hotel'    => 'S.HTL',
+        'Lainnya'  => 'S.LAINNYA',
+        'Tambahan' => 'S.TBH',
     ];
+
+    /**
+     * Daftar kategori untuk aturan validasi Laravel (`in:...`).
+     *
+     * Nilai lama "Hotel + Makan" tetap diterima agar payload/klien lama tidak
+     * langsung ditolak; normalisasi ke 'Makan'/'Hotel' terjadi di
+     * normalizeKategori().
+     */
+    public static function validationList(): string
+    {
+        return implode(',', array_merge(self::KATEGORI, ['Hotel + Makan']));
+    }
+
+    /**
+     * Daftar kategori BIAYA saja (tanpa Tambahan) untuk aturan validasi form
+     * LPJ, karena baris `lpj_penggantian_details` hanya menampung pengeluaran.
+     */
+    public static function validationListBiaya(): string
+    {
+        return implode(',', array_merge(self::KATEGORI_BIAYA, ['Hotel + Makan']));
+    }
 
     /**
      * Generate item_code unik.
@@ -93,8 +137,12 @@ class StrukItem extends Model
     }
 
     /**
-     * Normalisasi kategori hasil AI ke salah satu dari 4 kategori valid.
-     * Teks bebas di luar BBM/Tol/Parkir dikembalikan sebagai 'Lainnya'.
+     * Normalisasi kategori (hasil AI / input bebas) ke salah satu kategori valid.
+     * Teks bebas di luar BBM/Tol/Parkir/Makan/Hotel dikembalikan sebagai 'Lainnya'.
+     *
+     * Catatan kompatibilitas: nilai lama "Hotel + Makan" tetap diterima dan
+     * dipetakan ulang ke 'Makan' (kategori yang paling umum) agar data lama /
+     * payload yang belum diperbarui tidak langsung menjadi 'Lainnya'.
      */
     public static function normalizeKategori(?string $kategori): string
     {
@@ -102,6 +150,10 @@ class StrukItem extends Model
 
         if (in_array($kategori, self::KATEGORI, true)) {
             return $kategori;
+        }
+
+        if ($kategori === 'Hotel + Makan') {
+            return 'Makan';
         }
 
         $lower = strtolower($kategori);
@@ -114,8 +166,11 @@ class StrukItem extends Model
         if (str_contains($lower, 'parkir') || str_contains($lower, 'parking')) {
             return 'Parkir';
         }
-        if (str_contains($lower, 'hotel') || str_contains($lower, 'penginapan') || str_contains($lower, 'inn') || str_contains($lower, 'makan') || str_contains($lower, 'restoran') || str_contains($lower, 'restaurant') || str_contains($lower, 'konsumsi') || str_contains($lower, 'food') || str_contains($lower, 'catering') || str_contains($lower, 'kafe') || str_contains($lower, 'cafe')) {
-            return 'Hotel + Makan';
+        if (str_contains($lower, 'hotel') || str_contains($lower, 'penginapan') || str_contains($lower, 'inn') || str_contains($lower, 'room') || str_contains($lower, 'kamar') || str_contains($lower, 'resort') || str_contains($lower, 'losmen') || str_contains($lower, 'homestay')) {
+            return 'Hotel';
+        }
+        if (str_contains($lower, 'makan') || str_contains($lower, 'restoran') || str_contains($lower, 'restaurant') || str_contains($lower, 'konsumsi') || str_contains($lower, 'food') || str_contains($lower, 'catering') || str_contains($lower, 'kafe') || str_contains($lower, 'cafe') || str_contains($lower, 'minum')) {
+            return 'Makan';
         }
         if (str_contains($lower, 'tambahan') || str_contains($lower, 'odometer') || str_contains($lower, 'odoo') || str_contains($lower, 'dashboard') || str_contains($lower, 'km') || str_contains($lower, 'speedometer')) {
             return 'Tambahan';
@@ -160,13 +215,22 @@ class StrukItem extends Model
     public function getKategoriBadgeClass(): string
     {
         return match ($this->struk_kategori) {
-            'BBM'           => 'bg-danger',
-            'Tol'           => 'bg-primary',
-            'Parkir'        => 'bg-info',
-            'Hotel + Makan' => 'bg-success',
-            'Tambahan'      => 'bg-warning text-dark',
-            default         => 'bg-secondary',
+            'BBM'      => 'bg-danger',
+            'Tol'      => 'bg-primary',
+            'Parkir'   => 'bg-info',
+            'Makan'    => 'bg-success',
+            'Hotel'    => 'bg-dark',
+            'Tambahan' => 'bg-warning text-dark',
+            default    => 'bg-secondary',
         };
+    }
+
+    /**
+     * Label kategori untuk dokumen cetak ("Biaya Makan", dst).
+     */
+    public function getKategoriLabelAttribute(): string
+    {
+        return self::KATEGORI_LABEL[$this->struk_kategori] ?? $this->struk_kategori;
     }
 
     public function getPathUrlAttribute(): ?string

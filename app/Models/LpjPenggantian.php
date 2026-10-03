@@ -233,7 +233,7 @@ class LpjPenggantian extends Model
             ->sum('nominal');
 
         $this->total_biaya_lain = $this->details()
-            ->whereIn('tipe_penggunaan', ['Lain-lain', 'Hotel + Makan'])
+            ->whereIn('tipe_penggunaan', ['Lain-lain', 'Lainnya', 'Makan', 'Hotel'])
             ->sum('nominal');
 
         $this->total_pengeluaran = $this->total_biaya_tol +
@@ -588,20 +588,71 @@ class LpjPenggantian extends Model
     }
 
     /**
-     * Total nominal per kategori dari struk_items (pengeluaran saja, tanpa Tambahan).
+     * Kolom biaya pada dokumen cetak (Lembar Persetujuan & Lembar Ringkasan).
+     * Urutannya mengikuti header dokumen:
+     * Tol → Parkir → BBM → Makan → Hotel → Lain-lain.
+     */
+    public const KOLOM_BIAYA = ['Tol', 'Parkir', 'BBM', 'Makan', 'Hotel', 'Lainnya'];
+
+    /**
+     * Sumber baris biaya untuk dokumen cetak.
      *
-     * @return array<string, float> ['Tol' => .., 'BBM' => .., 'Parkir' => .., 'Lainnya' => ..]
+     * Basis utama = `lpj_penggantian_details`, karena tabel itulah yang
+     * menyimpan angka resmi yang dipakai menghitung `total_pengeluaran`.
+     * Setiap detail diperkaya (kategori, tanggal, foto) oleh `struk_items`
+     * yang tertaut, sehingga nominal pada dokumen tidak pernah menyimpang dari
+     * total LPJ. Bila LPJ dibuat lewat jalur lama yang tidak membuat detail,
+     * baris disusun dari `struk_items` (kategori biaya saja).
+     *
+     * @return \Illuminate\Support\Collection<int, array{tanggal: ?\Carbon\Carbon, kategori: string, nominal: float, item: ?StrukItem}>
+     */
+    private function biayaRows(): \Illuminate\Support\Collection
+    {
+        $details = $this->details;
+
+        if ($details->isNotEmpty()) {
+            $strukPerDetail = $this->strukItems
+                ->filter(fn ($item) => $item->lpj_detail_id !== null)
+                ->keyBy('lpj_detail_id');
+
+            return $details->map(function ($detail) use ($strukPerDetail) {
+                /** @var StrukItem|null $struk */
+                $struk = $strukPerDetail->get($detail->id);
+
+                $kategori = $struk?->struk_kategori
+                    ?? ($detail->tipe_penggunaan === 'Lain-lain' ? 'Lainnya' : $detail->tipe_penggunaan);
+
+                return [
+                    'tanggal'  => $struk?->tanggal ?? $detail->tanggal,
+                    'kategori' => $kategori,
+                    'nominal'  => (float) ($struk?->nominal ?? $detail->nominal),
+                    'item'     => $struk,
+                ];
+            })->values();
+        }
+
+        return $this->strukItems
+            ->whereIn('struk_kategori', self::KOLOM_BIAYA)
+            ->map(fn ($item) => [
+                'tanggal'  => $item->tanggal,
+                'kategori' => $item->struk_kategori,
+                'nominal'  => (float) $item->nominal,
+                'item'     => $item,
+            ])->values();
+    }
+
+    /**
+     * Total nominal per kategori untuk dokumen cetak (pengeluaran saja, tanpa Tambahan).
+     *
+     * @return array<string, float> ['Tol' => .., 'Parkir' => .., 'BBM' => .., 'Makan' => .., 'Hotel' => .., 'Lainnya' => ..]
      */
     public function getSpendingPerKategori(): array
     {
-        $spending = ['Tol' => 0.0, 'BBM' => 0.0, 'Parkir' => 0.0, 'Lainnya' => 0.0];
+        $spending = array_fill_keys(self::KOLOM_BIAYA, 0.0);
 
-        foreach ($this->strukItems as $item) {
-            // "Hotel + Makan" digulung ke kolom Lainnya pada rekap cetak.
-            $kategori = $item->struk_kategori === 'Hotel + Makan' ? 'Lainnya' : $item->struk_kategori;
-
-            if (array_key_exists($kategori, $spending)) {
-                $spending[$kategori] += (float) $item->nominal;
+        foreach ($this->biayaRows() as $row) {
+            if (array_key_exists($row['kategori'], $spending)) {
+                $spending[$row['kategori']] += $row['nominal'];
             }
         }
 
@@ -610,30 +661,48 @@ class LpjPenggantian extends Model
 
     /**
      * Pivot rincian penggunaan per tanggal untuk tabel cetak.
-     * Format: ['2026-08-01' => ['tanggal' => Carbon, 'Tol' => .., 'BBM' => .., 'Parkir' => .., 'Lainnya' => ..]]
+     *
+     * Dipakai oleh dua halaman dokumen sekaligus:
+     *   - Lembar Ringkasan Penggunaan Biaya Perjalanan Dinas (blok per tanggal)
+     *   - Lembar Persetujuan Penggantian Pertanggungjawaban (tabel per tanggal)
+     *
+     * Format: [
+     *   '2026-08-01' => [
+     *      'tanggal' => Carbon, 'Tol' => .., 'Parkir' => .., 'BBM' => ..,
+     *      'Makan' => .., 'Hotel' => .., 'Lainnya' => .., 'subtotal' => ..,
+     *      'items' => Collection,
+     *   ], ...
+     * ]
+     *
+     * @return array<string, array<string, mixed>>
      */
     public function getRincianPerTanggal(): array
     {
         $rows = [];
 
-        foreach ($this->strukItems as $item) {
-            $key = $item->tanggal ? $item->tanggal->format('Y-m-d') : 'tanpa-tanggal';
-
-            if (! isset($rows[$key])) {
-                $rows[$key] = [
-                    'tanggal'  => $item->tanggal,
-                    'Tol'      => 0.0,
-                    'BBM'      => 0.0,
-                    'Parkir'   => 0.0,
-                    'Lainnya'  => 0.0,
-                ];
+        foreach ($this->biayaRows() as $biaya) {
+            if ($biaya['kategori'] === 'Tambahan') {
+                continue; // dokumentasi, bukan pengeluaran
             }
 
-            // "Hotel + Makan" digulung ke kolom Lainnya pada rekap cetak.
-            $kategori = $item->struk_kategori === 'Hotel + Makan' ? 'Lainnya' : $item->struk_kategori;
+            $tanggal = $biaya['tanggal'];
+            $key = $tanggal ? $tanggal->format('Y-m-d') : 'tanpa-tanggal';
 
-            if (array_key_exists($kategori, $rows[$key])) {
-                $rows[$key][$kategori] += (float) $item->nominal;
+            if (! isset($rows[$key])) {
+                $rows[$key] = array_merge([
+                    'tanggal'  => $tanggal,
+                    'subtotal' => 0.0,
+                    'items'    => collect(),
+                ], array_fill_keys(self::KOLOM_BIAYA, 0.0));
+            }
+
+            if (array_key_exists($biaya['kategori'], $rows[$key])) {
+                $rows[$key][$biaya['kategori']] += $biaya['nominal'];
+                $rows[$key]['subtotal'] += $biaya['nominal'];
+            }
+
+            if ($biaya['item']) {
+                $rows[$key]['items']->push($biaya['item']);
             }
         }
 
@@ -643,15 +712,69 @@ class LpjPenggantian extends Model
     }
 
     /**
+     * Grand total dari seluruh baris rincian per tanggal.
+     */
+    public function getGrandTotalRincian(): float
+    {
+        return (float) collect($this->getRincianPerTanggal())->sum('subtotal');
+    }
+
+    /**
      * Struk items yang diurutkan sesuai urutan kategori untuk lampiran foto:
-     * Tol -> BBM -> Parkir -> Hotel + Makan -> Lainnya -> Tambahan.
+     * Tol -> BBM -> Parkir -> Makan -> Hotel -> Lainnya -> Tambahan.
      */
     public function getStrukItemsOrderedForPhotos()
     {
-        $order = ['Tol', 'BBM', 'Parkir', 'Hotel + Makan', 'Lainnya', 'Tambahan'];
+        $order = ['Tol', 'BBM', 'Parkir', 'Makan', 'Hotel', 'Lainnya', 'Tambahan'];
 
         return $this->strukItems
             ->sortBy(fn ($item) => array_search($item->struk_kategori, $order, true) ?? 99)
             ->values();
+    }
+
+    // ============================================================
+    // HELPER METHODS - LAMPIRAN PEMBERIAN DANA (PENCAIRAN)
+    // ============================================================
+
+    /**
+     * Baris pencairan dana perjalanan dinas (dari surat_spd_budgets).
+     * Diurutkan sesuai urutan dokumen.
+     */
+    public function getPencairanRows()
+    {
+        $surat = $this->suratSpd;
+
+        if (! $surat) {
+            return collect();
+        }
+
+        return $surat->pencairans;
+    }
+
+    /**
+     * Balance Awal — total dana yang sudah ditransferkan/diberikan.
+     *
+     * Diambil dari akumulasi baris pencairan (surat_spd_budgets). Bila surat
+     * belum punya baris pencairan sama sekali, fallback ke jumlah_diberikan
+     * yang diisi manual oleh GA.
+     */
+    public function getBalanceAwalAttribute(): float
+    {
+        $totalPencairan = (float) $this->getPencairanRows()->sum('nominal');
+
+        if ($totalPencairan > 0) {
+            return $totalPencairan;
+        }
+
+        return (float) $this->jumlah_diberikan;
+    }
+
+    /**
+     * Balance Akhir — sisa uang kas/transfer setelah dikurangi pengeluaran.
+     * Nilai negatif berarti driver menombok (kekurangan).
+     */
+    public function getBalanceAkhirAttribute(): float
+    {
+        return $this->getBalanceAwalAttribute() - (float) $this->total_pengeluaran;
     }
 }

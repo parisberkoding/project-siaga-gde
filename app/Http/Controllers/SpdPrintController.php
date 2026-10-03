@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LpjPenggantian;
 use App\Models\SpdBarcodeSignature;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
@@ -13,14 +14,17 @@ use BaconQrCode\Writer;
 /**
  * SpdPrintController — CETAK DOKUMEN GABUNGAN SPD.
  *
- * Menghasilkan satu dokumen A4 (margin 3 cm semua sisi) berisi:
- *  1. Page 1 : Ringkasan Surat Tugas (Kop Surat + data surat + daftar nama)
- *  2. Page 2 : Ringkasan Laporan LPJ (spending + odometer)
- *  3. Page 3 : Rincian Penggunaan (tabel pivot tanggal + TTD)
- *  4. Page 4+ : Lampiran foto-foto struk (masonry grid, 6 foto/halaman)
+ * Menghasilkan satu dokumen A4 berisi:
+ *  1. Surat Tugas (SPD)
+ *  2. Lembar Ringkasan Penggunaan Biaya Perjalanan Dinas
+ *  3. [KHUSUS GA] Lembar Lampiran Pemberian Dana Perjalanan Dinas
+ *  4. Lembar Persetujuan Penggantian Pertanggungjawaban Pembayaran
+ *  5. Lampiran Penggunaan Dana (foto-foto struk)
  *
- * Dokumen ini bisa dicetak oleh siapa pun yang punya hak akses melihat LPJ
- * (driver / requester / admin / superadmin / manager / dispatcher).
+ * Lembar Pemberian Dana memuat data pencairan (Tunai/Transfer + nomor
+ * referensi perbankan + rekening tujuan) sehingga HANYA disertakan bila
+ * pemilik sesi punya permission `lpj.pencairan` (Divisi GA / superadmin).
+ * Lembar ini juga bisa diunduh terpisah lewat exportPemberianDana().
  */
 class SpdPrintController extends Controller
 {
@@ -29,7 +33,7 @@ class SpdPrintController extends Controller
      *
      * @param \App\Models\LpjPenggantian $laporan
      */
-    public function exportLpj(LpjPenggantian $laporan)
+    public function exportLpj(Request $request, LpjPenggantian $laporan)
     {
         $laporan = LpjPenggantian::with([
             'suratSpd.details',
@@ -38,6 +42,7 @@ class SpdPrintController extends Controller
             'suratSpd.parentSurat',
             'suratSpd.approver',
             'suratSpd.user',
+            'suratSpd.pencairans',
             'vehicle',
             'vehicle.detail',
             'user',
@@ -45,6 +50,7 @@ class SpdPrintController extends Controller
             'approverDivisiGa',
             'approverManagement',
             'strukItems',
+            'details',
         ])->findOrFail($laporan->id);
 
         $surat = $laporan->suratSpd;
@@ -55,7 +61,12 @@ class SpdPrintController extends Controller
 
         $spending = $laporan->getSpendingPerKategori();
         $rincian = $laporan->getRincianPerTanggal();
+        $grandTotalRincian = $laporan->getGrandTotalRincian();
         $fotoItems = $laporan->getStrukItemsOrderedForPhotos();
+
+        // Lembar Pemberian Dana hanya untuk sisi General Affairs.
+        $includePemberianDana = $request->user()?->hasPermission('lpj.pencairan') ?? false;
+        $pencairans = $surat->pencairans;
 
         // Foto per halaman: 1 halaman = 2 kolom x 3 baris = 6 foto
         $fotoPages = $fotoItems->count() > 0 ? $fotoItems->chunk(6) : collect();
@@ -74,6 +85,10 @@ class SpdPrintController extends Controller
         // QR signature dari surat (di-generate/cache seperti template-spd)
         $qrSvgContent = $this->qrForSurat($surat);
 
+        // Barcode/QR persetujuan pada Lembar Persetujuan Penggantian Pertanggungjawaban
+        $qrPengguna = $this->qrForApprover($laporan, 'pengguna');
+        $qrDivisiGa = $this->qrForApprover($laporan, 'divisi_ga');
+
         // Kop surat di-embed base64
         $logoBase64 = $this->logoBase64();
 
@@ -82,11 +97,45 @@ class SpdPrintController extends Controller
             'surat',
             'spending',
             'rincian',
+            'grandTotalRincian',
             'fotoPages',
             'photoGrid',
             'qrSvgContent',
-            'logoBase64'
+            'qrPengguna',
+            'qrDivisiGa',
+            'logoBase64',
+            'includePemberianDana',
+            'pencairans'
         ));
+    }
+
+    /**
+     * Unduh terpisah: Lembar Lampiran Pemberian Dana Perjalanan Dinas.
+     * Hanya untuk Divisi GA / superadmin (permission `lpj.pencairan`).
+     */
+    public function exportPemberianDana(LpjPenggantian $laporan)
+    {
+        $laporan = LpjPenggantian::with([
+            'suratSpd.details',
+            'suratSpd.vehicle',
+            'suratSpd.pencairans',
+            'suratSpd.user',
+            'vehicle',
+            'user',
+        ])->findOrFail($laporan->id);
+
+        $surat = $laporan->suratSpd;
+
+        if (! $surat) {
+            abort(404, 'Surat SPD tidak ditemukan untuk LPJ ini.');
+        }
+
+        return view('templates.template-surat.template-pemberian-dana', [
+            'laporan'     => $laporan,
+            'surat'       => $surat,
+            'pencairans'  => $surat->pencairans,
+            'logoBase64'  => $this->logoBase64(),
+        ]);
     }
 
     /**
@@ -186,6 +235,54 @@ class SpdPrintController extends Controller
         } catch (\Throwable $e) {
             \Log::warning('QR signature (SpdPrintController) gagal: ' . $e->getMessage(), [
                 'surat_id' => $surat->id,
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * QR tanda tangan persetujuan (barcode) untuk Lembar Persetujuan
+     * Penggantian Pertanggungjawaban.
+     *
+     * @param  string  $peran  'pengguna' | 'divisi_ga'
+     */
+    private function qrForApprover(LpjPenggantian $laporan, string $peran): ?string
+    {
+        $approver = $peran === 'divisi_ga'
+            ? $laporan->approverDivisiGa
+            : $laporan->approverPengguna;
+
+        $waktu = $peran === 'divisi_ga'
+            ? $laporan->approved_divisi_ga_at
+            : $laporan->approved_pengguna_at;
+
+        if (! $approver || ! $waktu) {
+            return null; // belum divalidasi → kolom barcode dibiarkan kosong
+        }
+
+        try {
+            $qrData = json_encode([
+                'dokumen'      => 'Lembar Persetujuan Penggantian Pertanggungjawaban',
+                'lpj_number'   => $laporan->lpj_number,
+                'nomor_surat'  => $laporan->suratSpd?->nomor_surat,
+                'peran'        => $peran === 'divisi_ga' ? 'Divisi GA' : 'Pengguna',
+                'nama'         => $approver->nama_lengkap ?? $approver->name,
+                'jabatan'      => $approver->jabatan,
+                'divalidasi'   => $waktu->format('Y-m-d H:i'),
+                'total_biaya'  => (float) $laporan->total_pengeluaran,
+            ]);
+
+            $renderer = new ImageRenderer(
+                new RendererStyle(300, 1),
+                new SvgImageBackEnd()
+            );
+
+            return (new Writer($renderer))->writeString($qrData);
+        } catch (\Throwable $e) {
+            \Log::warning('QR approver (SpdPrintController) gagal: ' . $e->getMessage(), [
+                'lpj_id' => $laporan->id,
+                'peran'  => $peran,
             ]);
 
             return null;

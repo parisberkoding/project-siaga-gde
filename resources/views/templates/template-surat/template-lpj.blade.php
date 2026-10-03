@@ -1,4 +1,17 @@
 <!DOCTYPE html>
+{{--
+    DEPRECATED — TIDAK DIPAKAI LAGI.
+
+    Template stub lama "Lembar Persetujuan Penggantian Pertanggungjawaban"
+    (isinya baris kosong 1-27 dan judul lama "PEMBIAYAAN BIAYA JALAN TOL, BBM,
+    PARKIR"). Sudah digantikan oleh:
+      - templates/template-surat/template-spd-lpj.blade.php  → Lembar Persetujuan
+        Penggantian Pertanggungjawaban + Lembar Ringkasan Penggunaan + Lampiran
+      - templates/template-surat/template-pemberian-dana.blade.php → khusus GA
+
+    Dipakai lewat SpdPrintController (route spd.laporan.export / *.print /
+    spd.laporan.pemberian-dana). File ini disimpan hanya sebagai rujukan histori.
+--}}
 <html lang="id">
 <head>
     <meta charset="UTF-8">

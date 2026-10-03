@@ -23,6 +23,7 @@ use App\Http\Controllers\ReportingController;
 use App\Http\Controllers\RequestManagementController;
 use App\Http\Controllers\SiteController;
 use App\Http\Controllers\SpdController;
+use App\Http\Controllers\SpdPencairanController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\SpdDailyReportController;
 use App\Http\Controllers\SpdPrintController;
@@ -82,6 +83,13 @@ Route::middleware(['auth', 'permission:spd.view,spd.manage'])->prefix('spd')->na
 
     // Cetak dokumen gabungan Surat SPD + LPJ (tersedia untuk semua role SPD)
     Route::get('/laporan/{laporan}/export', [SpdPrintController::class, 'exportLpj'])->name('laporan.export');
+
+    // Unduh terpisah: Lembar Lampiran Pemberian Dana Perjalanan Dinas.
+    // HANYA sisi General Affairs (permission lpj.pencairan) — tidak ikut bundle
+    // dokumen gabungan milik role lain.
+    Route::get('/laporan/{laporan}/pemberian-dana', [SpdPrintController::class, 'exportPemberianDana'])
+        ->middleware('permission:lpj.pencairan')
+        ->name('laporan.pemberian-dana');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -466,6 +474,16 @@ Route::middleware(['auth', 'permission:lpj.validate'])->prefix('lpj')->name('lpj
     Route::post('/{laporan}/reject', [SpdController::class, 'rejectLaporan'])->name('reject');
     Route::get('/{laporan}/print', [SpdController::class, 'printLaporan'])->name('print');
     Route::put('/{laporan}/keuangan', [SpdController::class, 'updateKeuanganLaporan'])->name('keuangan');
+});
+
+// LPJ — Lampiran Pemberian Dana Perjalanan Dinas (pencairan).
+// Gerbang terpisah: hanya Divisi General Affairs / superadmin yang punya
+// permission `lpj.pencairan` (mapping group: LPJ, modul: Perjalanan Dinas).
+Route::middleware(['auth', 'permission:lpj.pencairan'])->prefix('lpj')->name('lpj.superadmin.')->group(function () {
+    Route::get('/{laporan}/pencairan', [SpdPencairanController::class, 'index'])->name('pencairan.index');
+    Route::post('/{laporan}/pencairan', [SpdPencairanController::class, 'store'])->name('pencairan.store');
+    Route::put('/{laporan}/pencairan/{pencairan}', [SpdPencairanController::class, 'update'])->name('pencairan.update');
+    Route::delete('/{laporan}/pencairan/{pencairan}', [SpdPencairanController::class, 'destroy'])->name('pencairan.destroy');
 });
 
 // LPJ — Validasi kebenaran perjalanan oleh User (penumpang)

@@ -303,6 +303,21 @@
                             <small class="text-muted">Pengembalian/kekurangan dihitung otomatis dari jumlah yang diberikan dikurangi total pengeluaran.</small>
                         </div>
                     </form>
+
+                    @can('permission', 'lpj.pencairan')
+                        <hr>
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <strong class="small">Pencairan Dana (Tunai / Transfer)</strong><br>
+                                <small class="text-muted">
+                                    Kelola rincian pencairan &mdash; totalnya otomatis menjadi Jumlah Diberikan.
+                                </small>
+                            </div>
+                            <a href="{{ route('lpj.superadmin.pencairan.index', $laporan) }}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-cash-stack"></i> Kelola Pencairan
+                            </a>
+                        </div>
+                    @endcan
                 </div>
             </div>
 
@@ -420,9 +435,11 @@
                         <a href="{{ route('spd.laporan.export', $laporan) }}" target="_blank" class="btn btn-primary w-100">
                             <i class="bi bi-file-earmark-pdf"></i> Cetak SPD + LPJ
                         </a>
-                        <a href="{{ route('lpj.superadmin.print', $laporan) }}" target="_blank" class="btn btn-outline-secondary w-100 mt-2">
-                            <i class="bi bi-printer"></i> Cetak LPJ (Lama)
-                        </a>
+                        @can('permission', 'lpj.pencairan')
+                            <a href="{{ route('spd.laporan.pemberian-dana', $laporan) }}" target="_blank" class="btn btn-outline-primary w-100 mt-2">
+                                <i class="bi bi-cash-stack"></i> Cetak Lembar Pemberian Dana (GA)
+                            </a>
+                        @endcan
                     </div>
                 </div>
             @endif

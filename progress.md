@@ -1,6 +1,6 @@
 # PROGRESS PROJECT — BBM/SPD/LPJ
 
-Catatan progres pengembangan. Update terakhir: 12 Agustus 2026.
+Catatan progres pengembangan. Update terakhir: 3 Oktober 2026.
 
 ## Status Umum
 - Semua perubahan sudah diverifikasi `php artisan test` → **99 passed (373 assertions)** (branch `llm-assistant`).
@@ -513,3 +513,47 @@ A tests/Feature/VehicleEditTest.php
 
 **Catatan:** kueri "SPD aku udah di approve belum?" (personal ownership, inject `auth()->id()`) belum diproses — bisa jadi Next Move lanjutan.
 ```
+
+---
+
+## 28. Lampiran LPJ SPD — Ringkasan Penggunaan, Lembar Persetujuan, & Lampiran Pemberian Dana (Khusus GA)
+
+**Tujuan:** menyesuaikan susunan dokumen gabungan LPJ SPD dengan format baru. Susunan lama (Surat SPD → Ringkasan Laporan → Rincian Penggunaan → Lampiran Foto) diganti menjadi:
+
+| # | Halaman | Siapa yang melihat |
+|---|---------|--------------------|
+| 1 | Surat Tugas (SPD) | semua role |
+| 2 | Lembar Ringkasan Penggunaan Biaya Perjalanan Dinas | semua role |
+| 3 | Lembar Lampiran Pemberian Dana Perjalanan Dinas | **hanya General Affairs** |
+| 4 | Lembar Persetujuan Penggantian Pertanggungjawaban Pembayaran biaya perjalanan dinas | semua role |
+| 5 | Lampiran Penggunaan Dana (foto struk) | semua role |
+
+**Kategori biaya Makan & Hotel dipisah:**
+- `StrukItem::KATEGORI` berubah dari `Hotel + Makan` menjadi `Makan` + `Hotel` (plus `KATEGORI_BIAYA`, `KATEGORI_LABEL`, prefix `S.MKN`/`S.HTL`, `validationList()`, `validationListBiaya()`).
+- Migrasi `2026_10_03_000001` mengubah enum `struk_items.struk_kategori` & `lpj_penggantian_details.tipe_penggunaan`, sekaligus mereklasifikasi baris lama `Hotel + Makan` berbasis kata kunci OCR/keterangan. Driver-aware (MySQL `ALTER ... MODIFY`, SQLite `Schema::change()`).
+- Prompt AI OCR (`ImageAnalysisService`) + dropdown kategori di `pelaporan/index`, `pelaporan/spd/validasi`, `requester/spd/lpj/create|edit` ikut diperbarui.
+
+**Query rekap berubah (`LpjPenggantian`):**
+- `biayaRows()` — basis utama `lpj_penggantian_details` yang diperkaya `struk_items` tertaut, sehingga angka dokumen selalu sama dengan `total_pengeluaran` (fallback ke `struk_items` untuk data lama tanpa detail).
+- `getSpendingPerKategori()` & `getRincianPerTanggal()` kini memakai kolom `KOLOM_BIAYA = [Tol, Parkir, BBM, Makan, Hotel, Lainnya]` + `subtotal` & `grand total` per tanggal.
+- `getGrandTotalRincian()`, `getBalanceAwalAttribute()`, `getBalanceAkhirAttribute()`, `getPencairanRows()`.
+
+**Pencairan dana (GA) — reuse `surat_spd_budgets`:**
+- Migrasi `2026_10_03_000002` menambah `bentuk_pencairan` (Tunai/Transfer), `bank_reference`, `rek_tujuan`, `urutan`.
+- `SpdPencairanController` + view `superadmin/spd/lpj/pencairan.blade.php`: CRUD baris pencairan; setiap perubahan menyinkronkan `lpj_penggantian.jumlah_diberikan` = total pencairan lalu `calculateKeuangan()`.
+- Balance Awal = total pencairan (fallback `jumlah_diberikan`), Balance Akhir = Balance Awal − pengeluaran.
+
+**Hak akses:**
+- Permission baru **`lpj.pencairan`** (group `lpj`, modul `spd`), diberikan ke role `general_affairs` + `superadmin` (migrasi `2026_10_03_000003`, `RbacSeeder`, `ModuleSeeder`).
+- Route: `lpj.superadmin.pencairan.index|store|update|destroy` dan `spd.laporan.pemberian-dana` (unduh lembar terpisah) — semuanya digerbang `permission:lpj.pencairan`.
+- `spd.laporan.export` menyertakan halaman pemberian dana **hanya** bila pemilik sesi punya `lpj.pencairan`.
+
+**View/route lain:**
+- `SpdPrintController::exportPemberianDana()` + `template-pemberian-dana.blade.php` (unduh terpisah khusus GA).
+- QR/barcode persetujuan Pengguna & Divisi GA pada Lembar Persetujuan (`qrForApprover()`).
+- `ReportingController::storeSpd()` — item `Tambahan` tidak lagi membuat baris detail/keuangan (mencegah nilai enum `tipe_penggunaan` tidak valid & double count).
+- Route print lama (`spd.laporan.print` & `lpj.superadmin.print` → `SpdController::printLaporan`) kini memakai renderer dokumen gabungan yang sama, sehingga `template-lpj.blade.php` (stub 27 baris kosong) tidak lagi dipakai — file ditandai DEPRECATED. Tombol cetak ganda di daftar & detail LPJ disatukan, plus tombol khusus GA "Cetak Lembar Pemberian Dana".
+
+**Verifikasi:** `php artisan test` → **319 passed (1193 assertions)** (termasuk 8 test baru `SpdLpjLampiranTest`); `view:cache` OK; dokumen dirender & dicek visual via headless Chrome; smoke test MySQL asli: `printLaporan` identik dengan `exportLpj`, halaman pemberian dana hanya muncul untuk GA.
+
+**Catatan:** `AiAssistantDataMartTest` (chart line multi-series) flaky 1 dari 6 run — tidak berhubungan dengan perubahan ini (jalur BBM/Permohonan, test lolos saat file dijalankan sendiri).

@@ -451,7 +451,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         <option value="BBM">Struk BBM</option>
                         <option value="Tol">Struk Tol</option>
                         <option value="Parkir">Struk Parkir</option>
-                        <option value="Hotel + Makan">Hotel / Makan</option>
+                        <option value="Makan">Struk Makan / Konsumsi</option>
+                        <option value="Hotel">Struk Hotel / Penginapan</option>
                         <option value="Lainnya">Struk Lainnya</option>
                         <option value="Tambahan">Tambahan (bukan struk)</option>
                     </select>

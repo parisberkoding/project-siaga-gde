@@ -267,7 +267,7 @@ class ReportingController extends Controller
             'kebutuhan_bbm_liter' => 'nullable|numeric|min:0',
             'items'        => 'required|array|min:1',
             'items.*.tanggal'         => 'required|date',
-            'items.*.struk_kategori'  => 'required|in:BBM,Tol,Parkir,Hotel + Makan,Lainnya,Tambahan',
+            'items.*.struk_kategori'  => 'required|in:' . \App\Models\StrukItem::validationList(),
             'items.*.nominal'         => 'required|numeric|min:0',
             'items.*.keterangan'      => 'nullable|string',
             'items.*.kategori_source' => 'required|in:ai,manual',
@@ -296,7 +296,10 @@ class ReportingController extends Controller
             ->pluck('nominal', 'tanggal');
         $totalBudgetFromTable = $budgets->sum();
 
-        $totalPengeluaran = collect($request->items)->sum('nominal');
+        // 'Tambahan' hanya dokumentasi (bukan pengeluaran) → tidak dihitung.
+        $totalPengeluaran = collect($request->items)
+            ->where('struk_kategori', '!=', 'Tambahan')
+            ->sum('nominal');
         // Budget kini opsional — over budget hanya dihitung bila budget diisi
         $isOverBudget = $totalBudgetFromTable > 0 && $totalPengeluaran > $totalBudgetFromTable;
         $isOverdue = $surat->isLpjDeadlineOverdue();
@@ -327,30 +330,40 @@ class ReportingController extends Controller
                 'is_over_budget'    => $isOverBudget,
             ]);
 
-            // 2. Detail + struk_items per item
+            // 2. Detail + struk_items per item.
+            //    'Tambahan' = dokumentasi (bukan pengeluaran) → hanya struk_item
+            //    yang dicatat, TIDAK membuat baris detail/keuangan.
             foreach ($request->items as $index => $item) {
                 $kategori = $item['struk_kategori'];
-                $tipePenggunaan = $kategori === 'Lainnya' ? 'Lain-lain' : $kategori;
-
-                $detail = LpjPenggantianDetail::create([
-                    'lpj_penggantian_id' => $lpj->id,
-                    'tanggal'            => $item['tanggal'],
-                    'tipe_penggunaan'    => $tipePenggunaan,
-                    'nominal'            => $item['nominal'],
-                    'keterangan'         => $item['keterangan'] ?? '',
-                    'urutan'             => $index + 1,
-                ]);
+                $isTambahan = $kategori === 'Tambahan';
 
                 // Simpan gambar struk: kompres 50% tanpa resize → storage → path di DB
                 $path = $this->storeStrukImage($request->file("items.{$index}.struk"), $surat->nomor_surat);
 
                 $itemCode = StrukItem::generateItemCode($kategori, $surat->nomor_surat, $item['tanggal']);
 
+                $detailId = null;
+
+                if (! $isTambahan) {
+                    $tipePenggunaan = $kategori === 'Lainnya' ? 'Lain-lain' : $kategori;
+
+                    $detail = LpjPenggantianDetail::create([
+                        'lpj_penggantian_id' => $lpj->id,
+                        'tanggal'            => $item['tanggal'],
+                        'tipe_penggunaan'    => $tipePenggunaan,
+                        'nominal'            => $item['nominal'],
+                        'keterangan'         => $item['keterangan'] ?? '',
+                        'urutan'             => $index + 1,
+                    ]);
+
+                    $detailId = $detail->id;
+                }
+
                 StrukItem::create([
                     'spd_id'           => $surat->id,
                     'nomor_surat_spd'  => $surat->nomor_surat,
                     'lpj_id'           => $lpj->id,
-                    'lpj_detail_id'    => $detail->id,
+                    'lpj_detail_id'    => $detailId,
                     'item_code'        => $itemCode,
                     'path_image'       => $path,
                     'struk_kategori'   => $kategori,

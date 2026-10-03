@@ -83,7 +83,9 @@ class LpjPenggantianDetail extends Model
             'BBM' => 'bg-danger',
             'Tol' => 'bg-primary',
             'Parkir', 'Portir' => 'bg-info',
-            'Lain-lain' => 'bg-secondary',
+            'Makan' => 'bg-success',
+            'Hotel' => 'bg-dark',
+            'Lain-lain', 'Lainnya' => 'bg-secondary',
             default => 'bg-secondary',
         };
     }

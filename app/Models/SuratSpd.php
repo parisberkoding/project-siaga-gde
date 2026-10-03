@@ -324,6 +324,26 @@ class SuratSpd extends Model
     }
 
     /**
+     * Baris pencairan/pemberian dana perjalanan dinas (Lembar Lampiran
+     * Pemberian Dana) — sumber data sama dengan budgets(), hanya urutan
+     * tampilnya mengikuti kolom `urutan` lalu tanggal.
+     */
+    public function pencairans()
+    {
+        return $this->hasMany(SuratSpdBudget::class, 'surat_spd_id')
+            ->orderBy('urutan')
+            ->orderBy('tanggal');
+    }
+
+    /**
+     * Total dana yang sudah dicairkan/diberikan untuk surat ini.
+     */
+    public function getTotalPencairanAttribute(): float
+    {
+        return (float) $this->pencairans()->sum('nominal');
+    }
+
+    /**
      * Rincian struk pengeluaran SPD (upload bukti per item)
      */
     public function strukItems()

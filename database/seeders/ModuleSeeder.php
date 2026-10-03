@@ -139,7 +139,7 @@ class ModuleSeeder extends Seeder
             'spd.view', 'spd.create', 'spd.update', 'spd.delete', 'spd.approve',
             'spd.assign', 'spd.manage', 'spd.validate_trip',
             'lpj.view', 'lpj.create', 'lpj.update', 'lpj.delete',
-            'lpj.validate', 'lpj.validate_management', 'lpj.export',
+            'lpj.validate', 'lpj.validate_management', 'lpj.export', 'lpj.pencairan',
             'pelaporan.view', 'pelaporan.create', 'pelaporan.analyze',
             'dashboard.view',
         ],

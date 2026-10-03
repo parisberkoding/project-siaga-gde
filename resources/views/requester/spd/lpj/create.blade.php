@@ -308,6 +308,10 @@
 
                             <table class="table table-sm table-borderless mb-3">
                                 <tr>
+                                    <td class="text-muted">Makan:</td>
+                                    <td class="text-end"><span id="summaryMakan">Rp 0</span></td>
+                                </tr>
+                                <tr>
                                     <td class="text-muted">Hotel:</td>
                                     <td class="text-end"><span id="summaryHotel">Rp 0</span></td>
                                 </tr>
@@ -487,10 +491,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Label & warna badge per kategori struk
-    const kategoriLabels = { 'BBM': 'Struk BBM', 'Tol': 'Struk Tol', 'Parkir': 'Struk Parkir', 'Lainnya': 'Struk Lainnya', 'Tambahan': 'Tambahan' };
+    const kategoriLabels = { 'BBM': 'Struk BBM', 'Tol': 'Struk Tol', 'Parkir': 'Struk Parkir', 'Makan': 'Struk Makan', 'Hotel': 'Struk Hotel', 'Lainnya': 'Struk Lainnya', 'Tambahan': 'Tambahan' };
     function kategoriLabel(k) { return kategoriLabels[k] || ('Struk ' + (k || '-')); }
     function kategoriBadgeClass(kategori) {
-        return { 'BBM': 'bg-danger', 'Tol': 'bg-primary', 'Parkir': 'bg-info', 'Lainnya': 'bg-secondary', 'Tambahan': 'bg-warning text-dark' }[kategori] || 'bg-secondary';
+        return { 'BBM': 'bg-danger', 'Tol': 'bg-primary', 'Parkir': 'bg-info', 'Makan': 'bg-success', 'Hotel': 'bg-dark', 'Lainnya': 'bg-secondary', 'Tambahan': 'bg-warning text-dark' }[kategori] || 'bg-secondary';
     }
 
     // Kirim struk ke AI/OCR untuk isi otomatis kategori & nominal
@@ -530,7 +534,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const metadata = data.metadata || {};
                 const nominal = metadata.nominal;
                 const text = data.text || '';
-                const tipeMap = { 'BBM': 'BBM', 'Tol': 'Tol', 'Parkir': 'Parkir', 'Lainnya': 'Lain-lain' };
+                const tipeMap = { 'BBM': 'BBM', 'Tol': 'Tol', 'Parkir': 'Parkir', 'Makan': 'Makan', 'Hotel': 'Hotel', 'Lainnya': 'Lain-lain' };
 
                 // Isi field hidden untuk disimpan ke backend
                 card.querySelector('.item-struk-kategori').value = kategori;
@@ -579,7 +583,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Calculate total + check over budget per tanggal
     function calculateTotal() {
         let total = 0;
-        let hotel = 0, bbm = 0, tol = 0, Parkir = 0, lain = 0;
+        let hotel = 0, makan = 0, bbm = 0, tol = 0, Parkir = 0, lain = 0;
 
         // Group pengeluaran per tanggal
         const spendPerDate = {};
@@ -603,6 +607,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             switch(tipe) {
                 case 'Hotel': hotel += nominal; break;
+                case 'Makan': makan += nominal; break;
                 case 'BBM': bbm += nominal; break;
                 case 'Tol': tol += nominal; break;
                 case 'Parkir': Parkir += nominal; break;
@@ -619,6 +624,7 @@ document.addEventListener('DOMContentLoaded', function() {
         totalPengeluaranEl.textContent = formatRupiah(total);
         document.getElementById('summaryPengeluaran').textContent = formatRupiah(total);
         document.getElementById('summaryHotel').textContent = formatRupiah(hotel);
+        document.getElementById('summaryMakan').textContent = formatRupiah(makan);
         document.getElementById('summaryBBM').textContent = formatRupiah(bbm);
         document.getElementById('summaryTol').textContent = formatRupiah(tol);
         document.getElementById('summaryParkir').textContent = formatRupiah(Parkir);

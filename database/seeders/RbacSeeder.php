@@ -94,6 +94,7 @@ class RbacSeeder extends Seeder
             ['lpj', 'validate', 'lpj', 'Memvalidasi LPJ'],
             ['lpj', 'validate_management', 'lpj', 'Validasi final LPJ (Management/Supervisor)'],
             ['lpj', 'export',  'lpj', 'Export LPJ'],
+            ['lpj', 'pencairan', 'lpj', 'Mengelola & mengunduh lampiran pencairan dana perjalanan dinas (Divisi GA)'],
 
             // Pelaporan (single page pelaporan BBM operasional & SPD + AI/OCR struk)
             ['pelaporan', 'view',   'pelaporan', 'Melihat halaman pelaporan'],
@@ -182,7 +183,7 @@ class RbacSeeder extends Seeder
                     'dashboard.view',
                     'bbm.view', 'bbm.approve', 'bbm.export',
                     'spd.manage', 'spd.update',
-                    'lpj.validate',
+                    'lpj.validate', 'lpj.pencairan',
                     'vehicle.view', 'vehicle.sparepart', 'vehicle.scan',
                     'lunch.view', 'lunch.export', 'lunch.manage',
                     'settings.view',
