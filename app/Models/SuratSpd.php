@@ -505,15 +505,80 @@ class SuratSpd extends Model
     // ============================================================
 
     /**
-     * Check apakah deadline LPJ sudah lewat
+     * Batas waktu submit LPJ yang berlaku.
+     *
+     * Prioritas `lpj_deadline` (diisi saat surat disetujui / dibuat lewat
+     * shortcut). Bila belum terisi (data lama), dipakai aturan default
+     * **tanggal_kembali + 3 hari** supaya label overdue tidak pernah "bohong"
+     * hanya karena kolomnya kosong.
+     *
+     * Batas bersifat INKLUSIF: submit pada hari deadline masih dihitung tepat
+     * waktu (dibandingkan dengan akhir hari).
+     */
+    public function getLpjDeadlineEfektifAttribute(): ?Carbon
+    {
+        if ($this->lpj_deadline) {
+            return Carbon::parse($this->lpj_deadline)->endOfDay();
+        }
+
+        if ($this->tanggal_kembali) {
+            return Carbon::parse($this->tanggal_kembali)->addDays(3)->endOfDay();
+        }
+
+        return null;
+    }
+
+    /**
+     * Check apakah deadline LPJ sudah lewat.
+     *
+     * CATATAN: ini hanya PENANDA (label overdue). Tidak ada satu pun alur yang
+     * menutup form LPJ karena lewat deadline — driver tetap boleh membuat &
+     * submit LPJ, hanya tercatat terlambat.
      */
     public function isLpjDeadlineOverdue(): bool
     {
-        if (! $this->lpj_deadline) {
+        $deadline = $this->lpj_deadline_efektif;
+
+        return $deadline !== null && Carbon::now()->greaterThan($deadline);
+    }
+
+    /**
+     * Berapa hari sudah melewati batas submit LPJ (0 bila belum lewat).
+     */
+    public function getLpjOverdueDaysAttribute(): int
+    {
+        $deadline = $this->lpj_deadline_efektif;
+
+        if (! $deadline || ! Carbon::now()->greaterThan($deadline)) {
+            return 0;
+        }
+
+        return (int) $deadline->startOfDay()->diffInDays(Carbon::now()->startOfDay());
+    }
+
+    /**
+     * Surat sudah disetujui tetapi driver belum submit LPJ.
+     */
+    public function getMenungguLpjAttribute(): bool
+    {
+        if ($this->status !== 'approved') {
             return false;
         }
 
-        return Carbon::now()->greaterThan($this->lpj_deadline);
+        // Relasi sudah di-eager-load di daftar; hindari query berulang.
+        if ($this->relationLoaded('lpjPenggantian')) {
+            return $this->lpjPenggantian === null;
+        }
+
+        return ! $this->hasLpj();
+    }
+
+    /**
+     * Surat menunggu LPJ DAN sudah melewati batas 3 hari.
+     */
+    public function getLpjTerlambatAttribute(): bool
+    {
+        return $this->menunggu_lpj && $this->isLpjDeadlineOverdue();
     }
 
     /**
@@ -529,18 +594,15 @@ class SuratSpd extends Model
      */
     public function getDaysUntilLpjDeadline(): int
     {
-        if (! $this->lpj_deadline) {
+        $deadline = $this->lpj_deadline_efektif;
+
+        if (! $deadline) {
             return 0;
         }
 
-        $now = Carbon::now();
-        $deadline = Carbon::parse($this->lpj_deadline);
-
-        if ($now->greaterThan($deadline)) {
-            return -$now->diffInDays($deadline); // Negatif jika sudah lewat
-        }
-
-        return $now->diffInDays($deadline);
+        // Carbon 3: diffInDays() bertanda → positif bila deadline masih di depan,
+        // negatif bila sudah lewat. (Sebelumnya tanda untuk kasus lewat dibalik.)
+        return (int) Carbon::now()->startOfDay()->diffInDays($deadline->copy()->startOfDay());
     }
 
     /**

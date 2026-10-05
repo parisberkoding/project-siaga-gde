@@ -377,7 +377,7 @@
     @if(!empty($needsBudget) && $needsBudget)
         <div class="budget-form-wrapper">
             <div class="alert alert-warning">
-                <strong>SPD Mendadak</strong> — Silakan isi budget perjalanan sebelum mencetak surat.
+                <strong>SPD Mendadak</strong> — Silakan catat pemberian dana sebelum mencetak surat.
             </div>
 
             @if($errors->any())
@@ -392,39 +392,12 @@
 
             <form method="POST" action="{{ route('surat.superadmin.save-mendadak-budget', $surat) }}">
                 @csrf
-                <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Tanggal</th>
-                            <th>Nominal (Rp)</th>
-                            <th>Catatan</th>
-                        </tr>
-                    </thead>
-                    <tbody id="mendadakBudgetRows">
-                        @php
-                            $start = \Carbon\Carbon::parse($surat->tanggal_berangkat);
-                            $end = \Carbon\Carbon::parse($surat->tanggal_kembali);
-                            $days = $start->diffInDays($end) + 1;
-                        @endphp
-                        @for($i = 0; $i < $days; $i++)
-                            @php $d = (clone $start)->addDays($i); @endphp
-                            <tr>
-                                <td>
-                                    <input type="hidden" name="budgets[{{ $i }}][tanggal]" value="{{ $d->format('Y-m-d') }}">
-                                    {{ $d->translatedFormat('d F Y') }}
-                                </td>
-                                <td>
-                                    <input type="number" class="form-control" name="budgets[{{ $i }}][nominal]"
-                                           min="0" step="5000" value="{{ old('budgets.' . $i . '.nominal', 1400000) }}" required>
-                                </td>
-                                <td>
-                                    <input type="text" class="form-control" name="budgets[{{ $i }}][catatan]"
-                                           placeholder="Opsional" maxlength="255" value="{{ old('budgets.' . $i . '.catatan') }}">
-                                </td>
-                            </tr>
-                        @endfor
-                    </tbody>
-                </table>
+                {{-- Satu baris = satu pemberian/transfer dana (bukan per hari). --}}
+                @include('partials.pencairan-input', [
+                    'name'           => 'pencairans',
+                    'rows'           => collect(),
+                    'tanggalDefault' => $surat->tanggal_berangkat?->format('Y-m-d') ?? now()->toDateString(),
+                ])
 
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-primary">Simpan Budget & Cetak</button>

@@ -557,3 +557,118 @@ A tests/Feature/VehicleEditTest.php
 **Verifikasi:** `php artisan test` → **319 passed (1193 assertions)** (termasuk 8 test baru `SpdLpjLampiranTest`); `view:cache` OK; dokumen dirender & dicek visual via headless Chrome; smoke test MySQL asli: `printLaporan` identik dengan `exportLpj`, halaman pemberian dana hanya muncul untuk GA.
 
 **Catatan:** `AiAssistantDataMartTest` (chart line multi-series) flaky 1 dari 6 run — tidak berhubungan dengan perubahan ini (jalur BBM/Permohonan, test lolos saat file dijalankan sendiri).
+
+---
+
+## 29. Role `pegawai` + Driver Tidak Lagi Memegang Validasi Perjalanan (User)
+
+**Masalah:** menu **"Validasi Perjalanan (User)"** muncul di sidebar akun driver. Penyebabnya role RBAC `requester` (Driver / Requester) ikut memegang permission `spd.validate_trip`, padahal validasi kebenaran perjalanan adalah tugas pengguna yang berangkat (penumpang), bukan pengemudi.
+
+**Perubahan:**
+- `database/seeders/RbacSeeder.php` — `spd.validate_trip` **dicabut** dari role `requester`; sidebar bersifat permission-driven sehingga menu otomatis hilang dan route `/lpj-pengguna` mengembalikan **403** untuk driver.
+- Role baru **`pegawai`** (Pegawai, non-GA) — `dashboard.view`, `spd.view`, `spd.validate_trip`, `lpj.view`. **Tanpa hak tulis**: tidak ada `spd.create/update/delete/manage/approve` maupun `lpj.create/update/delete/validate`. Role ini adalah target pemetaan jabatan SSO untuk pegawai umum; apakah nanti dapat CRUD ditentukan oleh role hasil mapping, bukan oleh role ini.
+- Migrasi `2026_10_03_000004_add_pegawai_role_and_fix_driver_validate_trip` — membuat role `pegawai` + mencabut `spd.validate_trip` dari `requester` pada DB yang sudah berjalan (idempotent, ada `down()` untuk rollback).
+- `app/Services/PostLoginRedirect.php` — pegawai/pengguna_spd diarahkan ke daftar validasi perjalanan (`lpj.pengguna.index`) setelah login; `pegawai` ikut dipertimbangkan saat legacy `users.role` kosong (kasus user SSO).
+- `database/seeders/PegawaiDemoSeeder.php` (BARU, **tidak** didaftarkan di `DatabaseSeeder`) — akun demo `Faris` / `Faris123#@`, role `pegawai`, `auth_provider = local`. Jalankan manual: `php artisan db:seed --class=PegawaiDemoSeeder`. Sengaja tidak auto-seed karena password diketahui bersama; wajib diganti/dihapus sebelum produksi.
+
+**Catatan penting (temuan saat seeding):** kolom `users.username` unik dengan collation **case-insensitive**, sehingga `Faris` dan `faris` adalah username yang SAMA. Akun `faris` (id 63, dibuat 29 Sep 2026, role `view_only`) sudah ada, jadi seeder **memakai ulang** akun itu dan mengarahkan rolenya ke `pegawai` (role `view_only` dilepas agar sesuai kebijakan satu-user-satu-role). Seeder sekarang mencari username secara case-insensitive dan **memberi peringatan** alih-alih menimpa diam-diam. Password akun itu memang direset ke `Faris123#@` sesuai permintaan, jadi password lamanya tidak bisa dipulihkan.
+
+**Unit akun demo dikosongkan (null)** mengikuti akun uji lokal lain: `LpjPenggantian::scopeInUnit()` membatasi daftar LPJ ke unit surat SPD, sedangkan data demo tidak mengisi `surat_spds.unit_id` — akun ber-unit akan melihat daftar validasi kosong dan alurnya tidak bisa diuji. Unit akan terisi dari klaim SSO saat SSO aktif.
+
+**Pemetaan SSO (untuk lanjutan):** `sso_role_mappings` memetakan **(jabatan + unit) → role**. UI-nya di `SA → Pengaturan & Data Master → Pemetaan Jabatan SSO` (`superadmin.sso.mappings.*`, butuh `settings.sso_mapping` + unit Pusat). Role `pegawai` sudah muncul di dropdown karena UI memuat semua role aktif. Fail-closed: jabatan+unit yang belum dipetakan → user dapat NOL permission dan masuk antrian review.
+
+**Verifikasi:** `php artisan test` → **325 passed (1229 assertions)** (termasuk 6 test baru `PegawaiRoleTest`: menu driver hilang, driver 403, menu pegawai muncul, pegawai tanpa CRUD, redirect login, seeder idempotent, dan daftar validasi terisi). Dicek langsung di aplikasi yang berjalan: sidebar driver bersih dari menu itu, `/lpj-pengguna` → 403 untuk driver; login `Faris` → 302 ke `/lpj-pengguna`, menu muncul, dan LPJ `012.TGS/PTH1.30-GDE/IX/2026` (Bandung) tampil untuk divalidasi.
+
+---
+
+## 30. Batas Submit LPJ 3 Hari — Form TIDAK Ditutup, Hanya Ditandai Overdue (Notice ke GA & User)
+
+**Kebutuhan:** LPJ maksimal disubmit 3 hari setelah SPD selesai. Kalau driver belum submit dan baru drafting, form **jangan ditutup** — cukup dilabeli *overdue*, dan statusnya harus terlihat oleh GA maupun User yang berangkat.
+
+**Temuan:** alur LPJ memang **belum pernah** ditutup oleh deadline. Yang ada hanya satu badge "Terlambat!" di halaman Daftar Surat Tugas; SPD Berjalan (halaman kerja utama driver) dan halaman validasi pelaporan tidak menampilkan apa pun. Jadi pekerjaannya: mengunci perilaku "form selalu terbuka" dengan test + menambah label & notice.
+
+**Perubahan:**
+- `app/Models/SuratSpd.php`
+  - `lpj_deadline_efektif` — `lpj_deadline`, fallback **tanggal_kembali + 3 hari** bila kolomnya kosong (6 dari 12 surat contoh punya `lpj_deadline` NULL), dan batas dibuat **inklusif** (akhir hari) supaya submit pada hari deadline tidak dihitung telat.
+  - `isLpjDeadlineOverdue()` (memakai deadline efektif), `lpj_overdue_days`, `menunggu_lpj`, `lpj_terlambat`.
+- `app/Models/LpjPenggantian.php` — **fix bug**: `days_late` bernilai negatif (Carbon 3 `diffInDays()` sudah bertanda), sehingga badge menampilkan "Terlambat -7 hari". Sekarang dihitung `due_date → tanggal_lpj` (selalu positif).
+- `app/Models/SuratSpd.php` — **fix bug**: `getDaysUntilLpjDeadline()` membalik tanda untuk kasus sudah lewat (komentar bilang negatif, hasilnya positif).
+- `resources/views/partials/lpj-deadline-badge.blade.php` (BARU) — satu sumber label: `Menunggu LPJ` (+ batas submit & sisa hari) atau `LPJ Terlambat N hari` (merah). Dipakai di semua halaman agar konsisten.
+- Label/notice dipasang di:
+  - **Driver** — `requester/spd/berjalan/index.blade.php` (kolom "Batas Submit LPJ" + baris merah + alert jumlah terlambat, dan tombol lapor tetap aktif), `requester/spd/surat/index.blade.php`, dan banner di `pelaporan/spd/validasi.blade.php` yang menegaskan form tetap terbuka.
+  - **GA** — `superadmin/spd/surat/report.blade.php` (kartu statistik "Menunggu LPJ" + alert + badge per baris) dan `superadmin/spd/lpj/index.blade.php` (kartu notice berisi daftar surat).
+  - **User yang berangkat** — `superadmin/spd/lpj/index.blade.php` yang sama, datanya dibatasi ke surat yang melibatkan user tsb (pemohon atau pemakai) via `SpdController::suratMenungguLpjOverdue($unitId, $userId)`.
+- `app/Http/Controllers/SpdController.php` — `reportSpending()` mengirim `totalMenungguLpj` & `totalMenungguLpjOverdue`; `indexLaporanSuperadmin()` & `indexLaporanPengguna()` mengirim `suratMenungguOverdue`.
+
+**Tes baru** (`tests/Feature/SpdLpjDeadlineTest.php`, 6 kasus): form tetap bisa dibuka & finalisasi setelah lewat deadline (LPJ tercatat `is_late` + `days_late` positif), batas inklusif di hari deadline, fallback tanggal_kembali+3, notice muncul untuk GA & User, dan notice TIDAK muncul untuk surat yang belum lewat batas.
+
+**Verifikasi:** `php artisan test` → **331 passed (1264 assertions)**. Dicek langsung di aplikasi berjalan: driver SPD Berjalan menampilkan alert + badge + tombol lapor; halaman validasi surat overdue tetap HTTP 200 dan tombol "Submit sebagai LPJ" ada; GA Laporan SPD & Validasi LPJ menampilkan kartu notice; akun `Faris` (pegawai) melihat notice yang sama.
+
+**Catatan data demo:** agar notice sisi User bisa diuji, akun `Faris` ditautkan sebagai pemakai pada surat `010.TGS/PTH1.30-GDE/IX/2026` (baris `spd_surat_details` baru, `user_id = 63`) — bisa dihapus kalau tidak diperlukan.
+
+**Catatan flaky (tidak terkait):** `AiAssistantDataMartTest` (spec grafik) kadang gagal karena data faker acak; sudah dicek gagal juga saat file itu dijalankan sendiri, dan jalur kodenya (BBM/Permohonan) tidak menyentuh perubahan ini.
+
+---
+
+## 31. Perbaiki Tanggal Hasil OCR + Tombol "Ubah Semua Isian" + Rapikan Gap Kartu Item
+
+**Keluhan:** hasil OCR bisa salah membaca tanggal (contoh nyata: struk September 2026 terbaca "Minggu, 26 Juni 2011") dan tanggal tidak bisa diubah dari halaman validasi. Selain itu ada celah kosong besar di tengah kartu item.
+
+**Akar masalah gap (bukan sekadar kosmetik):** kartu item memakai dua class sekaligus, `card` (Bootstrap) dan `gde-struk`. Bootstrap `.card` memaksa `display:flex; flex-direction:column`, sedangkan `.gde-struk` hanya menimpa `display` & `flex-wrap` — **tidak** `flex-direction`. Akibatnya nilai `flex: 1 1 220px` (summary) dan `flex: 1 1 100%` (panel edit) dihitung VERTIKAL → muncul ruang kosong besar. Diperbaiki di `public/gde-ui-templates/css/gde-components.css` dengan `flex-direction: row;` + `align-content: flex-start;`.
+
+**Perubahan:**
+- **Tanggal bisa diubah** — field "Tanggal Struk" (`input[type=date]`, class `.item-tanggal`) ditambahkan di kartu item (`resources/views/pelaporan/spd/partials/struk-item-card.blade.php` + markup JS di `validasi.blade.php`).
+  - `SpdDailyReportController::updateItem()` menerima & memvalidasi `tanggal`, mengembalikan `groupKey`, dan menandai `kategori_source = manual` + `edited_at`.
+  - JS: setelah tanggal disimpan, kartu langsung dipindahkan ke kelompok tanggal barunya (`moveCardToGroup`) dan ringkasan kartu disinkronkan (`syncCardSummary`), tanpa perlu reload.
+- **Tombol "Ubah Semua Isian"** (satu tombol di header Draft) → mengaktifkan mode edit massal: semua kartu memakai form lengkap (tanggal, kategori, nominal, keterangan), tombol simpan per item disembunyikan, dan muncul bar aksi **"Simpan Semua Perubahan"** / **"Batal"** (`#bulkEditBar`, `#bulkEditCount`, hint `#bulkEditHint`).
+  - Endpoint baru `PATCH /pelaporan/spd/{surat}/daily/items` → `SpdDailyReportController::updateItems()` (route `pelaporan.spd.daily.update-items`), menyimpan semua item sekali jalan lalu halaman dimuat ulang agar pengelompokan tanggal dihitung ulang server.
+  - Setiap item tetap melewati `assertEditableItem()` → tidak bisa diubah setelah LPJ final dibuat (dites).
+- CSS tambahan: `.gde-struk--bulk-edit`, `.gde-bulk-edit-bar`, dan grid edit 4 kolom (tanggal | nominal | kategori | simpan).
+
+**Tes baru** (`tests/Feature/SpdItemDateEditTest.php`, 6 kasus): perbaiki tanggal per item (2011 → 2026), item pindah kelompok tanggal di halaman validasi, simpan semua item via bulk, validasi input ditolak (422), diblokir setelah LPJ dibuat (per-item & bulk), dan tombol/label baru muncul di halaman validasi.
+
+**Verifikasi:** `php artisan test` → **337 passed (1287 assertions)**. Dicek visual dengan screenshot Chrome headless pada surat uji sementara: celah kosong hilang (thumbnail + ringkasan sebaris, form langsung di bawahnya), field tanggal tampil, tombol "Ubah Semua Isian" tampil. Data uji sementara sudah dihapus kembali (surat, daily report, dan item), DB kembali ke 12 surat / 3 item.
+
+---
+
+## 32. Tanggal OCR "26 Juni 2025" — AKAR MASALAHNYA PARSER SENDIRI, bukan modelnya
+
+**Laporan lapangan:** struk SPBU jelas tertulis `Waktu 25/06/2026 04:44:54`, tetapi aplikasi menampilkan **"Kamis, 26 Juni 2025"** — hari bergeser (25→26) DAN tahun bergeser (2026→2025).
+
+**Akar masalah (dibuktikan dengan reproduksi):** `SpdDailyReportController::parseAiTanggal()` punya regex pelengkap tahun-pendek yang TIDAK menjaga batas digit:
+
+```php
+preg_match('/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2})\b/', $normalized, $m)
+```
+
+Untuk input ISO yang **sudah benar** `2026-06-25`, regex ini cocok pada ekor string: `["26-06-25","26","06","25"]` → lalu `$year = ('25' <= 80 ? '20' : '19').'25' = '2025'` dan string ditulis ulang menjadi `26-06-2025` → di-parse `d-m-Y` → **2025-06-26**. Model membaca struk dengan BENAR; kode kitalah yang merusaknya. `item_code` juga ikut memakai `26-06-2025` (terlihat di layar).
+
+**Perbaikan:**
+- **ISO dicek lebih dulu** (`^(\d{4})-(\d{1,2})-(\d{1,2})`) sehingga `2026-06-25` langsung dipakai apa adanya.
+- Regex tahun-pendek diberi lookaround `(?<!\d) ... (?!\d)` agar tidak lagi mencocokkan sebagian dari tahun 4 digit.
+- Format nama bulan Indonesia ("26 Juni 2025") kini juga didukung: setelah terjemahan nama bulan, pemisah spasi dirapikan menjadi `-` (sebelumnya format ini menghasilkan null).
+- **Prompt OCR diperkuat** (`ImageAnalysisService`): blok "ATURAN TANGGAL (PALING PENTING)" — struk Indonesia DD/MM/YYYY (hari dulu), contoh eksplisit `Waktu 25/06/2026 04:44:54`, larangan menggeser hari/mengubah tahun, pengecekan digit mudah tertukar (5/6/8, 0/8/9, 1/7, 2/3), cara memilih tanggal transaksi bila ada beberapa tanggal, plus field baru **`tanggal_mentah`** (salinan apa adanya untuk audit).
+- **Konteks periode SPD dikirim ke model** (`buildSystemPrompt($context)`): nomor surat + periode perjalanan, dengan penegasan bahwa konteks hanya untuk memeriksa ulang digit tahun — **bukan** untuk menebak/menyalin tahun periode.
+- **Penanda lunak di server** (`tandaiTanggalLuarPeriode()`): bila tanggal hasil OCR di luar periode SPD (toleransi 2 hari sebelum berangkat s/d hari ini/H+1), metadata diberi `tanggal_di_luar_periode` + `tanggal_tahun_beda` dan kartu item menampilkan badge **"Tanggal perlu dicek"** (tooltip memuat periode SPD & tanggal mentah). Data TIDAK ditolak/diubah — driver memperbaikinya lewat kolom Tanggal Struk (fitur entri 31).
+
+**Tes baru** (`tests/Feature/OcrTanggalTest.php`, 10 kasus), termasuk regresi eksplisit: `2026-06-25` **tidak** boleh menjadi `2025-06-26`, `25/06/2026 04:44:54` → `2026-06-25`, konteks periode terkirim ke analyzer, penandaan luar-periode (dan tidak menandai yang di dalam periode), fallback ke tanggal laporan bila tanggal tak terbaca, serta normalisasi berbagai format (`25-6-26`, `26 Juni 2025`, `5 Agustus 2026`).
+
+**Verifikasi:** `php artisan test` → **347 passed (1345 assertions)**. Bukti bug lama: simulasi parser lama atas `2026-06-25` menghasilkan `2025-06-26` ("Kamis, 26 Juni 2025") — sama persis dengan laporan.
+
+---
+
+## 33. Budget Per Hari → PEMBERIAN DANA (per transfer/pemberian) di Form Buat Surat & Validasi
+
+**Kebutuhan:** input dana tidak lagi "per hari", melainkan **setiap kali dana diberikan/transfer** dan direkam pada surat SPD tersebut. Input juga harus tersedia saat GA memvalidasi surat.
+
+**Perubahan:**
+- **Komponen baru** `resources/views/partials/pencairan-input.blade.php` — input baris pemberian dana yang bisa dipakai berulang (self-contained: tombol tambah/hapus baris, total otomatis, toggle field Transfer). Satu baris berisi: Tanggal, Nominal, **Bentuk (Tunai/Transfer)**, No. Referensi Perbankan + Rekening Tujuan (otomatis disembunyikan untuk Tunai), dan Catatan. Dipakai di 3 tempat:
+  - `superadmin/spd/surat/create-shortcut.blade.php` — kartu "Budget Per Hari" (beserta pembuatan baris otomatis per tanggal + tombol "Salin ke semua") **diganti** kartu "Pemberian Dana".
+  - `superadmin/spd/surat/detail.blade.php` (halaman validasi, surat `pending`) — input pemberian dana ditambahkan DI DALAM form approve, jadi GA bisa mencatat pencairan sekaligus saat menyetujui. Tabel bacaan "Rincian Budget Per Tanggal" diganti "Rincian Pemberian Dana" (menampilkan bentuk, no. referensi, rekening tujuan).
+  - `templates/template-surat/template-spd.blade.php` (SPD mendadak saat pencetakan) — tabel per-hari diganti komponen yang sama.
+- **`SpdController`** — helper bersama `extractPencairans()` (normalisasi baris + abaikan baris kosong; tetap menerima `budgets[]` lama untuk kompatibilitas), `simpanPencairans()` (menyimpan dengan `urutan` lanjut + menyinkronkan `total_budget` & `uang_diberikan` = akumulasi seluruh baris surat), dan `pencairanRules()` (aturan validasi). Dipakai oleh `storeSuratSuperadmin`, `approveSurat`, dan `saveMendadakBudget`.
+- Untuk Transfer, referensi & rekening wajib ada isinya (dikosongkan otomatis bila Tunai).
+
+**Tes baru** (`tests/Feature/SpdPemberianDanaTest.php`, 5 kasus): buat surat shortcut dengan 2 pencairan (Transfer lengkap + Tunai), total `total_budget`/`uang_diberikan` ter-sinkron, tunai tidak menyimpan referensi/rekening, kompatibilitas payload `budgets` lama, pencatatan pencairan saat approve, penambahan baris berikutnya memakai `urutan` lanjut, serta label lama "Budget Per Hari"/"Salin ke semua" benar-benar hilang dari form.
+
+**Verifikasi:** `php artisan test` → **352 passed (1381 assertions)**. Di aplikasi berjalan: form shortcut & halaman validasi menampilkan "Pemberian Dana"/"Tambah Pemberian Dana" dan label lama hilang; DOM setelah JS dijalankan memuat `pencairans[0][tanggal|nominal|bentuk_pencairan|bank_reference|rek_tujuan]`; `node --check` pada skrip komponen lolos.

@@ -213,6 +213,22 @@
                                 </div>
                             </div>
                         </div>
+                        {{-- Pemberian dana saat validasi: boleh lebih dari satu baris
+                             (uang muka, transfer susulan, dst). Satu baris = satu
+                             pemberian/transfer, tersimpan pada surat SPD ini. --}}
+                        <h6 class="text-success mb-2 mt-3"><i class="bi bi-wallet2"></i> Pemberian Dana (Pencairan)</h6>
+                        <p class="text-muted small mb-2">
+                            Catat dana yang diberikan ke driver. Boleh dikosongkan sekarang dan
+                            diisi belakangan dari halaman detail LPJ (Lampiran Pemberian Dana).
+                        </p>
+                        <div class="border rounded p-2 mb-3 bg-light">
+                            @include('partials.pencairan-input', [
+                                'name'           => 'pencairans',
+                                'rows'           => $surat->pencairans,
+                                'tanggalDefault' => $surat->tanggal_berangkat?->format('Y-m-d') ?? now()->toDateString(),
+                                'totalTargetId'  => 'totalPencairanValidasi',
+                            ])
+                        </div>
                     @else
                         {{-- Tampilkan Kode GL & uang diberikan setelah disetujui --}}
                         <hr>
@@ -234,11 +250,11 @@
                         </div>
                     @endif
 
-                    {{-- Budget Per Tanggal (jika sudah ada) --}}
+                    {{-- Rincian Pemberian Dana (satu baris = satu transfer/pemberian) --}}
                     @if($surat->status == 'approved' || $surat->status == 'completed')
-                        @if($surat->budgets && $surat->budgets->isNotEmpty())
+                        @if($surat->pencairans->isNotEmpty())
                             <hr>
-                            <h6 class="text-success mb-3"><i class="bi bi-cash-stack"></i> Rincian Budget Per Tanggal</h6>
+                            <h6 class="text-success mb-3"><i class="bi bi-cash-stack"></i> Rincian Pemberian Dana</h6>
                             <div class="table-responsive">
                                 <table class="table table-sm table-bordered">
                                     <thead class="table-light">
@@ -246,41 +262,56 @@
                                             <th>No</th>
                                             <th>Tanggal</th>
                                             <th class="text-end">Nominal</th>
-                                            <th>Catatan</th>
+                                            <th>Bentuk</th>
+                                            <th>No. Referensi / Rek. Tujuan</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach($surat->budgets as $index => $budget)
+                                        @foreach($surat->pencairans as $index => $budget)
                                             <tr>
                                                 <td>{{ $index + 1 }}</td>
-                                                <td>{{ $budget->tanggal->translatedFormat('d F Y') }}</td>
+                                                <td>{{ $budget->tanggal?->translatedFormat('d F Y') ?? '-' }}</td>
                                                 <td class="text-end">Rp {{ number_format($budget->nominal, 0, ',', '.') }}</td>
-                                                <td>{{ $budget->catatan ?? '-' }}</td>
+                                                <td>
+                                                    <span class="badge {{ $budget->isTransfer() ? 'bg-primary' : 'bg-secondary' }}">
+                                                        {{ $budget->bentuk_pencairan_label }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    @if($budget->isTransfer())
+                                                        <small>{{ $budget->bank_reference ?: '-' }}</small><br>
+                                                        <small class="text-muted">{{ $budget->rek_tujuan ?: '-' }}</small>
+                                                    @else
+                                                        <small class="text-muted">-</small>
+                                                    @endif
+                                                    @if($budget->catatan)
+                                                        <br><small class="text-muted fst-italic">{{ $budget->catatan }}</small>
+                                                    @endif
+                                                </td>
                                             </tr>
                                         @endforeach
                                     </tbody>
                                     <tfoot class="table-dark">
                                         <tr>
-                                            <th colspan="2" class="text-end">Total Budget:</th>
-                                            <th class="text-end">Rp {{ number_format($surat->budgets->sum('nominal'), 0, ',', '.') }}</th>
-                                            <th></th>
+                                            <th colspan="2" class="text-end">Total Dana Diberikan:</th>
+                                            <th class="text-end">Rp {{ number_format($surat->pencairans->sum('nominal'), 0, ',', '.') }}</th>
+                                            <th colspan="2"></th>
                                         </tr>
                                     </tfoot>
                                 </table>
                             </div>
                         @else
-                            {{-- Fallback: tampilkan budget lama jika ada --}}
-                            @if($surat->budget_per_hari && $surat->budget_per_hari > 0)
+                            {{-- Fallback: tampilkan nominal pemberian lama jika ada --}}
+                            @if($surat->uang_diberikan && $surat->uang_diberikan > 0)
                                 <hr>
-                                <h6 class="text-success mb-3"><i class="bi bi-cash-stack"></i> Informasi Budget</h6>
-                                <div class="row mb-2">
-                                    <div class="col-md-4">Budget Per Hari:</div>
-                                    <div class="col-md-8"><strong>Rp {{ number_format($surat->budget_per_hari, 0, ',', '.') }}</strong></div>
-                                </div>
+                                <h6 class="text-success mb-3"><i class="bi bi-cash-stack"></i> Informasi Dana</h6>
                                 <div class="row mb-3">
-                                    <div class="col-md-4">Total Budget:</div>
+                                    <div class="col-md-4">Uang Diberikan:</div>
                                     <div class="col-md-8">
-                                        <span class="fs-5 fw-bold text-success">Rp {{ number_format($surat->total_budget, 0, ',', '.') }}</span>
+                                        <span class="fs-5 fw-bold text-success">Rp {{ number_format($surat->uang_diberikan, 0, ',', '.') }}</span>
+                                        <div class="small text-muted">
+                                            Belum ada rincian per pencairan — lengkapi lewat halaman LPJ (Lampiran Pemberian Dana).
+                                        </div>
                                     </div>
                                 </div>
                             @endif

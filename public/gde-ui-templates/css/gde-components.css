@@ -414,7 +414,14 @@
 .gde-struk {
   position: relative;
   display: flex;
+  /* WAJIB: komponen ini sering dipasang bersama class Bootstrap `.card`, dan
+     `.card` memaksa `flex-direction: column`. Tanpa reset ini, nilai
+     `flex: 1 1 220px` (summary) & `flex: 1 1 100%` (edit) dihitung VERTIKAL
+     sehingga muncul celah kosong besar di tengah kartu. */
+  flex-direction: row;
   flex-wrap: wrap;
+  /* Jangan bagi sisa ruang antar baris flex (mencegah gap membesar). */
+  align-content: flex-start;
   gap: var(--gde-sp-4);
   width: 100%;
   padding: var(--gde-sp-4);
@@ -467,7 +474,31 @@
 
 /* Panel edit (form Bawah) lebarkan penuh */
 .gde-struk__edit { flex: 1 1 100%; display: flex; flex-direction: column; gap: var(--gde-sp-3); border-top: 1px dashed var(--gde-line-2); padding-top: var(--gde-sp-3); }
-.gde-struk__edit-grid { display: grid; grid-template-columns: minmax(160px, 2fr) minmax(150px, 1.4fr) auto; gap: var(--gde-sp-3); align-items: end; }
+.gde-struk__edit-grid { display: grid; grid-template-columns: minmax(140px, 1.1fr) minmax(150px, 1.4fr) minmax(140px, 1.1fr) auto; gap: var(--gde-sp-3); align-items: end; }
+
+/* Mode "Ubah semua isian": semua kartu menampilkan form penuh & tombol simpan
+   per item disembunyikan (diganti satu tombol Simpan Semua). */
+.gde-struk--bulk-edit {
+  border-color: var(--gde-primary, #2563eb);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, .15), var(--gde-sh-1);
+}
+.gde-struk--bulk-edit .btn-save-item { display: none; }
+.gde-bulk-edit-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gde-sp-3);
+  margin-top: var(--gde-sp-3);
+  padding: var(--gde-sp-3) var(--gde-sp-4);
+  background: var(--gde-surface);
+  border: 1px solid var(--gde-primary, #2563eb);
+  border-radius: var(--gde-r-md);
+  box-shadow: var(--gde-sh-2);
+}
 .gde-struk__edit label {
   display: block; font-size: var(--gde-fs-xs); font-weight: var(--gde-fw-semibold);
   color: var(--gde-muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: var(--gde-sp-1);

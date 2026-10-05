@@ -148,6 +148,8 @@ Route::middleware(['auth', 'permission:pelaporan.view,pelaporan.create'])->prefi
     Route::post('/spd/{surat}/daily/item', [SpdDailyReportController::class, 'uploadItem'])->name('spd.daily.upload-item');
     Route::post('/spd/{surat}/daily/items', [SpdDailyReportController::class, 'uploadItems'])->name('spd.daily.upload-items');
     Route::patch('/spd/{surat}/daily/item/{item}', [SpdDailyReportController::class, 'updateItem'])->name('spd.daily.update-item');
+    // Simpan BANYAK item sekaligus — tombol "Ubah Semua Isian" di halaman validasi.
+    Route::patch('/spd/{surat}/daily/items', [SpdDailyReportController::class, 'updateItems'])->name('spd.daily.update-items');
     Route::delete('/spd/{surat}/daily/item/{item}', [SpdDailyReportController::class, 'deleteItem'])->name('spd.daily.delete-item');
 
     // SATU halaman validasi (FLOW BARU) → input struk + segmentasi draft/final → LPJ

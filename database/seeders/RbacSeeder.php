@@ -28,6 +28,8 @@ class RbacSeeder extends Seeder
         'dispatcher' => 'dispatcher',
         'non_ga_staff' => 'view_only',
         'view_only' => 'view_only',
+        'pegawai' => 'pegawai',
+        'pengguna_spd' => 'pegawai',
         'vendor' => 'vendor',
         'developer' => 'superadmin',
     ];
@@ -200,11 +202,12 @@ class RbacSeeder extends Seeder
             ],
             'requester' => [
                 'name' => 'Driver / Requester',
-                'description' => 'Driver: request BBM, buat surat tugas & LPJ SPD, acknowledge hasil pengecekan.',
+                'description' => 'Driver: request BBM, buat surat tugas & LPJ SPD, acknowledge hasil pengecekan. '
+                    .'TIDAK memvalidasi kebenaran perjalanan (itu ranah pengguna yang berangkat / pegawai).',
                 'is_system' => true,
                 'permissions' => [
                     'bbm.view', 'bbm.request', 'bbm.report',
-                    'spd.view', 'spd.create', 'spd.validate_trip',
+                    'spd.view', 'spd.create',
                     'lpj.view', 'lpj.create', 'lpj.update',
                     'pelaporan.view', 'pelaporan.create', 'pelaporan.analyze',
                     'vehicle.acknowledge', 'vehicle.export',
@@ -257,6 +260,24 @@ class RbacSeeder extends Seeder
                 'description' => 'Penumpang SPD: melihat surat & LPJ, memvalidasi kebenaran perjalanan dinas (tahap 1).',
                 'is_system' => false,
                 'permissions' => [
+                    'spd.view', 'spd.validate_trip',
+                    'lpj.view',
+                ],
+            ],
+
+            // Pegawai (non-GA) — role tujuan pemetaan jabatan SSO.
+            // Satu langkah lebih luas dari `pengguna_spd` karena dipakai sebagai
+            // default bagi pegawai yang tidak masuk ranah GA/Dispatcher/Manager:
+            // melihat data, dan memvalidasi perjalanan dinas yang ia ikuti.
+            // Apakah nanti dapat hak tulis (CRUD) ditentukan oleh role hasil
+            // mapping jabatan+unit di tabel `sso_role_mappings`, bukan di sini.
+            'pegawai' => [
+                'name' => 'Pegawai',
+                'description' => 'Pegawai non-GA: melihat surat tugas & LPJ, serta memvalidasi kebenaran perjalanan dinas '
+                    .'sebagai pengguna yang berangkat (tahap 1). Target pemetaan jabatan SSO untuk pegawai umum.',
+                'is_system' => false,
+                'permissions' => [
+                    'dashboard.view',
                     'spd.view', 'spd.validate_trip',
                     'lpj.view',
                 ],

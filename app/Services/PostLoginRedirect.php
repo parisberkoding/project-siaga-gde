@@ -32,6 +32,9 @@ class PostLoginRedirect
             'dispatcher' => route('dispatcher.dispatcher-dashboard'),
             'manager' => route('superadmin.dashboard.bisnis'),
             'superadmin' => route('superadmin-dashboard'),
+            // Pegawai (non-GA) / pengguna yang berangkat: halaman pertama yang
+            // berguna adalah daftar validasi perjalanan dinas miliknya.
+            'pegawai', 'pengguna_spd' => route('lpj.pengguna.index'),
             default => route('profile'),
         };
     }
@@ -52,7 +55,7 @@ class PostLoginRedirect
         if (in_array($effective, ['view_only', ''], true)) {
             $codes = $user->roles()->pluck('code')->all();
 
-            foreach (['superadmin', 'general_affairs', 'manager', 'dispatcher', 'requester'] as $candidate) {
+            foreach (['superadmin', 'general_affairs', 'manager', 'dispatcher', 'requester', 'pegawai', 'pengguna_spd'] as $candidate) {
                 if (in_array($candidate, $codes, true)) {
                     return $candidate;
                 }

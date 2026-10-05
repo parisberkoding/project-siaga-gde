@@ -34,13 +34,15 @@ class ImageAnalysisService
     public const STATUS_API_ERROR = 'api_error';
 
     private const SYSTEM_PROMPT = <<<'PROMPT'
-Anda adalah asisten pengolah struk/bon (receipt) untuk pelaporan operasional & SPD.
+Anda adalah asisten pembaca struk/bon (receipt) untuk pelaporan operasional & SPD.
+Tugas terpenting Anda: membaca ANGKA dengan benar — terutama TANGGAL dan NOMINAL.
 Baca gambar dengan teliti, lalu kembalikan HANYA JSON valid tanpa teks lain:
 
 {
   "kategori": "BBM | Tol | Parkir | Makan | Hotel | Lainnya | Tambahan",
   "metadata": {
     "tanggal": "YYYY-MM-DD",
+    "tanggal_mentah": "teks tanggal PERSIS seperti tercetak di struk (boleh termasuk jam), atau null",
     "nominal": <angka integer atau null>,
     "volume": <angka liter, hanya jika BBM, atau null>,
     "harga_per_liter": <angka rupiah per liter, hanya jika terbaca, atau null>,
@@ -49,7 +51,26 @@ Baca gambar dengan teliti, lalu kembalikan HANYA JSON valid tanpa teks lain:
   "text": "hasil OCR penuh / deskripsi gambar"
 }
 
-Aturan:
+=== ATURAN TANGGAL (PALING PENTING — tanggal salah = laporan salah) ===
+1. Cari baris berlabel "Waktu", "Tanggal", "Tgl", "Tgl. Transaksi", "Date", atau cap waktu
+   transaksi. Pada struk SPBU Pertamina, tanggal transaksi ada pada baris "Waktu" dengan
+   bentuk "DD/MM/YYYY HH:MM:SS" — contoh: "Waktu 25/06/2026 04:44:54" berarti 25 Juni 2026.
+2. Struk Indonesia memakai urutan HARI-BULAN-TAHUN (DD/MM/YYYY). Jadi "25/06/2026" adalah
+   tanggal 25 bulan 6 tahun 2026. JANGAN membalik hari & bulan (bukan 26 Juni).
+3. Salin angka tanggal PERSIS seperti tercetak — hari, bulan, dan TAHUN 4 digit. JANGAN
+   menggeser hari (±1) dan JANGAN mengubah tahun. Kalau struk tertulis 2026, jawablah 2026;
+   jangan menulis 2025.
+4. Periksa digit yang mudah tertukar SATU PER SATU: 5 vs 6 vs 8, 0 vs 8 vs 9, 1 vs 7, 2 vs 3.
+   Salin bacaan digitnya ke "tanggal_mentah" supaya bisa diverifikasi manusia.
+5. Bila ada BEBERAPA tanggal pada struk (tanggal cetak di footer, tanggal kartu, masa promo,
+   tanggal kadaluarsa), pakai tanggal TRANSAKSI — biasanya berdekatan dengan nomor transaksi,
+   daftar produk, dan total pembayaran.
+6. "tanggal" WAJIB format YYYY-MM-DD dengan tahun 4 digit. Bila tanggal benar-benar tidak
+   terbaca, isi null. JANGAN menebak dan JANGAN memakai tanggal hari ini.
+7. "tanggal_mentah" = salinan apa adanya dari struk (boleh ada jam). Isi null bila tidak ada.
+=== AKHIR ATURAN TANGGAL ===
+
+Aturan lain:
 - Kategori hanya salah satu dari: BBM, Tol, Parkir, Makan, Hotel, Lainnya, Tambahan.
 - BBM jika struk SPBU (premium/pertamax/solar/dex/bahan bakar).
 - Tol jika struk jalan tol / transaksi gerbang tol.
@@ -59,19 +80,78 @@ Aturan:
 - Tambahan jika foto odometer, dashboard mobil, speedometer, KM kendaraan, atau foto non-struk yang berkaitan dengan kendaraan (bukan struk/bon pengeluaran).
 - Selain itu = Lainnya (jangan buat kategori baru).
 - nominal = total pembayaran yang tertulis di struk. Untuk Tambahan, nominal = null.
+- volume & harga_per_liter hanya untuk BBM bila terbaca; selain itu null.
 - Jika angka tidak terbaca, gunakan null. JANGAN menebak.
-- Tanggal dalam format YYYY-MM-DD. Jika tidak terbaca, gunakan null.
 - plat_nomor = nomor polisi kendaraan bila tercantum di struk (umum pada struk BBM fleet/Pertamina). Tulis huruf kapital tanpa spasi/tanda baca. Jika tidak ada atau tidak terbaca, gunakan null. JANGAN menebak.
 - text = seluruh teks yang terbaca dari gambar, atau deskripsi singkat untuk foto non-struk.
 PROMPT;
 
     /**
+     * Susun system prompt, ditambah blok KONTEKS bila periode SPD diketahui.
+     *
+     * Konteks dipakai untuk VERIFIKASI SILANG (memastikan digit tahun tidak
+     * salah baca), bukan untuk menebak. Prompt-nya menegaskan agar model tetap
+     * menyalin apa yang benar-benar tercetak.
+     *
+     * @param  array{nomor_surat?: string|null, periode_mulai?: string|null, periode_selesai?: string|null}|array{}  $context
+     */
+    public function buildSystemPrompt(array $context = []): string
+    {
+        $mulai = $context['periode_mulai'] ?? null;
+        $selesai = $context['periode_selesai'] ?? null;
+
+        if (! $mulai && ! $selesai) {
+            return self::SYSTEM_PROMPT;
+        }
+
+        $periode = '-';
+        if ($mulai && $selesai) {
+            $periode = $this->tanggalIndonesia($mulai).' s/d '.$this->tanggalIndonesia($selesai);
+        } elseif ($mulai) {
+            $periode = 'sekitar '.$this->tanggalIndonesia($mulai);
+        } else {
+            $periode = 'sekitar '.$this->tanggalIndonesia($selesai);
+        }
+
+        $nomor = $context['nomor_surat'] ?? '-';
+
+        return self::SYSTEM_PROMPT . <<<CONTEXT
+
+=== KONTEKS PERJALANAN DINAS (untuk verifikasi silang, BUKAN untuk menebak) ===
+- Nomor surat tugas   : {$nomor}
+- Periode perjalanan  : {$periode}
+- Tanggal transaksi pada struk umumnya berada di dalam atau berdekatan dengan periode ini.
+- FUNGSI KONTEKS INI HANYA UNTUK MEMERIKSA ULANG: bila hasil bacaan Anda menghasilkan tahun
+  yang berbeda jauh dari periode di atas, PERIKSA KEMBALI digit tahun pada gambar sebelum
+  menjawab. JANGAN langsung menyalin tahun periode, dan JANGAN mengubah tanggal yang sudah
+  benar hanya supaya cocok dengan periode. Yang benar adalah apa yang TERCETAK di struk.
+=== AKHIR KONTEKS ===
+CONTEXT;
+    }
+
+    /**
+     * Format tanggal ISO menjadi teks Indonesia ("25 Juni 2026") untuk konteks prompt.
+     */
+    private function tanggalIndonesia(?string $iso): string
+    {
+        try {
+            return \Carbon\Carbon::parse($iso)->locale('id')->translatedFormat('d F Y');
+        } catch (\Throwable $e) {
+            return (string) $iso;
+        }
+    }
+
+
+    /**
      * Analisis gambar struk.
      *
-     * @param string $path Absolute path ke file gambar
+     * @param  string  $path     Absolute path ke file gambar
+     * @param  array{nomor_surat?: string|null, periode_mulai?: string|null, periode_selesai?: string|null}  $context
+     *                           Konteks periode SPD — dipakai model untuk verifikasi
+     *                           silang digit tanggal (bukan untuk menebak).
      * @return array{status: string, kategori: string, metadata: array, text: string}
      */
-    public function analyzeImage(string $path): array
+    public function analyzeImage(string $path, array $context = []): array
     {
         if (! file_exists($path)) {
             Log::warning('ImageAnalysisService: file tidak ditemukan.', ['path' => $path]);
@@ -98,8 +178,8 @@ PROMPT;
             $isNativeGemini = str_contains($baseUrl, 'generateContent');
 
             $response = $isNativeGemini
-                ? $this->callNativeGemini($path, $apiKey)
-                : $this->callOpenAiCompat($path, $apiKey);
+                ? $this->callNativeGemini($path, $apiKey, $context)
+                : $this->callOpenAiCompat($path, $apiKey, $context);
 
             if (! $response->successful()) {
                 $limited = $this->isRateLimited($response->status(), $response->body());
@@ -153,7 +233,7 @@ PROMPT;
         return [
             'status'   => $status,
             'kategori' => 'Lainnya',
-            'metadata' => ['tanggal' => null, 'nominal' => null, 'volume' => null, 'harga_per_liter' => null, 'plat_nomor' => null],
+            'metadata' => ['tanggal' => null, 'tanggal_mentah' => null, 'nominal' => null, 'volume' => null, 'harga_per_liter' => null, 'plat_nomor' => null],
             'text'     => '',
         ];
     }
@@ -175,7 +255,7 @@ PROMPT;
      * Panggil endpoint native Gemini (generateContent).
      * Auth via header x-goog-api-key. Body pakai schema contents/parts/inline_data.
      */
-    private function callNativeGemini(string $path, string $apiKey): \Illuminate\Http\Client\Response
+    private function callNativeGemini(string $path, string $apiKey, array $context = []): \Illuminate\Http\Client\Response
     {
         $mime = function_exists('mime_content_type') ? (mime_content_type($path) ?: 'image/jpeg') : 'image/jpeg';
         $b64  = base64_encode(file_get_contents($path));
@@ -188,7 +268,7 @@ PROMPT;
             ->connectTimeout(15)
             ->post($url, [
                 'systemInstruction' => [
-                    'parts' => [['text' => self::SYSTEM_PROMPT]],
+                    'parts' => [['text' => $this->buildSystemPrompt($context)]],
                 ],
                 'contents' => [
                     [
@@ -207,7 +287,7 @@ PROMPT;
      * Panggil endpoint OpenAI-compatible (chat/completions).
      * Auth via Bearer token. Body pakai schema messages + image_url data-URL.
      */
-    private function callOpenAiCompat(string $path, string $apiKey): \Illuminate\Http\Client\Response
+    private function callOpenAiCompat(string $path, string $apiKey, array $context = []): \Illuminate\Http\Client\Response
     {
         return Http::withToken($apiKey)
             ->timeout(config('imageanalysis.timeout', 60))
@@ -219,7 +299,7 @@ PROMPT;
                     'messages' => [
                         [
                             'role'    => 'system',
-                            'content' => self::SYSTEM_PROMPT,
+                            'content' => $this->buildSystemPrompt($context),
                         ],
                         [
                             'role'    => 'user',
@@ -263,7 +343,7 @@ PROMPT;
         $fallback = [
             'status'   => self::STATUS_API_ERROR,
             'kategori' => 'Lainnya',
-            'metadata' => ['tanggal' => null, 'nominal' => null, 'volume' => null, 'harga_per_liter' => null, 'plat_nomor' => null],
+            'metadata' => ['tanggal' => null, 'tanggal_mentah' => null, 'nominal' => null, 'volume' => null, 'harga_per_liter' => null, 'plat_nomor' => null],
             'text'     => $content,
         ];
 
@@ -295,6 +375,9 @@ PROMPT;
             'kategori' => $kategori,
             'metadata' => [
                 'tanggal'          => $metadata['tanggal'] ?? null,
+                'tanggal_mentah'   => isset($metadata['tanggal_mentah']) && is_string($metadata['tanggal_mentah']) && trim($metadata['tanggal_mentah']) !== ''
+                    ? trim($metadata['tanggal_mentah'])
+                    : null,
                 'nominal'          => isset($metadata['nominal']) && $metadata['nominal'] !== null && $metadata['nominal'] !== ''
                     ? (float) $metadata['nominal']
                     : null,

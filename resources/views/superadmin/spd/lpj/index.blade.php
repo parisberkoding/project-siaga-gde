@@ -37,6 +37,48 @@
         </div>
     @endif
 
+    {{-- Notice LPJ belum disubmit & sudah lewat batas 3 hari.
+         Muncul untuk GA (semua surat di unitnya) dan untuk User yang berangkat
+         (surat yang ia ikuti). Overdue hanya penanda — form LPJ driver tetap
+         terbuka, jadi ini pengingat untuk mengejar, bukan status gagal. --}}
+    @php $menungguOverdue = $suratMenungguOverdue ?? collect(); @endphp
+    @if($menungguOverdue->isNotEmpty())
+        <div class="alert alert-danger">
+            <div class="d-flex align-items-start gap-2">
+                <i class="bi bi-exclamation-triangle fs-4"></i>
+                <div class="flex-grow-1">
+                    <strong>{{ $menungguOverdue->count() }} surat tugas belum dibuatkan LPJ &amp; sudah lewat batas 3 hari.</strong>
+                    <div class="small mt-1">
+                        Batas submit = tanggal kembali SPD + 3 hari. Form LPJ driver <strong>tidak ditutup</strong> —
+                        LPJ tetap bisa masuk kapan saja dan akan tercatat terlambat.
+                    </div>
+
+                    <div class="table-responsive mt-2">
+                        <table class="table table-sm table-borderless mb-0 align-middle">
+                            <tbody>
+                                @foreach($menungguOverdue as $suratOverdue)
+                                    <tr>
+                                        <td class="ps-0">
+                                            <span class="fw-semibold">{{ $suratOverdue->nomor_surat }}</span>
+                                            <span class="text-muted small">— {{ $suratOverdue->pengemudi_nama }}</span>
+                                        </td>
+                                        <td class="text-muted small">{{ $suratOverdue->tempat_tujuan }}</td>
+                                        <td class="text-nowrap small">
+                                            Kembali {{ $suratOverdue->tanggal_kembali?->translatedFormat('d M Y') }}
+                                        </td>
+                                        <td class="text-nowrap">
+                                            @include('partials.lpj-deadline-badge', ['surat' => $suratOverdue, 'compact' => true])
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
     {{-- Stats Cards --}}
     <div class="row mb-4">
         <div class="col-xxl-3 col-md-6">

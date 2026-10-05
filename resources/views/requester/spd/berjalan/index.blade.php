@@ -41,6 +41,19 @@
                 </small>
             </div>
 
+            @php $jumlahTerlambat = $suratList->where('lpj_terlambat', true)->count(); @endphp
+
+            @if($jumlahTerlambat > 0)
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    <strong>{{ $jumlahTerlambat }} surat sudah melewati batas submit LPJ (3 hari setelah SPD selesai).</strong>
+                    <div class="small mt-1">
+                        Form LPJ <strong>tidak ditutup</strong> — silakan tetap submit. LPJ yang masuk setelah batas
+                        akan ditandai <em>terlambat</em> dan terlihat oleh Divisi GA &amp; pengguna yang berangkat.
+                    </div>
+                </div>
+            @endif
+
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead>
@@ -48,13 +61,14 @@
                             <th>Surat Tugas</th>
                             <th>Jadwal</th>
                             <th>Kendaraan</th>
+                            <th>Batas Submit LPJ</th>
                             <th>Laporan Harian</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($suratList as $surat)
-                        <tr>
+                        <tr class="{{ $surat->lpj_terlambat ? 'table-danger' : '' }}">
                             <td>
                                 <strong>{{ $surat->nomor_surat }}</strong>
                                 @if($surat->is_extension)
@@ -70,6 +84,9 @@
                                 </small>
                             </td>
                             <td><small>{{ $surat->vehicle?->consumerial_code ?? '-' }}</small></td>
+                            <td>
+                                @include('partials.lpj-deadline-badge', ['surat' => $surat])
+                            </td>
                             <td>
                                 @if($surat->daily_reports_available)
                                     <span class="badge bg-success">{{ $surat->daily_submitted_count }} hari terkirim</span>
@@ -89,7 +106,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-4">
+                            <td colspan="6" class="text-center text-muted py-4">
                                 <i class="bi bi-check2-circle" style="font-size:2rem;"></i><br>
                                 Tidak ada surat SPD yang perlu dilaporkan.
                             </td>

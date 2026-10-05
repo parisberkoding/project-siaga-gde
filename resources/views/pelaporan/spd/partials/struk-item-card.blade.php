@@ -7,14 +7,16 @@
     Struktur kelas wajib dijaga agar JS binding (bindItemCard / recalcTotals /
     saveItem / deleteItem) pada validasi.blade.php tetap berfungsi:
       .card[data-slug]  .item-nominal  .item-kategori  .item-keterangan
-      .btn-save-item    .btn-del-item  .autosave-status
+      .item-tanggal     .btn-save-item .btn-del-item  .autosave-status
+      data-group-key    (kunci kelompok tanggal, dipakai saat tanggal diubah)
 --}}
 @php
     $vMeta = $item->metadata_json ?: [];
     $vBadge = $item->getKategoriBadgeClass();
     $vPrefix = \App\Models\StrukItem::KATEGORI_PREFIX[$item->struk_kategori] ?? $item->struk_kategori;
+    $vGroupKey = $item->tanggal ? $item->tanggal->format('Y-m-d') : 'tanpa-tanggal';
 @endphp
-<div class="card border-0 gde-struk {{ $item->spd_daily_report_id ? 'is-final' : 'is-draft' }}" data-slug="{{ $item->slug }}">
+<div class="card border-0 gde-struk {{ $item->spd_daily_report_id ? 'is-final' : 'is-draft' }}" data-slug="{{ $item->slug }}" data-group-key="{{ $vGroupKey }}">
     <button type="button" class="btn btn-sm btn-outline-danger gde-struk__del btn-del-item" title="Hapus file" aria-label="Hapus">
         <i class="bi bi-trash"></i>
     </button>
@@ -54,6 +56,14 @@
                     </span>
                 @endif
             @endif
+            {{-- Peringatan tanggal: hasil OCR di luar periode SPD / tahun berbeda.
+                 Penanda saja — perbaiki lewat kolom "Tanggal Struk" di bawah. --}}
+            @if(!empty($vMeta['tanggal_di_luar_periode']) || !empty($vMeta['tanggal_tahun_beda']))
+                <span class="badge text-bg-warning"
+                      title="Tanggal hasil OCR di luar periode perjalanan dinas.@if(!empty($vMeta['tanggal_periode_spd'])) Periode SPD: {{ $vMeta['tanggal_periode_spd'] }}.@endif @if(!empty($vMeta['tanggal_mentah'])) Terbaca di struk: &quot;{{ $vMeta['tanggal_mentah'] }}&quot;.@endif Periksa &amp; perbaiki pada kolom Tanggal Struk.">
+                    <i class="bi bi-calendar-x"></i> Tanggal perlu dicek
+                </span>
+            @endif
         </div>
         @if(!empty($vMeta['volume']) || !empty($vMeta['harga_per_liter']))
             <div class="gde-struk__row mt-2">
@@ -73,6 +83,11 @@
     {{-- Panel edit --}}
     <div class="gde-struk__edit">
         <div class="gde-struk__edit-grid">
+            <div>
+                <label for="tanggal-{{ $item->slug }}" class="form-label">Tanggal Struk</label>
+                <input type="date" id="tanggal-{{ $item->slug }}" class="form-control form-control-sm item-tanggal"
+                       value="{{ $item->tanggal ? $item->tanggal->format('Y-m-d') : '' }}">
+            </div>
             <div>
                 <label for="nominal-{{ $item->slug }}" class="form-label">Nominal (Rp)</label>
                 <input type="number" id="nominal-{{ $item->slug }}" class="form-control form-control-sm item-nominal"

@@ -82,7 +82,41 @@
                 </div>
             </div>
         </div>
+
+        <div class="col-xxl-3 col-md-6">
+            <div class="card info-card <?= $totalMenungguLpjOverdue > 0 ? 'danger-card' : 'info-card' ?>">
+                <div class="card-body">
+                    <h5 class="card-title">Menunggu LPJ</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                            <i class="bi bi-hourglass-split"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ $totalMenungguLpj }}</h6>
+                            <span class="text-muted small pt-2">
+                                surat · <span class="<?= $totalMenungguLpjOverdue > 0 ? 'text-danger fw-bold' : '' ?>">
+                                    {{ $totalMenungguLpjOverdue }} lewat batas 3 hari
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
+    @if($totalMenungguLpjOverdue > 0)
+        <div class="alert alert-danger d-flex align-items-start gap-2">
+            <i class="bi bi-exclamation-triangle fs-4"></i>
+            <div>
+                <strong>{{ $totalMenungguLpjOverdue }} surat sudah lewat batas submit LPJ (3 hari setelah SPD selesai).</strong>
+                <div class="small mt-1">
+                    Form LPJ driver <strong>tidak ditutup</strong> — LPJ tetap bisa masuk kapan saja dan akan tercatat
+                    terlambat. Daftar di bawah sudah ditandai <span class="badge bg-danger">LPJ Terlambat</span>.
+                </div>
+            </div>
+        </div>
+    @endif
 
     {{-- Tabel Surat --}}
     <div class="card">
@@ -126,6 +160,11 @@
                                         <span class="badge bg-warning text-dark">Pending</span>
                                     @elseif($surat->status == 'approved')
                                         <span class="badge bg-success">Disetujui</span>
+                                        @if($surat->menunggu_lpj)
+                                            <div class="mt-1">
+                                                @include('partials.lpj-deadline-badge', ['surat' => $surat, 'compact' => true])
+                                            </div>
+                                        @endif
                                     @elseif($surat->status == 'completed')
                                         <span class="badge bg-primary">Selesai</span>
                                     @else

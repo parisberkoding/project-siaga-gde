@@ -26,6 +26,30 @@
     </nav>
 </div>
 
+@if($surat->lpj_terlambat)
+    {{-- Lewat batas 3 hari BUKAN alasan menutup form: driver tetap boleh
+         menyelesaikan LPJ, hanya ditandai terlambat & terlihat GA/User. --}}
+    <div class="alert alert-danger d-flex align-items-start gap-2">
+        <i class="bi bi-exclamation-triangle fs-4"></i>
+        <div>
+            <strong>LPJ sudah melewati batas submit {{ $surat->lpj_overdue_days }} hari.</strong>
+            <div class="small mt-1">
+                Batas submit: <strong>{{ $surat->lpj_deadline_efektif?->translatedFormat('d F Y') }}</strong>.
+                Form ini <strong>tetap terbuka</strong> — silakan lanjutkan submit. LPJ yang masuk akan tercatat
+                <em>terlambat</em> dan statusnya terlihat oleh Divisi GA serta pengguna yang berangkat.
+            </div>
+        </div>
+    </div>
+@elseif($surat->menunggu_lpj && $surat->lpj_deadline_efektif)
+    <div class="alert alert-warning py-2">
+        <i class="bi bi-clock-history me-1"></i>
+        <small>
+            Batas submit LPJ: <strong>{{ $surat->lpj_deadline_efektif->translatedFormat('d F Y') }}</strong>
+            ({{ $surat->getDaysUntilLpjDeadline() }} hari lagi). Laporan otomatis tersimpan sebagai draft.
+        </small>
+    </div>
+@endif
+
 <section class="section">
     @if(session('info'))
         <div class="alert alert-info alert-dismissible fade show" role="alert">
@@ -140,11 +164,27 @@
 
             {{-- ═══════════ SEGMENTASI DRAFT (belum final) ═══════════ --}}
             <div class="card border-warning mb-3">
-                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <strong><i class="bi bi-pencil-square"></i> Draft — disimpan sementara, belum final</strong>
-                    <span class="small" id="draftSummary"></span>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="small" id="draftSummary"></span>
+                        @if($draftItems->isNotEmpty())
+                            {{-- Hasil OCR bisa salah (terutama tanggal). Tombol ini membuka
+                                 form lengkap untuk SEMUA item sekaligus lalu simpan sekali jalan. --}}
+                            <button type="button" class="btn btn-sm btn-dark" id="btnBulkEdit"
+                                    title="Buka form lengkap untuk semua item (tanggal, kategori, nominal, keterangan)">
+                                <i class="bi bi-pencil-square"></i> Ubah Semua Isian
+                            </button>
+                        @endif
+                    </div>
                 </div>
                 <div class="card-body">
+                    <div class="alert alert-light border py-2 small d-none" id="bulkEditHint">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Mode ubah semua aktif — perbaiki <strong>tanggal</strong>, kategori, nominal, dan keterangan
+                        tiap item, lalu tekan <strong>Simpan Semua Perubahan</strong>. Item otomatis dikelompokkan ulang
+                        berdasarkan tanggal barunya.
+                    </div>
                     {{-- Draft dikelompokkan otomatis berdasarkan tanggal dari AI --}}
                     <div id="draftItemsContainer" class="d-flex flex-column gap-3">
                         @php
@@ -177,6 +217,23 @@
                             </div>
                         @endforeach
                     </div>
+
+                    {{-- Bar aksi mode "Ubah Semua Isian" --}}
+                    <div class="gde-bulk-edit-bar d-none" id="bulkEditBar">
+                        <div class="small">
+                            <i class="bi bi-pencil-square me-1"></i>
+                            <span id="bulkEditCount">0</span> item akan disimpan sekaligus.
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnBulkCancel">
+                                Batal
+                            </button>
+                            <button type="button" class="btn btn-sm btn-success" id="btnBulkSave">
+                                <i class="bi bi-check2-all"></i> Simpan Semua Perubahan
+                            </button>
+                        </div>
+                    </div>
+
                     <div id="draftEmpty" class="text-center text-muted py-4 {{ $draftItems->isNotEmpty() ? 'd-none' : '' }}">
                         <i class="bi bi-inbox" style="font-size:2rem;"></i>
                         <p class="mb-0 mt-2 small">Belum ada item draft. Upload struk di atas — item langsung tersimpan sebagai draft.</p>
@@ -291,6 +348,7 @@
         $updateItemUrlBase = rtrim(str_replace('/__SLUG__', '', route('pelaporan.spd.daily.update-item', ['surat' => $surat, 'item' => '__SLUG__'])), '/');
     @endphp
     const bulkUploadUrl = @json(route('pelaporan.spd.daily.upload-items', $surat));
+    const bulkUpdateUrl = @json(route('pelaporan.spd.daily.update-items', $surat));
     const updateItemUrlBase = @json($updateItemUrlBase);
     const csrfToken = @json(csrf_token());
     const maxBulkUpload = {{ \App\Http\Controllers\SpdDailyReportController::MAX_BULK_UPLOAD }};
@@ -315,6 +373,23 @@
         }
         return `<span class="badge text-bg-light border text-muted" title="Nomor polisi tidak terbaca pada struk / tidak dapat dibandingkan.">
                     <i class="bi bi-shield"></i> Plat tidak terbaca</span>`;
+    }
+
+    /**
+     * Badge peringatan tanggal: hasil OCR jatuh di luar periode SPD, atau
+     * tahunnya berbeda dari tahun periode (gejala khas salah baca 2025 vs 2026).
+     * Murni penanda — driver memperbaikinya lewat field "Tanggal Struk".
+     */
+    function renderTanggalWarning(item) {
+        if (!item.tanggal_di_luar_periode && !item.tanggal_tahun_beda) return '';
+
+        const mentah = item.tanggal_mentah ? ` Terbaca di struk: "${item.tanggal_mentah}".` : '';
+        const periode = item.tanggal_periode_spd ? ` Periode SPD: ${item.tanggal_periode_spd}.` : '';
+        const pesan = `Tanggal hasil OCR di luar periode perjalanan dinas.${periode}${mentah} Periksa & perbaiki pada kolom Tanggal Struk.`;
+
+        return `<span class="badge text-bg-warning" title="${pesan}">
+                    <i class="bi bi-calendar-x"></i> Tanggal perlu dicek
+                </span>`;
     }
 
     function recalcTotals() {
@@ -371,23 +446,89 @@
         const nominal = card.querySelector('.item-nominal').value;
         const kategori = card.querySelector('.item-kategori').value;
         const keterangan = card.querySelector('.item-keterangan').value;
+        const tanggalEl = card.querySelector('.item-tanggal');
+        const tanggal = tanggalEl ? tanggalEl.value : null;
         try {
             const res = await fetch(updateItemUrlBase + '/' + slug, {
                 method: 'PATCH',
                 headers: { 'X-CSRF-TOKEN': csrfToken, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify({ nominal: nominal, struk_kategori: kategori, keterangan: keterangan })
+                body: JSON.stringify({ nominal: nominal, struk_kategori: kategori, keterangan: keterangan, tanggal: tanggal })
             });
             const data = await res.json();
             if (!data.success) {
                 alert(data.message || 'Gagal menyimpan perubahan.');
                 return false;
             }
+            // Tanggal berubah → pindahkan kartu ke kelompok tanggal yang baru
+            // supaya pengelompokan di layar ikut benar (tanpa reload).
+            if (data.groupKey && card.dataset.groupKey !== data.groupKey) {
+                moveCardToGroup(card, data.groupKey);
+            }
+            syncCardSummary(card);
             flashAutosave(card);
             recalcTotals();
             return true;
         } catch (e) {
             alert('Error koneksi.');
             return false;
+        }
+    }
+
+    /**
+     * Pindahkan kartu ke kelompok tanggal tertentu (dipakai setelah tanggal
+     * struk diubah manual maupun setelah AI membaca tanggal baru).
+     */
+    function moveCardToGroup(card, groupKey) {
+        const col = card.closest('.col-12') || card;
+        const row = ensureDateGroup(groupKey);
+        row.appendChild(col);
+        card.dataset.groupKey = groupKey;
+        pruneEmptyDateGroups();
+    }
+
+    /** Hapus kelompok tanggal yang sudah tidak punya item. */
+    function pruneEmptyDateGroups() {
+        document.querySelectorAll('#draftItemsContainer > [data-date-group]').forEach(group => {
+            if (!group.querySelector('.card[data-slug]')) group.remove();
+        });
+    }
+
+    /**
+     * Sinkronkan ringkasan di kepala kartu (badge kategori, nominal, tanggal,
+     * keterangan) dengan isi form — supaya layar tidak menampilkan data lama
+     * sebelum halaman di-refresh.
+     */
+    function syncCardSummary(card) {
+        const nominal = parseFloat(card.querySelector('.item-nominal').value) || 0;
+        const kategori = card.querySelector('.item-kategori').value;
+        const keterangan = card.querySelector('.item-keterangan').value;
+        const tanggalEl = card.querySelector('.item-tanggal');
+
+        const badgeEl = card.querySelector('.gde-struk__summary .badge');
+        if (badgeEl) {
+            badgeEl.className = 'badge ' + (kategoriBadges[kategori] || 'bg-secondary');
+            badgeEl.textContent = kategori;
+        }
+
+        const nominalEl = card.querySelector('.gde-struk__nominal');
+        if (nominalEl) nominalEl.textContent = formatRupiah(nominal);
+
+        const dateEl = card.querySelector('.gde-struk__date');
+        if (dateEl) {
+            if (tanggalEl && tanggalEl.value) {
+                const label = new Date(tanggalEl.value + 'T00:00:00')
+                    .toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                dateEl.innerHTML = '<i class="bi bi-calendar3"></i> ' + label;
+                dateEl.classList.remove('d-none');
+            } else {
+                dateEl.classList.add('d-none');
+            }
+        }
+
+        const ketEl = card.querySelector('.gde-struk__ket');
+        if (ketEl) {
+            ketEl.textContent = keterangan || '';
+            ketEl.classList.toggle('d-none', !keterangan);
         }
     }
 
@@ -421,6 +562,7 @@
                 const col = card.closest('.col-12');
                 if (col) col.remove();
                 else card.remove();
+                pruneEmptyDateGroups();
                 recalcTotals();
             } else {
                 alert(data.message || 'Gagal menghapus item.');
@@ -437,6 +579,7 @@
         card.querySelector('.item-nominal').addEventListener('input', () => saveItemDebounced(card));
         card.querySelector('.item-kategori').addEventListener('change', () => saveItem(card));
         card.querySelector('.item-keterangan').addEventListener('input', () => saveItemDebounced(card));
+        card.querySelector('.item-tanggal')?.addEventListener('change', () => saveItem(card));
     }
 
     function buildItemCardHtml(item) {
@@ -448,7 +591,7 @@
             ? new Date(tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
             : '';
         return `
-            <div class="card border-0 gde-struk" data-slug="${item.slug}">
+            <div class="card border-0 gde-struk" data-slug="${item.slug}" data-group-key="${dateGroupKeyOf(item)}">
                 <button type="button" class="btn btn-sm btn-outline-danger gde-struk__del btn-del-item" title="Hapus file" aria-label="Hapus">
                     <i class="bi bi-trash"></i>
                 </button>
@@ -464,11 +607,16 @@
                         <span class="gde-struk__code" title="${item.item_code}">${item.item_code}</span>
                         ${tanggalLabel ? `<span class="gde-struk__date"><i class="bi bi-calendar3"></i> ${tanggalLabel}</span>` : ''}
                         ${renderPlateBadge(item)}
+                        ${renderTanggalWarning(item)}
                     </div>
                     ${item.keterangan ? `<div class="gde-struk__ket mt-2" title="${item.keterangan}">${item.keterangan}</div>` : ''}
                 </div>
                 <div class="gde-struk__edit">
                     <div class="gde-struk__edit-grid">
+                        <div>
+                            <label class="form-label">Tanggal Struk</label>
+                            <input type="date" class="form-control form-control-sm item-tanggal" value="${tanggal || ''}">
+                        </div>
                         <div>
                             <label class="form-label">Nominal (Rp)</label>
                             <input type="number" class="form-control form-control-sm item-nominal" value="${item.nominal}" min="0" step="0.01" inputmode="decimal">
@@ -767,6 +915,91 @@
 
     // Bind handler edit/hapus utk item yang sudah dirender server
     document.querySelectorAll('.card[data-slug]').forEach(card => bindItemCard(card));
+
+    // ─────────────────────────────────────────────────────────────────────
+    // MODE "UBAH SEMUA ISIAN"
+    // Hasil OCR sering salah (khususnya tanggal). Tombol ini membuka form
+    // lengkap untuk SEMUA item lalu menyimpannya sekali jalan lewat satu
+    // endpoint bulk, sehingga driver tidak perlu menyimpan satu per satu.
+    // ─────────────────────────────────────────────────────────────────────
+    const btnBulkEdit = document.getElementById('btnBulkEdit');
+    const btnBulkSave = document.getElementById('btnBulkSave');
+    const btnBulkCancel = document.getElementById('btnBulkCancel');
+    const bulkEditBar = document.getElementById('bulkEditBar');
+    const bulkEditHint = document.getElementById('bulkEditHint');
+
+    function bulkEditAktif() {
+        return document.body.classList.contains('is-bulk-edit');
+    }
+
+    function setBulkEdit(aktif) {
+        document.body.classList.toggle('is-bulk-edit', aktif);
+
+        document.querySelectorAll('#draftItemsContainer .card[data-slug]').forEach(card => {
+            card.classList.toggle('gde-struk--bulk-edit', aktif);
+        });
+
+        bulkEditBar?.classList.toggle('d-none', !aktif);
+        bulkEditHint?.classList.toggle('d-none', !aktif);
+
+        if (btnBulkEdit) {
+            btnBulkEdit.innerHTML = aktif
+                ? '<i class="bi bi-x-circle"></i> Selesai'
+                : '<i class="bi bi-pencil-square"></i> Ubah Semua Isian';
+        }
+
+        if (aktif) {
+            const jumlah = document.querySelectorAll('#draftItemsContainer .card[data-slug]').length;
+            const el = document.getElementById('bulkEditCount');
+            if (el) el.textContent = jumlah;
+            // Fokuskan tanggal item pertama — bagian yang paling sering salah OCR.
+            document.querySelector('#draftItemsContainer .item-tanggal')?.focus();
+        }
+    }
+
+    btnBulkEdit?.addEventListener('click', () => setBulkEdit(!bulkEditAktif()));
+    btnBulkCancel?.addEventListener('click', () => setBulkEdit(false));
+
+    btnBulkSave?.addEventListener('click', async () => {
+        const cards = Array.from(document.querySelectorAll('#draftItemsContainer .card[data-slug]'));
+        if (cards.length === 0) return;
+
+        const items = {};
+        cards.forEach(card => {
+            items[card.dataset.slug] = {
+                tanggal: card.querySelector('.item-tanggal')?.value || null,
+                nominal: card.querySelector('.item-nominal')?.value || 0,
+                struk_kategori: card.querySelector('.item-kategori')?.value || 'Lainnya',
+                keterangan: card.querySelector('.item-keterangan')?.value || '',
+            };
+        });
+
+        btnBulkSave.disabled = true;
+        const labelAsli = btnBulkSave.innerHTML;
+        btnBulkSave.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Menyimpan...';
+
+        try {
+            const res = await fetch(bulkUpdateUrl, {
+                method: 'PATCH',
+                headers: { 'X-CSRF-TOKEN': csrfToken, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ items: items })
+            });
+            const data = await res.json();
+
+            if (!data.success) {
+                alert(data.message || 'Gagal menyimpan perubahan.');
+                return;
+            }
+
+            // Muat ulang supaya pengelompokan per tanggal dihitung ulang server.
+            window.location.reload();
+        } catch (e) {
+            alert('Error koneksi saat menyimpan.');
+        } finally {
+            btnBulkSave.disabled = false;
+            btnBulkSave.innerHTML = labelAsli;
+        }
+    });
 
     recalcTotals();
 </script>

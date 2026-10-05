@@ -266,6 +266,8 @@ class SpdController extends Controller
             'childExtensions',
             'lpjPenggantian',
             'fundAdditions',
+            'budgets',
+            'pencairans',
         ])->findOrFail($surat->id);
 
         return view('superadmin.spd.surat.detail', compact('surat'));
@@ -291,6 +293,9 @@ class SpdController extends Controller
                 'pemberi_tugas_jabatan' => 'required|string|max:255',
             ]);
         }
+
+        // Pemberian dana (opsional saat approve, tapi bila diisi harus valid).
+        $request->validate($this->pencairanRules());
 
         DB::beginTransaction();
         try {
@@ -323,6 +328,13 @@ class SpdController extends Controller
             $surat->lpj_deadline = Carbon::parse($surat->tanggal_kembali)->addDays(3);
 
             $surat->save();
+
+            // Pemberian dana saat validasi: GA boleh mencatat satu/lebih
+            // pencairan (Tunai/Transfer) sekaligus saat menyetujui surat.
+            $pencairans = $this->extractPencairans($request);
+            if ($pencairans !== []) {
+                $this->simpanPencairans($surat, $pencairans);
+            }
 
             DB::commit();
 
@@ -421,12 +433,12 @@ class SpdController extends Controller
             'jenis_spd_lainnya' => 'nullable|string|max:255',
             'kode_gl' => 'nullable|string|max:255',
             'uang_diberikan' => 'nullable|numeric|min:0',
-            // Budget per hari
+            // Pemberian dana (baris per transfer) + kompatibilitas `budgets` lama
             'budgets' => 'nullable|array',
             'budgets.*.tanggal' => 'required_with:budgets|date',
             'budgets.*.nominal' => 'required_with:budgets|numeric|min:0',
             'budgets.*.catatan' => 'nullable|string|max:255',
-        ], $this->passengerValidationRules()), [
+        ], $this->pencairanRules(), $this->passengerValidationRules()), [
             'pengemudi_nama.required' => 'Nama pengemudi harus diisi.',
             'pemberi_tugas_nama.required' => 'Nama pemberi tugas harus diisi.',
             'pemberi_tugas_jabatan.required' => 'Jabatan pemberi tugas harus diisi.',
@@ -442,7 +454,9 @@ class SpdController extends Controller
                 ->withInput();
         }
 
-        $totalBudget = $request->budgets ? collect($request->budgets)->sum('nominal') : 0;
+        // Pemberian dana: satu baris = satu transfer/pemberian (bukan per hari).
+        $pencairans = $this->extractPencairans($request);
+        $totalBudget = collect($pencairans)->sum('nominal');
 
         // Resolve pengemudi: prioritas Master Pekerja (boleh tanpa akun)
         $pengemudiNama = $request->pengemudi_nama;
@@ -501,17 +515,8 @@ class SpdController extends Controller
                 }
             }
 
-            // Simpan budget per tanggal
-            if ($request->budgets) {
-                foreach ($request->budgets as $budgetData) {
-                    SuratSpdBudget::create([
-                        'surat_spd_id' => $surat->id,
-                        'tanggal' => $budgetData['tanggal'],
-                        'nominal' => $budgetData['nominal'],
-                        'catatan' => $budgetData['catatan'] ?? null,
-                    ]);
-                }
-            }
+            // Simpan pemberian dana (satu baris = satu transfer/pemberian).
+            $this->simpanPencairans($surat, $pencairans);
 
             DB::commit();
 
@@ -551,8 +556,22 @@ class SpdController extends Controller
         $totalLpj = LpjPenggantian::approved()->inUnit($unitId)->count();
         $totalSpending = LpjPenggantian::approved()->inUnit($unitId)->sum('total_pengeluaran');
 
+        // Surat yang sudah disetujui tetapi LPJ-nya belum disubmit driver.
+        // Dipisah: masih dalam batas 3 hari vs sudah lewat batas (overdue).
+        // Overdue TIDAK menutup form LPJ — hanya penanda agar GA bisa mengejar.
+        $suratMenungguLpj = SuratSpd::approved()
+            ->inUnit($unitId)
+            ->whereDoesntHave('lpjPenggantian')
+            ->with(['vehicle', 'user'])
+            ->orderBy('tanggal_kembali')
+            ->get();
+
+        $totalMenungguLpj = $suratMenungguLpj->count();
+        $totalMenungguLpjOverdue = $suratMenungguLpj->filter(fn ($surat) => $surat->isLpjDeadlineOverdue())->count();
+
         return view('superadmin.spd.surat.report', compact(
-            'suratList', 'totalBudget', 'totalApproved', 'totalLpj', 'totalSpending'
+            'suratList', 'totalBudget', 'totalApproved', 'totalLpj', 'totalSpending',
+            'totalMenungguLpj', 'totalMenungguLpjOverdue'
         ));
     }
 
@@ -581,6 +600,111 @@ class SpdController extends Controller
     /**
      * Save budget for mendadak SPD at print time
      */
+    /**
+     * Ambil baris PEMBERIAN DANA dari request.
+     *
+     * Satu baris = satu kali pemberian/transfer uang (bukan per hari).
+     * Mendukung `pencairans[]` (form baru) dan `budgets[]` (form lama) agar
+     * formulir/tombol lawas tetap berfungsi. Baris tanpa tanggal atau
+     * bernominal 0 dilewati supaya baris kosong tidak tersimpan.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function extractPencairans(Request $request): array
+    {
+        $rows = $request->input('pencairans');
+
+        if (! is_array($rows) || $rows === []) {
+            $rows = $request->input('budgets');
+        }
+
+        if (! is_array($rows)) {
+            return [];
+        }
+
+        $hasil = [];
+
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $tanggal = $row['tanggal'] ?? null;
+            $nominal = (float) ($row['nominal'] ?? 0);
+
+            if (! $tanggal || $nominal <= 0) {
+                continue;
+            }
+
+            $bentuk = ($row['bentuk_pencairan'] ?? 'Tunai') === 'Transfer' ? 'Transfer' : 'Tunai';
+
+            $hasil[] = [
+                'tanggal'          => $tanggal,
+                'nominal'          => $nominal,
+                'bentuk_pencairan' => $bentuk,
+                'bank_reference'   => $bentuk === 'Transfer' ? ($row['bank_reference'] ?? null) : null,
+                'rek_tujuan'       => $bentuk === 'Transfer' ? ($row['rek_tujuan'] ?? null) : null,
+                'catatan'          => $row['catatan'] ?? null,
+            ];
+        }
+
+        return $hasil;
+    }
+
+    /**
+     * Simpan baris pemberian dana untuk sebuah surat SPD, lalu sinkronkan
+     * `total_budget` dan `uang_diberikan` = akumulasi seluruh baris surat itu.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return float  total dana diberikan setelah penyimpanan
+     */
+    private function simpanPencairans(SuratSpd $surat, array $rows): float
+    {
+        $urutan = (int) SuratSpdBudget::where('surat_spd_id', $surat->id)->max('urutan');
+
+        foreach ($rows as $row) {
+            SuratSpdBudget::create([
+                'surat_spd_id'     => $surat->id,
+                'tanggal'          => $row['tanggal'],
+                'nominal'          => $row['nominal'],
+                'bentuk_pencairan' => $row['bentuk_pencairan'],
+                'bank_reference'   => $row['bank_reference'],
+                'rek_tujuan'       => $row['rek_tujuan'],
+                'catatan'          => $row['catatan'],
+                'urutan'           => ++$urutan,
+            ]);
+        }
+
+        $total = (float) SuratSpdBudget::where('surat_spd_id', $surat->id)->sum('nominal');
+
+        if ($total > 0) {
+            $surat->update([
+                'total_budget'    => $total,
+                'uang_diberikan'  => $total,
+            ]);
+        }
+
+        return $total;
+    }
+
+    /**
+     * Aturan validasi baris pemberian dana (dipakai beberapa form).
+     *
+     * @return array<string, string>
+     */
+    private function pencairanRules(string $prefix = 'pencairans'): array
+    {
+        return [
+            "{$prefix}"                     => 'nullable|array',
+            "{$prefix}.*.tanggal"           => 'required|date',
+            "{$prefix}.*.nominal"           => 'required|numeric|min:0',
+            "{$prefix}.*.bentuk_pencairan"  => 'nullable|in:Tunai,Transfer',
+            "{$prefix}.*.bank_reference"    => 'nullable|string|max:255',
+            "{$prefix}.*.rek_tujuan"        => 'nullable|string|max:255',
+            "{$prefix}.*.catatan"           => 'nullable|string|max:255',
+        ];
+    }
+
     public function saveMendadakBudget(Request $request, SuratSpd $surat)
     {
         $surat = SuratSpd::with('budgets')->findOrFail($surat->id);
@@ -589,11 +713,14 @@ class SpdController extends Controller
             return redirect()->back()->with('error', 'Hanya SPD mendadak yang bisa input budget saat cetak.');
         }
 
-        $validator = Validator::make($request->all(), [
+        $validator = Validator::make($request->all(), array_merge([
             'budgets' => 'required|array|min:1',
             'budgets.*.tanggal' => 'required|date',
             'budgets.*.nominal' => 'required|numeric|min:0',
             'budgets.*.catatan' => 'nullable|string|max:255',
+        ], $this->pencairanRules()), [
+            'budgets.required' => 'Isi minimal satu baris pemberian dana.',
+            'budgets.min'      => 'Isi minimal satu baris pemberian dana.',
         ]);
 
         if ($validator->fails()) {
@@ -602,18 +729,8 @@ class SpdController extends Controller
 
         DB::beginTransaction();
         try {
-            $totalBudget = 0;
-            foreach ($request->budgets as $budgetData) {
-                SuratSpdBudget::create([
-                    'surat_spd_id' => $surat->id,
-                    'tanggal' => $budgetData['tanggal'],
-                    'nominal' => $budgetData['nominal'],
-                    'catatan' => $budgetData['catatan'] ?? null,
-                ]);
-                $totalBudget += (float) $budgetData['nominal'];
-            }
-
-            $surat->update(['total_budget' => $totalBudget]);
+            // Catat sebagai baris pemberian dana (bukan budget per hari).
+            $totalBudget = $this->simpanPencairans($surat, $this->extractPencairans($request));
 
             DB::commit();
 
@@ -622,7 +739,7 @@ class SpdController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return redirect()->back()->with('error', 'Gagal menyimpan budget: '.$e->getMessage());
+            return redirect()->back()->with('error', 'Gagal menyimpan pemberian dana: '.$e->getMessage());
         }
     }
 
@@ -1343,13 +1460,48 @@ class SpdController extends Controller
             ->whereYear('approved_pengguna_at', Carbon::now()->year)
             ->sum('total_pengeluaran');
 
+        // Notice GA: surat yang LPJ-nya belum disubmit & sudah lewat batas 3 hari.
+        $suratMenungguOverdue = $this->suratMenungguLpjOverdue($unitId);
+
         return view('superadmin.spd.lpj.index', compact(
             'pending_list',
             'approved_list',
             'rejected_list',
             'stats',
-            'total_approved_amount'
+            'total_approved_amount',
+            'suratMenungguOverdue'
         ));
+    }
+
+    /**
+     * Surat SPD yang sudah disetujui, belum dibuatkan LPJ, dan sudah lewat
+     * batas 3 hari — dipakai sebagai "notice" untuk GA & User yang berangkat.
+     *
+     * Overdue hanya PENANDA: form LPJ driver tetap terbuka.
+     *
+     * @param  int|null  $userId  Batasi ke surat yang melibatkan user ini
+     *                            (sebagai pemohon ATAU salah satu pemakai).
+     *                            Null = tanpa batasan (sisi GA).
+     * @return \Illuminate\Support\Collection<int, \App\Models\SuratSpd>
+     */
+    private function suratMenungguLpjOverdue(?int $unitId, ?int $userId = null)
+    {
+        $query = SuratSpd::approved()
+            ->inUnit($unitId)
+            ->whereDoesntHave('lpjPenggantian')
+            ->with(['vehicle', 'user', 'details'])
+            ->orderBy('tanggal_kembali');
+
+        if ($userId !== null) {
+            $query->where(function ($q) use ($userId) {
+                $q->where('user_id', $userId)
+                    ->orWhereHas('details', fn ($d) => $d->where('user_id', $userId));
+            });
+        }
+
+        return $query->get()
+            ->filter(fn ($surat) => $surat->isLpjDeadlineOverdue())
+            ->values();
     }
 
     /**
@@ -1379,12 +1531,17 @@ class SpdController extends Controller
 
         $total_approved_amount = 0;
 
+        // Notice User yang berangkat: surat yang ia ikuti (sebagai pemohon atau
+        // pemakai) dan LPJ-nya belum disubmit driver padahal sudah lewat batas.
+        $suratMenungguOverdue = $this->suratMenungguLpjOverdue($unitId, Auth::id());
+
         return view('superadmin.spd.lpj.index', compact(
             'pending_list',
             'approved_list',
             'rejected_list',
             'stats',
-            'total_approved_amount'
+            'total_approved_amount',
+            'suratMenungguOverdue'
         ));
     }
 

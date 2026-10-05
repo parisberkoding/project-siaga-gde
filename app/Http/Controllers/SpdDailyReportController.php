@@ -407,11 +407,17 @@ class SpdDailyReportController extends Controller
                     $source = 'manual';
                     $itemDate = $manual['tanggal'] ?? ($request->tanggal ?? $daily->tanggal->format('Y-m-d'));
                 } else {
-                    // AI/OCR — dianalisis per gambar dalam batch
+                    // AI/OCR — dianalisis per gambar dalam batch.
+                    // Konteks periode SPD dikirim agar model bisa memeriksa ulang
+                    // digit tanggal (sumber kesalahan tersering: hari & tahun).
                     $tmpPath = $file->store('temp/struk-ocr', 'local');
                     $absolute = Storage::disk('local')->path($tmpPath);
                     try {
-                        $result = $this->analysis->analyzeImage($absolute);
+                        $result = $this->analysis->analyzeImage($absolute, [
+                            'nomor_surat'     => $surat->nomor_surat,
+                            'periode_mulai'   => $surat->tanggal_berangkat?->format('Y-m-d'),
+                            'periode_selesai' => $surat->tanggal_kembali?->format('Y-m-d'),
+                        ]);
                     } finally {
                         Storage::disk('local')->delete($tmpPath);
                     }
@@ -444,6 +450,11 @@ class SpdDailyReportController extends Controller
                     // bukan pilih manual — item dikelompokkan per tanggal struk.
                     $aiTanggal = $this->parseAiTanggal($metadata['tanggal'] ?? null);
                     $itemDate = $aiTanggal ?? ($request->tanggal ?? $daily->tanggal->format('Y-m-d'));
+
+                    // Tandai bila tanggal hasil OCR jatuh di luar periode SPD —
+                    // penanda, bukan pemblokiran: driver tetap bisa memperbaiki
+                    // lewat form (tanggal kini bisa diubah).
+                    $metadata = array_merge($metadata, $this->tandaiTanggalLuarPeriode($surat, $itemDate));
                 }
 
                 $nominal = (float) ($metadata['nominal'] ?? 0);
@@ -483,6 +494,11 @@ class SpdDailyReportController extends Controller
                     'plat_nomor'     => $metadata['plat_nomor'] ?? null,
                     'plat_kendaraan' => $metadata['plat_kendaraan'] ?? null,
                     'plat_cocok'     => $metadata['plat_cocok'] ?? null,
+                    // Penanda tanggal (hasil OCR di luar periode SPD / tahun beda)
+                    'tanggal_mentah'           => $metadata['tanggal_mentah'] ?? null,
+                    'tanggal_di_luar_periode'  => $metadata['tanggal_di_luar_periode'] ?? false,
+                    'tanggal_tahun_beda'       => $metadata['tanggal_tahun_beda'] ?? false,
+                    'tanggal_periode_spd'      => $metadata['tanggal_periode_spd'] ?? null,
                 ];
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('uploadItems: file #' . $index . ' gagal diproses.', [
@@ -517,8 +533,11 @@ class SpdDailyReportController extends Controller
     }
 
     /**
-     * PATCH /pelaporan/spd/{surat}/daily/item/{item} — AJAX ubah nominal/kategori item.
+     * PATCH /pelaporan/spd/{surat}/daily/item/{item} — AJAX ubah tanggal/nominal/kategori item.
      * Diizinkan selama LPJ final belum dibuat.
+     *
+     * `tanggal` ikut bisa diubah karena hasil OCR sering salah membaca tanggal
+     * struk; tanpa ini driver tidak punya cara memperbaikinya.
      */
     public function updateItem(Request $request, SuratSpd $surat, StrukItem $item)
     {
@@ -527,6 +546,7 @@ class SpdDailyReportController extends Controller
         $validator = Validator::make($request->all(), [
             'nominal'        => 'required|numeric|min:0',
             'struk_kategori' => 'required|in:' . \App\Models\StrukItem::validationList(),
+            'tanggal'        => 'nullable|date',
             'keterangan'     => 'nullable|string|max:500',
         ]);
 
@@ -535,19 +555,93 @@ class SpdDailyReportController extends Controller
         }
 
         $oldKeterangan = $request->has('keterangan') ? (string) $item->keterangan : null;
+        $oldTanggal = $item->tanggal ? $item->tanggal->format('Y-m-d') : null;
+        $newTanggal = $request->filled('tanggal')
+            ? \Carbon\Carbon::parse($request->input('tanggal'))->format('Y-m-d')
+            : null;
+
         $changed = (float) $item->nominal !== (float) $request->nominal
             || $item->struk_kategori !== $request->struk_kategori
+            || $oldTanggal !== $newTanggal
             || ($request->has('keterangan') && $oldKeterangan !== trim((string) $request->keterangan));
 
         $item->update([
             'nominal'        => $request->nominal,
             'struk_kategori' => $request->struk_kategori,
+            'tanggal'        => $newTanggal,
             'kategori_source' => 'manual',
             'keterangan'     => $request->has('keterangan') ? trim((string) $request->keterangan) : $item->keterangan,
             'edited_at'      => $changed ? now() : $item->edited_at,
         ]);
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success'  => true,
+            'tanggal'  => $newTanggal,
+            'groupKey' => $newTanggal ?: 'tanpa-tanggal',
+        ]);
+    }
+
+    /**
+     * PATCH /pelaporan/spd/{surat}/daily/items — simpan BANYAK item sekaligus
+     * ("Ubah semua isian" di halaman validasi).
+     *
+     * Dipakai saat hasil OCR banyak yang salah (mis. tanggal semua salah baca)
+     * sehingga driver bisa memperbaiki semuanya dalam satu form lalu menyimpan
+     * sekali jalan. Setiap item tetap diverifikasi milik laporan user ini dan
+     * belum difinalisasi (assertEditableItem).
+     */
+    public function updateItems(Request $request, SuratSpd $surat)
+    {
+        $validator = Validator::make($request->all(), [
+            'items'                       => 'required|array|min:1',
+            'items.*.tanggal'             => 'nullable|date',
+            'items.*.nominal'             => 'required|numeric|min:0',
+            'items.*.struk_kategori'      => 'required|in:' . \App\Models\StrukItem::validationList(),
+            'items.*.keterangan'          => 'nullable|string|max:500',
+        ], [
+            'items.required' => 'Tidak ada item yang bisa disimpan.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+            ], 422);
+        }
+
+        $diperbarui = 0;
+
+        DB::transaction(function () use ($request, $surat, &$diperbarui) {
+            foreach ($request->input('items') as $slug => $data) {
+                // Binding lewat slug agar driver tidak bisa menebak id item.
+                $item = StrukItem::where('slug', $slug)->first();
+
+                if (! $item) {
+                    continue;
+                }
+
+                $this->assertEditableItem($surat, $item);
+
+                $item->update([
+                    'tanggal'         => ! empty($data['tanggal'])
+                        ? \Carbon\Carbon::parse($data['tanggal'])->format('Y-m-d')
+                        : null,
+                    'nominal'         => $data['nominal'],
+                    'struk_kategori'  => \App\Models\StrukItem::normalizeKategori($data['struk_kategori']),
+                    'kategori_source' => 'manual',
+                    'keterangan'      => isset($data['keterangan']) ? trim((string) $data['keterangan']) : $item->keterangan,
+                    'edited_at'       => now(),
+                ]);
+
+                $diperbarui++;
+            }
+        });
+
+        return response()->json([
+            'success'   => true,
+            'updated'   => $diperbarui,
+            'message'   => $diperbarui.' item berhasil disimpan.',
+        ]);
     }
 
     /**
@@ -740,6 +834,48 @@ class SpdDailyReportController extends Controller
     }
 
     /**
+     * Tandai tanggal yang jatuh di luar periode SPD.
+     *
+     * Ini SENGAJA hanya penanda (tidak mengubah/memblokir apa pun): tanggal
+     * struk yang sah bisa saja di luar periode (mis. isi BBM sehari sebelum
+     * berangkat, atau driver telat submit). Fungsinya supaya kesalahan baca
+     * OCR — terutama pergeseran hari dan tahun (2025 vs 2026) — langsung
+     * terlihat oleh driver alih-alih tersimpan diam-diam.
+     *
+     * @return array{tanggal_di_luar_periode: bool, tanggal_periode_spd: ?string, tanggal_tahun_beda: bool}
+     */
+    protected function tandaiTanggalLuarPeriode(SuratSpd $surat, ?string $tanggal): array
+    {
+        $mulai = $surat->tanggal_berangkat
+            ? \Carbon\Carbon::parse($surat->tanggal_berangkat)->startOfDay()
+            : null;
+        $selesai = $surat->tanggal_kembali
+            ? \Carbon\Carbon::parse($surat->tanggal_kembali)->startOfDay()
+            : null;
+
+        if (! $tanggal || ! $mulai || ! $selesai) {
+            return [
+                'tanggal_di_luar_periode' => false,
+                'tanggal_periode_spd'     => null,
+                'tanggal_tahun_beda'      => false,
+            ];
+        }
+
+        $tgl = \Carbon\Carbon::parse($tanggal)->startOfDay();
+
+        // Toleransi: 2 hari sebelum berangkat (beli BBM di awal perjalanan) dan
+        // sampai hari ini / H+1 setelah kembali (driver telat submit LPJ).
+        $batasAwal = $mulai->copy()->subDays(2);
+        $batasAkhir = $selesai->copy()->max(\Carbon\Carbon::today())->addDay();
+
+        return [
+            'tanggal_di_luar_periode' => $tgl->lessThan($batasAwal) || $tgl->greaterThan($batasAkhir),
+            'tanggal_periode_spd'     => $mulai->format('Y-m-d').' s/d '.$selesai->format('Y-m-d'),
+            'tanggal_tahun_beda'      => $tgl->year !== $mulai->year,
+        ];
+    }
+
+    /**
      * Normalisasi tanggal transaksi hasil AI (metadata['tanggal']) → 'Y-m-d'.
      *
      * AI bisa mengembalikan beragam format: "2026-08-05", "05/08/2026",
@@ -753,6 +889,22 @@ class SpdDailyReportController extends Controller
         }
 
         $raw = trim($value);
+
+        // Tahun pendek ("5-8-26") hanya boleh dilengkapi bila memang 2 digit.
+        // PENTING: tanpa penjagaan batas digit, "2025-06-26" ikut tercocokkan
+        // sebagai "25-06-26" lalu berubah menjadi 25-06-2026 → tanggal 2026-06-25
+        // (geser bulan & tahun). Karena itu ISO dicek lebih dulu dan regex-nya
+        // memakai lookaround (?<!\d) ... (?!\d).
+        if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})/', $raw, $iso)) {
+            try {
+                $kandidat = \Carbon\Carbon::createFromFormat('Y-n-j', $iso[1].'-'.$iso[2].'-'.$iso[3]);
+                if ($kandidat && (int) $kandidat->format('Y') > 1970) {
+                    return $kandidat->format('Y-m-d');
+                }
+            } catch (\Throwable $e) {
+                // lanjut ke jalur normalisasi di bawah
+            }
+        }
 
         // Terjemahkan nama bulan Indonesia (dan singkatan) ke angka agar bisa di-parse.
         $bulanId = [
@@ -768,13 +920,21 @@ class SpdDailyReportController extends Controller
             return $bulanId[strtolower($m[1])];
         }, $raw);
 
-        // Tahun pendek ("5-8-26") → lengkapi jadi 2026.
-        if (preg_match('/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2})\b/', $normalized, $m)) {
-            $year = ($m[3] <= 80 ? '20' : '19') . $m[3];
+        // Nama bulan Indonesia ("26 Juni 2025") menghasilkan pemisah SPASI,
+        // bukan "/" atau "-". Rapikan hanya bila memang ada nama bulan yang
+        // diterjemahkan, supaya input lain tidak ikut diutak-atik.
+        if ($normalized !== $raw
+            && preg_match('/(?<!\d)(\d{1,2})[\s\/\-.](\d{1,2})[\s\/\-.](\d{4})(?!\d)/', $normalized, $m)) {
+            $normalized = sprintf('%s-%s-%s', $m[1], $m[2], $m[3]);
+        }
+
+        // Tahun pendek ("5-8-26" / "25/06/26") → lengkapi jadi 20xx.
+        if (preg_match('/(?<!\d)(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2})(?!\d)/', $normalized, $m)) {
+            $year = ((int) $m[3] <= 80 ? '20' : '19') . $m[3];
             $normalized = sprintf('%s-%s-%s', $m[1], $m[2], $year);
         }
 
-        $digits = preg_replace('/[\/\.]/', '-', $normalized);
+        $digits = preg_replace('/[\/.]/', '-', $normalized);
         $digits = preg_replace('/\s+/', ' ', $digits);
 
         foreach (['Y-m-d', 'd-m-Y', 'j-n-Y', 'n-j-Y'] as $format) {

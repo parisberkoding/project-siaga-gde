@@ -256,22 +256,20 @@
                     </div>
                 </div>
 
-                {{-- Budget Per Hari --}}
+                {{-- Pemberian Dana (per transfer/pemberian, BUKAN per hari) --}}
                 <div class="card" id="budgetCard">
                     <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-wallet2"></i> Budget Per Hari</h5>
-                        <p class="text-muted small">Isi nominal budget untuk setiap hari perjalanan.</p>
-                        <div id="budgetContainer">
-                            <div class="text-muted text-center py-3" id="budgetPlaceholder">
-                                Pilih tanggal berangkat & kembali terlebih dahulu
-                            </div>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center mt-2">
-                            <small class="text-muted">Klik "Salin ke semua" untuk menyamakan nominal</small>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="copyBudgetBtn">
-                                <i class="bi bi-copy"></i> Salin ke semua
-                            </button>
-                        </div>
+                        <h5 class="card-title"><i class="bi bi-wallet2"></i> Pemberian Dana</h5>
+                        <p class="text-muted small mb-2">
+                            Catat setiap kali dana diberikan ke driver (boleh lebih dari satu kali: uang muka,
+                            transfer susulan, dst). Satu baris = satu pemberian/transfer, tersimpan pada surat SPD ini.
+                        </p>
+                        @include('partials.pencairan-input', [
+                            'name'           => 'pencairans',
+                            'rows'           => collect(),
+                            'tanggalDefault' => old('tanggal_berangkat', now()->toDateString()),
+                            'totalTargetId'  => 'summaryBudget',
+                        ])
                     </div>
                 </div>
 
@@ -279,7 +277,7 @@
                 <div class="card border-warning" id="mendadakNotice" style="display: none;">
                     <div class="card-body">
                         <h5 class="card-title text-warning"><i class="bi bi-exclamation-triangle"></i> SPD Mendadak</h5>
-                        <p class="mb-0">Budget akan diisi saat pencetakan surat.</p>
+                        <p class="mb-0">Pemberian dana akan diisi saat pencetakan surat.</p>
                     </div>
                 </div>
 
@@ -309,7 +307,7 @@
                                 <td class="text-end"><strong id="summaryPemakai">1 orang</strong></td>
                             </tr>
                             <tr class="border-top">
-                                <td class="fw-bold">Total Budget:</td>
+                                <td class="fw-bold">Total Dana Diberikan:</td>
                                 <td class="text-end fw-bold text-success" id="summaryBudget">Rp 0</td>
                             </tr>
                         </table>
@@ -339,8 +337,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const jumlahPemakai = document.getElementById('jumlahPemakai');
     const infoLama = document.getElementById('infoLama');
     const lamaHari = document.getElementById('lamaHari');
-    const budgetContainer = document.getElementById('budgetContainer');
-    const budgetPlaceholder = document.getElementById('budgetPlaceholder');
     const summaryLama = document.getElementById('summaryLama');
     const summaryPemakai = document.getElementById('summaryPemakai');
     const jenisSpd = document.getElementById('jenisSpd');
@@ -361,7 +357,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function calculate() {
         const berangkat = new Date(tanggalBerangkat.value);
         const kembali = new Date(tanggalKembali.value);
-        const tipe = document.getElementById('tipeSpd').value;
 
         if (tanggalBerangkat.value && tanggalKembali.value && kembali >= berangkat) {
             const diffTime = Math.abs(kembali - berangkat);
@@ -369,61 +364,11 @@ document.addEventListener('DOMContentLoaded', function() {
             lamaHari.textContent = diffDays;
             infoLama.style.display = 'block';
             summaryLama.textContent = diffDays + ' hari';
-            if (tipe !== 'mendadak') {
-                generateBudgetRows(diffDays);
-            } else {
-                budgetContainer.innerHTML = '<div class="text-muted text-center py-3">Budget akan diisi saat pencetakan</div>';
-            }
         } else {
             infoLama.style.display = 'none';
             summaryLama.textContent = '-';
-            budgetContainer.innerHTML = '<div class="text-muted text-center py-3">Pilih tanggal berangkat & kembali terlebih dahulu</div>';
         }
     }
-
-    function generateBudgetRows(days) {
-        const startDate = new Date(tanggalBerangkat.value);
-        let html = '<table class="table table-sm mb-0"><thead><tr><th>Tanggal</th><th>Nominal (Rp)</th><th>Catatan</th></tr></thead><tbody>';
-        for (let i = 0; i < days; i++) {
-            const d = new Date(startDate);
-            d.setDate(d.getDate() + i);
-            const dateStr = d.toISOString().split('T')[0];
-            const dayName = d.toLocaleDateString('id-ID', { weekday: 'long' });
-            html += `<tr>
-                <td class="align-middle">
-                    <input type="hidden" name="budgets[${i}][tanggal]" value="${dateStr}">
-                    ${dateStr} <small class="text-muted">(${dayName})</small>
-                </td>
-                <td>
-                    <input type="number" class="form-control form-control-sm budget-nominal"
-                           name="budgets[${i}][nominal]" min="0" step="5000" value="1400000"
-                           onchange="updateTotalBudget()" oninput="updateTotalBudget()">
-                </td>
-                <td>
-                    <input type="text" class="form-control form-control-sm"
-                           name="budgets[${i}][catatan]" placeholder="Opsional" maxlength="255">
-                </td>
-            </tr>`;
-        }
-        html += '</tbody></table>';
-        budgetContainer.innerHTML = html;
-        updateTotalBudget();
-    }
-
-    window.updateTotalBudget = function() {
-        const inputs = document.querySelectorAll('.budget-nominal');
-        let total = 0;
-        inputs.forEach(inp => { total += parseInt(inp.value) || 0; });
-        summaryBudget.textContent = 'Rp ' + total.toLocaleString('id-ID');
-    };
-
-    document.getElementById('copyBudgetBtn').addEventListener('click', function() {
-        const inputs = document.querySelectorAll('.budget-nominal');
-        if (inputs.length === 0) return;
-        const firstVal = inputs[0].value;
-        inputs.forEach(inp => { inp.value = firstVal; });
-        updateTotalBudget();
-    });
 
     function updateNamaRows() {
         const count = parseInt(jumlahPemakai.value) || 1;
@@ -434,20 +379,22 @@ document.addEventListener('DOMContentLoaded', function() {
         summaryPemakai.textContent = count + ' orang';
     }
 
+    // Pemberian dana kini per transfer (bukan per hari) — kartunya tetap
+    // disembunyikan untuk SPD mendadak karena diisi saat pencetakan surat.
     function toggleBudgetByType() {
         const tipe = document.getElementById('tipeSpd').value;
         const budgetCard = document.getElementById('budgetCard');
         const mendadakNotice = document.getElementById('mendadakNotice');
+
         if (tipe === 'mendadak') {
             budgetCard.style.display = 'none';
             mendadakNotice.style.display = 'block';
-            budgetContainer.innerHTML = '<div class="text-muted text-center py-3">Budget akan diisi saat pencetakan</div>';
-            summaryBudget.textContent = 'Rp 0';
         } else {
             budgetCard.style.display = 'block';
             mendadakNotice.style.display = 'none';
-            calculate();
         }
+
+        calculate();
     }
 
     document.getElementById('tipeSpd').addEventListener('change', toggleBudgetByType);

@@ -174,16 +174,7 @@
                                                     <span class="badge bg-danger">LPJ Ditolak</span>
                                                 @endif
                                             @else
-                                                @if($surat->isLpjDeadlineOverdue())
-                                                    <span class="badge bg-danger">
-                                                        <i class="bi bi-exclamation-triangle"></i> Terlambat!
-                                                    </span>
-                                                @else
-                                                    <span class="badge bg-warning text-dark">Belum LPJ</span>
-                                                    @if($surat->lpj_deadline)
-                                                        <br><small class="text-muted">Deadline: {{ $surat->lpj_deadline->translatedFormat('d M') }}</small>
-                                                    @endif
-                                                @endif
+                                                @include('partials.lpj-deadline-badge', ['surat' => $surat])
                                             @endif
                                         @else
                                             <span class="text-muted">-</span>

@@ -204,7 +204,10 @@ class LpjPenggantian extends Model
 
         if ($tanggalLpj->greaterThan($dueDate)) {
             $this->is_late = true;
-            $this->days_late = $tanggalLpj->diffInDays($dueDate);
+            // Carbon 3: diffInDays() sudah bertanda. Hitung dari due_date ke
+            // tanggal submit agar hasilnya POSITIF (sebelumnya bisa negatif
+            // sehingga badge menampilkan "Terlambat -7 hari").
+            $this->days_late = (int) $dueDate->startOfDay()->diffInDays($tanggalLpj->startOfDay());
         } else {
             $this->is_late = false;
             $this->days_late = 0;
