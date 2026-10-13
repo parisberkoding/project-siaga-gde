@@ -46,7 +46,7 @@ services:
     restart: unless-stopped
     command: ["sh", "-lc", "npm ci --no-audit --no-fund && npm run dev -- --host 0.0.0.0"]
     ports:
-      - "5173:5173"
+      - "${DOCKER_BIND_IP:-127.0.0.1}:5173:5173"
     volumes:
       - .:/app
       - vite_node_modules:/app/node_modules

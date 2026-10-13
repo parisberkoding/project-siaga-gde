@@ -31,11 +31,19 @@
 # ─────────────────────────────────────────────────────────────
 name: bbm-project
 
+# ── Rotasi log (default Docker: json-file TANPA batas -> disk penuh) ──
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 # ── Environment bersama untuk semua container PHP ────────────
 x-app-environment: &app-environment
   # Hanya yang HARUS beda dari host. Sisanya ikut `.env` lewat env_file.
-  APP_URL: "http://localhost:${DOCKER_APP_PORT:-8080}"
-  APP_PUBLIC_URL: "http://localhost:${DOCKER_APP_PORT:-8080}"
+  # Akses lewat IP/domain lain: set DOCKER_APP_URL di .env (mis. http://<ip-server>:<port>)
+  APP_URL: "${DOCKER_APP_URL:-http://localhost:${DOCKER_APP_PORT:-8080}}"
+  APP_PUBLIC_URL: "${DOCKER_APP_URL:-http://localhost:${DOCKER_APP_PORT:-8080}}"
 
   DB_CONNECTION: mysql
   DB_HOST: db
@@ -64,6 +72,7 @@ x-app-common: &app-common
       WITH_IMAGICK: "${WITH_IMAGICK:-true}"   # samakan dengan ekstensi Herd
   image: bbm-project-app
   restart: unless-stopped
+  logging: *default-logging
   env_file:
     - path: .env
       required: false        # .env boleh belum ada; entrypoint akan membuat APP_KEY
@@ -79,8 +88,13 @@ services:
   app:
     <<: *app-common
     container_name: bbm_app
+    # Bind ke 127.0.0.1 (default) supaya tidak terbuka ke jaringan —
+    # port Docker melewati firewall host (ufw). Akses dari luar lewat
+    # reverse proxy / SSH tunnel. Buka ke semua interface: DOCKER_BIND_IP=0.0.0.0
     ports:
-      - "${DOCKER_APP_PORT:-8080}:80"
+      - "${DOCKER_BIND_IP:-127.0.0.1}:${DOCKER_APP_PORT:-8080}:80"
+    mem_limit: "${DOCKER_APP_MEM:-768m}"
+    cpus: "${DOCKER_APP_CPUS:-2}"
     depends_on:
       db:
         condition: service_healthy
@@ -94,6 +108,8 @@ services:
   queue:
     <<: *app-common
     container_name: bbm_queue
+    mem_limit: "${DOCKER_QUEUE_MEM:-512m}"
+    cpus: "${DOCKER_QUEUE_CPUS:-1}"
     stop_grace_period: 30s
     # Worker tidak melayani HTTP -> healthcheck /up milik image tidak berlaku.
     healthcheck:
@@ -112,6 +128,8 @@ services:
   scheduler:
     <<: *app-common
     container_name: bbm_scheduler
+    mem_limit: "${DOCKER_SCHEDULER_MEM:-256m}"
+    cpus: "${DOCKER_SCHEDULER_CPUS:-0.5}"
     stop_grace_period: 30s
     healthcheck:
       disable: true
@@ -130,8 +148,13 @@ services:
     image: mysql:${MYSQL_VERSION:-8.4}
     container_name: bbm_db
     restart: unless-stopped
+    logging: *default-logging
+    # MySQL punya bind IP sendiri (default localhost) supaya membuka app
+    # ke jaringan lewat DOCKER_BIND_IP tidak ikut membuka database.
     ports:
-      - "${DOCKER_DB_PORT:-3307}:3306"
+      - "${DOCKER_DB_BIND_IP:-127.0.0.1}:${DOCKER_DB_PORT:-3307}:3306"
+    mem_limit: "${DOCKER_DB_MEM:-768m}"
+    cpus: "${DOCKER_DB_CPUS:-1}"
     environment:
       MYSQL_DATABASE: "${DOCKER_DB_NAME:-BBM_Patuha}"
       MYSQL_USER: "${DOCKER_DB_USER:-bbm}"
