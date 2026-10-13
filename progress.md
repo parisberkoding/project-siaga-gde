@@ -672,3 +672,51 @@ Untuk input ISO yang **sudah benar** `2026-06-25`, regex ini cocok pada ekor str
 **Tes baru** (`tests/Feature/SpdPemberianDanaTest.php`, 5 kasus): buat surat shortcut dengan 2 pencairan (Transfer lengkap + Tunai), total `total_budget`/`uang_diberikan` ter-sinkron, tunai tidak menyimpan referensi/rekening, kompatibilitas payload `budgets` lama, pencatatan pencairan saat approve, penambahan baris berikutnya memakai `urutan` lanjut, serta label lama "Budget Per Hari"/"Salin ke semua" benar-benar hilang dari form.
 
 **Verifikasi:** `php artisan test` → **352 passed (1381 assertions)**. Di aplikasi berjalan: form shortcut & halaman validasi menampilkan "Pemberian Dana"/"Tambah Pemberian Dana" dan label lama hilang; DOM setelah JS dijalankan memuat `pencairans[0][tanggal|nominal|bentuk_pencairan|bank_reference|rek_tujuan]`; `node --check` pada skrip komponen lolos.
+
+---
+
+## 34. Kendaraan & Alat — Unit Bisnis Eksplisit + Detailing Identitas Kendaraan + Scope Unit untuk Driver
+
+**Kebutuhan (dari user):**
+1. Kendaraan & alat **wajib punya unit** di tabelnya, dan unit diisi saat create supaya query bisa di-view per unit.
+2. Driver yang **mengetik plat nomor** harus melihat plat nomornya sendiri (scope unit).
+3. Bagian kendaraan sebelumnya hanya menyimpan plat nomor; perlu **detailing identitas kendaraan** (tipe, nomor rangka, nomor mesin, dst).
+
+**Temuan awal (audit):**
+- Kolom `vehicle_and_tools_consumers.unit_id` **sudah ada** (migration `2026_10_01_000001`), 41/44 baris terisi — tetapi **form create tidak punya pilihan unit** (hanya diturunkan dari `site_id`) dan `updateVehicle()` **tidak pernah** menyinkronkan `unit_id` saat site dipindah.
+- Tabel `vehicle_details` sudah punya `jenis_kendaraan`, `merk`, `model`, `tahun_pembuatan`, `nomor_rangka`, `nomor_mesin`, `warna` — tetapi **0 dari 41 baris terisi** karena form create/edit utama tidak memuat field itu (`storeVehicle()` hanya menyimpan site, kapasitas, tangki, BBM, nominal). Detailing hanya bisa diisi lewat halaman terpisah `/vehicles/{id}/detail/edit`.
+- Daftar kendaraan di form permohonan BBM (`RequestManagementController::requester_index`) **tidak di-scope unit** → driver bisa memilih plat unit lain.
+- `vehicle_specifications` sudah di-drop (`2026_07_13_000007`), jadi tabel pendukung yang relevan: `vehicle_and_tools_consumers` (identitas utama), `vehicle_details` (detail teknis & legal), `vehicle_barcodes`.
+
+**Perubahan:**
+
+*Database*
+- **Migration baru** `2026_10_13_000001_add_identity_fields_to_vehicle_details_table` — menambah `nomor_bpkb`, `nomor_stnk`, `nomor_kir`, `pajak_berlaku_sampai`, `kir_berlaku_sampai`, `kapasitas_mesin` (CC), `odometer` (km), `status_kepemilikan` pada `vehicle_details`; **plus backfill `unit_id` kendaraan** dari unit site-nya (portabel tanpa `UPDATE ... JOIN` agar tetap jalan di SQLite saat test). Hasil di DB dev: 41/44 kendaraan ber-unit; 3 alat (`A 01 MRS`, `A 02 GNS`, `A 03 VOP`) belum punya site sehingga unitnya harus diisi manual.
+
+*Model*
+- `VehicleDetail` — konstanta & helper `STATUS_MILIK_SENDIRI|SEWA|PINJAM_PAKAI|LEASING` + `statusKepemilikanOptions()`, `jenisKendaraanOptions()`, `status_kepemilikan_label`, `pajak_status`/`kir_status` (ok/soon ≤30 hari/expired), fillable + cast (`date`, `integer`) untuk kolom baru.
+- `VehicleAndToolsConsumers` — scope baru **`visibleTo(?User)`** (user tanpa unit/Pusat = tanpa scope; unit lain = `unit_id` sama) dan helper **`isVisibleTo(?User)`** untuk validasi server.
+- `Unit::vehicles()` — relasi ke kendaraan/alat unit.
+
+*Controller (`SuperadminController`)*
+- `createVehicle()`/`editVehicle()` mengirim `$units` + sites ber-`unit`.
+- Helper bersama: `vehicleValidationRules()` (identitas teknis, legal, kapasitas/BBM, unit) + `vehicleValidationMessages()`, `resolveVehicleUnitId()` (unit form → unit site → unit lama → unit user), `siteUnitMismatchMessage()` (site wajib milik unit terpilih), `vehicleDetailPayload()` (field yang tidak dikirim form tidak diikutsertakan, sehingga update parsial tidak menghapus data lama).
+- `storeVehicle()`/`updateVehicle()` menyimpan **seluruh field identitas** + `unit_id` (create menolak bila unit tidak bisa diresolusi; update menyinkronkan saat kendaraan pindah unit).
+- `updateVehicleDetail()` ikut menangani field legal baru + sinkron `unit_id`; `indexVehicles()` menambah filter `unit_id` (termasuk nilai `none` = belum ber-unit) dan mengirim `$units`/`$unitFilter`.
+
+*View*
+- `vehicles/create.blade.php` & `vehicles/edit.blade.php` ditulis ulang: dropdown **Unit Bisnis (wajib)** + Site yang tersaring mengikuti unit (dan memilih site otomatis mengisi unit), bagian **Identitas** (jenis, merk, model, tahun, warna, CC, nomor rangka, nomor mesin, odometer, status kepemilikan berisi opsi **Sewa / Rental**), bagian **Dokumen & Legalitas** (BPKB/STNK/KIR + masa berlaku) yang otomatis disembunyikan untuk tipe ALAT, dan bagian kapasitas/budget BBM (kalkulator benchmark edit tetap utuh).
+- `partials/kelola-consumerialtools.blade.php` — kolom **Unit** (badge, `Belum ada unit` bila kosong), filter unit + opsi "⚠ Belum ada unit" (hanya untuk user global), colspan & pagination disesuaikan.
+- `vehicles/detail.blade.php` & `vehicles/detail-form.blade.php` — menampilkan/mengedit seluruh identitas & dokumen, badge status masa berlaku pajak/KIR, serta unit pemilik.
+
+*Scope unit untuk driver*
+- `RequestManagementController::requester_index()` memakai `visibleTo($user)` → driver hanya melihat plat unitnya.
+- `requester_create()` menolak `vehicle_id` milik unit lain (dan plat yang sudah terdaftar di unit lain), dengan pesan yang menyebut unit pemiliknya; kendaraan rental baru tetap mewarisi `unit_id` driver.
+- `SpdController::createSurat()`/`createSuratSuperadmin()` memakai `visibleTo(Auth::user())`; `storeSurat()`/`storeSuratSuperadmin()` menolak plat unit lain.
+
+*Bug transaksi yang ikut ketemu & diperbaiki*
+- `requester_create()` membuka `DB::beginTransaction()` lalu **early-return tanpa `DB::rollBack()`** pada 8 jalur penolakan (kendaraan tidak ditemukan/tidak approved/tidak aktif/unit beda/duplikat/input kosong). Ini membocorkan transaksi dan membuat test setelahnya gagal `SQLSTATE[HY000]: cannot start a transaction within a transaction`. Semua jalur sekarang rollback lebih dulu.
+
+**Tes baru** (`tests/Feature/VehicleUnitDetailTest.php`, 11 kasus): create menyimpan unit + seluruh identitas (termasuk status SEWA & tanggal pajak/KIR), unit diturunkan dari site, site beda unit ditolak, update memindah unit + menyinkronkan `unit_id`, kolom & filter unit di daftar, filter "belum ada unit", identitas tampil di halaman detail, dropdown unit + field detailing ada di form create & edit, driver hanya melihat plat unitnya di form permohonan, dan permohonan dengan plat unit lain ditolak.
+
+**Verifikasi:** `php artisan test` → **368 passed (1461 assertions)** (sebelumnya 357 passed tanpa file test baru). Bukti regresi transaksi: `php artisan test tests/Feature/VehicleUnitDetailTest.php tests/Feature/VendorLunchTest.php` gagal `cannot start a transaction within a transaction` sebelum perbaikan `DB::rollBack()`, hijau setelahnya. Migration dijalankan ke DB dev (`php artisan migrate`) — kolom baru ada dan backfill unit berjalan.

@@ -40,8 +40,10 @@ class SpdController extends Controller
      */
     public function createSurat()
     {
+        // Scope unit: hanya kendaraan milik unit pengguna (user global/Pusat = semua unit).
         $vehicles = VehicleAndToolsConsumers::where('is_active', true)
             ->where('consumerial_type', 'Kendaraan')
+            ->visibleTo(Auth::user())
             ->orderBy('consumerial_name')
             ->get();
 
@@ -82,6 +84,16 @@ class SpdController extends Controller
         try {
             // Get vehicle untuk nomor polisi
             $vehicle = VehicleAndToolsConsumers::findOrFail($request->vehicle_id);
+
+            // Scope unit: plat nomor hanya boleh dipakai unit pemiliknya.
+            if (! $vehicle->isVisibleTo(Auth::user())) {
+                DB::rollBack();
+
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Plat nomor '.$vehicle->consumerial_code.' terdaftar di unit lain ('
+                        .($vehicle->unit?->name ?? 'tanpa unit').'). Pilih kendaraan unit Anda.');
+            }
 
             // Create surat SPD TANPA budget & TANPA pemberi tugas
             $surat = SuratSpd::create([
@@ -379,8 +391,10 @@ class SpdController extends Controller
      */
     public function createSuratSuperadmin()
     {
+        // Scope unit: hanya kendaraan milik unit pengguna (user global/Pusat = semua unit).
         $vehicles = VehicleAndToolsConsumers::where('is_active', true)
             ->where('consumerial_type', 'Kendaraan')
+            ->visibleTo(Auth::user())
             ->orderBy('consumerial_name')
             ->get();
 
@@ -452,6 +466,15 @@ class SpdController extends Controller
             return redirect()->back()
                 ->withErrors($validator)
                 ->withInput();
+        }
+
+        // Scope unit: superadmin unit hanya memakai plat nomor unitnya.
+        $vehicle = VehicleAndToolsConsumers::find($request->vehicle_id);
+        if ($vehicle && ! $vehicle->isVisibleTo(Auth::user())) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Plat nomor '.$vehicle->consumerial_code.' terdaftar di unit lain ('
+                    .($vehicle->unit?->name ?? 'tanpa unit').').');
         }
 
         // Pemberian dana: satu baris = satu transfer/pemberian (bukan per hari).

@@ -564,6 +564,10 @@ Route::middleware(['auth', 'permission:features.manage'])
         Route::post('/', [FeatureController::class, 'store'])->name('store');
         Route::post('/{feature}/activate', [FeatureController::class, 'activate'])->name('activate');
         Route::post('/{feature}/deactivate', [FeatureController::class, 'deactivate'])->name('deactivate');
+
+        // Checklist akses fitur per unit x CRUD.
+        Route::get('/on_unit', [FeatureController::class, 'onUnit'])->name('on_unit');
+        Route::post('/on_unit/{unit}', [FeatureController::class, 'updateUnitAccess'])->name('on_unit.update');
     });
 
 // Vehicle Checking Superadmin — Health, Financial, Transaction Reports (superadmin only)

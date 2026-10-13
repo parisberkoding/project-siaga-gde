@@ -64,9 +64,11 @@ class RequestManagementController extends Controller
         }
 
         // Get all vehicles (only approved ones) — + detail untuk label "Plat - Merk" & budget
+        // Scope unit: driver/user ber-unit hanya melihat plat nomor dari unitnya sendiri.
         $vehicles = VehicleAndToolsConsumers::with('detail.site')
             ->where('is_approved', true)
             ->where('is_active', true)
+            ->visibleTo($user)
             ->orderBy('consumerial_type')
             ->orderBy('consumerial_name')
             ->get();
@@ -208,6 +210,8 @@ class RequestManagementController extends Controller
                 $vehicle = VehicleAndToolsConsumers::find($validated['vehicle_id']);
 
                 if (! $vehicle) {
+                    DB::rollBack();
+
                     return back()
                         ->withInput()
                         ->with('error', 'Kendaraan tidak ditemukan.');
@@ -215,6 +219,8 @@ class RequestManagementController extends Controller
 
                 // Cek apakah kendaraan sudah diapprove
                 if (! $vehicle->is_approved) {
+                    DB::rollBack();
+
                     return back()
                         ->withInput()
                         ->with('error', 'Kendaraan/Alat yang dipilih belum disetujui oleh Superadmin. Silakan tunggu persetujuan atau pilih kendaraan lain.');
@@ -222,9 +228,21 @@ class RequestManagementController extends Controller
 
                 // ✅ Cek apakah kendaraan masih aktif
                 if (! $vehicle->is_active) {
+                    DB::rollBack();
+
                     return back()
                         ->withInput()
                         ->with('error', 'Kendaraan/Alat yang dipilih sudah tidak aktif. Hubungi tim IT untuk aktivasi kembali.');
+                }
+
+                // ✅ Scope unit: plat nomor hanya boleh dipakai oleh unit pemiliknya
+                if (! $vehicle->isVisibleTo($user)) {
+                    DB::rollBack();
+
+                    return back()
+                        ->withInput()
+                        ->with('error', 'Plat nomor '.$vehicle->consumerial_code.' terdaftar di unit lain ('
+                            .($vehicle->unit?->name ?? 'tanpa unit').'). Silakan pilih kendaraan unit Anda.');
                 }
 
                 $vehicleId = $validated['vehicle_id'];
@@ -237,14 +255,28 @@ class RequestManagementController extends Controller
                 if ($existingVehicle) {
                     // ✅ Cek status active
                     if (! $existingVehicle->is_active) {
+                        DB::rollBack();
+
                         return back()
                             ->withInput()
                             ->with('error', 'Kendaraan sudah tercatat dengan kode: '.$existingVehicle->consumerial_code.'. Hubungi tim IT untuk melakukan aktivasi kendaraan.');
-                    } else {
+                    }
+
+                    // ✅ Plat nomor milik unit lain -> tidak boleh dipakai unit ini
+                    if (! $existingVehicle->isVisibleTo($user)) {
+                        DB::rollBack();
+
                         return back()
                             ->withInput()
-                            ->with('error', 'Kendaraan dengan kode '.$existingVehicle->consumerial_code.' sudah terdaftar dan aktif. Silakan pilih dari daftar.');
+                            ->with('error', 'Plat nomor '.$existingVehicle->consumerial_code.' sudah terdaftar di unit '
+                                .($existingVehicle->unit?->name ?? 'lain').'. Hubungi Superadmin unit Anda bila plat ini memang milik unit Anda.');
                     }
+
+                    DB::rollBack();
+
+                    return back()
+                        ->withInput()
+                        ->with('error', 'Kendaraan dengan kode '.$existingVehicle->consumerial_code.' sudah terdaftar dan aktif. Silakan pilih dari daftar.');
                 }
 
                 // Buat kendaraan baru dengan status pending approval
@@ -262,6 +294,8 @@ class RequestManagementController extends Controller
                 $vehicleId = $vehicle->id;
                 $needsSuperadminApproval = true;
             } else {
+                DB::rollBack();
+
                 return back()
                     ->withInput()
                     ->with('error', 'Pilih kendaraan existing atau tambahkan kendaraan baru dengan lengkap.');

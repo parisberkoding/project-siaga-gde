@@ -149,6 +149,43 @@ class VehicleAndToolsConsumers extends Model
     }
 
     /**
+     * Scope berdasarkan user pemakai — inilah aturan "driver hanya melihat
+     * kendaraan unit-nya sendiri":
+     *
+     *   - user tanpa unit (global)     -> tanpa scope, melihat semua unit
+     *   - user unit Pusat (is_central) -> tanpa scope, melihat semua unit
+     *   - user unit lain               -> hanya kendaraan dengan unit_id sama
+     *
+     * Kendaraan yang unit_id-nya masih NULL tidak terlihat oleh user ber-unit;
+     * lengkapi unitnya lewat form Kendaraan/Alat agar ikut ter-view.
+     */
+    public function scopeVisibleTo($query, ?User $user)
+    {
+        if (! $user instanceof User) {
+            return;
+        }
+
+        if (! $user->hasUnitScope()) {
+            return;
+        }
+
+        $query->where('vehicle_and_tools_consumers.unit_id', $user->unit_id);
+    }
+
+    /**
+     * True bila kendaraan boleh dipakai user ini (unit cocok / user global).
+     * Dipakai sebagai validasi server saat driver memilih plat nomor.
+     */
+    public function isVisibleTo(?User $user): bool
+    {
+        if (! $user instanceof User || ! $user->hasUnitScope()) {
+            return true;
+        }
+
+        return (int) $this->unit_id === (int) $user->unit_id;
+    }
+
+    /**
      * Budget operasional (nominal_full_tank) dari detail master vehicle.
      * Sumber tunggal untuk nominal default 1x pengisian full tank.
      */

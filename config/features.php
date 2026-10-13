@@ -25,6 +25,17 @@
 
 return [
 
+    /*
+    |--------------------------------------------------------------------------
+    | Saklar penegakan akses fitur per unit
+    |--------------------------------------------------------------------------
+    | Selama false, matrix unit_feature_access HANYA menyimpan konfigurasi dan
+    | menggerakkan UI "Akses Fitur", tetapi TIDAK menyaring akses runtime
+    | (fail-open). Diaktifkan setelah matrix diisi dan diverifikasi, supaya
+    | tidak ada user yang kehilangan akses mendadak.
+    */
+    'enforce_unit_access' => env('FEATURES_ENFORCE_UNIT_ACCESS', false),
+
     'registry' => [
 
         // ── BBM & Permohonan ──

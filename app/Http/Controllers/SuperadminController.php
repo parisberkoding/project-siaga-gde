@@ -1007,7 +1007,7 @@ class SuperadminController extends Controller
 
     public function showVehicleDetail($id)
     {
-        $vehicle = VehicleAndToolsConsumers::with('detail', 'creator', 'approver')->findOrFail($id);
+        $vehicle = VehicleAndToolsConsumers::with('detail.site', 'detail.site.unit', 'unit', 'creator', 'approver')->findOrFail($id);
 
         return view('superadmin.vehicles.detail', compact('vehicle'));
     }
@@ -1016,9 +1016,10 @@ class SuperadminController extends Controller
     {
         $vehicle = VehicleAndToolsConsumers::with('detail')->findOrFail($id);
         $detail = $vehicle->detail ?? new VehicleDetail;
-        $sites = Site::active()->orderBy('name')->get();
+        $sites = Site::active()->with('unit')->orderBy('name')->get();
+        $units = Unit::active()->orderBy('name')->get();
 
-        return view('superadmin.vehicles.detail-form', compact('vehicle', 'detail', 'sites'));
+        return view('superadmin.vehicles.detail-form', compact('vehicle', 'detail', 'sites', 'units'));
     }
 
     public function updateVehicleDetail(Request $request, $id)
@@ -1026,6 +1027,7 @@ class SuperadminController extends Controller
         $vehicle = VehicleAndToolsConsumers::findOrFail($id);
 
         $validated = $request->validate([
+            'unit_id' => 'nullable|exists:units,id',
             'site_id' => 'nullable|exists:sites,id',
             'jenis_kendaraan' => 'nullable|string|max:100',
             'merk' => 'nullable|string|max:100',
@@ -1033,6 +1035,14 @@ class SuperadminController extends Controller
             'tahun_pembuatan' => 'nullable|integer|min:1900|max:'.(date('Y') + 1),
             'nomor_rangka' => 'nullable|string|max:100',
             'nomor_mesin' => 'nullable|string|max:100',
+            'nomor_bpkb' => 'nullable|string|max:100',
+            'nomor_stnk' => 'nullable|string|max:100',
+            'nomor_kir' => 'nullable|string|max:100',
+            'pajak_berlaku_sampai' => 'nullable|date',
+            'kir_berlaku_sampai' => 'nullable|date',
+            'kapasitas_mesin' => 'nullable|integer|min:0|max:100000',
+            'odometer' => 'nullable|integer|min:0|max:10000000',
+            'status_kepemilikan' => 'nullable|in:'.implode(',', array_keys(VehicleDetail::statusKepemilikanOptions())),
             'warna' => 'nullable|string|max:50',
             'kapasitas_penumpang' => 'nullable|integer|min:1|max:100',
             'kapasitas_bahan_bakar' => 'nullable|numeric|min:0|max:99999',
@@ -1040,16 +1050,34 @@ class SuperadminController extends Controller
             'volume_tangki' => 'nullable|numeric|min:0|max:99999',
             'nominal_full_tank' => 'nullable|numeric|min:0',
             'nominal_spd_default' => 'nullable|numeric|min:0',
+            'kapasitas_bbm_tahunan' => 'nullable|numeric|min:0',
             'catatan' => 'nullable|string|max:2000',
+        ], [
+            'unit_id.exists' => 'Unit bisnis yang dipilih tidak valid',
+            'status_kepemilikan.in' => 'Status kepemilikan tidak dikenal',
         ]);
+
+        $unitId = $this->resolveVehicleUnitId(
+            $validated,
+            $vehicle->unit_id ? (int) $vehicle->unit_id : null
+        );
+
+        if ($mismatch = $this->siteUnitMismatchMessage($validated['site_id'] ?? null, $unitId)) {
+            return redirect()->back()->withInput()->with('error', $mismatch);
+        }
 
         try {
             DB::beginTransaction();
 
             $detail = VehicleDetail::updateOrCreate(
                 ['vehicle_and_tools_consumer_id' => $vehicle->id],
-                $validated
+                $this->vehicleDetailPayload($validated)
             );
+
+            // Unit pemilik ikut disinkronkan dari form detail.
+            if ($unitId && (int) $vehicle->unit_id !== (int) $unitId) {
+                $vehicle->update(['unit_id' => $unitId]);
+            }
 
             if ($request->hasFile('foto')) {
                 $request->validate(['foto' => 'image|mimes:jpeg,png,jpg|max:2048']);
@@ -1923,9 +1951,13 @@ class SuperadminController extends Controller
     public function createVehicle()
     {
         $title = 'Tambah Kendaraan / Alat';
-        $sites = Site::active()->orderBy('name')->get();
+        $sites = Site::active()->with('unit')->orderBy('name')->get();
+        $units = Unit::active()->orderBy('name')->get();
 
-        return view('superadmin.vehicles.create', compact('title', 'sites'));
+        // Unit awal yang disarankan: unit user (kalau ada), kalau tidak biarkan kosong.
+        $defaultUnitId = auth()->user()?->unit_id;
+
+        return view('superadmin.vehicles.create', compact('title', 'sites', 'units', 'defaultUnitId'));
     }
 
     public function editVehicle($id)
@@ -1933,7 +1965,8 @@ class SuperadminController extends Controller
         $title = 'Edit Kendaraan / Alat';
         $vehicle = VehicleAndToolsConsumers::with('detail.site')->findOrFail($id);
         $detail = $vehicle->detail ?? new VehicleDetail;
-        $sites = Site::active()->orderBy('name')->get();
+        $sites = Site::active()->with('unit')->orderBy('name')->get();
+        $units = Unit::active()->orderBy('name')->get();
 
         // Harga BBM region unit kendaraan (untuk kalkulasi benchmark otomatis)
         $regionPrices = [];
@@ -1945,7 +1978,7 @@ class SuperadminController extends Controller
             }
         }
 
-        return view('superadmin.vehicles.edit', compact('title', 'vehicle', 'detail', 'sites', 'regionPrices'));
+        return view('superadmin.vehicles.edit', compact('title', 'vehicle', 'detail', 'sites', 'units', 'regionPrices'));
     }
 
     public function indexVehicles(Request $request)
@@ -1955,16 +1988,25 @@ class SuperadminController extends Controller
         // Get filters
         $type = $request->get('type');
         $search = $request->get('search');
+        $unitFilter = $request->get('unit_id');
         $tab = $request->get('tab', 'list'); // list, add, deleted
 
         // Query vehicles/tools - HANYA YANG SUDAH APPROVED
-        $query = VehicleAndToolsConsumers::with(['creator', 'approver', 'barcode', 'detail.site'])
+        $query = VehicleAndToolsConsumers::with(['creator', 'approver', 'barcode', 'detail.site', 'unit'])
             ->where('is_approved', true) // Hanya tampilkan yang approved
             ->inUnit($request->user()?->unit_id);
 
         // ✅ Filter berdasarkan tipe (uppercase)
         if ($type) {
             $query->where('consumerial_type', strtoupper($type));
+        }
+
+        // ✅ Filter per unit bisnis (agar tiap unit bisa melihat datanya sendiri)
+        // Nilai "none" = kendaraan yang unitnya belum di-assign (tidak ter-view driver).
+        if ($unitFilter === 'none') {
+            $query->whereNull('unit_id');
+        } elseif ($unitFilter) {
+            $query->where('unit_id', $unitFilter);
         }
 
         // ✅ Search dengan uppercase
@@ -1977,7 +2019,7 @@ class SuperadminController extends Controller
             });
         }
 
-        $vehicles = $query->orderBy('created_at', 'desc')->paginate(15);
+        $vehicles = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
 
         // Get deleted vehicles/tools
         $deletedVehicles = VehicleAndToolsConsumers::onlyTrashed()
@@ -1988,6 +2030,11 @@ class SuperadminController extends Controller
 
         $barcode_path = VehicleBarcode::whereIn('vehicle_and_tools_consumer_id', $vehicles->pluck('id'))
             ->get()->pluck('barcode_path', 'vehicle_and_tools_consumer_id');
+
+        // Daftar unit untuk dropdown filter — user ber-unit hanya melihat unitnya.
+        $units = $request->user()?->hasUnitScope()
+            ? Unit::where('id', $request->user()->unit_id)->orderBy('name')->get()
+            : Unit::active()->orderBy('name')->get();
 
         $siteIds = $request->user()?->unitSiteIds();
         $sites = $siteIds !== null
@@ -2000,41 +2047,186 @@ class SuperadminController extends Controller
             'deletedVehicles',
             'barcode_path',
             'sites',
+            'units',
             'tab',
             'type',
-            'search'
+            'search',
+            'unitFilter'
         ));
     }
 
-    public function storeVehicle(Request $request)
+    /**
+     * Aturan validasi bersama form Kendaraan/Alat (create & edit).
+     *
+     * Meliputi identitas teknis, identitas legal (BPKB/STNK/KIR + masa berlaku),
+     * kapasitas & budget BBM, serta unit pemilik kendaraan.
+     */
+    private function vehicleValidationRules(?int $ignoreId = null): array
     {
-        $validated = $request->validate([
+        return [
             'consumerial_type' => 'required|in:KENDARAAN,ALAT',
-            'consumerial_code' => 'required|unique:vehicle_and_tools_consumers,consumerial_code|max:255',
+            'consumerial_code' => 'required|max:255|unique:vehicle_and_tools_consumers,consumerial_code'.($ignoreId ? ','.$ignoreId : ''),
             'consumerial_name' => 'required|max:255',
             'consumerial_notes' => 'nullable|string|max:500',
-            // Master Vehicle (budget & unit asal) — optional saat create
+
+            // Unit pemilik + site operasional
+            'unit_id' => 'nullable|exists:units,id',
             'site_id' => 'nullable|exists:sites,id',
+
+            // Identitas teknis kendaraan
+            'jenis_kendaraan' => 'nullable|string|max:100',
+            'merk' => 'nullable|string|max:100',
+            'model' => 'nullable|string|max:100',
+            'tahun_pembuatan' => 'nullable|integer|min:1900|max:'.(date('Y') + 1),
+            'nomor_rangka' => 'nullable|string|max:100',
+            'nomor_mesin' => 'nullable|string|max:100',
+            'warna' => 'nullable|string|max:50',
+            'kapasitas_mesin' => 'nullable|integer|min:0|max:100000',
+            'odometer' => 'nullable|integer|min:0|max:10000000',
+
+            // Identitas legal / dokumen
+            'nomor_bpkb' => 'nullable|string|max:100',
+            'nomor_stnk' => 'nullable|string|max:100',
+            'nomor_kir' => 'nullable|string|max:100',
+            'pajak_berlaku_sampai' => 'nullable|date',
+            'kir_berlaku_sampai' => 'nullable|date',
+            'status_kepemilikan' => 'nullable|in:'.implode(',', array_keys(VehicleDetail::statusKepemilikanOptions())),
+
+            // Kapasitas & budget BBM
             'kapasitas_penumpang' => 'nullable|integer|min:1|max:100',
+            'kapasitas_bahan_bakar' => 'nullable|numeric|min:0|max:99999',
             'volume_tangki' => 'nullable|numeric|min:0|max:99999',
             'jenis_bahan_bakar' => 'nullable|string|max:50',
             'nominal_full_tank' => 'nullable|numeric|min:0',
             'nominal_spd_default' => 'nullable|numeric|min:0',
-        ], [
+            'kapasitas_bbm_tahunan' => 'nullable|numeric|min:0',
+        ];
+    }
+
+    /**
+     * Pesan validasi khusus form Kendaraan/Alat.
+     */
+    private function vehicleValidationMessages(): array
+    {
+        return [
             'consumerial_type.required' => 'Tipe konsumsi harus diisi',
             'consumerial_type.in' => 'Tipe konsumsi harus Kendaraan atau Alat',
             'consumerial_code.required' => 'Kode harus diisi',
             'consumerial_code.unique' => 'Kode sudah terdaftar',
             'consumerial_name.required' => 'Nama harus diisi',
-        ]);
+            'unit_id.exists' => 'Unit bisnis yang dipilih tidak valid',
+            'site_id.exists' => 'Site yang dipilih tidak valid',
+            'status_kepemilikan.in' => 'Status kepemilikan tidak dikenal',
+        ];
+    }
+
+    /**
+     * Tentukan unit pemilik kendaraan.
+     *
+     * Urutan prioritas: unit yang dipilih di form -> unit site terpilih ->
+     * unit lama kendaraan (saat edit) -> unit user yang sedang login.
+     */
+    private function resolveVehicleUnitId(array $validated, ?int $fallbackUnitId = null): ?int
+    {
+        $unitId = $validated['unit_id'] ?? null;
+
+        if (! $unitId && ! empty($validated['site_id'])) {
+            $unitId = Site::whereKey($validated['site_id'])->value('unit_id');
+        }
+
+        return $unitId ?: $fallbackUnitId ?: auth()->user()?->unit_id;
+    }
+
+    /**
+     * Site dan unit harus konsisten: site wajib milik unit yang dipilih.
+     * Mengembalikan pesan error, atau null bila valid.
+     */
+    private function siteUnitMismatchMessage(?int $siteId, ?int $unitId): ?string
+    {
+        if (! $siteId || ! $unitId) {
+            return null;
+        }
+
+        $siteUnitId = Site::whereKey($siteId)->value('unit_id');
+
+        if ($siteUnitId !== null && (int) $siteUnitId !== (int) $unitId) {
+            return 'Site yang dipilih bukan milik unit tersebut. Pilih site lain atau ubah unit bisnisnya.';
+        }
+
+        return null;
+    }
+
+    /**
+     * Susun payload vehicle_details dari input form.
+     *
+     * Field yang tidak dikirim form tidak diikutsertakan, sehingga update
+     * parsial (mis. lewat API/test lama) tidak menghapus data yang sudah ada.
+     */
+    private function vehicleDetailPayload(array $validated): array
+    {
+        $fields = [
+            'site_id',
+            'jenis_kendaraan',
+            'merk',
+            'model',
+            'tahun_pembuatan',
+            'nomor_rangka',
+            'nomor_mesin',
+            'nomor_bpkb',
+            'nomor_stnk',
+            'nomor_kir',
+            'pajak_berlaku_sampai',
+            'kir_berlaku_sampai',
+            'kapasitas_mesin',
+            'odometer',
+            'status_kepemilikan',
+            'warna',
+            'kapasitas_penumpang',
+            'jenis_bahan_bakar',
+            'volume_tangki',
+            'nominal_full_tank',
+            'nominal_spd_default',
+            'kapasitas_bbm_tahunan',
+            'catatan',
+        ];
+
+        $payload = [];
+
+        foreach ($fields as $field) {
+            if (array_key_exists($field, $validated)) {
+                $payload[$field] = $validated[$field];
+            }
+        }
+
+        // Kolom duplikat historis: kapasitas_bahan_bakar mengikuti volume_tangki.
+        if (array_key_exists('kapasitas_bahan_bakar', $validated)
+            || array_key_exists('volume_tangki', $validated)) {
+            $payload['kapasitas_bahan_bakar'] = $validated['kapasitas_bahan_bakar']
+                ?? ($validated['volume_tangki'] ?? null);
+        }
+
+        return $payload;
+    }
+
+    public function storeVehicle(Request $request)
+    {
+        $validated = $request->validate($this->vehicleValidationRules(), $this->vehicleValidationMessages());
+
+        $unitId = $this->resolveVehicleUnitId($validated);
+
+        if ($unitId === null) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Unit bisnis wajib dipilih agar kendaraan/alat bisa difilter per unit.');
+        }
+
+        if ($mismatch = $this->siteUnitMismatchMessage($validated['site_id'] ?? null, $unitId)) {
+            return redirect()->back()->withInput()->with('error', $mismatch);
+        }
 
         try {
             DB::beginTransaction();
-
-            // Unit asal kendaraan diturunkan dari site yang dipilih (fallback ke unit user).
-            $siteUnitId = isset($validated['site_id'])
-                ? Site::find($validated['site_id'])?->unit_id
-                : null;
 
             $vehicle = VehicleAndToolsConsumers::create([
                 'consumerial_type' => $validated['consumerial_type'],
@@ -2045,21 +2237,13 @@ class SuperadminController extends Controller
                 'is_approved' => true,
                 'approved_by' => auth()->id(),
                 'is_active' => true,
-                'unit_id' => $siteUnitId ?? auth()->user()->unit_id,
+                'unit_id' => $unitId,
             ]);
 
-            // Auto-create VehicleDetail dengan field budget & kapasitas (Master Vehicle)
+            // Auto-create VehicleDetail lengkap (identitas + budget & kapasitas).
             VehicleDetail::updateOrCreate(
                 ['vehicle_and_tools_consumer_id' => $vehicle->id],
-                [
-                    'site_id' => $validated['site_id'] ?? null,
-                    'kapasitas_penumpang' => $validated['kapasitas_penumpang'] ?? null,
-                    'volume_tangki' => $validated['volume_tangki'] ?? null,
-                    'kapasitas_bahan_bakar' => $validated['volume_tangki'] ?? null,
-                    'jenis_bahan_bakar' => $validated['jenis_bahan_bakar'] ?? null,
-                    'nominal_full_tank' => $validated['nominal_full_tank'] ?? null,
-                    'nominal_spd_default' => $validated['nominal_spd_default'] ?? null,
-                ]
+                $this->vehicleDetailPayload($validated)
             );
 
             DB::commit();
@@ -2082,49 +2266,32 @@ class SuperadminController extends Controller
     {
         $vehicle = VehicleAndToolsConsumers::findOrFail($id);
 
-        $validated = $request->validate([
-            'consumerial_type' => 'required|in:KENDARAAN,ALAT',
-            'consumerial_code' => 'required|max:255|unique:vehicle_and_tools_consumers,consumerial_code,'.$id,
-            'consumerial_name' => 'required|max:255',
-            'consumerial_notes' => 'nullable|string|max:500',
-            'site_id' => 'nullable|exists:sites,id',
-            'kapasitas_penumpang' => 'nullable|integer|min:1|max:100',
-            'volume_tangki' => 'nullable|numeric|min:0|max:99999',
-            'jenis_bahan_bakar' => 'nullable|string|max:50',
-            'nominal_full_tank' => 'nullable|numeric|min:0',
-            'nominal_spd_default' => 'nullable|numeric|min:0',
-            'kapasitas_bbm_tahunan' => 'nullable|numeric|min:0',
-        ], [
-            'consumerial_type.required' => 'Tipe konsumsi harus diisi',
-            'consumerial_type.in' => 'Tipe konsumsi harus Kendaraan atau Alat',
-            'consumerial_code.required' => 'Kode harus diisi',
-            'consumerial_code.unique' => 'Kode sudah terdaftar',
-            'consumerial_name.required' => 'Nama harus diisi',
-        ]);
+        $validated = $request->validate(
+            $this->vehicleValidationRules((int) $vehicle->id),
+            $this->vehicleValidationMessages()
+        );
+
+        $unitId = $this->resolveVehicleUnitId($validated, $vehicle->unit_id ? (int) $vehicle->unit_id : null);
+
+        if ($mismatch = $this->siteUnitMismatchMessage($validated['site_id'] ?? null, $unitId)) {
+            return redirect()->back()->withInput()->with('error', $mismatch);
+        }
 
         try {
             DB::beginTransaction();
 
             $vehicle->update([
                 'consumerial_type' => $validated['consumerial_type'],
-                'consumerial_code' => $validated['consumerial_code'],
-                'consumerial_name' => $validated['consumerial_name'],
+                'consumerial_code' => strtoupper($validated['consumerial_code']),
+                'consumerial_name' => strtoupper($validated['consumerial_name']),
                 'consumerial_notes' => $validated['consumerial_notes'] ?? null,
+                'unit_id' => $unitId,
             ]);
 
-            // Update Master Vehicle detail (budget, kapasitas & unit asal)
+            // Update Master Vehicle detail (identitas, budget & unit asal).
             VehicleDetail::updateOrCreate(
                 ['vehicle_and_tools_consumer_id' => $vehicle->id],
-                [
-                    'site_id' => $validated['site_id'] ?? null,
-                    'kapasitas_penumpang' => $validated['kapasitas_penumpang'] ?? null,
-                    'volume_tangki' => $validated['volume_tangki'] ?? null,
-                    'kapasitas_bahan_bakar' => $validated['volume_tangki'] ?? null,
-                    'jenis_bahan_bakar' => $validated['jenis_bahan_bakar'] ?? null,
-                    'nominal_full_tank' => $validated['nominal_full_tank'] ?? null,
-                    'nominal_spd_default' => $validated['nominal_spd_default'] ?? null,
-                    'kapasitas_bbm_tahunan' => $validated['kapasitas_bbm_tahunan'] ?? null,
-                ]
+                $this->vehicleDetailPayload($validated)
             );
 
             DB::commit();

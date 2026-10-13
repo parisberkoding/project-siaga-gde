@@ -62,10 +62,25 @@
 
         <form method="GET" action="{{ route('vehicles') }}" class="mb-3" data-autofilter>
             <div class="row g-2">
-                <div class="col-md-9">
+                <div class="col-md-6">
                     <input type="text" class="form-control" name="search"
                            value="{{ $search }}"
                            placeholder="🔍 Cari berdasarkan kode, nama, atau catatan...">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="unit_id">
+                        <option value="">-- Semua Unit --</option>
+                        @foreach($units ?? [] as $unit)
+                        <option value="{{ $unit->id }}" {{ (string) ($unitFilter ?? '') === (string) $unit->id ? 'selected' : '' }}>
+                            {{ $unit->name }}
+                        </option>
+                        @endforeach
+                        @unless(request()->user()?->hasUnitScope())
+                        <option value="none" {{ ($unitFilter ?? '') === 'none' ? 'selected' : '' }}>
+                            ⚠ Belum ada unit
+                        </option>
+                        @endunless
+                    </select>
                 </div>
                 <div class="col-md-3">
                     <select class="form-select" name="type">
@@ -85,6 +100,7 @@
                         <th width="100">Tipe</th>
                         <th>Kode</th>
                         <th>Nama</th>
+                        <th>Unit</th>
                         <th>Site</th>
                         <th width="80">Penumpang</th>
                         <th width="70">Tangki</th>
@@ -107,6 +123,13 @@
                         </td>
                         <td><strong>{{ $vehicle->consumerial_code }}</strong></td>
                         <td>{{ $vehicle->consumerial_name }}</td>
+                        <td>
+                            @if($vehicle->unit)
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">{{ $vehicle->unit->name }}</span>
+                            @else
+                                <span class="badge bg-warning text-dark" title="Kendaraan tanpa unit tidak terlihat oleh driver ber-unit">Belum ada unit</span>
+                            @endif
+                        </td>
                         <td><small>{{ $vehicle->detail?->site?->name ?? '-' }}</small></td>
                         <td><small>{{ $vehicle->detail?->kapasitas_penumpang ? $vehicle->detail->kapasitas_penumpang . ' org' : '-' }}</small></td>
                         <td><small>{{ $vehicle->detail?->volume_tangki ? $vehicle->detail->volume_tangki . ' L' : '-' }}</small></td>
@@ -176,7 +199,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="11">
+                        <td colspan="12">
                             <div class="text-center py-5 text-muted">
                                 <i class="bi bi-inbox fs-1 opacity-50 d-block mb-2"></i>
                                 <p class="mb-0">Belum ada data kendaraan/alat</p>
@@ -191,7 +214,8 @@
         <div class="mt-3">
             {{ $vehicles->appends([
                 'type' => request('type', ''),
-                'search' => request('search', '')
+                'search' => request('search', ''),
+                'unit_id' => request('unit_id', ''),
             ])->links() }}
         </div>
 

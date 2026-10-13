@@ -42,6 +42,14 @@ class Unit extends Model
         return $this->hasMany(User::class);
     }
 
+    /**
+     * Kendaraan & alat milik unit ini (master BBM operasional).
+     */
+    public function vehicles()
+    {
+        return $this->hasMany(VehicleAndToolsConsumers::class);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);

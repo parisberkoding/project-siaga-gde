@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Feature;
 use App\Models\Module;
+use App\Models\Unit;
+use App\Models\UnitFeatureAccess;
 use Illuminate\Http\Request;
 
 /**
@@ -85,5 +87,65 @@ class FeatureController extends Controller
 
         return redirect()->route('superadmin.features.index')
             ->with('warning', "Fitur \"{$feature->name}\" diturunkan ke DEVELOPMENT.");
+    }
+
+    /* =========================================================
+     * Akses Fitur per unit (checklist CRUD)
+     * =======================================================*/
+
+    /**
+     * Halaman checklist: untuk setiap unit, fitur mana saja yang boleh
+     * di-view/create/update/delete.
+     */
+    public function onUnit()
+    {
+        $title = 'Akses Fitur';
+
+        $units = Unit::withCount('sites')->orderBy('name')->get();
+
+        $features = Feature::with('module')
+            ->orderByRaw('module_id IS NOT NULL')
+            ->orderBy('module_id')
+            ->orderBy('name')
+            ->get();
+
+        // Map: unit_id => [feature_id => baris akses]
+        $access = UnitFeatureAccess::all()->groupBy('unit_id');
+
+        return view('superadmin.features.on_unit', compact('title', 'units', 'features', 'access'));
+    }
+
+    /**
+     * Simpan matrix akses fitur untuk SATU unit.
+     *
+     * Checkbox yang tidak dicentang TIDAK terkirim, sehingga kolom aksinya
+     * diperlakukan false (opt-out tulis). field `feature_id` dikirim sebagai
+     * hidden input supaya tiap baris selalu terwakili.
+     */
+    public function updateUnitAccess(Request $request, Unit $unit)
+    {
+        $validated = $request->validate([
+            'access' => 'nullable|array',
+            'access.*.feature_id' => 'required|integer|exists:features,id',
+        ], [
+            'access.*.feature_id.required' => 'Kode fitur tidak valid',
+        ]);
+
+        foreach ($request->input('access', []) as $featureId => $row) {
+            $realFeatureId = $row['feature_id'] ?? $featureId;
+
+            UnitFeatureAccess::updateOrCreate(
+                ['unit_id' => $unit->id, 'feature_id' => $realFeatureId],
+                [
+                    'can_view' => ! empty($row['can_view']),
+                    'can_create' => ! empty($row['can_create']),
+                    'can_update' => ! empty($row['can_update']),
+                    'can_delete' => ! empty($row['can_delete']),
+                ]
+            );
+        }
+
+        return redirect()->route('superadmin.features.on_unit')
+            ->with('success', "Akses fitur unit {$unit->name} berhasil disimpan.");
     }
 }

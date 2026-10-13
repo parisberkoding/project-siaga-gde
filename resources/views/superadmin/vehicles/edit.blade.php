@@ -4,6 +4,10 @@
 
 @section('content')
 
+@php
+    $currentUnitId = old('unit_id', $vehicle->unit_id);
+@endphp
+
 <div class="pagetitle">
     <h1>Edit Kendaraan / Alat</h1>
     <nav>
@@ -46,6 +50,9 @@
             <div class="card-body p-4">
                 <form action="{{ route('vehicles.update', $vehicle->id) }}" method="POST" id="editVehicleForm">
                     @csrf
+
+                    {{-- ================= DATA UTAMA ================= --}}
+                    <h6 class="fw-semibold mb-3"><i class="bi bi-card-heading me-2"></i>Data Utama</h6>
 
                     <!-- Tipe -->
                     <div class="mb-4">
@@ -111,24 +118,160 @@
 
                     <hr>
 
-                    {{-- Master Vehicle: data budget BBM & kapasitas (sinkron dengan tabel detail) --}}
-                    <h6 class="fw-semibold mb-3"><i class="bi bi-fuel-pump me-2"></i>Data Kendaraan, Jenis BBM & Benchmark</h6>
+                    {{-- ================= UNIT & SITE ================= --}}
+                    <h6 class="fw-semibold mb-3"><i class="bi bi-diagram-3 me-2"></i>Unit Bisnis & Site Operasional</h6>
                     <div class="row g-3">
                         <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                Unit Bisnis <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select @error('unit_id') is-invalid @enderror"
+                                    name="unit_id" id="unitSelect" required>
+                                <option value="">-- Pilih Unit --</option>
+                                @foreach($units ?? [] as $unit)
+                                <option value="{{ $unit->id }}"
+                                    {{ (string) $currentUnitId === (string) $unit->id ? 'selected' : '' }}>
+                                    {{ $unit->name }} ({{ $unit->code }})
+                                </option>
+                                @endforeach
+                            </select>
+                            <small class="text-muted">
+                                Unit pemilik aset — menentukan kendaraan ini tampil di unit mana saat driver memilih plat nomor.
+                            </small>
+                            @error('unit_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label fw-semibold">Site / Lokasi Operasional</label>
-                            <select class="form-select" name="site_id" id="siteSelect">
+                            <select class="form-select @error('site_id') is-invalid @enderror" name="site_id" id="siteSelect">
                                 <option value="">-- Pilih Site --</option>
                                 @foreach($sites ?? [] as $site)
-                                <option value="{{ $site->id }}" {{ old('site_id', $detail->site_id) == $site->id ? 'selected' : '' }}>{{ $site->name }}</option>
+                                <option value="{{ $site->id }}"
+                                        data-unit="{{ $site->unit_id }}"
+                                        {{ (string) old('site_id', $detail->site_id) === (string) $site->id ? 'selected' : '' }}>
+                                    {{ $site->name }}{{ $site->unit ? ' — '.$site->unit->name : '' }}
+                                </option>
                                 @endforeach
                             </select>
                             <small class="text-muted">Menentukan region harga BBM untuk benchmark.</small>
+                            @error('site_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
+                    </div>
+
+                    <hr>
+
+                    {{-- ================= IDENTITAS KENDARAAN ================= --}}
+                    <h6 class="fw-semibold mb-3"><i class="bi bi-truck me-2"></i>Identitas <span id="identityHeading">Kendaraan</span></h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Jenis <span class="identityNoun">Kendaraan</span></label>
+                            <select class="form-select" name="jenis_kendaraan">
+                                <option value="">-- Pilih --</option>
+                                @foreach(\App\Models\VehicleDetail::jenisKendaraanOptions() as $jenis)
+                                <option value="{{ $jenis }}" {{ old('jenis_kendaraan', $detail->jenis_kendaraan) == $jenis ? 'selected' : '' }}>{{ $jenis }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Merk</label>
+                            <input type="text" class="form-control" name="merk"
+                                   value="{{ old('merk', $detail->merk) }}" placeholder="Contoh: Toyota, Honda, Mitsubishi">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Model / Tipe</label>
+                            <input type="text" class="form-control" name="model"
+                                   value="{{ old('model', $detail->model) }}" placeholder="Contoh: Avanza, CR-V, Colt Diesel">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Tahun Pembuatan</label>
+                            <input type="number" class="form-control" name="tahun_pembuatan"
+                                   value="{{ old('tahun_pembuatan', $detail->tahun_pembuatan) }}"
+                                   min="1900" max="{{ date('Y') + 1 }}" placeholder="Contoh: 2020">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Warna</label>
+                            <input type="text" class="form-control" name="warna"
+                                   value="{{ old('warna', $detail->warna) }}" placeholder="Contoh: Putih, Hitam, Silver">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Kapasitas Mesin (CC)</label>
+                            <input type="number" class="form-control" name="kapasitas_mesin"
+                                   value="{{ old('kapasitas_mesin', $detail->kapasitas_mesin) }}" min="0" placeholder="Contoh: 1500">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" id="labelNomorRangka">Nomor Rangka (VIN)</label>
+                            <input type="text" class="form-control" name="nomor_rangka"
+                                   value="{{ old('nomor_rangka', $detail->nomor_rangka) }}" placeholder="Nomor rangka kendaraan">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" id="labelNomorMesin">Nomor Mesin</label>
+                            <input type="text" class="form-control" name="nomor_mesin"
+                                   value="{{ old('nomor_mesin', $detail->nomor_mesin) }}" placeholder="Nomor mesin kendaraan">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Odometer Terakhir (km)</label>
+                            <input type="number" class="form-control" name="odometer"
+                                   value="{{ old('odometer', $detail->odometer) }}" min="0" placeholder="Contoh: 85000">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Status Kepemilikan</label>
+                            <select class="form-select" name="status_kepemilikan">
+                                <option value="">-- Pilih --</option>
+                                @foreach(\App\Models\VehicleDetail::statusKepemilikanOptions() as $value => $label)
+                                <option value="{{ $value }}" {{ old('status_kepemilikan', $detail->status_kepemilikan) == $value ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            <small class="text-muted">Pilih <strong>Sewa / Rental</strong> untuk kendaraan sewaan.</small>
+                        </div>
+                    </div>
+
+                    <div id="dokumenFields">
+                        <hr>
+
+                        {{-- ================= DOKUMEN & LEGALITAS ================= --}}
+                        <h6 class="fw-semibold mb-3"><i class="bi bi-file-earmark-text me-2"></i>Dokumen & Legalitas</h6>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Nomor BPKB</label>
+                                <input type="text" class="form-control" name="nomor_bpkb"
+                                       value="{{ old('nomor_bpkb', $detail->nomor_bpkb) }}" placeholder="Nomor BPKB">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Nomor STNK</label>
+                                <input type="text" class="form-control" name="nomor_stnk"
+                                       value="{{ old('nomor_stnk', $detail->nomor_stnk) }}" placeholder="Nomor STNK">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Nomor KIR</label>
+                                <input type="text" class="form-control" name="nomor_kir"
+                                       value="{{ old('nomor_kir', $detail->nomor_kir) }}" placeholder="Nomor uji KIR">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Pajak Berlaku Sampai</label>
+                                <input type="date" class="form-control" name="pajak_berlaku_sampai"
+                                       value="{{ old('pajak_berlaku_sampai', optional($detail->pajak_berlaku_sampai)->format('Y-m-d')) }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">KIR Berlaku Sampai</label>
+                                <input type="date" class="form-control" name="kir_berlaku_sampai"
+                                       value="{{ old('kir_berlaku_sampai', optional($detail->kir_berlaku_sampai)->format('Y-m-d')) }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    {{-- ================= KAPASITAS & BUDGET BBM ================= --}}
+                    <h6 class="fw-semibold mb-3"><i class="bi bi-fuel-pump me-2"></i>Kapasitas & Budget BBM</h6>
+                    <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Jenis Bahan Bakar</label>
                             <select class="form-select" name="jenis_bahan_bakar" id="fuelSelect">
                                 <option value="">-- Pilih --</option>
-                                @foreach(['Premium', 'Pertalite', 'Pertamax', 'Pertamax Turbo', 'Solar', 'Biosolar', 'Dexlite', 'Pertamina Dex'] as $bbm)
+                                @foreach(['Premium', 'Pertalite', 'Pertamax', 'Pertamax Turbo', 'Solar', 'Biosolar', 'Dexlite', 'Pertamina Dex', 'Listrik'] as $bbm)
                                 <option value="{{ $bbm }}" {{ old('jenis_bahan_bakar', $detail->jenis_bahan_bakar) == $bbm ? 'selected' : '' }}>{{ $bbm }}</option>
                                 @endforeach
                             </select>
@@ -252,6 +395,20 @@
                 </table>
             </div>
         </div>
+
+        <div class="card border-0 bg-light shadow-sm mb-3">
+            <div class="card-body p-3">
+                <h6 class="fw-semibold mb-3">
+                    <i class="bi bi-diagram-3 me-2 text-success"></i>Unit Pemilik
+                </h6>
+                <p class="small mb-1">
+                    Unit saat ini: <strong>{{ $vehicle->unit?->name ?? 'Belum diisi' }}</strong>
+                </p>
+                <p class="small text-muted mb-0">
+                    Kendaraan tanpa unit tidak akan terlihat oleh driver unit mana pun.
+                </p>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -338,16 +495,73 @@ function updateSummary() {
 
 function selectType(type) {
     const isKendaraan = type === 'KENDARAAN';
+
     document.getElementById('labelKode').innerHTML = isKendaraan
         ? 'Plat Nomor <span class="text-danger">*</span>'
         : 'Kode Alat <span class="text-danger">*</span>';
     document.getElementById('consumerialCode').placeholder = isKendaraan ? 'Contoh: B 1234 XYZ' : 'Contoh: GENSET-001';
-    document.getElementById('hintKode').textContent = isKendaraan ? 'Nomor plat kendaraan (otomatis uppercase)' : 'Kode unik alat (otomatis uppercase)';
+    document.getElementById('hintKode').textContent = isKendaraan
+        ? 'Nomor plat kendaraan (otomatis uppercase)'
+        : 'Kode unik alat (otomatis uppercase)';
+
     document.getElementById('labelNama').innerHTML = isKendaraan
         ? 'Merk & Tipe <span class="text-danger">*</span>'
         : 'Nama Alat <span class="text-danger">*</span>';
     document.getElementById('consumerialName').placeholder = isKendaraan ? 'Contoh: Toyota Avanza' : 'Contoh: Generator 5 KVA';
-    document.getElementById('hintNama').textContent = isKendaraan ? 'Merk dan tipe kendaraan (otomatis uppercase)' : 'Nama atau deskripsi alat (otomatis uppercase)';
+    document.getElementById('hintNama').textContent = isKendaraan
+        ? 'Merk dan tipe kendaraan (otomatis uppercase)'
+        : 'Nama atau deskripsi alat (otomatis uppercase)';
+
+    document.getElementById('dokumenFields').classList.toggle('d-none', !isKendaraan);
+
+    document.getElementById('identityHeading').textContent = isKendaraan ? 'Kendaraan' : 'Alat';
+    document.querySelectorAll('.identityNoun').forEach(el => { el.textContent = isKendaraan ? 'Kendaraan' : 'Alat'; });
+    document.getElementById('labelNomorRangka').textContent = isKendaraan ? 'Nomor Rangka (VIN)' : 'Nomor Seri / Identitas Alat';
+    document.getElementById('labelNomorMesin').textContent = isKendaraan ? 'Nomor Mesin' : 'Nomor Mesin / Model Alat';
+}
+
+/**
+ * Site mengikuti unit: option site disaring sesuai unit terpilih,
+ * dan memilih site otomatis mengisi unitnya.
+ */
+function filterSitesByUnit() {
+    const unitSelect = document.getElementById('unitSelect');
+    const siteSelect = document.getElementById('siteSelect');
+    if (!unitSelect || !siteSelect) return;
+
+    const unitId = unitSelect.value;
+    let selectedStillValid = true;
+
+    Array.from(siteSelect.options).forEach(function (opt, index) {
+        if (index === 0) return; // placeholder
+
+        const siteUnit = opt.dataset.unit || '';
+        const matches = !unitId || siteUnit === '' || siteUnit === unitId;
+        opt.hidden = !matches;
+        opt.disabled = !matches;
+
+        if (opt.selected && !matches) {
+            selectedStillValid = false;
+        }
+    });
+
+    if (!selectedStillValid) {
+        siteSelect.value = '';
+    }
+}
+
+function syncUnitFromSite() {
+    const unitSelect = document.getElementById('unitSelect');
+    const siteSelect = document.getElementById('siteSelect');
+    if (!unitSelect || !siteSelect) return;
+
+    const opt = siteSelect.options[siteSelect.selectedIndex];
+    const siteUnit = opt ? (opt.dataset.unit || '') : '';
+
+    if (siteUnit) {
+        unitSelect.value = siteUnit;
+        filterSitesByUnit();
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -358,15 +572,17 @@ document.addEventListener('DOMContentLoaded', function() {
         selectType(this.value);
     });
 
-    document.getElementById('consumerialCode').addEventListener('input', function() {
-        const pos = this.selectionStart;
-        this.value = this.value.toUpperCase();
-        this.setSelectionRange(pos, pos);
-    });
-    document.getElementById('consumerialName').addEventListener('input', function() {
-        const pos = this.selectionStart;
-        this.value = this.value.toUpperCase();
-        this.setSelectionRange(pos, pos);
+    document.getElementById('unitSelect')?.addEventListener('change', filterSitesByUnit);
+    document.getElementById('siteSelect')?.addEventListener('change', syncUnitFromSite);
+
+    ['consumerialCode', 'consumerialName'].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', function () {
+            const pos = this.selectionStart;
+            this.value = this.value.toUpperCase();
+            this.setSelectionRange(pos, pos);
+        });
     });
 
     document.getElementById('tankInput').addEventListener('input', calcBenchmark);
@@ -377,6 +593,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('btnFillBenchmark').addEventListener('click', fillBenchmark);
     document.getElementById('btnCalcOnly').addEventListener('click', fillBenchmark);
 
+    filterSitesByUnit();
     calcBenchmark();
     updateSummary();
 });

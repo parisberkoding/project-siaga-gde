@@ -36,6 +36,8 @@ class DatabaseSeeder extends Seeder
             // HARUS setelah RbacSeeder (butuh tabel permissions dan role
             // superadmin) dan UnitSeeder (butuh unit PUSAT + site-nya).
             SuperadminPusatSeeder::class,
+            // Butuh role developers (dari RbacSeeder) dan unit PUSAT.
+            DeveloperUserSeeder::class,
             // HARUS setelah RbacSeeder (butuh tabel permissions) dan UnitSeeder
             // (butuh baris units untuk mengisi matrix unit x modul).
             ModuleSeeder::class,
