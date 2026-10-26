@@ -1,0 +1,55 @@
+# ─────────────────────────────────────────────────────────────
+#  Build context exclusions (kecepatan build + jangan bake secret/sampah).
+# ─────────────────────────────────────────────────────────────
+.git
+.gitignore
+.dockerignore
+
+# Secrets & env (di-inject docker compose saat runtime, bukan di-bake)
+.env
+.env.*
+!.env.example
+auth.json
+
+# Dependency (di-install ulang di dalam image)
+/vendor
+/node_modules
+
+# Hasil build & cache runtime di host — JANGAN ikut masuk image:
+# aset selalu dibuild dari stage `assets`, dan cache config/route host
+# bisa "menimpa" konfigurasi container (sumber bug yang membingungkan).
+# /public/build
+/public/hot
+/public/storage
+/bootstrap/cache/*.php
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/logs/*
+/storage/fonts/*
+
+# File upload (foto struk, QR, barcode) TIDAK di-bake ke image:
+# ukurannya ratusan MB dan isinya berubah terus, sehingga memperlambat
+# setiap build. Data lama tetap ada di volume `app_storage`.
+# Butuh memasukkan isi folder host ke container? `make storage-sync`.
+# Ingin ikut di-bake? Komentari baris ini lalu build ulang.
+/storage/app/public/*
+
+# File compose & tooling (tidak dibutuhkan di dalam image)
+/Dockerfile
+/docker-compose.yml
+/docker-compose.override.yml
+/Makefile
+
+# File besar / tidak dipakai runtime
+*.log
+*.zip
+*.xlsx
+*.doc
+*.docx
+*.md
+.DS_Store
+/faris/*
+/tests
+phpunit.xml
+phpstan.neon

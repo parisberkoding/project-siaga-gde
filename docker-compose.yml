@@ -1,0 +1,170 @@
+# ─────────────────────────────────────────────────────────────
+#  SIAGA / BBM Project — Docker (berdampingan dengan DBngin 3306 & Herd 80/443)
+#
+#  Pakai:
+#     docker compose up -d --build      # build + jalan (semua otomatis)
+#     docker compose logs -f app
+#     docker compose down               # stop (data tetap)
+#  Atau lewat Makefile: `make up`, `make logs`, `make down`, `make parity`
+#
+#  Akses:   http://localhost:8080
+#
+#  Port host yang dipakai:
+#     App  : 8080   (Herd: 80/443)
+#     MySQL: 3307   (DBngin: 3306)
+#  Ubah tanpa edit file ini:
+#     DOCKER_APP_PORT=8090 docker compose up -d
+#
+#  Prinsip: .env host TIDAK diubah dan TIDAK di-mount. Nilainya
+#  di-inject lewat `env_file`, lalu hanya nilai yang memang harus beda
+#  (URL & koneksi DB) yang di-override di `environment`. Jadi APP_KEY,
+#  API key AI, SESSION_DRIVER, CACHE_STORE, QUEUE_CONNECTION otomatis
+#  sama dengan host.
+#
+#  Service:
+#     app        nginx + php-fpm (web)      -> port 8080
+#     queue      php artisan queue:work
+#     scheduler  php artisan schedule:work
+#     db         MySQL
+#
+#  Detail versi & paritas host<->container: lihat "faris/setup docker.md"
+# ─────────────────────────────────────────────────────────────
+name: bbm-project
+
+# ── Environment bersama untuk semua container PHP ────────────
+x-app-environment: &app-environment
+  # Hanya yang HARUS beda dari host. Sisanya ikut `.env` lewat env_file.
+  APP_URL: "http://localhost:${DOCKER_APP_PORT:-8080}"
+  APP_PUBLIC_URL: "http://localhost:${DOCKER_APP_PORT:-8080}"
+
+  DB_CONNECTION: mysql
+  DB_HOST: db
+  DB_PORT: "3306"
+  DB_DATABASE: "${DOCKER_DB_NAME:-BBM_Patuha}"
+  DB_USERNAME: "${DOCKER_DB_USER:-bbm}"
+  DB_PASSWORD: "${DOCKER_DB_PASSWORD:-bbm_secret}"
+
+  # Dipakai entrypoint (bukan Laravel) untuk memastikan database ada dan
+  # user aplikasi punya hak akses — supaya `up --build` tidak pernah gagal
+  # hanya karena volume lama masih memakai nama database yang berbeda.
+  DOCKER_DB_ROOT_USER: "${DOCKER_DB_ROOT_USER:-root}"
+  DOCKER_DB_ROOT_PASSWORD: "${DOCKER_DB_ROOT_PASSWORD:-root_secret}"
+
+  # Supaya container bisa menjangkau service di host (mis. DBngin 3306)
+  # kalau perlu membandingkan data: host.docker.internal
+  TZ: Asia/Jakarta
+
+x-app-common: &app-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+    args:
+      PHP_VERSION: "${PHP_VERSION:-8.4}"      # samakan dengan versi PHP Herd
+      NODE_VERSION: "${NODE_VERSION:-22}"
+      WITH_IMAGICK: "${WITH_IMAGICK:-true}"   # samakan dengan ekstensi Herd
+  image: bbm-project-app
+  restart: unless-stopped
+  env_file:
+    - path: .env
+      required: false        # .env boleh belum ada; entrypoint akan membuat APP_KEY
+  environment: *app-environment
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  volumes:
+    # Upload struk, barcode, QR surat, font dompdf, log, cache.
+    - app_storage:/var/www/html/storage
+
+services:
+  # ── Web: nginx + php-fpm ───────────────────────────────────
+  app:
+    <<: *app-common
+    container_name: bbm_app
+    ports:
+      - "${DOCKER_APP_PORT:-8080}:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    # Peran `web` = satu-satunya yang menjalankan migrate + seed.
+    environment:
+      <<: *app-environment
+      ENTRYPOINT_ROLE: web
+
+  # ── Queue worker (QUEUE_CONNECTION=database di .env) ───────
+  # Di host ini setara dengan `php artisan queue:listen` pada `composer dev`.
+  queue:
+    <<: *app-common
+    container_name: bbm_queue
+    stop_grace_period: 30s
+    # Worker tidak melayani HTTP -> healthcheck /up milik image tidak berlaku.
+    healthcheck:
+      disable: true
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_healthy   # tunggu migrasi selesai
+    environment:
+      <<: *app-environment
+      ENTRYPOINT_ROLE: worker
+    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+
+  # ── Scheduler (lunch:generate-forecast & gasoline:sync) ────
+  scheduler:
+    <<: *app-common
+    container_name: bbm_scheduler
+    stop_grace_period: 30s
+    healthcheck:
+      disable: true
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+    environment:
+      <<: *app-environment
+      ENTRYPOINT_ROLE: worker
+    command: ["php", "artisan", "schedule:work"]
+
+  # ── Database ───────────────────────────────────────────────
+  db:
+    image: mysql:${MYSQL_VERSION:-8.4}
+    container_name: bbm_db
+    restart: unless-stopped
+    ports:
+      - "${DOCKER_DB_PORT:-3307}:3306"
+    environment:
+      MYSQL_DATABASE: "${DOCKER_DB_NAME:-BBM_Patuha}"
+      MYSQL_USER: "${DOCKER_DB_USER:-bbm}"
+      MYSQL_PASSWORD: "${DOCKER_DB_PASSWORD:-bbm_secret}"
+      MYSQL_ROOT_PASSWORD: "${DOCKER_DB_ROOT_PASSWORD:-root_secret}"
+      TZ: Asia/Jakarta
+    command:
+      # Disamakan dengan default MySQL 8 di host (DBngin) supaya hasil
+      # query & default collation tidak berbeda antar lingkungan.
+      # Catatan: collation TABEL tetap ditentukan aplikasi lewat
+      # config/database.php (utf8mb4_unicode_ci) — sama di dua sisi.
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --sql-mode=ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+      # Host (macOS) memakai WIB; container defaultnya UTC -> NOW() beda 7 jam.
+      - --default-time-zone=+07:00
+      # ── OPSIONAL (belum aktif, baca dulu!) ──
+      # macOS = case-insensitive (DBngin: lower_case_table_names=2),
+      # Linux = case-sensitive (=0). Kalau diaktifkan, nama tabel jadi
+      # case-insensitive seperti di host — TAPI volume db lama harus
+      # dibuat ulang (MySQL menolak start). Prosedurnya:
+      #     make db-parity     (dump -> hapus volume -> import ulang)
+      # - --lower_case_table_names=1
+      - --max-connections=200
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+volumes:
+  db_data:
+  app_storage:

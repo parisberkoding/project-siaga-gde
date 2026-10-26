@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bagian 10: Glosarium Proyek — SIAGA</title>
+<meta name="description" content="Glosarium resmi SIAGA: istilah domain, aktor, artefak, aturan bisnis, dan istilah teknis beserta definisi, alias, dan kategori.">
+<link rel="icon" href="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="../assets/css/docs.css">
+</head>
+<body data-base="../">
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <button class="icon-btn btn-menu" id="docMenuBtn" aria-label="Buka navigasi" aria-expanded="false"><i class="bi bi-list"></i></button>
+    <a class="brand" href="../index.html">
+      <img class="brand__logo" src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="Logo Geo Dipa Energi">
+      <span>
+        <span class="brand__name">SIAGA</span>
+        <span class="brand__sub">Sistem Informasi Administrasi General Affairs</span>
+      </span>
+    </a>
+    <span class="brand__divider"></span>
+    <span class="brand__doc">Software Documentation</span>
+    <div class="topbar__spacer"></div>
+    <div class="searchbox">
+      <i class="bi bi-search"></i>
+      <input type="search" id="docSearch" placeholder="Cari halaman…  ( / )" aria-label="Cari halaman dokumentasi">
+      <div class="search-results" id="docSearchResults"></div>
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" data-print title="Cetak / simpan PDF"><i class="bi bi-printer"></i></button>
+      <a class="icon-btn" href="../index.html" title="Kembali ke beranda dokumentasi"><i class="bi bi-house"></i></a>
+    </div>
+  </div>
+</header>
+
+<div class="scrim" id="docScrim"></div>
+
+<main class="shell">
+  <aside class="sidebar" id="docSidebar">
+    <p class="sidebar__label">Software Documentation</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="index.html"><span class="nav-link__num">&#9679;</span><span class="nav-link__txt">Ikhtisar &amp; daftar isi</span></a></li>
+      <li><a class="nav-link" href="01-ruang-lingkup.html"><span class="nav-link__num">1</span><span class="nav-link__txt">Ruang lingkup &amp; visi produk</span></a></li>
+      <li><a class="nav-link" href="02-arsitektur-teknologi.html"><span class="nav-link__num">2</span><span class="nav-link__txt">Arsitektur &amp; teknologi</span></a></li>
+      <li><a class="nav-link" href="03-model-use-case.html"><span class="nav-link__num">3</span><span class="nav-link__txt">Model use case</span></a></li>
+      <li><a class="nav-link" href="04-spesifikasi-use-case.html"><span class="nav-link__num">4</span><span class="nav-link__txt">Spesifikasi use case</span></a></li>
+      <li><a class="nav-link" href="05-desain-perilaku.html"><span class="nav-link__num">5</span><span class="nav-link__txt">Desain perilaku</span><span class="nav-badge">Activity · Sequence</span></a></li>
+      <li><a class="nav-link" href="06-desain-struktur.html"><span class="nav-link__num">6</span><span class="nav-link__txt">Desain struktur</span><span class="nav-badge">Class · ERD</span></a></li>
+      <li><a class="nav-link" href="07-validasi-logika.html"><span class="nav-link__num">7</span><span class="nav-link__txt">Validasi logika</span></a></li>
+      <li><a class="nav-link" href="08-pengujian.html"><span class="nav-link__num">8</span><span class="nav-link__txt">Pengujian &amp; test case</span></a></li>
+      <li><a class="nav-link" href="09-traceability.html"><span class="nav-link__num">9</span><span class="nav-link__txt">Traceability &amp; RBAC</span></a></li>
+      <li><a class="nav-link is-active" href="10-glosarium.html"><span class="nav-link__num">10</span><span class="nav-link__txt">Glosarium</span></a></li>
+      <li><a class="nav-link" href="11-plantuml-changelog.html"><span class="nav-link__num">11</span><span class="nav-link__txt">PlantUML &amp; changelog</span></a></li>
+    </ul>
+
+    <p class="sidebar__label">Dokumen lain</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="../alur-tutorial/index.html"><i class="bi bi-signpost-split"></i><span class="nav-link__txt">Alur Tutorial</span></a></li>
+      <li><a class="nav-link" href="../index.html"><i class="bi bi-house"></i><span class="nav-link__txt">Beranda dokumentasi</span></a></li>
+    </ul>
+  </aside>
+
+  <div class="content">
+    <div class="wrap">
+      <nav>
+        <ol class="crumbs">
+          <li><a href="../index.html">Documentation</a></li>
+          <li>Software Documentation</li>
+          <li>Bagian 10</li>
+        </ol>
+      </nav>
+
+      <div class="page-head">
+        <span class="eyebrow"><span class="dot"></span> Bagian 10</span>
+        <h2>Glosarium Proyek</h2>
+        <p class="lead">
+          Glosarium ini adalah sumber kebenaran tunggal untuk istilah yang dipakai di seluruh dokumentasi SIAGA.
+          Bila suatu istilah muncul dengan makna berbeda di halaman lain, definisi pada halaman ini yang berlaku.
+        </p>
+      </div>
+
+      <!-- ================= PENGANTAR ================= -->
+      <div class="section-block" id="pengantar">
+        <h2><span class="num"><i class="bi bi-book"></i></span> Fungsi glosarium</h2>
+
+        <p>
+          SIAGA melibatkan tiga bahasa yang bercampur setiap hari: bahasa operasional General Affairs
+          (&ldquo;voucher&rdquo;, &ldquo;slot&rdquo;, &ldquo;porsi&rdquo;), bahasa teknis rekayasa perangkat lunak
+          (&ldquo;middleware&rdquo;, &ldquo;migrasi&rdquo;, &ldquo;debounce&rdquo;), dan bahasa kebijakan internal
+          (&ldquo;unit scope&rdquo;, &ldquo;plafon&rdquo;). Tanpa kesepakatan istilah, dokumen yang berbeda akan
+          memakai kata yang sama untuk hal yang berbeda.
+        </p>
+
+        <div class="grid grid--3">
+          <div class="card card--soft">
+            <div class="card__head">
+              <span class="icon-sq"><i class="bi bi-signpost-2"></i></span>
+              <div><h3>Satu istilah, satu makna</h3><p>Setiap istilah memiliki definisi tunggal yang tidak boleh ditafsirkan ganda.</p></div>
+            </div>
+          </div>
+          <div class="card card--soft">
+            <div class="card__head">
+              <span class="icon-sq icon-sq--blue"><i class="bi bi-arrow-left-right"></i></span>
+              <div><h3>Alias terjembatani</h3><p>Istilah lapangan yang berbeda dari istilah dokumen dipetakan lewat kolom alias.</p></div>
+            </div>
+          </div>
+          <div class="card card--soft">
+            <div class="card__head">
+              <span class="icon-sq icon-sq--yellow"><i class="bi bi-tags"></i></span>
+              <div><h3>Berkategori</h3><p>Kategori memudahkan pembaca menyaring istilah sesuai kebutuhan: aktor, modul, artefak, aturan bisnis, teknis, atau status.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout callout--tip">
+          <span class="callout__icon"><i class="bi bi-lightbulb"></i></span>
+          <div class="callout__body">
+            <strong>Aturan pemakaian</strong>
+            Istilah asing yang lazim dalam rekayasa perangkat lunak (use case, precondition, middleware) dipertahankan
+            apa adanya. Istilah domain ditulis dalam Bahasa Indonesia, dengan padanan Inggris pada kolom alias bila
+            nama tersebut muncul di kode, rute, atau basis data.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= ISTILAH ================= -->
+      <div class="section-block" id="istilah">
+        <h2><span class="num"><i class="bi bi-journal-text"></i></span> Daftar istilah</h2>
+
+        <p>
+          Tabel berikut memuat <b>istilah inti proyek</b>. Nama tabel basis data dan nama kelas pada kolom
+          <em>Alias/Sinonim</em> ditulis apa adanya agar dapat dicari langsung pada kode sumber.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <thead>
+              <tr><th>Istilah</th><th>Definisi</th><th>Alias/Sinonim</th><th>Kategori</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="rowhead">SIAGA</td><td>Sistem Informasi Administrasi General Affairs — platform web internal PT Geo Dipa Energi (Persero) untuk mengelola administrasi operasional Divisi General Affairs di Unit Pusat, Unit Patuha, dan Unit Dieng.</td><td>Sistem Informasi Administrasi GA</td><td><span class="badge badge--gray">Modul</span></td></tr>
+              <tr><td class="rowhead">General Affairs (GA)</td><td>Divisi pemilik proses administrasi operasional; juga nama peran admin yang menyetujui BBM, memvalidasi SPD/LPJ, dan mengelola katering.</td><td>GA, Admin GA, general_affairs</td><td><span class="badge badge--blue">Aktor</span></td></tr>
+              <tr><td class="rowhead">GIMS</td><td>GEODIPA Integrated Management System — kerangka tata kelola terpadu Geodipa yang menjadi payung kepatuhan SIAGA.</td><td>Geodipa Integrated Management System</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">BBM</td><td>Bahan Bakar Minyak; lingkup modul permohonan, persetujuan, penerbitan voucher, realisasi pembelian, dan pelaporan bahan bakar.</td><td>Fuel, Fuel Request Management</td><td><span class="badge badge--gray">Modul</span></td></tr>
+              <tr><td class="rowhead">VTC (Vehicle and Tools Consumer)</td><td>Entitas kendaraan atau alat kerja yang menjadi konsumen BBM dan objek pengecekan kesehatan.</td><td><code>vehicle_and_tools_consumers</code>, VehicleAndToolsConsumers</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Permohonan</td><td>Pengajuan BBM oleh requester/driver berisi kendaraan, perkiraan nominal, dan jenis bahan bakar.</td><td>Request, Request BBM, <code>permohonans</code></td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Approved Request</td><td>Catatan permohonan yang telah disetujui Admin GA dan menjadi dasar penerbitan voucher.</td><td><code>approved_requests</code>, Approved_Request</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Voucher</td><td>Dokumen otorisasi pembelian BBM yang diterbitkan sistem setelah permohonan disetujui.</td><td>Voucher BBM, Voucher digital</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Kode Voucher</td><td>Pengenal unik voucher yang dipakai saat realisasi pembelian di SPBU.</td><td>Voucher code</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Expiry Voucher</td><td>Tanggal kedaluwarsa voucher; setelah tanggal tersebut voucher tidak dapat direalisasikan.</td><td>Expiry date, Masa berlaku voucher</td><td><span class="badge badge--yellow">Aturan Bisnis</span></td></tr>
+              <tr><td class="rowhead">Transaction Proof</td><td>Bukti transaksi berupa foto struk pembelian dan foto odometer yang diunggah driver setelah mengisi BBM.</td><td><code>transaction_proofs</code>, Bukti transaksi</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Odometer</td><td>Angka jarak tempuh kendaraan yang dibaca pada saat pengisian BBM dan menjadi dasar analisis efisiensi.</td><td>KM kendaraan</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Full-tank</td><td>Pengisian BBM hingga kapasitas tangki penuh; sistem menyarankan nominal logis dengan pembulatan kelipatan Rp50.000.</td><td>Full tank, Saran nominal</td><td><span class="badge badge--yellow">Aturan Bisnis</span></td></tr>
+              <tr><td class="rowhead">Slot Adjustment</td><td>Penyesuaian kuota permohonan BBM per pengguna, mencakup bonus dan penalti.</td><td><code>user_slot_adjustments</code>, Penyesuaian slot</td><td><span class="badge badge--yellow">Aturan Bisnis</span></td></tr>
+              <tr><td class="rowhead">SPD</td><td>Surat Perjalanan Dinas — dokumen penugasan perjalanan dinas beserta rincian tujuan dan anggaran.</td><td>Surat Tugas, <code>surat_spds</code></td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Surat Tugas</td><td>Istilah antarmuka untuk SPD; dipakai pada menu, judul halaman, dan dokumen cetak.</td><td>SPD</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">ETD (Extended Time Duty)</td><td>Perpanjangan perjalanan dinas yang diajukan secara berantai atas surat sebelumnya (Surat Asli &rarr; Ekstensi 1 &rarr; Ekstensi 2).</td><td>Perpanjangan (ETD), <code>surat_spd_extensions</code></td><td><span class="badge badge--gray">Modul</span></td></tr>
+              <tr><td class="rowhead">LPJ</td><td>Laporan Pertanggungjawaban — laporan biaya perjalanan dinas beserta rincian pengeluaran dan lampiran.</td><td>LpjPenggantian, <code>lpj_penggantians</code></td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">lpj_deadline</td><td>Tenggat pelaporan LPJ, yaitu maksimal 3 hari setelah tanggal kepulangan dinas.</td><td>Batas pelaporan LPJ</td><td><span class="badge badge--yellow">Aturan Bisnis</span></td></tr>
+              <tr><td class="rowhead">is_late</td><td>Penanda status bahwa LPJ dilaporkan melewati <code>lpj_deadline</code>.</td><td>Terlambat</td><td><span class="badge badge--yellow">Status</span></td></tr>
+              <tr><td class="rowhead">is_over_budget</td><td>Penanda status bahwa pengeluaran LPJ melebihi plafon harian Rp1.400.000.</td><td>Over budget</td><td><span class="badge badge--yellow">Status</span></td></tr>
+              <tr><td class="rowhead">Verifikasi Odometer</td><td>Pemeriksaan kesesuaian angka odometer pada bukti perjalanan dengan data SPD/LPJ.</td><td>Odometer check</td><td><span class="badge badge--yellow">Aturan Bisnis</span></td></tr>
+              <tr><td class="rowhead">Pemberi Tugas</td><td>Pejabat yang menugaskan perjalanan dinas; dapat dipilih dari Master Pekerja (level Manager/Asisten Manager) atau diisi manual.</td><td>Pemberi Tugas Hibrid</td><td><span class="badge badge--blue">Aktor</span></td></tr>
+              <tr><td class="rowhead">QR Signature</td><td>Tanda tangan elektronik berupa QR Code dinamis pada dokumen SPD/LPJ yang dicetak.</td><td>Tanda tangan QR, <code>spd_barcode_signatures</code></td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Barcode Signature</td><td>Tanda tangan berbasis barcode pada berkas surat, dihasilkan generator barcode dan ditempelkan pada template cetak.</td><td>Barcode SPD, picqer barcode</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Daily Checking</td><td>Pengecekan harian singkat atas kesiapan dasar kendaraan sebelum beroperasi.</td><td>Cek harian, DailyCheckingController</td><td><span class="badge badge--gray">Modul</span></td></tr>
+              <tr><td class="rowhead">Weekly Checking</td><td>Pengecekan mingguan komponen mekanis ringan kendaraan.</td><td>Cek mingguan, WeeklyCheckingController</td><td><span class="badge badge--gray">Modul</span></td></tr>
+              <tr><td class="rowhead">Monthly Checking</td><td>Pengecekan bulanan mendalam; target pengecekan digenerate otomatis oleh scheduler bulanan.</td><td>Cek bulanan, MonthlyCheckingController</td><td><span class="badge badge--gray">Modul</span></td></tr>
+              <tr><td class="rowhead">Body Inspection</td><td>Inspeksi fisik body luar kendaraan dengan skala penilaian Baik / Cukup / Kurang / Tidak Layak.</td><td>Body checking, BodyCheckingController</td><td><span class="badge badge--gray">Modul</span></td></tr>
+              <tr><td class="rowhead">OK/NG</td><td>Status biner hasil pengecekan: OK berarti layak, NG (Not Good) berarti perlu tindak lanjut.</td><td>ok/ng</td><td><span class="badge badge--yellow">Status</span></td></tr>
+              <tr><td class="rowhead">VPR</td><td>Vehicle Parts Replacement — pengajuan penggantian suku cadang yang lahir dari temuan kerusakan.</td><td>Replacement request, <code>vehicle_parts_replacements</code></td><td><span class="badge badge--gray">Modul</span></td></tr>
+              <tr><td class="rowhead">Realisasi Service</td><td>Pencatatan pelaksanaan perbaikan di bengkel: biaya aktual, foto suku cadang terpasang, dan kuitansi.</td><td>Service realization, <code>vehicle_parts_replacement_transactions</code></td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Damage Photo</td><td>Foto kerusakan visual yang wajib dilampirkan dispatcher pada body inspection.</td><td><code>damage_photos</code>, Foto kerusakan</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Zona Kendaraan</td><td>Empat zona pemetaan kerusakan body: Depan, Belakang, Sisi Kiri, dan Sisi Kanan.</td><td>Zona kerusakan</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Vehicle Health Matrix</td><td>Matriks ringkas kondisi kesehatan seluruh kendaraan untuk pemantauan cepat superadmin.</td><td>Health matrix, VehicleCheckingSuperadminController</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Lunch Management</td><td>Modul manajemen katering makan siang karyawan dan tamu di tiga site operasional; berdiri independen dari pelacakan kendaraan.</td><td>Manajemen katering, Catering</td><td><span class="badge badge--gray">Modul</span></td></tr>
+              <tr><td class="rowhead">Employee Default</td><td>Master pekerja pusat yang menjadi sumber data utama peserta makan siang, menggantikan tabel manual per site.</td><td><code>employee_defaults</code>, Master Pekerja Pusat</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Employee Alias</td><td>Alias nama pekerja yang dipakai untuk mencocokkan penulisan nama yang berbeda-beda.</td><td><code>employee_aliases</code></td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Fuzzy Name Matching</td><td>Pencocokan nama berbasis kemiripan setelah normalisasi nama, dipakai saat absensi dan pencarian peserta.</td><td>Pencocokan kemiripan, NameNormalizer</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Forecast H+1</td><td>Prediksi kebutuhan porsi makan siang hari esok yang dihasilkan otomatis setiap pukul 15:00.</td><td>Forecast porsi, <code>lunch_forecasts</code></td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Manual Override</td><td>Perubahan lokasi makan oleh Admin GA secara manual; menempati prioritas tertinggi pada penentuan lokasi forecast.</td><td>Override</td><td><span class="badge badge--yellow">Aturan Bisnis</span></td></tr>
+              <tr><td class="rowhead">Tomorrow Confirmation</td><td>Konfirmasi lokasi makan esok hari yang diisi karyawan saat melakukan absensi hari ini.</td><td>Konfirmasi besok</td><td><span class="badge badge--yellow">Aturan Bisnis</span></td></tr>
+              <tr><td class="rowhead">Learning Profile</td><td>Profil histori kebiasaan makan karyawan yang dipakai mesin prediksi untuk memperkirakan lokasi makan.</td><td><code>learning_profiles</code>, LearningService</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Lunch Distribution</td><td>Snapshot distribusi porsi yang telah dikunci dan dikirimkan ke vendor katering.</td><td><code>lunch_distributions</code>, LunchDistributionService</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Lock/Finalize</td><td>Penguncian data forecast menjadi porsi final pada pukul 15:00 sehingga tidak lagi berubah.</td><td>Finalisasi porsi, Final status</td><td><span class="badge badge--yellow">Status</span></td></tr>
+              <tr><td class="rowhead">Public QR Attendance</td><td>Halaman absensi makan siang tanpa autentikasi yang diakses lewat tablet atau ponsel di lokasi kantin.</td><td>Absensi publik, PublicAttendanceController</td><td><span class="badge badge--gray">Modul</span></td></tr>
+              <tr><td class="rowhead">Guest Reservation</td><td>Reservasi makan siang khusus tamu perusahaan yang wajib dikonfirmasi maksimal dua hari sebelum kedatangan (H-2).</td><td><code>lunch_guest_reservations</code>, Reservasi tamu</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Vendor View</td><td>Tampilan dashboard khusus vendor katering untuk memantau porsi yang harus disiapkan dan karyawan yang sudah mengambil jatah.</td><td>Dashboard vendor</td><td><span class="badge badge--blue">Aktor</span></td></tr>
+              <tr><td class="rowhead">Katering</td><td>Penyedia jasa makan siang yang menerima rekap porsi terkunci dan menyajikannya di site terkait.</td><td>Vendor katering, Catering</td><td><span class="badge badge--blue">Aktor</span></td></tr>
+              <tr><td class="rowhead">Baseline Konsumsi BBM</td><td>Batas konsumsi bahan bakar standar per jenis kendaraan yang menjadi pembanding evaluasi efisiensi.</td><td>Fuel baseline, <code>vehicle_fuel_baselines</code></td><td><span class="badge badge--yellow">Aturan Bisnis</span></td></tr>
+              <tr><td class="rowhead">Premature Refueling</td><td>Indikator pengisian BBM terlalu dini: jarak pemakaian sejak pengisian terakhir kurang dari 60% kapasitas tangki.</td><td>Refueling dini, Alert warning/critical</td><td><span class="badge badge--yellow">Status</span></td></tr>
+              <tr><td class="rowhead">KM/Liter</td><td>Metrik efisiensi bahan bakar: selisih odometer dibagi jumlah liter yang dikonsumsi.</td><td>Efisiensi BBM, KM/L</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Trip Analysis</td><td>Analisis perbandingan transaksi BBM berturut-turut pada kendaraan yang sama untuk mendeteksi anomali.</td><td><code>vehicle_trip_analyses</code>, Analisis trip</td><td><span class="badge badge--gray">Modul</span></td></tr>
+              <tr><td class="rowhead">Trip Validation</td><td>Validasi hasil analisis trip oleh superadmin, termasuk validasi massal.</td><td><code>trip_validations</code></td><td><span class="badge badge--yellow">Status</span></td></tr>
+              <tr><td class="rowhead">Fuel Baseline</td><td>Data acuan efisiensi kendaraan; dapat ditimpa (<em>override</em>) dengan menyertakan alasan yang logis.</td><td>VehicleFuelBaseline</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">RBAC</td><td>Role-Based Access Control — kendali akses berbasis peran; SIAGA memakai RBAC Phase 2 dengan izin granular.</td><td>RBAC Phase 2, Authorization Layer</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Permission Group</td><td>Kelompok izin yang menjadi satuan pengelompokan hak akses: Dashboard, BBM, SPD, LPJ, Vehicle, Users, RBAC, dan Settings.</td><td><code>permission_groups</code></td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Permission</td><td>Satuan izin granular dengan pengenal unik (slug) yang dilekatkan pada peran.</td><td><code>permissions</code>, Izin</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Role</td><td>Kumpulan permission yang dapat dilekatkan ke banyak pengguna.</td><td><code>roles</code>, Peran</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">CheckPermission</td><td>Middleware pemeriksaan izin granular pada RBAC v2; memvalidasi slug permission sebelum aksi dijalankan.</td><td><code>CheckPermission.php</code></td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">checkrole</td><td>Middleware legacy yang memeriksa peran dari kolom <code>user.role</code>; dipertahankan untuk kompatibilitas rute lama.</td><td><code>checkrole.php</code>, CheckRole</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Dual-write Strategy</td><td>Strategi penulisan ganda: perubahan peran ditulis ke kolom legacy <code>user.role</code> sekaligus tabel pivot <code>user_roles</code>.</td><td>Dual write, Kompatibilitas peran</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Unit Bisnis</td><td>Wilayah administrasi tingkat tinggi, misalnya Unit Pusat, Unit Patuha, dan Unit Dieng.</td><td>Business unit, <code>unit_id</code></td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Site</td><td>Pos operasional yang berada di bawah satu unit bisnis, misalnya PMU, Patuha Basecamp, dan BCMP; setiap site wajib terasosiasi dengan tepat satu unit.</td><td>Lokasi, <code>sites</code></td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Unit Scope</td><td>Pembatasan data berdasarkan unit pengguna: GA unit hanya mengelola data site di bawah unitnya, GA Pusat tanpa <code>unit_id</code> mengelola semua unit.</td><td>Scope unit, Ruang lingkup data</td><td><span class="badge badge--yellow">Aturan Bisnis</span></td></tr>
+              <tr><td class="rowhead">Verifikasi Dependency Check</td><td>Validasi yang menolak penghapusan unit bisnis atau site apabila masih memiliki relasi aktif seperti karyawan, kendaraan, atau transaksi katering.</td><td>Dependency check, Validasi penghapusan</td><td><span class="badge badge--yellow">Aturan Bisnis</span></td></tr>
+              <tr><td class="rowhead">Gaga</td><td>Asisten AI General Affairs di dalam SIAGA (beta) yang menjawab pertanyaan berbasis data operasional.</td><td>GA AI Assistant, Asisten Gaga</td><td><span class="badge badge--gray">Modul</span></td></tr>
+              <tr><td class="rowhead">Data Mart</td><td>Kumpulan sembilan domain data yang dibaca Gaga: permohonan BBM, kendaraan, driver, harga bensin, SPD, LPJ, katering, suku cadang, dan pengecekan kendaraan.</td><td>Multi-modul data mart</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Groq</td><td>Penyedia layanan inferensi AI yang dipakai Gaga setelah peralihan dari Google Gemini, memakai model Llama 3.3 70B melalui klien kompatibel OpenAI.</td><td>Groq API, llama-3.3-70b-versatile</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">OCR</td><td>Optical Character Recognition — ekstraksi otomatis nominal dan jenis BBM dari foto struk pembelian.</td><td>Ekstraksi struk</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Gemini Flash Lite</td><td>Model AI pembaca struk BBM (<code>gemini-3.1-flash-lite</code>) yang dipakai pada pipeline OCR.</td><td><code>gemini-3.1-flash-lite</code></td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Markdown GFM</td><td>Github Flavored Markdown — format keluaran asisten Gaga yang dirender melalui parser aman untuk mencegah XSS.</td><td>GFM, Markdown terstruktur</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Rate Limiting</td><td>Pembatasan laju permintaan, diterapkan pada halaman publik seperti absensi katering untuk menahan request massal.</td><td>Throttling</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Debounce</td><td>Penundaan pengiriman input 350&ndash;400 ms agar filter dan pencarian tidak membebani basis data.</td><td>Auto-submit, Realtime filter</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">DomPDF</td><td>Pustaka pembuat berkas PDF (<code>barryvdh/laravel-dompdf</code>) dengan optimalisasi kompresi gambar.</td><td>laravel-dompdf, PDF export</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Maatwebsite Excel</td><td>Pustaka ekspor Excel untuk laporan multi-sheet seperti rekap katering dan voucher.</td><td><code>maatwebsite/excel</code>, Excel export</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">BaconQrCode</td><td>Pustaka pembuat QR Code (<code>endroid/qr-code</code>) untuk tanda tangan digital SPD dan absensi makan siang.</td><td>endroid/qr-code, QR engine</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Pest PHP</td><td>Kerangka pengujian yang dipakai proyek untuk menulis dan menjalankan test case otomatis.</td><td>Pest</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Scheduler</td><td>Penjadwal tugas Laravel yang menjalankan forecast katering pukul 15:00, sinkronisasi harga BBM harian, dan pembuatan target pengecekan bulanan.</td><td>Task scheduling, <code>routes/console.php</code></td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Aktor</td><td>Pihak di luar sistem yang berinteraksi dengan use case dan memperoleh hasil bernilai darinya.</td><td>Actor</td><td><span class="badge badge--blue">Aktor</span></td></tr>
+              <tr><td class="rowhead">Use Case</td><td>Unit fungsi yang memberi hasil terukur bagi aktor, ditulis sebagai kata kerja dan objek.</td><td>UC</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Activity Diagram</td><td>Diagram alur aktivitas yang memuat percabangan keputusan dan pembagian tanggung jawab antar aktor.</td><td>Diagram aktivitas</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Sequence Diagram</td><td>Diagram urutan interaksi antar komponen untuk satu skenario use case.</td><td>Diagram sekuens</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Class Diagram</td><td>Diagram struktur kelas beserta atribut, operasi, dan relasinya.</td><td>Diagram kelas</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">ERD</td><td>Entity Relationship Diagram — model data persisten beserta kardinalitas relasi antar entitas.</td><td>Diagram relasi entitas</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Decision Table</td><td>Tabel keputusan yang mengenumerasi kombinasi kondisi dan aksi secara eksplisit.</td><td>DT, Tabel keputusan</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Test Case</td><td>Skenario pengujian berisi prasyarat, langkah, data uji, dan hasil yang diharapkan.</td><td>TC, Skenario uji</td><td><span class="badge">Artefak</span></td></tr>
+              <tr><td class="rowhead">Middleware</td><td>Lapisan pemeriksaan yang dijalankan sebelum permintaan mencapai controller.</td><td>Filter request</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Eloquent ORM</td><td>Pemetaan objek-relasional bawaan Laravel yang menjembatani model dengan tabel basis data.</td><td>Eloquent</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Blade</td><td>Templating engine Laravel yang dipakai menyusun seluruh tampilan SIAGA.</td><td>Blade template</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Migration</td><td>Berkas versi skema basis data yang menjaga perubahan struktur tetap dapat direproduksi.</td><td>Migrasi</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Seeder</td><td>Berkas pengisi data awal atau data referensi pada basis data.</td><td>Seeder data</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Pivot</td><td>Tabel penghubung relasi banyak-ke-banyak, misalnya <code>user_roles</code> dan <code>role_permissions</code>.</td><td>Tabel pivot</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Province Slug</td><td>Pengenal provinsi yang dipakai sebagai kunci sinkronisasi harga BBM resmi per site.</td><td><code>province_slug</code></td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">StorageFileController</td><td>Rute perantara berautentikasi untuk mengakses berkas sensitif seperti kuitansi, foto odometer, dan QR tanda tangan.</td><td>Berkas terproteksi</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">SPBU</td><td>Stasiun Pengisian Bahan Bakar Umum — lokasi realisasi pembelian BBM oleh driver.</td><td>Stasiun pengisian</td><td><span class="badge badge--dark">Teknis</span></td></tr>
+              <tr><td class="rowhead">Kode Wilayah</td><td>Kode wilayah kerja yang menjadi bagian awal penomoran otomatis surat tugas.</td><td>Kode unit penomoran</td><td><span class="badge badge--yellow">Aturan Bisnis</span></td></tr>
+              <tr><td class="rowhead">Angka Romawi Bulan</td><td>Konversi bulan aktif berjalan menjadi angka Romawi pada penomoran surat tugas.</td><td>Roman month</td><td><span class="badge badge--yellow">Aturan Bisnis</span></td></tr>
+              <tr><td class="rowhead">Antrian Slot</td><td>Kuota permohonan BBM yang tersedia bagi seorang pengguna pada periode berjalan.</td><td>Slot</td><td><span class="badge badge--yellow">Aturan Bisnis</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Usulan</strong>
+            Beberapa istilah lapangan (misalnya penyebutan &ldquo;surat tugas&rdquo; dan &ldquo;SPD&rdquo;) dipakai
+            bergantian antar divisi. Disarankan menetapkan satu istilah resmi per antarmuka dan mendaftarkan
+            sisanya sebagai alias, agar pencarian pada dokumentasi tidak menghasilkan rujukan ganda.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= KONVENSI ================= -->
+      <div class="section-block" id="konvensi">
+        <h2><span class="num"><i class="bi bi-rulers"></i></span> Konvensi penamaan teknis</h2>
+
+        <div class="split">
+          <div>
+            <h3>Prefiks kode</h3>
+            <div class="table-wrap">
+              <table class="tbl tbl--compact">
+                <thead><tr><th>Prefiks</th><th>Arti</th><th>Contoh</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead"><code>UC-&lt;MODUL&gt;-&lt;nn&gt;</code></td><td>Use case</td><td><code>UC-BBM-01</code></td></tr>
+                  <tr><td class="rowhead"><code>BR-&lt;MODUL&gt;-&lt;nn&gt;</code></td><td>Aturan bisnis</td><td><code>BR-LPJ-02</code></td></tr>
+                  <tr><td class="rowhead"><code>DT-&lt;nn&gt;</code></td><td>Decision table</td><td><code>DT-07</code></td></tr>
+                  <tr><td class="rowhead"><code>TC-&lt;MODUL&gt;-&lt;nn&gt;</code></td><td>Test case</td><td><code>TC-LNC-05</code></td></tr>
+                  <tr><td class="rowhead"><code>NFR-&lt;nn&gt;</code></td><td>Kebutuhan non-fungsional</td><td><code>NFR-03</code></td></tr>
+                  <tr><td class="rowhead"><code>ACT-&lt;nn&gt;</code></td><td>Aktor sistem</td><td><code>ACT-02</code></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p style="font-size:.82rem;color:var(--muted);">
+              <code>&lt;MODUL&gt;</code> memakai prefiks modul (BBM, SPD, LPJ, CHK, VPR, LNC, EFF, AI, MST, RBAC, SYS)
+              dan <code>&lt;nn&gt;</code> selalu dua digit.
+            </p>
+          </div>
+
+          <div>
+            <h3>Format rute</h3>
+            <div class="table-wrap">
+              <table class="tbl tbl--compact">
+                <thead><tr><th>Pola</th><th>Contoh</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead">Modul admin</td><td><code>/admin/approval/*</code></td></tr>
+                  <tr><td class="rowhead">Requester</td><td><code>/requester/*</code></td></tr>
+                  <tr><td class="rowhead">Surat &amp; perjalanan</td><td><code>/surat_requester/*</code>, <code>/lpj/*</code></td></tr>
+                  <tr><td class="rowhead">Dispatcher</td><td><code>/dispatcher/daily-check/*</code></td></tr>
+                  <tr><td class="rowhead">Lunch</td><td><code>/lunch/forecasts/*</code></td></tr>
+                  <tr><td class="rowhead">Superadmin</td><td><code>/sa/dashboard</code>, <code>/users/*</code></td></tr>
+                  <tr><td class="rowhead">Publik tanpa auth</td><td><code>/lunch-attendance/*</code></td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Penamaan modul</h3>
+            <ul class="list-check" style="font-size:.84rem;">
+              <li>Nama modul pada dokumen ditulis dalam huruf kapital: BBM, SPD, LPJ, CHK, VPR, LNC, EFF, AI, MST, RBAC, SYS.</li>
+              <li>Nama kelas dan tabel pada basis data tetap memakai bentuk aslinya (<code>Permohonan</code>, <code>surat_spds</code>).</li>
+              <li>Singkatan domain yang lazim dipertahankan: GA, BBM, SPD, LPJ, VTC, VPR, RBAC.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= SINGKATAN ================= -->
+      <div class="section-block" id="singkatan">
+        <h2><span class="num"><i class="bi bi-alphabet-uppercase"></i></span> Singkatan &amp; akronim</h2>
+
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <thead><tr><th>Singkatan</th><th>Kepanjangan</th><th>Konteks pemakaian</th></tr></thead>
+            <tbody>
+              <tr><td class="rowhead">SIAGA</td><td>Sistem Informasi Administrasi General Affairs</td><td>Nama produk</td></tr>
+              <tr><td class="rowhead">GA</td><td>General Affairs</td><td>Divisi dan peran</td></tr>
+              <tr><td class="rowhead">GIMS</td><td>GEODIPA Integrated Management System</td><td>Tata kelola perusahaan</td></tr>
+              <tr><td class="rowhead">BBM</td><td>Bahan Bakar Minyak</td><td>Modul permohonan bahan bakar</td></tr>
+              <tr><td class="rowhead">SPD</td><td>Surat Perjalanan Dinas</td><td>Modul perjalanan dinas</td></tr>
+              <tr><td class="rowhead">ETD</td><td>Extended Time Duty</td><td>Perpanjangan perjalanan dinas</td></tr>
+              <tr><td class="rowhead">LPJ</td><td>Laporan Pertanggungjawaban</td><td>Pelaporan biaya perjalanan</td></tr>
+              <tr><td class="rowhead">VTC</td><td>Vehicle and Tools Consumer</td><td>Kendaraan/alat konsumen BBM</td></tr>
+              <tr><td class="rowhead">VPR</td><td>Vehicle Parts Replacement</td><td>Penggantian suku cadang</td></tr>
+              <tr><td class="rowhead">CHK</td><td>Checking (pengecekan kendaraan)</td><td>Prefiks kode modul pengecekan</td></tr>
+              <tr><td class="rowhead">LNC</td><td>Lunch (management katering)</td><td>Prefiks kode modul katering</td></tr>
+              <tr><td class="rowhead">EFF</td><td>Efficiency (efisiensi BBM)</td><td>Prefiks kode analisis trip</td></tr>
+              <tr><td class="rowhead">MST</td><td>Master data</td><td>Prefiks kode master unit &amp; site</td></tr>
+              <tr><td class="rowhead">RBAC</td><td>Role-Based Access Control</td><td>Kendali akses berbasis peran</td></tr>
+              <tr><td class="rowhead">UC</td><td>Use Case</td><td>Penomoran use case</td></tr>
+              <tr><td class="rowhead">BR</td><td>Business Rule</td><td>Penomoran aturan bisnis</td></tr>
+              <tr><td class="rowhead">DT</td><td>Decision Table</td><td>Penomoran tabel keputusan</td></tr>
+              <tr><td class="rowhead">TC</td><td>Test Case</td><td>Penomoran skenario uji</td></tr>
+              <tr><td class="rowhead">NFR</td><td>Non-Functional Requirement</td><td>Kebutuhan non-fungsional</td></tr>
+              <tr><td class="rowhead">ACT</td><td>Actor</td><td>Penomoran aktor sistem</td></tr>
+              <tr><td class="rowhead">OK/NG</td><td>Okay / Not Good</td><td>Status hasil pengecekan</td></tr>
+              <tr><td class="rowhead">QR</td><td>Quick Response (code)</td><td>Tanda tangan dan absensi</td></tr>
+              <tr><td class="rowhead">OCR</td><td>Optical Character Recognition</td><td>Ekstraksi data struk</td></tr>
+              <tr><td class="rowhead">GFM</td><td>Github Flavored Markdown</td><td>Format keluaran asisten Gaga</td></tr>
+              <tr><td class="rowhead">AI</td><td>Artificial Intelligence</td><td>Asisten Gaga</td></tr>
+              <tr><td class="rowhead">PDF</td><td>Portable Document Format</td><td>Keluaran cetak surat dan laporan</td></tr>
+              <tr><td class="rowhead">XLSX</td><td>Microsoft Excel Open XML Spreadsheet</td><td>Keluaran ekspor laporan</td></tr>
+              <tr><td class="rowhead">H+1 / H-2</td><td>Satu hari sesudah / dua hari sebelum</td><td>Forecast katering dan reservasi tamu</td></tr>
+              <tr><td class="rowhead">PIC</td><td>Person In Charge</td><td>Penanggung jawab pengecekan</td></tr>
+              <tr><td class="rowhead">SPBU</td><td>Stasiun Pengisian Bahan Bakar Umum</td><td>Lokasi realisasi pembelian BBM</td></tr>
+              <tr><td class="rowhead">CRUD</td><td>Create, Read, Update, Delete</td><td>Pola operasi master data</td></tr>
+              <tr><td class="rowhead">ORM</td><td>Object-Relational Mapping</td><td>Eloquent pada Laravel</td></tr>
+              <tr><td class="rowhead">UI</td><td>User Interface</td><td>Antarmuka pengguna</td></tr>
+              <tr><td class="rowhead">KM/L</td><td>Kilometer per Liter</td><td>Metrik efisiensi bahan bakar</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="callout callout--info">
+        <span class="callout__icon"><i class="bi bi-arrow-right-circle"></i></span>
+        <div class="callout__body">
+          <strong>Lanjut ke Bagian 11 — PlantUML &amp; Riwayat Perubahan</strong>
+          Bagian berikut menyediakan kode PlantUML padanan diagram, panduan menghasilkan dokumen cetak,
+          serta riwayat perubahan fase pengembangan dan versi dokumen ini.
+          <div style="margin-top:10px;"><a class="btn btn--primary btn--sm" href="11-plantuml-changelog.html">Buka Bagian 11 <i class="bi bi-arrow-right-short"></i></a></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="foot__inner">
+    <p>&copy; <span data-year>2026</span> PT Geo Dipa Energi (Persero) Unit Patuha — Divisi General Affairs.</p>
+    <div class="foot__links">
+      <a href="../index.html">Beranda dokumentasi</a>
+      <a href="index.html">Ikhtisar SDD</a>
+      <a href="../alur-tutorial/index.html">Alur Tutorial</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/js/docs.js"></script>
+<script src="../assets/js/diagrams.js" defer></script>
+</body>
+</html>

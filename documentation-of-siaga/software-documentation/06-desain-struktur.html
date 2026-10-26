@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bagian 6: Desain Struktur (Class &amp; ERD) — SIAGA</title>
+<meta name="description" content="Class diagram domain BBM/kendaraan dan SPD/LPJ/lunch, ERD crow's foot seluruh modul, kamus data, dan pemetaan MVC/DDD SIAGA.">
+<link rel="icon" href="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="../assets/css/docs.css">
+</head>
+<body data-base="../">
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <button class="icon-btn btn-menu" id="docMenuBtn" aria-label="Buka navigasi" aria-expanded="false"><i class="bi bi-list"></i></button>
+    <a class="brand" href="../index.html">
+      <img class="brand__logo" src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="Logo Geo Dipa Energi">
+      <span>
+        <span class="brand__name">SIAGA</span>
+        <span class="brand__sub">Sistem Informasi Administrasi General Affairs</span>
+      </span>
+    </a>
+    <span class="brand__divider"></span>
+    <span class="brand__doc">Software Documentation</span>
+    <div class="topbar__spacer"></div>
+    <div class="searchbox">
+      <i class="bi bi-search"></i>
+      <input type="search" id="docSearch" placeholder="Cari halaman…  ( / )" aria-label="Cari halaman dokumentasi">
+      <div class="search-results" id="docSearchResults"></div>
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" data-print title="Cetak / simpan PDF"><i class="bi bi-printer"></i></button>
+      <a class="icon-btn" href="../index.html" title="Kembali ke beranda dokumentasi"><i class="bi bi-house"></i></a>
+    </div>
+  </div>
+</header>
+
+<div class="scrim" id="docScrim"></div>
+
+<main class="shell">
+  <aside class="sidebar" id="docSidebar">
+    <p class="sidebar__label">Software Documentation</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="index.html"><span class="nav-link__num">&#9679;</span><span class="nav-link__txt">Ikhtisar &amp; daftar isi</span></a></li>
+      <li><a class="nav-link" href="01-ruang-lingkup.html"><span class="nav-link__num">1</span><span class="nav-link__txt">Ruang lingkup &amp; visi produk</span></a></li>
+      <li><a class="nav-link" href="02-arsitektur-teknologi.html"><span class="nav-link__num">2</span><span class="nav-link__txt">Arsitektur &amp; teknologi</span></a></li>
+      <li><a class="nav-link" href="03-model-use-case.html"><span class="nav-link__num">3</span><span class="nav-link__txt">Model use case</span></a></li>
+      <li><a class="nav-link" href="04-spesifikasi-use-case.html"><span class="nav-link__num">4</span><span class="nav-link__txt">Spesifikasi use case</span></a></li>
+      <li><a class="nav-link" href="05-desain-perilaku.html"><span class="nav-link__num">5</span><span class="nav-link__txt">Desain perilaku</span><span class="nav-badge">Activity · Sequence</span></a></li>
+      <li><a class="nav-link is-active" href="06-desain-struktur.html"><span class="nav-link__num">6</span><span class="nav-link__txt">Desain struktur</span><span class="nav-badge">Class · ERD</span></a></li>
+      <li><a class="nav-link" href="07-validasi-logika.html"><span class="nav-link__num">7</span><span class="nav-link__txt">Validasi logika</span></a></li>
+      <li><a class="nav-link" href="08-pengujian.html"><span class="nav-link__num">8</span><span class="nav-link__txt">Pengujian &amp; test case</span></a></li>
+      <li><a class="nav-link" href="09-traceability.html"><span class="nav-link__num">9</span><span class="nav-link__txt">Traceability &amp; RBAC</span></a></li>
+      <li><a class="nav-link" href="10-glosarium.html"><span class="nav-link__num">10</span><span class="nav-link__txt">Glosarium</span></a></li>
+      <li><a class="nav-link" href="11-plantuml-changelog.html"><span class="nav-link__num">11</span><span class="nav-link__txt">PlantUML &amp; changelog</span></a></li>
+    </ul>
+
+    <p class="sidebar__label">Dokumen lain</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="../alur-tutorial/index.html"><i class="bi bi-signpost-split"></i><span class="nav-link__txt">Alur Tutorial</span></a></li>
+      <li><a class="nav-link" href="../index.html"><i class="bi bi-house"></i><span class="nav-link__txt">Beranda dokumentasi</span></a></li>
+    </ul>
+  </aside>
+
+  <div class="content">
+    <div class="wrap">
+      <nav>
+        <ol class="crumbs">
+          <li><a href="../index.html">Documentation</a></li>
+          <li>Software Documentation</li>
+          <li>Bagian 6</li>
+        </ol>
+      </nav>
+
+      <div class="page-head">
+        <span class="eyebrow"><span class="dot"></span> Bagian 6</span>
+        <h2>Desain struktur (Class &amp; ERD)</h2>
+        <p class="lead">
+          Bagian ini memetakan perilaku pada Bagian 5 menjadi struktur statis: dua <em>class diagram</em>
+          untuk domain fungsional utama, satu ERD <em>crow&rsquo;s foot</em> untuk seluruh modul, serta
+          kamus data dan pemetaan lapisan MVC/DDD.
+        </p>
+      </div>
+
+      <div class="callout callout--neutral">
+        <span class="callout__icon"><i class="bi bi-info-circle"></i></span>
+        <div class="callout__body">
+          <strong>Konvensi penamaan kelas</strong>
+          Nama kelas pada diagram memakai bentuk PascalCase yang lazim dipakai di model Eloquent.
+          Beberapa nama PHP aktual memakai garis bawah (mis. kelas <code>Approved_Request</code> pada
+          tabel <code>approved_requests</code> dan <code>Transaction_Proofs</code> pada tabel
+          <code>transaction_proofs</code>). Nama tabel dan kolom pada ERD ditulis sesuai migrasi;
+          daftar lengkapnya ada di <a href="#kamus">kamus data</a>.
+        </div>
+      </div>
+
+      <!-- ================= GAMBAR 6.1 ================= -->
+      <div class="section-block" id="kelas-bbm">
+        <h2><span class="num"><i class="bi bi-1-circle"></i></span> Class diagram domain BBM &amp; kendaraan</h2>
+
+        <p>
+          Diagram pertama memuat kelas-kelas yang menopang siklus BBM (permohonan → voucher → bukti
+          transaksi) dan siklus kesehatan kendaraan (pengecekan → temuan → usulan penggantian suku cadang).
+        </p>
+
+        <figure>
+          <div class="fig fig--tint">
+<pre class="mermaid">
+classDiagram
+    direction TB
+
+    class Permohonan {
+        +int id
+        +string request_number
+        +int requester_id
+        +timestamp request_date
+        +string gasoline_type
+        +decimal bill_amounts
+        +string status
+        +text requester_notes
+        +int authorizer_id
+        +timestamp authorization_date
+        +text authorizer_notes
+        +int consumerial_tools_id
+        +submit() void
+        +approve() void
+        +reject() void
+    }
+
+    class ApprovedRequest {
+        +int id
+        +int permohonan_id
+        +timestamp approval_date
+        +string voucher_code
+        +datetime valid_until
+        +float approved_amount
+        +string status
+        +int authorizer_id
+        +text approval_notes
+        +isExpired() bool
+        +cancel() void
+    }
+
+    class TransactionProof {
+        +int id
+        +string transaction_id
+        +int req_id
+        +int requester_id
+        +string voucher_number
+        +datetime purchase_datetime
+        +int fuel_volume
+        +int km_terakhir
+        +string struk_bbm_path
+        +string odometer_photo_path
+        +isComplete() bool
+    }
+
+    class GasolineType {
+        +int id
+        +string gasoline_code
+        +string gasoline_name
+        +int price_per_liter
+        +text notes
+    }
+
+    class VehicleAndToolsConsumers {
+        +int id
+        +string consumerial_type
+        +string consumerial_code
+        +string consumerial_name
+        +int optimum_jarak_per_liter
+        +string satuan
+        +bool is_approved
+        +bool is_active
+        +int approved_by
+        +int created_by
+        +approve() void
+    }
+
+    class VehicleChecking {
+        +int id
+        +string checking_code
+        +int vehicle_id
+        +string nopol
+        +int revision
+        +date period_start
+        +date period_end
+        +int generated_by
+        +string status
+    }
+
+    class VehicleCheckingDetail {
+        +int id
+        +string checking_detail_code
+        +int vehicle_checking_id
+        +string type
+        +string sub_type
+        +int dispatcher_id
+        +int current_driver_id
+        +datetime checked_at
+        +bool driver_acknowledged
+        +datetime driver_acknowledged_at
+        +text notes
+        +acknowledge() void
+        +hasReplacementNeeded() bool
+    }
+
+    class VehicleCheckingItemResult {
+        +int id
+        +int vehicle_checking_detail_id
+        +int vehicle_part_id
+        +string status
+        +text notes
+        +bool needs_replacement
+    }
+
+    class VehicleCheckingSchedule {
+        +int id
+        +string schedule_code
+        +int vehicle_id
+        +string check_frequency
+        +int assigned_dispatcher_id
+        +datetime last_checked_at
+        +int last_checked_by
+        +date next_due_date
+        +string status
+        +bool is_active
+        +markAsChecked() void
+    }
+
+    class VehiclePart {
+        +int id
+        +string part_code
+        +string name
+        +string category
+        +string checking_group
+        +string check_frequency
+        +string status_type
+        +int sort_order
+        +bool is_active
+    }
+
+    class VehiclePartsReplacement {
+        +int id
+        +string vpr_code
+        +int vehicle_checking_detail_id
+        +int vehicle_id
+        +string nopol
+        +int dispatcher_id
+        +int last_driver_id
+        +int desired_driver_id
+        +int approved_by
+        +string status
+        +date scheduled_date
+        +string service_location
+        +text rejection_reason
+        +datetime approved_at
+        +datetime rejected_at
+        +datetime completed_at
+        +approve() void
+        +reject() void
+        +setSchedule() void
+        +markInService() void
+        +markCompleted() void
+    }
+
+    class VehiclePartsReplacementDetail {
+        +int id
+        +string vprd_code
+        +int vehicle_parts_replacement_id
+        +int vehicle_part_id
+        +string item_name
+        +string condition_status
+        +text dispatcher_notes
+    }
+
+    class DamagePhoto {
+        +int id
+        +int vehicle_checking_detail_id
+        +string photo
+        +string zone
+        +string description
+    }
+
+    VehicleAndToolsConsumers "1" --> "0..*" Permohonan : alat konsumen
+    VehicleAndToolsConsumers "1" --> "0..*" VehicleChecking : periode pengecekan
+    VehicleAndToolsConsumers "1" --> "0..*" VehicleCheckingSchedule : jadwal per frekuensi
+    VehicleAndToolsConsumers "1" --> "0..*" VehiclePartsReplacement : kendaraan servis
+    GasolineType "1" --> "0..*" Permohonan : dirujuk via gasoline_type
+    Permohonan "1" --> "0..1" ApprovedRequest : menerbitkan voucher
+    Permohonan "1" --> "0..1" TransactionProof : bukti realisasi
+    VehicleChecking "1" --> "1..*" VehicleCheckingDetail : memuat detail
+    VehicleCheckingDetail "1" --> "1..*" VehicleCheckingItemResult : hasil per item
+    VehicleCheckingDetail "1" --> "0..*" DamagePhoto : foto per zona
+    VehicleCheckingDetail "1" --> "0..1" VehiclePartsReplacement : usulan VPR
+    VehicleCheckingItemResult "*" --> "1" VehiclePart : butir yang dicek
+    VehiclePartsReplacement "1" --> "1..*" VehiclePartsReplacementDetail : rincian usulan
+    VehiclePartsReplacementDetail "*" --> "1" VehiclePart : suku cadang diganti
+</pre>
+          </div>
+          <figcaption>
+            <b>Gambar 6.1</b> — Class diagram domain BBM &amp; kendaraan. Relasi
+            <code>Permohonan 1 → 0..1 ApprovedRequest</code> mengikuti metode
+            <code>Permohonan::approvedRequest()</code> yang bertipe <em>hasOne</em>, sedangkan
+            <code>Permohonan::transactionProof()</code> bertipe <em>hasOne</em> terhadap
+            <code>req_id</code>. Nama kolom persis harus diverifikasi ke migrasi sebelum dipakai
+            sebagai acuan <em>generate</em> kode.
+          </figcaption>
+        </figure>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Catatan verifikasi — kardinalitas, relasi teks, dan operasi</strong>
+            Migrasi <code>approved_requests</code> hanya memberi foreign key
+            <code>permohonan_id</code> tanpa <em>unique index</em>, sehingga basis data secara teknis
+            mengizinkan lebih dari satu voucher per permohonan; kardinalitas <code>0..1</code> di atas
+            adalah kesepakatan tingkat aplikasi. Selain itu
+            <code>Permohonan::gasolineType()</code> dideklarasikan <em>belongsTo</em> dengan kolom
+            <code>gasoline_type</code> bertipe <code>string</code>, sementara
+            <code>GasolineType</code> tidak menimpa <em>owner key</em>. Relasi ini perlu ditinjau DBA
+            dan pengembang sebelum dijadikan acuan integritas referensial.
+            <br><br>
+            Daftar operasi pada diagram memuat operasi domain yang <b>sudah terverifikasi</b> pada
+            model (mis. <code>VehicleCheckingDetail::acknowledge()</code>,
+            <code>VehicleCheckingSchedule::markAsChecked()</code>,
+            <code>VehiclePartsReplacement::setSchedule()</code>,
+            <code>SuratSpd::createExtension()</code>, <code>LpjPenggantian::calculateTotals()</code>)
+            dan sejumlah operasi yang bersifat <b>usulan niat desain</b> — mis.
+            <code>Permohonan::approve()</code>, <code>ApprovedRequest::cancel()</code>,
+            <code>TransactionProof::isComplete()</code>, dan
+            <code>VehicleAndToolsConsumers::approve()</code> — yang saat ini masih dikerjakan di
+            dalam <em>controller</em>. Bila operasi usulan akan diimplementasikan, tempatnya adalah
+            kelas model terkait agar aturan tidak tersebar di lapisan <em>boundary</em>.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= GAMBAR 6.2 ================= -->
+      <div class="section-block" id="kelas-spd">
+        <h2><span class="num"><i class="bi bi-2-circle"></i></span> Class diagram domain SPD/LPJ &amp; Lunch</h2>
+
+        <p>
+          Domain kedua menampung administrasi perjalanan dinas beserta pertanggungjawabannya, dan
+          modul manajemen katering yang berdiri sendiri setelah <em>refactor</em> Juli 2026
+          (forecast tidak lagi bergantung pada data trip kendaraan).
+        </p>
+
+        <figure>
+          <div class="fig fig--tint">
+<pre class="mermaid">
+classDiagram
+    direction TB
+
+    class SuratSpd {
+        +int id
+        +string slug
+        +string nomor_surat
+        +string pemberi_tugas_nama
+        +string pemberi_tugas_jabatan
+        +int user_id
+        +string pengemudi_nama
+        +text tempat_tujuan
+        +string melayani_bidang
+        +int jumlah_pemakai
+        +int vehicle_id
+        +date tanggal_berangkat
+        +date tanggal_kembali
+        +int lama_perjalanan_hari
+        +decimal total_budget
+        +int parent_surat_id
+        +bool is_extension
+        +datetime lpj_deadline
+        +int extension_count
+        +enum status
+        +enum type
+        +approve() void
+        +reject() void
+        +markAsCompleted() void
+        +createExtension() SuratSpdExtension
+        +hasLpj() bool
+    }
+
+    class SuratSpdDetail {
+        +int id
+        +int surat_spd_id
+        +string nama_lengkap
+        +int urutan
+    }
+
+    class SuratSpdExtension {
+        +int id
+        +string extension_number
+        +int original_surat_id
+        +int extension_surat_id
+        +date tanggal_kembali_original
+        +date tanggal_kembali_baru
+        +int durasi_tambahan_hari
+        +decimal budget_tambahan
+        +enum status
+        +bool is_acknowledged
+        +int acknowledged_by
+        +int approved_by
+        +int rejected_by
+        +text rejection_reason
+        +acknowledge() void
+    }
+
+    class SuratSpdBudget {
+        +int id
+        +int surat_spd_id
+        +date tanggal
+        +decimal nominal
+        +string catatan
+    }
+
+    class SpdBarcodeSignature {
+        +int id
+        +int spd_id
+        +string signature_path
+    }
+
+    class LpjPenggantian {
+        +int id
+        +string slug
+        +string lpj_number
+        +int surat_spd_id
+        +int user_id
+        +int vehicle_id
+        +string nomor_polisi
+        +text uraian
+        +date tanggal_lpj
+        +date due_date
+        +bool is_late
+        +int days_late
+        +decimal total_pengeluaran
+        +decimal budget_per_hari
+        +bool is_over_budget
+        +text over_budget_reason
+        +decimal odo_before
+        +decimal odo_after
+        +decimal kebutuhan_bbm_liter
+        +enum status
+        +calculateTotals() void
+        +validateBudget() bool
+        +calculateKeuangan() void
+        +submit() void
+        +approve() void
+        +reject() void
+    }
+
+    class LpjPenggantianDetail {
+        +int id
+        +int lpj_penggantian_id
+        +date tanggal
+        +enum tipe_penggunaan
+        +decimal nominal
+        +text keterangan
+        +int urutan
+    }
+
+    class EmployeeDefault {
+        +int id
+        +string slug
+        +int user_id
+        +string employee_code
+        +string employee_name
+        +string division
+        +string position
+        +int default_site_id
+        +bool is_active
+    }
+
+    class EmployeeAlias {
+        +int id
+        +int employee_default_id
+        +string alias
+        +string source
+    }
+
+    class LunchForecastBatch {
+        +int id
+        +date forecast_date
+        +string generated_by_type
+        +int generated_by_user_id
+        +string algorithm_version
+        +int history_sample_size
+        +enum status
+        +timestamp finalized_at
+    }
+
+    class LunchForecast {
+        +int id
+        +int user_id
+        +int employee_default_id
+        +date lunch_date
+        +int predicted_site_id
+        +int actual_site_id
+        +string prediction_source
+        +decimal confidence
+        +bool is_prediction_correct
+        +int forecast_batch_id
+        +finalSite() Site
+        +sourceLabel() string
+    }
+
+    class LunchDistribution {
+        +int id
+        +date distribution_date
+        +int site_id
+        +int employee_count
+        +int guest_count
+        +int total_count
+        +int forecast_batch_id
+        +bool is_locked
+        +timestamp locked_at
+        +int locked_by
+    }
+
+    class LunchTransaction {
+        +int id
+        +date transaction_date
+        +int site_id
+        +int employee_default_id
+        +string employee_name
+        +string raw_alias
+        +decimal confidence_score
+        +string resolution_method
+        +int tomorrow_site_id
+        +string dine_type
+        +string institution
+        +string source
+        +timestamp scanned_at
+    }
+
+    class LunchGuestReservation {
+        +int id
+        +date reservation_date
+        +string guest_name
+        +string institution
+        +int guest_count
+        +int site_id
+        +enum status
+        +timestamp confirmed_at
+        +int created_by
+    }
+
+    class LearningProfile {
+        +int id
+        +int employee_default_id
+        +int site_id
+        +int transaction_count
+        +date last_transaction_date
+    }
+
+    class Site {
+        +int id
+        +int unit_id
+        +string code
+        +string name
+        +string province_slug
+        +bool is_active
+    }
+
+    SuratSpd "1" --> "1..*" SuratSpdDetail : daftar personel
+    SuratSpd "1" --> "0..*" SuratSpdBudget : anggaran per tanggal
+    SuratSpd "1" --> "0..*" SpdBarcodeSignature : tanda tangan QR
+    SuratSpd "1" --> "0..*" SuratSpdExtension : rantai perpanjangan
+    SuratSpd "1" --> "0..1" LpjPenggantian : dipertanggungjawabkan
+    LpjPenggantian "1" --> "1..*" LpjPenggantianDetail : rincian biaya
+    Site "1" --> "0..*" EmployeeDefault : site default
+    EmployeeDefault "1" --> "0..*" EmployeeAlias : alias nama
+    EmployeeDefault "1" --> "0..*" LearningProfile : profil belajar
+    Site "1" --> "0..*" LearningProfile : konteks site
+    EmployeeDefault "1" --> "0..*" LunchForecast : target forecast
+    LunchForecastBatch "1" --> "0..*" LunchForecast : batch pembangkit
+    Site "1" --> "0..*" LunchForecast : predicted_site_id
+    LunchForecastBatch "1" --> "0..*" LunchDistribution : dasar distribusi
+    Site "1" --> "0..*" LunchDistribution : distribusi per site
+    EmployeeDefault "1" --> "0..*" LunchTransaction : absensi karyawan
+    Site "1" --> "0..*" LunchTransaction : site absensi
+    Site "1" --> "0..*" LunchGuestReservation : reservasi tamu
+</pre>
+          </div>
+          <figcaption>
+            <b>Gambar 6.2</b> — Class diagram domain SPD/LPJ &amp; Lunch. Nama kelas dipertahankan
+            tanpa garis bawah sesuai usulan penyeragaman; kelas PHP aktual tetap
+            <code>SuratSpd</code>, <code>LpjPenggantian</code>, <code>LunchForecast</code>, dan
+            seterusnya. Verifikasi nama kolom tetap mengacu ke migrasi.
+          </figcaption>
+        </figure>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Catatan verifikasi — tabel forecast hasil rename</strong>
+            Tabel <code>lunch_forecasts</code> adalah hasil <em>rename</em> dari
+            <code>lunch_trackings</code>. Kolom tanggalnya masih bernama <code>lunch_date</code>
+            (bukan <code>forecast_date</code>), dan <em>unique index</em> yang berlaku adalah
+            <code>unique(user_id, lunch_date)</code> — sementara <code>employee_default_id</code>
+            ditambahkan belakangan dan bersifat nullable. Perlu keputusan DBA apakah <em>unique
+            index</em> dipindahkan ke pasangan <code>(employee_default_id, lunch_date)</code>.
+            <br><br>
+            Operasi <code>SuratSpd::createExtension()</code>, <code>SuratSpd::markAsCompleted()</code>,
+            <code>SuratSpd::hasLpj()</code>, <code>SuratSpdExtension::acknowledge()</code>, dan
+            <code>LpjPenggantian::calculateTotals()</code> telah terverifikasi pada kelas model.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= GAMBAR 6.3 ================= -->
+      <div class="section-block" id="erd">
+        <h2><span class="num"><i class="bi bi-3-circle"></i></span> ERD crow&rsquo;s foot seluruh modul</h2>
+
+        <p>
+          ERD berikut menggabungkan seluruh modul: otorisasi (RBAC), BBM, pengecekan kendaraan,
+          penggantian suku cadang, analitik efisiensi, SPD/LPJ, dan manajemen katering. Entitas
+          ditulis dengan nama tabel persis seperti pada migrasi.
+        </p>
+
+        <figure>
+          <div class="fig fig--tint">
+<pre class="mermaid">
+erDiagram
+    USERS {
+        bigint id PK
+        string user_code UK
+        string username UK
+        string role "dual-write dengan user_roles"
+        bigint default_site_id FK "scope data per site"
+        bigint unit_id FK
+    }
+    PERMISSION_GROUPS {
+        bigint id PK
+        string code UK
+        string name
+    }
+    ROLES {
+        bigint id PK
+        string code UK
+        string name
+        bool is_system
+    }
+    PERMISSIONS {
+        bigint id PK
+        string code UK
+        bigint permission_group_id FK
+        string module
+        string action
+    }
+    ROLE_PERMISSIONS {
+        bigint id PK
+        bigint role_id FK
+        bigint permission_id FK
+    }
+    USER_ROLES {
+        bigint id PK
+        bigint user_id FK
+        bigint role_id FK
+        bool is_primary
+    }
+    PERMOHONANS {
+        bigint id PK
+        string request_number UK
+        bigint requester_id FK
+        string gasoline_type "string, bukan FK tegas"
+        decimal bill_amounts "decimal 15,2"
+        string status "pending|approved|completed|rejected"
+        bigint authorizer_id FK
+        bigint consumerial_tools_id FK
+    }
+    APPROVED_REQUESTS {
+        bigint id PK
+        bigint permohonan_id FK
+        string voucher_code UK
+        datetime valid_until "approval + 50 jam"
+        float approved_amount
+        string status
+        bigint authorizer_id FK
+    }
+    TRANSACTION_PROOFS {
+        bigint id PK
+        string transaction_id
+        bigint req_id FK
+        bigint requester_id FK
+        string voucher_number
+        int fuel_volume
+        string struk_bbm_path "storage terproteksi"
+        string odometer_photo_path
+    }
+    GASOLINE_TYPES {
+        bigint id PK
+        string gasoline_code UK
+        string gasoline_name
+        int price_per_liter
+    }
+    VEHICLE_AND_TOOLS_CONSUMERS {
+        bigint id PK
+        string consumerial_type
+        string consumerial_code UK
+        string consumerial_name
+        bool is_approved
+        bool is_active
+    }
+    VEHICLE_CHECKINGS {
+        bigint id PK
+        string checking_code UK
+        bigint vehicle_id FK
+        int revision
+        date period_start
+        date period_end
+        string status "active|closed"
+    }
+    VEHICLE_CHECKING_SCHEDULES {
+        bigint id PK
+        string schedule_code UK
+        bigint vehicle_id FK
+        enum check_frequency "daily|weekly|monthly|body"
+        bigint assigned_dispatcher_id FK
+        date next_due_date
+        enum status "pending|due|overdue|completed"
+    }
+    VEHICLE_CHECKING_DETAILS {
+        bigint id PK
+        string checking_detail_code UK
+        bigint vehicle_checking_id FK
+        enum type "routine|body"
+        enum sub_type "daily|weekly|monthly"
+        bigint dispatcher_id FK
+        bigint current_driver_id FK
+        bool driver_acknowledged
+    }
+    VEHICLE_CHECKING_ITEM_RESULTS {
+        bigint id PK
+        bigint vehicle_checking_detail_id FK
+        bigint vehicle_part_id FK
+        string status "ok|ng|baik|cukup|kurang|tidak"
+        bool needs_replacement "pemicu usulan VPR"
+    }
+    VEHICLE_PARTS {
+        bigint id PK
+        string part_code UK
+        string name
+        enum category "kesiapan|keselamatan|kelengkapan|body"
+        enum checking_group "routine|body"
+        enum status_type "binary|scale"
+    }
+    VEHICLE_PARTS_REPLACEMENTS {
+        bigint id PK
+        string vpr_code UK
+        bigint vehicle_checking_detail_id FK
+        bigint vehicle_id FK
+        bigint dispatcher_id FK
+        string status
+        date scheduled_date
+        bigint approved_by FK
+    }
+    VEHICLE_PARTS_REPLACEMENT_DETAILS {
+        bigint id PK
+        string vprd_code UK
+        bigint vehicle_parts_replacement_id FK
+        bigint vehicle_part_id FK
+        string condition_status
+    }
+    DAMAGE_PHOTOS {
+        bigint id PK
+        bigint vehicle_checking_detail_id FK
+        string photo "storage terproteksi"
+        string zone "depan|belakang|kiri|kanan"
+    }
+    SURAT_SPDS {
+        bigint id PK
+        string slug UK
+        string nomor_surat UK
+        bigint user_id FK
+        bigint vehicle_id FK
+        date tanggal_berangkat
+        date tanggal_kembali
+        datetime lpj_deadline
+        bigint parent_surat_id FK
+        enum status "pending|approved|rejected|extended|completed"
+    }
+    SPD_SURAT_DETAILS {
+        bigint id PK
+        bigint surat_spd_id FK
+        string nama_lengkap
+        int urutan
+    }
+    SURAT_SPD_EXTENSIONS {
+        bigint id PK
+        string extension_number UK
+        bigint original_surat_id FK
+        bigint extension_surat_id FK
+        date tanggal_kembali_baru
+        decimal budget_tambahan
+        enum status "pending|approved|rejected"
+    }
+    SURAT_SPD_BUDGETS {
+        bigint id PK
+        bigint surat_spd_id FK
+        date tanggal
+        decimal nominal
+    }
+    SPD_BARCODE_SIGNATURES {
+        bigint id PK
+        bigint spd_id FK
+        string signature_path "storage terproteksi"
+    }
+    LPJ_PENGGANTIANS {
+        bigint id PK
+        string slug UK
+        string lpj_number UK
+        bigint surat_spd_id FK
+        bigint user_id FK
+        date due_date "tanggal kembali + 3 hari"
+        bool is_late
+        int days_late
+        decimal total_pengeluaran
+        decimal budget_per_hari "default 1400000"
+        bool is_over_budget
+        enum status "pending|approved|rejected"
+    }
+    LPJ_PENGGANTIAN_DETAILS {
+        bigint id PK
+        bigint lpj_penggantian_id FK
+        date tanggal
+        enum tipe_penggunaan "BBM|Tol|Parkir|Lain-lain"
+        decimal nominal
+    }
+    VEHICLE_TRIP_ANALYSES {
+        bigint id PK
+        bigint requester_id FK
+        bigint consumerial_tools_id FK
+        bigint transaction_proof_start_id FK
+        bigint transaction_proof_end_id FK
+        int km_difference
+        decimal fuel_efficiency "KM per liter"
+        enum trip_category "normal|long_distance|suspicious"
+    }
+    TRIP_VALIDATIONS {
+        bigint id PK
+        bigint transaction_proof_previous_id FK
+        bigint transaction_proof_latest_id FK
+        bool is_premature_refuel
+        enum alert_level "normal|warning|critical"
+    }
+    VEHICLE_FUEL_BASELINES {
+        bigint id PK
+        bigint vehicle_id FK
+        string fuel_type
+        decimal optimal_efficiency_km_per_liter
+        enum calculation_method "manual|auto_calculated|admin_override"
+    }
+    UNITS {
+        bigint id PK
+        string code UK
+        string name
+        bool is_active
+    }
+    SITES {
+        bigint id PK
+        bigint unit_id FK
+        string code UK
+        string name
+        string province_slug
+        bool is_active
+    }
+    EMPLOYEE_DEFAULTS {
+        bigint id PK
+        string slug UK
+        bigint user_id FK
+        string employee_code UK
+        string employee_name
+        bigint default_site_id FK
+        bool is_active
+    }
+    EMPLOYEE_ALIASES {
+        bigint id PK
+        bigint employee_default_id FK
+        string alias
+        string source "manual|learned"
+    }
+    LUNCH_FORECAST_BATCHES {
+        bigint id PK
+        date forecast_date
+        string generated_by_type "system|manual"
+        string algorithm_version
+        enum status "draft|finalized"
+    }
+    LUNCH_FORECASTS {
+        bigint id PK
+        bigint employee_default_id FK
+        date lunch_date
+        bigint predicted_site_id FK
+        bigint actual_site_id FK
+        string prediction_source "manual|confirmation|historical|default"
+        decimal confidence
+        bool is_prediction_correct
+        bigint forecast_batch_id FK
+    }
+    LUNCH_DISTRIBUTIONS {
+        bigint id PK
+        date distribution_date
+        bigint site_id FK
+        int total_count
+        bigint forecast_batch_id FK
+        bool is_locked
+    }
+    LUNCH_TRANSACTIONS {
+        bigint id PK
+        date transaction_date
+        bigint site_id FK
+        bigint employee_default_id FK
+        string raw_alias
+        decimal confidence_score
+        string resolution_method
+        bigint tomorrow_site_id FK
+    }
+    LUNCH_GUEST_RESERVATIONS {
+        bigint id PK
+        date reservation_date
+        string guest_name
+        string institution
+        int guest_count
+        bigint site_id FK
+        enum status "pending|confirmed|cancelled"
+    }
+    LEARNING_PROFILES {
+        bigint id PK
+        bigint employee_default_id FK
+        bigint site_id FK
+        int transaction_count
+        date last_transaction_date
+    }
+
+    USERS ||--o{ USER_ROLES : memiliki
+    ROLES ||--o{ USER_ROLES : diberikan
+    ROLES ||--o{ ROLE_PERMISSIONS : memuat
+    PERMISSIONS ||--o{ ROLE_PERMISSIONS : tercatat
+    PERMISSION_GROUPS ||--o{ PERMISSIONS : mengelompokkan
+    USERS ||--o| EMPLOYEE_DEFAULTS : akun tertaut
+    USERS ||--o{ PERMOHONANS : mengajukan
+    VEHICLE_AND_TOOLS_CONSUMERS ||--o{ PERMOHONANS : alat konsumen
+    USERS ||--o{ PERMOHONANS : mengotorisasi
+    GASOLINE_TYPES ||..o{ PERMOHONANS : jenis BBM teks
+    PERMOHONANS ||--o| APPROVED_REQUESTS : menerbitkan voucher
+    USERS ||--o{ APPROVED_REQUESTS : menyetujui
+    PERMOHONANS ||--o| TRANSACTION_PROOFS : bukti realisasi
+    USERS ||--o{ TRANSACTION_PROOFS : mengunggah
+    VEHICLE_AND_TOOLS_CONSUMERS ||--o{ VEHICLE_CHECKINGS : periode pengecekan
+    VEHICLE_AND_TOOLS_CONSUMERS ||--o{ VEHICLE_CHECKING_SCHEDULES : jadwal
+    USERS ||--o{ VEHICLE_CHECKING_SCHEDULES : PIC dispatcher
+    VEHICLE_CHECKINGS ||--o{ VEHICLE_CHECKING_DETAILS : memuat
+    VEHICLE_CHECKING_DETAILS ||--o{ VEHICLE_CHECKING_ITEM_RESULTS : hasil item
+    VEHICLE_CHECKING_DETAILS ||--o{ DAMAGE_PHOTOS : foto zona
+    VEHICLE_CHECKING_DETAILS ||--o| VEHICLE_PARTS_REPLACEMENTS : usulan VPR
+    VEHICLE_PARTS ||--o{ VEHICLE_CHECKING_ITEM_RESULTS : butir dicek
+    VEHICLE_PARTS ||--o{ VEHICLE_PARTS_REPLACEMENT_DETAILS : suku cadang
+    VEHICLE_AND_TOOLS_CONSUMERS ||--o{ VEHICLE_PARTS_REPLACEMENTS : kendaraan
+    VEHICLE_PARTS_REPLACEMENTS ||--o{ VEHICLE_PARTS_REPLACEMENT_DETAILS : rincian
+    USERS ||--o{ SURAT_SPDS : pemohon
+    VEHICLE_AND_TOOLS_CONSUMERS ||--o{ SURAT_SPDS : kendaraan tugas
+    SURAT_SPDS ||--o{ SPD_SURAT_DETAILS : daftar personel
+    SURAT_SPDS ||--o{ SURAT_SPD_EXTENSIONS : asal perpanjangan
+    SURAT_SPDS ||--o{ SURAT_SPD_BUDGETS : anggaran harian
+    SURAT_SPDS ||--o{ SPD_BARCODE_SIGNATURES : tanda tangan QR
+    SURAT_SPDS ||--o| LPJ_PENGGANTIANS : dipertanggungjawabkan
+    USERS ||--o{ LPJ_PENGGANTIANS : melaporkan
+    LPJ_PENGGANTIANS ||--o{ LPJ_PENGGANTIAN_DETAILS : rincian biaya
+    TRANSACTION_PROOFS ||--o{ VEHICLE_TRIP_ANALYSES : transaksi awal
+    TRANSACTION_PROOFS ||--o{ VEHICLE_TRIP_ANALYSES : transaksi akhir
+    TRANSACTION_PROOFS ||--o{ TRIP_VALIDATIONS : dibandingkan
+    VEHICLE_AND_TOOLS_CONSUMERS ||--o{ VEHICLE_TRIP_ANALYSES : dianalisis
+    VEHICLE_AND_TOOLS_CONSUMERS ||--o{ VEHICLE_FUEL_BASELINES : baseline
+    UNITS ||--o{ SITES : menaungi
+    UNITS ||--o{ USERS : unit scope
+    SITES ||--o{ USERS : site default
+    SITES ||--o{ EMPLOYEE_DEFAULTS : site default
+    EMPLOYEE_DEFAULTS ||--o{ EMPLOYEE_ALIASES : alias
+    EMPLOYEE_DEFAULTS ||--o{ LEARNING_PROFILES : profil
+    SITES ||--o{ LEARNING_PROFILES : konteks site
+    EMPLOYEE_DEFAULTS ||--o{ LUNCH_FORECASTS : target forecast
+    LUNCH_FORECAST_BATCHES ||--o{ LUNCH_FORECASTS : batch
+    SITES ||--o{ LUNCH_FORECASTS : lokasi prediksi
+    LUNCH_FORECAST_BATCHES ||--o{ LUNCH_DISTRIBUTIONS : dasar distribusi
+    SITES ||--o{ LUNCH_DISTRIBUTIONS : distribusi site
+    EMPLOYEE_DEFAULTS ||--o{ LUNCH_TRANSACTIONS : absensi
+    SITES ||--o{ LUNCH_TRANSACTIONS : site absensi
+    SITES ||--o{ LUNCH_GUEST_RESERVATIONS : reservasi tamu
+</pre>
+          </div>
+          <figcaption>
+            <b>Gambar 6.3</b> — ERD <em>crow&rsquo;s foot</em> seluruh modul SIAGA (39 entitas).
+            Garis penuh menandakan relasi identifikasi (FK wajib), garis putus-putus menandakan
+            relasi non-identifikasi atau relasi longgar yang masih perlu ditinjau
+            (mis. <code>gasoline_type</code> yang bertipe teks). Klik diagram untuk memperbesar.
+          </figcaption>
+        </figure>
+
+        <details class="acc">
+          <summary>Kode PlantUML padanan Gambar 6.3 (ERD)</summary>
+          <div class="acc__body">
+            <div class="code-head"><span>plantuml</span><button data-copy="puml-erd-siaga">Salin</button></div>
+<pre id="puml-erd-siaga"><code>@startuml
+title ERD SIAGA - crow's foot seluruh modul
+skinparam linetype ortho
+hide empty methods
+
+entity "users" as users {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  user_code : varchar &lt;&lt;UK&gt;&gt;
+  username : varchar &lt;&lt;UK&gt;&gt;
+  role : varchar
+  default_site_id : bigint &lt;&lt;FK&gt;&gt;
+  unit_id : bigint &lt;&lt;FK&gt;&gt;
+}
+entity "permission_groups" as permission_groups {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  code : varchar &lt;&lt;UK&gt;&gt;
+}
+entity "roles" as roles {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  code : varchar &lt;&lt;UK&gt;&gt;
+  is_system : boolean
+}
+entity "permissions" as permissions {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  code : varchar &lt;&lt;UK&gt;&gt;
+  permission_group_id : bigint &lt;&lt;FK&gt;&gt;
+  module : varchar
+  action : varchar
+}
+entity "role_permissions" as role_permissions {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  role_id : bigint &lt;&lt;FK&gt;&gt;
+  permission_id : bigint &lt;&lt;FK&gt;&gt;
+}
+entity "user_roles" as user_roles {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  user_id : bigint &lt;&lt;FK&gt;&gt;
+  role_id : bigint &lt;&lt;FK&gt;&gt;
+  is_primary : boolean
+}
+entity "permohonans" as permohonans {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  request_number : varchar &lt;&lt;UK&gt;&gt;
+  requester_id : bigint &lt;&lt;FK&gt;&gt;
+  gasoline_type : varchar
+  bill_amounts : decimal
+  status : varchar
+  authorizer_id : bigint &lt;&lt;FK&gt;&gt;
+  consumerial_tools_id : bigint &lt;&lt;FK&gt;&gt;
+}
+entity "approved_requests" as approved_requests {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  permohonan_id : bigint &lt;&lt;FK&gt;&gt;
+  voucher_code : varchar &lt;&lt;UK&gt;&gt;
+  valid_until : datetime
+  approved_amount : float
+  status : varchar
+  authorizer_id : bigint &lt;&lt;FK&gt;&gt;
+}
+entity "transaction_proofs" as transaction_proofs {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  transaction_id : varchar
+  req_id : bigint &lt;&lt;FK&gt;&gt;
+  requester_id : bigint &lt;&lt;FK&gt;&gt;
+  voucher_number : varchar
+  fuel_volume : int
+  struk_bbm_path : varchar
+  odometer_photo_path : varchar
+}
+entity "gasoline_types" as gasoline_types {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  gasoline_code : varchar &lt;&lt;UK&gt;&gt;
+  gasoline_name : varchar
+  price_per_liter : int
+}
+entity "vehicle_and_tools_consumers" as vtc {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  consumerial_type : varchar
+  consumerial_code : varchar &lt;&lt;UK&gt;&gt;
+  consumerial_name : varchar
+  is_approved : boolean
+  is_active : boolean
+}
+entity "vehicle_checkings" as vehicle_checkings {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  checking_code : varchar &lt;&lt;UK&gt;&gt;
+  vehicle_id : bigint &lt;&lt;FK&gt;&gt;
+  period_start : date
+  period_end : date
+  revision : int
+  status : varchar
+}
+entity "vehicle_checking_schedules" as vcs {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  schedule_code : varchar &lt;&lt;UK&gt;&gt;
+  vehicle_id : bigint &lt;&lt;FK&gt;&gt;
+  check_frequency : varchar
+  assigned_dispatcher_id : bigint &lt;&lt;FK&gt;&gt;
+  next_due_date : date
+  status : varchar
+}
+entity "vehicle_checking_details" as vcd {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  checking_detail_code : varchar &lt;&lt;UK&gt;&gt;
+  vehicle_checking_id : bigint &lt;&lt;FK&gt;&gt;
+  type : varchar
+  sub_type : varchar
+  dispatcher_id : bigint &lt;&lt;FK&gt;&gt;
+  current_driver_id : bigint &lt;&lt;FK&gt;&gt;
+  driver_acknowledged : boolean
+}
+entity "vehicle_checking_item_results" as vcir {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  vehicle_checking_detail_id : bigint &lt;&lt;FK&gt;&gt;
+  vehicle_part_id : bigint &lt;&lt;FK&gt;&gt;
+  status : varchar
+  needs_replacement : boolean
+}
+entity "vehicle_parts" as vehicle_parts {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  part_code : varchar &lt;&lt;UK&gt;&gt;
+  name : varchar
+  category : varchar
+  checking_group : varchar
+  status_type : varchar
+}
+entity "vehicle_parts_replacements" as vpr {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  vpr_code : varchar &lt;&lt;UK&gt;&gt;
+  vehicle_checking_detail_id : bigint &lt;&lt;FK&gt;&gt;
+  vehicle_id : bigint &lt;&lt;FK&gt;&gt;
+  dispatcher_id : bigint &lt;&lt;FK&gt;&gt;
+  status : varchar
+  scheduled_date : date
+  approved_by : bigint &lt;&lt;FK&gt;&gt;
+}
+entity "vehicle_parts_replacement_details" as vprd {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  vprd_code : varchar &lt;&lt;UK&gt;&gt;
+  vehicle_parts_replacement_id : bigint &lt;&lt;FK&gt;&gt;
+  vehicle_part_id : bigint &lt;&lt;FK&gt;&gt;
+  condition_status : varchar
+}
+entity "damage_photos" as damage_photos {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  vehicle_checking_detail_id : bigint &lt;&lt;FK&gt;&gt;
+  photo : varchar
+  zone : varchar
+}
+entity "surat_spds" as surat_spds {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  slug : varchar &lt;&lt;UK&gt;&gt;
+  nomor_surat : varchar &lt;&lt;UK&gt;&gt;
+  user_id : bigint &lt;&lt;FK&gt;&gt;
+  vehicle_id : bigint &lt;&lt;FK&gt;&gt;
+  tanggal_berangkat : date
+  tanggal_kembali : date
+  lpj_deadline : datetime
+  parent_surat_id : bigint &lt;&lt;FK&gt;&gt;
+  status : varchar
+}
+entity "spd_surat_details" as spd_surat_details {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  surat_spd_id : bigint &lt;&lt;FK&gt;&gt;
+  nama_lengkap : varchar
+  urutan : int
+}
+entity "surat_spd_extensions" as surat_spd_extensions {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  extension_number : varchar &lt;&lt;UK&gt;&gt;
+  original_surat_id : bigint &lt;&lt;FK&gt;&gt;
+  extension_surat_id : bigint &lt;&lt;FK&gt;&gt;
+  tanggal_kembali_baru : date
+  budget_tambahan : decimal
+  status : varchar
+}
+entity "surat_spd_budgets" as surat_spd_budgets {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  surat_spd_id : bigint &lt;&lt;FK&gt;&gt;
+  tanggal : date
+  nominal : decimal
+}
+entity "spd_barcode_signatures" as spd_barcode_signatures {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  spd_id : bigint &lt;&lt;FK&gt;&gt;
+  signature_path : varchar
+}
+entity "lpj_penggantians" as lpj_penggantians {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  slug : varchar &lt;&lt;UK&gt;&gt;
+  lpj_number : varchar &lt;&lt;UK&gt;&gt;
+  surat_spd_id : bigint &lt;&lt;FK&gt;&gt;
+  user_id : bigint &lt;&lt;FK&gt;&gt;
+  due_date : date
+  is_late : boolean
+  days_late : int
+  total_pengeluaran : decimal
+  budget_per_hari : decimal
+  is_over_budget : boolean
+  status : varchar
+}
+entity "lpj_penggantian_details" as lpj_penggantian_details {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  lpj_penggantian_id : bigint &lt;&lt;FK&gt;&gt;
+  tanggal : date
+  tipe_penggunaan : varchar
+  nominal : decimal
+}
+entity "vehicle_trip_analyses" as vehicle_trip_analyses {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  requester_id : bigint &lt;&lt;FK&gt;&gt;
+  consumerial_tools_id : bigint &lt;&lt;FK&gt;&gt;
+  transaction_proof_start_id : bigint &lt;&lt;FK&gt;&gt;
+  transaction_proof_end_id : bigint &lt;&lt;FK&gt;&gt;
+  km_difference : int
+  fuel_efficiency : decimal
+  trip_category : varchar
+}
+entity "trip_validations" as trip_validations {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  transaction_proof_previous_id : bigint &lt;&lt;FK&gt;&gt;
+  transaction_proof_latest_id : bigint &lt;&lt;FK&gt;&gt;
+  is_premature_refuel : boolean
+  alert_level : varchar
+}
+entity "vehicle_fuel_baselines" as vehicle_fuel_baselines {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  vehicle_id : bigint &lt;&lt;FK&gt;&gt;
+  fuel_type : varchar
+  optimal_efficiency_km_per_liter : decimal
+  calculation_method : varchar
+}
+entity "units" as units {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  code : varchar &lt;&lt;UK&gt;&gt;
+  name : varchar
+  is_active : boolean
+}
+entity "sites" as sites {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  unit_id : bigint &lt;&lt;FK&gt;&gt;
+  code : varchar &lt;&lt;UK&gt;&gt;
+  name : varchar
+  province_slug : varchar
+  is_active : boolean
+}
+entity "employee_defaults" as employee_defaults {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  slug : varchar &lt;&lt;UK&gt;&gt;
+  user_id : bigint &lt;&lt;FK&gt;&gt;
+  employee_code : varchar &lt;&lt;UK&gt;&gt;
+  employee_name : varchar
+  default_site_id : bigint &lt;&lt;FK&gt;&gt;
+  is_active : boolean
+}
+entity "employee_aliases" as employee_aliases {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  employee_default_id : bigint &lt;&lt;FK&gt;&gt;
+  alias : varchar
+  source : varchar
+}
+entity "lunch_forecast_batches" as lunch_forecast_batches {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  forecast_date : date
+  generated_by_type : varchar
+  algorithm_version : varchar
+  status : varchar
+}
+entity "lunch_forecasts" as lunch_forecasts {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  employee_default_id : bigint &lt;&lt;FK&gt;&gt;
+  lunch_date : date
+  predicted_site_id : bigint &lt;&lt;FK&gt;&gt;
+  actual_site_id : bigint &lt;&lt;FK&gt;&gt;
+  prediction_source : varchar
+  confidence : decimal
+  is_prediction_correct : boolean
+  forecast_batch_id : bigint &lt;&lt;FK&gt;&gt;
+}
+entity "lunch_distributions" as lunch_distributions {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  distribution_date : date
+  site_id : bigint &lt;&lt;FK&gt;&gt;
+  total_count : int
+  forecast_batch_id : bigint &lt;&lt;FK&gt;&gt;
+  is_locked : boolean
+}
+entity "lunch_transactions" as lunch_transactions {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  transaction_date : date
+  site_id : bigint &lt;&lt;FK&gt;&gt;
+  employee_default_id : bigint &lt;&lt;FK&gt;&gt;
+  raw_alias : varchar
+  confidence_score : decimal
+  resolution_method : varchar
+  tomorrow_site_id : bigint &lt;&lt;FK&gt;&gt;
+}
+entity "lunch_guest_reservations" as lunch_guest_reservations {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  reservation_date : date
+  guest_name : varchar
+  institution : varchar
+  guest_count : int
+  site_id : bigint &lt;&lt;FK&gt;&gt;
+  status : varchar
+}
+entity "learning_profiles" as learning_profiles {
+  * id : bigint &lt;&lt;PK&gt;&gt;
+  --
+  employee_default_id : bigint &lt;&lt;FK&gt;&gt;
+  site_id : bigint &lt;&lt;FK&gt;&gt;
+  transaction_count : int
+  last_transaction_date : date
+}
+
+users ||--o{ user_roles
+roles ||--o{ user_roles
+roles ||--o{ role_permissions
+permissions ||--o{ role_permissions
+permission_groups ||--o{ permissions
+users ||--o| employee_defaults
+users ||--o{ permohonans
+vtc ||--o{ permohonans
+gasoline_types ||..o{ permohonans
+permohonans ||--o| approved_requests
+permohonans ||--o| transaction_proofs
+vtc ||--o{ vehicle_checkings
+vtc ||--o{ vcs
+vehicle_checkings ||--o{ vcd
+vcd ||--o{ vcir
+vcd ||--o{ damage_photos
+vcd ||--o| vpr
+vehicle_parts ||--o{ vcir
+vehicle_parts ||--o{ vprd
+vtc ||--o{ vpr
+vpr ||--o{ vprd
+users ||--o{ surat_spds
+vtc ||--o{ surat_spds
+surat_spds ||--o{ spd_surat_details
+surat_spds ||--o{ surat_spd_extensions
+surat_spds ||--o{ surat_spd_budgets
+surat_spds ||--o{ spd_barcode_signatures
+surat_spds ||--o| lpj_penggantians
+users ||--o{ lpj_penggantians
+lpj_penggantians ||--o{ lpj_penggantian_details
+transaction_proofs ||--o{ vehicle_trip_analyses
+transaction_proofs ||--o{ trip_validations
+vtc ||--o{ vehicle_trip_analyses
+vtc ||--o{ vehicle_fuel_baselines
+units ||--o{ sites
+units ||--o{ users
+sites ||--o{ users
+sites ||--o{ employee_defaults
+employee_defaults ||--o{ employee_aliases
+employee_defaults ||--o{ learning_profiles
+sites ||--o{ learning_profiles
+employee_defaults ||--o{ lunch_forecasts
+lunch_forecast_batches ||--o{ lunch_forecasts
+sites ||--o{ lunch_forecasts
+lunch_forecast_batches ||--o{ lunch_distributions
+sites ||--o{ lunch_distributions
+employee_defaults ||--o{ lunch_transactions
+sites ||--o{ lunch_transactions
+sites ||--o{ lunch_guest_reservations
+@enduml
+</code></pre>
+          </div>
+        </details>
+      </div>
+
+      <!-- ================= KAMUS DATA ================= -->
+      <div class="section-block" id="kamus">
+        <h2><span class="num"><i class="bi bi-journal-text"></i></span> Kamus data per modul</h2>
+
+        <p>
+          Tabel berikut merangkum tabel, kolom kunci, relasi, dan catatan <em>constraint</em> yang
+          paling menentukan perilaku sistem. Nama tabel dan kolom dikutip langsung dari migrasi.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <thead>
+              <tr><th>Tabel</th><th>Kolom kunci</th><th>Relasi</th><th>Catatan penting (constraint)</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">users</td>
+                <td><code>id</code>, <code>user_code</code>, <code>username</code>, <code>role</code>, <code>default_site_id</code>, <code>unit_id</code></td>
+                <td>1 → * <code>permohonans</code>, <code>surat_spds</code>, <code>lpj_penggantians</code>; 1 → * <code>user_roles</code></td>
+                <td><code>user_code</code>, <code>username</code>, <code>email</code> unik; <b>dual-write</b> <code>users.role</code> dan tabel <code>user_roles</code>; <code>default_site_id</code> dan <code>unit_id</code> adalah dasar <em>site/unit scope</em></td>
+              </tr>
+              <tr>
+                <td class="rowhead">roles · permissions · permission_groups · role_permissions · user_roles</td>
+                <td><code>code</code> (unik), <code>module</code>, <code>action</code>, <code>is_primary</code></td>
+                <td>roles ↔ permissions via <code>role_permissions</code>; users ↔ roles via <code>user_roles</code></td>
+                <td><code>role_permissions</code> unik pada <code>(role_id, permission_id)</code>; <code>user_roles</code> unik pada <code>(user_id, role_id)</code> — mencegah pemberian peran ganda</td>
+              </tr>
+              <tr>
+                <td class="rowhead">permohonans</td>
+                <td><code>request_number</code>, <code>requester_id</code>, <code>gasoline_type</code>, <code>bill_amounts</code>, <code>status</code>, <code>authorizer_id</code>, <code>consumerial_tools_id</code></td>
+                <td>* → 1 <code>users</code> (requester &amp; authorizer); 1 → 0..1 <code>approved_requests</code>; 1 → 0..1 <code>transaction_proofs</code></td>
+                <td><code>request_number</code> unik; <code>gate</code> kuota divalidasi di lapisan aplikasi melalui <code>user_slot_adjustments</code> (basis 5 slot, dibatasi 1–6), bukan oleh <em>constraint</em> basis data</td>
+              </tr>
+              <tr>
+                <td class="rowhead">approved_requests</td>
+                <td><code>permohonan_id</code>, <code>voucher_code</code>, <code>valid_until</code>, <code>approved_amount</code>, <code>status</code></td>
+                <td>* → 1 <code>permohonans</code> (cascade delete); * → 1 <code>users</code></td>
+                <td><code>voucher_code</code> unik; tidak ada <em>unique index</em> pada <code>permohonan_id</code> sehingga perlu kebijakan tambahan agar satu permohonan tidak menerima voucher ganda</td>
+              </tr>
+              <tr>
+                <td class="rowhead">transaction_proofs</td>
+                <td><code>req_id</code>, <code>requester_id</code>, <code>voucher_number</code>, <code>fuel_volume</code>, <code>km_terakhir</code>, <code>struk_bbm_path</code>, <code>odometer_photo_path</code></td>
+                <td>* → 1 <code>permohonans</code>; * → 1 <code>users</code></td>
+                <td>Berkas struk dan odometer disimpan di <b>storage terproteksi</b> dan hanya dapat diunduh melalui rute perantara ber-otentikasi (<code>StorageFileController</code>); permohonan yang dihapus dibatasi (<code>restrict</code>) agar bukti keuangan tidak hilang</td>
+              </tr>
+              <tr>
+                <td class="rowhead">gasoline_types</td>
+                <td><code>gasoline_code</code>, <code>gasoline_name</code>, <code>price_per_liter</code></td>
+                <td>Dirujuk <code>permohonans.gasoline_type</code> (bertipe teks)</td>
+                <td><code>gasoline_code</code> unik; relasi ke <code>permohonans</code> belum ditegakkan sebagai foreign key — lihat daftar verifikasi DBA</td>
+              </tr>
+              <tr>
+                <td class="rowhead">vehicle_and_tools_consumers</td>
+                <td><code>consumerial_code</code>, <code>consumerial_type</code>, <code>is_approved</code>, <code>is_active</code></td>
+                <td>1 → * <code>permohonans</code>, <code>surat_spds</code>, <code>vehicle_checkings</code>, <code>vehicle_parts_replacements</code></td>
+                <td><code>consumerial_code</code> unik (menjadi nilai <code>nopol</code> yang didenormalisasi pada tabel pengecekan); penghapusan pemohon/pengguna dibatasi</td>
+              </tr>
+              <tr>
+                <td class="rowhead">vehicle_checkings · vehicle_checking_schedules</td>
+                <td><code>vehicle_id</code>, <code>period_start</code>, <code>check_frequency</code>, <code>status</code>, <code>next_due_date</code></td>
+                <td>1 → * <code>vehicle_checking_details</code></td>
+                <td><b>Pencegahan duplikasi:</b> <code>uk_vehicle_period</code> unik pada <code>(vehicle_id, period_start)</code> dan <code>uk_vehicle_frequency</code> unik pada <code>(vehicle_id, check_frequency)</code> — satu periode dan satu frekuensi hanya boleh tercatat sekali per kendaraan</td>
+              </tr>
+              <tr>
+                <td class="rowhead">vehicle_checking_details</td>
+                <td><code>checking_detail_code</code>, <code>vehicle_checking_id</code>, <code>type</code>, <code>sub_type</code>, <code>dispatcher_id</code>, <code>current_driver_id</code>, <code>driver_acknowledged</code></td>
+                <td>1 → * <code>vehicle_checking_item_results</code>, <code>damage_photos</code>, <code>vehicle_parts_replacements</code></td>
+                <td><code>checking_detail_code</code> unik; <code>type</code> hanya <code>routine</code> atau <code>body</code>; <code>sub_type</code> <code>null</code> untuk body</td>
+              </tr>
+              <tr>
+                <td class="rowhead">vehicle_checking_item_results</td>
+                <td><code>vehicle_checking_detail_id</code>, <code>vehicle_part_id</code>, <code>status</code>, <code>needs_replacement</code></td>
+                <td>* → 1 <code>vehicle_checking_details</code>; * → 1 <code>vehicle_parts</code></td>
+                <td><code>needs_replacement</code> (boolean) adalah pemicu resmi pembuatan usulan VPR; tidak ada <em>unique index</em> pada <code>(vehicle_checking_detail_id, vehicle_part_id)</code> sehingga pengulangan item yang sama perlu dicegah di sisi aplikasi</td>
+              </tr>
+              <tr>
+                <td class="rowhead">vehicle_parts · vehicle_parts_replacements · vehicle_parts_replacement_details</td>
+                <td><code>part_code</code>, <code>vpr_code</code>, <code>vprd_code</code>, <code>status</code>, <code>scheduled_date</code></td>
+                <td>VPR → checking detail; VPR → * detail; detail → <code>vehicle_parts</code></td>
+                <td><code>part_code</code>, <code>vpr_code</code>, dan <code>vprd_code</code> masing-masing unik; status VPR mengikuti alur <code>pending</code> → <code>approved</code> → <code>scheduled</code> → <code>completed</code> (atau <code>rejected</code>)</td>
+              </tr>
+              <tr>
+                <td class="rowhead">damage_photos</td>
+                <td><code>vehicle_checking_detail_id</code>, <code>photo</code>, <code>zone</code></td>
+                <td>* → 1 <code>vehicle_checking_details</code></td>
+                <td>Berkas foto tersimpan di storage terproteksi; <code>zone</code> memetakan empat zona utama (depan, belakang, kiri, kanan) ditambah zona opsional lain</td>
+              </tr>
+              <tr>
+                <td class="rowhead">surat_spds · spd_surat_details · surat_spd_budgets</td>
+                <td><code>nomor_surat</code>, <code>slug</code>, <code>user_id</code>, <code>vehicle_id</code>, <code>status</code>, <code>lpj_deadline</code></td>
+                <td>1 → * detail; 1 → * budget; 1 → * <code>surat_spd_extensions</code></td>
+                <td><code>nomor_surat</code> dan <code>slug</code> unik; <code>status</code> bernilai <code>pending</code>, <code>approved</code>, <code>rejected</code>, <code>extended</code>, atau <code>completed</code>; kendaraan dan pemohon ber-<em>delete restrict</em>; perhatikan bahwa tabel detail bernama <code>spd_surat_details</code> (bukan <code>surat_spd_details</code>)</td>
+              </tr>
+              <tr>
+                <td class="rowhead">surat_spd_extensions</td>
+                <td><code>extension_number</code>, <code>original_surat_id</code>, <code>extension_surat_id</code>, <code>durasi_tambahan_hari</code>, <code>budget_tambahan</code>, <code>is_acknowledged</code></td>
+                <td>* → 1 <code>surat_spds</code> (dua kali: surat asal dan surat perpanjangan)</td>
+                <td><code>extension_number</code> unik; relasi berantai memungkinkan Ekstensi 1 → Ekstensi 2 tanpa mengubah tanggal surat induk</td>
+              </tr>
+              <tr>
+                <td class="rowhead">lpj_penggantians · lpj_penggantian_details</td>
+                <td><code>lpj_number</code>, <code>slug</code>, <code>surat_spd_id</code>, <code>due_date</code>, <code>is_late</code>, <code>is_over_budget</code>, <code>budget_per_hari</code>, <code>status</code></td>
+                <td>1 → * detail biaya; * → 1 <code>surat_spds</code></td>
+                <td><code>lpj_number</code> dan <code>slug</code> unik; <code>budget_per_hari</code> ber-<em>default</em> 1.400.000; nilai <code>total_pengeluaran</code> dihitung ulang dari sub-tabel detail, bukan diisi manual</td>
+              </tr>
+              <tr>
+                <td class="rowhead">spd_barcode_signatures</td>
+                <td><code>spd_id</code>, <code>signature_path</code></td>
+                <td>* → 1 <code>surat_spds</code> (cascade delete)</td>
+                <td>Berkas tanda tangan QR disimpan pada storage terproteksi dan diakses melalui rute ber-otentikasi</td>
+              </tr>
+              <tr>
+                <td class="rowhead">units · sites</td>
+                <td><code>code</code>, <code>name</code>, <code>unit_id</code>, <code>province_slug</code>, <code>is_active</code></td>
+                <td>1 unit → * sites; sites dirujuk <code>users</code>, <code>employee_defaults</code>, seluruh tabel lunch</td>
+                <td><code>code</code> unik pada kedua tabel; setiap site wajib terasosiasi dengan satu unit; <code>province_slug</code> dipakai scheduler sinkronisasi harga BBM</td>
+              </tr>
+              <tr>
+                <td class="rowhead">employee_defaults · employee_aliases</td>
+                <td><code>user_id</code>, <code>employee_code</code>, <code>slug</code>, <code>default_site_id</code>, <code>alias</code>, <code>source</code></td>
+                <td>1 → * alias; 1 → * <code>learning_profiles</code>, <code>lunch_forecasts</code>, <code>lunch_transactions</code></td>
+                <td><code>user_id</code>, <code>employee_code</code>, dan <code>slug</code> unik; <b>Pencegahan duplikasi alias:</b> unik pada <code>(employee_default_id, alias)</code>; alias <code>source</code> bernilai <code>manual</code> atau <code>learned</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">lunch_forecast_batches · lunch_forecasts</td>
+                <td><code>forecast_date</code>, <code>lunch_date</code>, <code>predicted_site_id</code>, <code>actual_site_id</code>, <code>prediction_source</code>, <code>confidence</code>, <code>status</code></td>
+                <td>Batch 1 → * forecast; forecast → <code>employee_defaults</code> dan <code>sites</code></td>
+                <td><b>Pencegahan double booking:</b> unik pada <code>(user_id, lunch_date)</code> — satu karyawan satu catatan makan siang per hari; kolom tanggal tetap <code>lunch_date</code> walau tabel bernama <code>lunch_forecasts</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">lunch_distributions</td>
+                <td><code>distribution_date</code>, <code>site_id</code>, <code>employee_count</code>, <code>guest_count</code>, <code>total_count</code>, <code>is_locked</code></td>
+                <td>Site 1 → * distribusi; batch 1 → * distribusi</td>
+                <td><b>Pencegahan duplikasi distribusi:</b> unik pada <code>(distribution_date, site_id)</code> — satu site hanya memiliki satu baris distribusi per hari</td>
+              </tr>
+              <tr>
+                <td class="rowhead">lunch_transactions</td>
+                <td><code>transaction_date</code>, <code>site_id</code>, <code>employee_default_id</code>, <code>raw_alias</code>, <code>resolution_method</code>, <code>tomorrow_site_id</code></td>
+                <td>* → 1 <code>sites</code>; * → 1 <code>employee_defaults</code></td>
+                <td><b>Pencegahan absen ganda:</b> unik pada <code>(employee_default_id, transaction_date)</code>; halaman absensi bersifat publik sehingga dilindungi <em>rate limiting</em> dan <code>confirmation_token</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">learning_profiles</td>
+                <td><code>employee_default_id</code>, <code>site_id</code>, <code>transaction_count</code>, <code>last_transaction_date</code></td>
+                <td>* → 1 <code>employee_defaults</code>; * → 1 <code>sites</code></td>
+                <td><b>Pencegahan duplikasi profil:</b> unik pada <code>(employee_default_id, site_id)</code> — satu profil per pasangan karyawan dan site</td>
+              </tr>
+              <tr>
+                <td class="rowhead">lunch_guest_reservations</td>
+                <td><code>reservation_date</code>, <code>guest_name</code>, <code>institution</code>, <code>guest_count</code>, <code>site_id</code>, <code>status</code></td>
+                <td>* → 1 <code>sites</code>; * → 1 <code>users</code> (pembuat)</td>
+                <td>Tidak ada <em>unique index</em> — beberapa reservasi tamu pada tanggal dan site yang sama dimungkinkan; konfirmasi wajib maksimal H-2 menurut PRD dan belum ditegakkan oleh <em>constraint</em></td>
+              </tr>
+              <tr>
+                <td class="rowhead">vehicle_trip_analyses · trip_validations · vehicle_fuel_baselines</td>
+                <td><code>transaction_proof_start_id</code>, <code>transaction_proof_end_id</code>, <code>fuel_efficiency</code>, <code>is_premature_refuel</code>, <code>optimal_efficiency_km_per_liter</code></td>
+                <td>Analisis → 2 transaksi; validasi → 2 transaksi; baseline → 1 kendaraan</td>
+                <td><b>Pencegahan baseline ganda:</b> unik pada <code>(vehicle_id, fuel_type)</code>; analisis dan validasi dihapus berantai bersama bukti transaksi</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--info">
+          <span class="callout__icon"><i class="bi bi-shield-lock"></i></span>
+          <div class="callout__body">
+            <strong>Tiga <em>constraint</em> lintas modul yang wajib dipertahankan</strong>
+            <ul class="list-check" style="margin-top:8px;">
+              <li><b>Unique constraint pencegahan duplikasi.</b> <code>(user_id, lunch_date)</code>, <code>(employee_default_id, transaction_date)</code>, <code>(distribution_date, site_id)</code>, <code>(employee_default_id, site_id)</code>, <code>(vehicle_id, period_start)</code>, <code>(vehicle_id, check_frequency)</code>, dan <code>(vehicle_id, fuel_type)</code>. Menghapus salah satunya membuka celah data ganda pada laporan kuota katering dan jadwal pengecekan.</li>
+              <li><b>Dual-write <code>users.role</code> + <code>user_roles</code>.</b> Kolom lama tetap dipakai middleware <code>checkrole</code> untuk kompatibilitas, sedangkan <code>user_roles</code> adalah sumber kebenaran RBAC Phase 2 yang dibaca <code>CheckPermission</code>. Keduanya harus diperbarui dalam satu transaksi.</li>
+              <li><b><code>site_id</code> sebagai scope data.</b> Hampir seluruh tabel transaksional dapat dipersempit melalui <code>site_id</code> (langsung, atau melalui <code>vehicle_id</code> dan <code>employee_default_id</code>). Scope ini yang membatasi Admin GA Unit Patuha agar tidak melihat data unit lain.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= POLA ================= -->
+      <div class="section-block" id="pola">
+        <h2><span class="num"><i class="bi bi-layers"></i></span> Pemetaan MVC / DDD</h2>
+
+        <p>
+          SIAGA tidak memakai taksonomi DDD secara formal, namun pemisahan tanggung jawabnya dapat
+          dipetakan ke tiga stereotype: <em>boundary</em> (antarmuka), <em>control</em> (logika
+          aplikasi), dan <em>entity</em> (model data persisten).
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl tbl--compact">
+            <thead>
+              <tr><th>Stereotype</th><th>Peran</th><th>Contoh nyata di SIAGA</th><th>Tabel / berkas terkait</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">&laquo;boundary&raquo;</td>
+                <td>Menerima masukan pengguna, memvalidasi bentuk, dan menyusun keluaran. Tidak memuat aturan bisnis inti.</td>
+                <td><code>DailyCheckingController</code>, <code>RequestManagementController</code>, <code>PublicAttendanceController</code>, <code>LunchDistributionController</code>, serta view Blade pada <code>resources/views/</code></td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td class="rowhead">&laquo;control&raquo;</td>
+                <td>Mengoordinasikan aturan bisnis, transaksi basis data, dan orkestrasi antar-entity.</td>
+                <td><code>LunchForecastService</code>, <code>LearningService</code>, <code>LunchDistributionService</code>, <code>IdentityResolutionService</code>, <code>GasolinePriceSyncService</code></td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td class="rowhead">&laquo;entity&raquo;</td>
+                <td>Memetakan baris tabel menjadi objek, menyediakan relasi, <em>cast</em>, scope, dan operasi domain.</td>
+                <td><code>Permohonan</code>, <code>Approved_Request</code>, <code>LpjPenggantian</code>, <code>LearningProfile</code>, <code>VehicleCheckingDetail</code>, <code>LunchForecast</code></td>
+                <td><code>permohonans</code>, <code>approved_requests</code>, <code>lpj_penggantians</code>, <code>learning_profiles</code>, <code>vehicle_checking_details</code>, <code>lunch_forecasts</code></td>
+              </tr>
+              <tr>
+                <td class="rowhead">&laquo;repository&raquo;</td>
+                <td>Belum diterapkan sebagai pola eksplisit.</td>
+                <td>Query kompleks saat ini hidup di dalam <em>controller</em> dan <em>service</em>.</td>
+                <td>—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Usulan — <em>value object</em> untuk konsep bernilai</strong>
+            Beberapa konsep saat ini direpresentasikan sebagai tipe primitif yang tersebar, sehingga
+            aturannya mudah terduplikasi:
+            <ul class="list-check" style="margin-top:8px;">
+              <li><b>Money</b> — nominal pada <code>permohonans.bill_amounts</code>, <code>approved_requests.approved_amount</code>, <code>lpj_penggantians.total_pengeluaran</code>, dan <code>lpj_penggantian_details.nominal</code> sebaiknya dibungkus objek nilai yang memaksa skala dua desimal, mata uang rupiah, dan operasi penjumlahan yang taat aturan pembulatan.</li>
+              <li><b>AddressRange</b> (rentang alamat/kode) — konsep penomoran seperti <code>request_number</code>, <code>nomor_surat</code>, <code>lpj_number</code>, dan kode slug (<code>vpr_code</code>, <code>checking_code</code>) berbagi pola generator yang sama; pembungkusan sebagai objek nilai akan memusatkan format dan urutan.</li>
+              <li>Usulan ini bersifat perbaikan desain, <b>bukan</b> deskripsi sistem yang berjalan. Penerapannya perlu penilaian dampak terhadap 540+ rute dan seluruh view yang sudah ada.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= CATATAN ERD ================= -->
+      <div class="section-block" id="catatan-erd">
+        <h2><span class="num"><i class="bi bi-clipboard-check"></i></span> Catatan keputusan pemodelan &amp; verifikasi</h2>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>Keputusan pemodelan</th><th>Alasan</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead"><code>Permohonan 1 → 0..1 ApprovedRequest</code></td>
+                <td>Mengikuti <code>hasOne</code> pada <code>Permohonan::approvedRequest()</code>; basis data belum menegakkan kebijakan ini karena tidak ada <em>unique index</em> pada <code>permohonan_id</code>.</td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>GasolineType ||..o{ Permohonan</code> (garis putus-putus)</td>
+                <td><code>permohonans.gasoline_type</code> bertipe <code>string</code> sehingga secara fisik bukan foreign key. Relasi ditandai non-identifikasi agar tidak menyesatkan pembaca.</td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>VehicleCheckingCheckingDetail 1 → 0..1 VehiclePartsReplacement</code></td>
+                <td>Satu detail pengecekan lazimnya menghasilkan paling banyak satu usulan VPR melalui tombol Auto-Ajukan; belum ada <em>unique index</em> yang menegakkannya di basis data.</td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>SuratSpd 1 → 0..1 LpjPenggantian</code></td>
+                <td>Satu surat tugas menghasilkan satu LPJ; relasi <code>surat_spd_id</code> bersifat <em>cascade</em> dan tidak unik di migrasi.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Tabel legacy <code>trips</code>, <code>trip_passengers</code>, <code>trip_booking_requests</code>, <code>driver_schedules</code>, <code>vehicle_specifications</code>, <code>pekerja_patuha</code> tidak digambarkan</td>
+                <td>Seluruhnya telah dihapus pada refactor Juli 2026 (migrasi <code>drop_vehicle_tracking_tables</code>) dan fungsinya dialihkan ke modul SPD/LPJ.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Atribut pada ERD dibatasi pada kolom kunci dan kolom penentu perilaku</td>
+                <td>ERD 38 entitas dengan seluruh kolom akan kehilangan daya baca. Kolom lengkap dirujuk melalui kamus data di atas dan migrasi sebagai sumber kebenaran.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Hal yang harus diverifikasi bersama DBA</h3>
+        <ul class="list-check">
+          <li><b>Unique index <code>lunch_forecasts</code>.</b> Setelah <code>employee_default_id</code> ditambahkan dan <code>user_id</code> menjadi nullable, apakah <em>unique index</em> harus dipindahkan dari <code>(user_id, lunch_date)</code> ke <code>(employee_default_id, lunch_date)</code>? Tanpa keputusan ini, karyawan tanpa akun login berpotensi memiliki dua baris forecast pada tanggal yang sama.</li>
+          <li><b>Kebijakan satu voucher per permohonan.</b> Perlu <em>unique partial index</em> pada <code>approved_requests.permohonan_id</code> untuk baris berstatus aktif, atau kesepakatan bahwa permohonan dapat menerbitkan voucher berulang.</li>
+          <li><b>Keunikan item pengecekan.</b> Apakah <code>(vehicle_checking_detail_id, vehicle_part_id)</code> perlu dibuat unik pada <code>vehicle_checking_item_results</code>?</li>
+          <li><b>Integritas <code>gasoline_type</code>.</b> Apakah kolom akan dimigrasikan menjadi <code>gasoline_type_id</code> dengan foreign key ke <code>gasoline_types</code>, atau tetap sebagai kode teks dengan <em>check constraint</em>?</li>
+          <li><b>Kebijakan <em>soft delete</em>.</b> <code>permohonans</code>, <code>transaction_proofs</code>, <code>surat_spds</code>, <code>lpj_penggantians</code>, <code>vehicle_trip_analyses</code>, dan <code>vehicle_fuel_baselines</code> memakai <code>softDeletes()</code>; pastikan seluruh <em>unique index</em> di atas tetap konsisten terhadap baris yang di-<em>soft delete</em>.</li>
+          <li><b>Penyimpanan terproteksi.</b> Konfirmasi bahwa berkas pada <code>struk_bbm_path</code>, <code>odometer_photo_path</code>, <code>damage_photos.photo</code>, dan <code>spd_barcode_signatures.signature_path</code> tidak berada di folder publik dan seluruh akses melewati rute ber-otentikasi.</li>
+          <li><b>Model Money.</b> Kesepakatan skala dan pembulatan untuk kolom <code>decimal(15,2)</code> versus <code>approved_requests.approved_amount</code> yang bertipe <code>float</code> — ketidakseragaman tipe berpotensi menimbulkan selisih pada laporan keuangan.</li>
+          <li><b>Kardinalitas <code>user_roles</code>.</b> Pastikan hanya satu baris ber-<code>is_primary = true</code> per pengguna; belum ada <em>unique partial index</em> untuk itu.</li>
+        </ul>
+      </div>
+
+      <div class="callout callout--info">
+        <span class="callout__icon"><i class="bi bi-arrow-right-circle"></i></span>
+        <div class="callout__body">
+          <strong>Lanjut ke Bagian 7 — Validasi Logika (Decision Table)</strong>
+          Struktur dan perilaku yang telah dimodelkan diterjemahkan menjadi decision table agar setiap
+          kombinasi kondisi dapat diuji secara eksplisit.
+          <div style="margin-top:10px;"><a class="btn btn--primary btn--sm" href="07-validasi-logika.html">Buka Bagian 7 <i class="bi bi-arrow-right-short"></i></a></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="foot__inner">
+    <p>&copy; <span data-year>2026</span> PT Geo Dipa Energi (Persero) Unit Patuha — Divisi General Affairs.</p>
+    <div class="foot__links">
+      <a href="../index.html">Beranda dokumentasi</a>
+      <a href="index.html">Ikhtisar SDD</a>
+      <a href="../alur-tutorial/index.html">Alur Tutorial</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/js/docs.js"></script>
+<script src="../assets/js/diagrams.js" defer></script>
+</body>
+</html>

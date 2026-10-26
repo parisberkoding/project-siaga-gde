@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bagian 2: Arsitektur &amp; Teknologi — SIAGA</title>
+<meta name="description" content="Arsitektur berlapis, tumpukan teknologi, komponen utama, struktur direktori, integrasi eksternal, dan catatan deployment SIAGA.">
+<link rel="icon" href="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="../assets/css/docs.css">
+</head>
+<body data-base="../">
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <button class="icon-btn btn-menu" id="docMenuBtn" aria-label="Buka navigasi" aria-expanded="false"><i class="bi bi-list"></i></button>
+    <a class="brand" href="../index.html">
+      <img class="brand__logo" src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="Logo Geo Dipa Energi">
+      <span>
+        <span class="brand__name">SIAGA</span>
+        <span class="brand__sub">Sistem Informasi Administrasi General Affairs</span>
+      </span>
+    </a>
+    <span class="brand__divider"></span>
+    <span class="brand__doc">Software Documentation</span>
+    <div class="topbar__spacer"></div>
+    <div class="searchbox">
+      <i class="bi bi-search"></i>
+      <input type="search" id="docSearch" placeholder="Cari halaman…  ( / )" aria-label="Cari halaman dokumentasi">
+      <div class="search-results" id="docSearchResults"></div>
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" data-print title="Cetak / simpan PDF"><i class="bi bi-printer"></i></button>
+      <a class="icon-btn" href="../index.html" title="Kembali ke beranda dokumentasi"><i class="bi bi-house"></i></a>
+    </div>
+  </div>
+</header>
+
+<div class="scrim" id="docScrim"></div>
+
+<main class="shell">
+  <aside class="sidebar" id="docSidebar">
+    <p class="sidebar__label">Software Documentation</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="index.html"><span class="nav-link__num">&#9679;</span><span class="nav-link__txt">Ikhtisar &amp; daftar isi</span></a></li>
+      <li><a class="nav-link" href="01-ruang-lingkup.html"><span class="nav-link__num">1</span><span class="nav-link__txt">Ruang lingkup &amp; visi produk</span></a></li>
+      <li><a class="nav-link is-active" href="02-arsitektur-teknologi.html"><span class="nav-link__num">2</span><span class="nav-link__txt">Arsitektur &amp; teknologi</span></a></li>
+      <li><a class="nav-link" href="03-model-use-case.html"><span class="nav-link__num">3</span><span class="nav-link__txt">Model use case</span></a></li>
+      <li><a class="nav-link" href="04-spesifikasi-use-case.html"><span class="nav-link__num">4</span><span class="nav-link__txt">Spesifikasi use case</span></a></li>
+      <li><a class="nav-link" href="05-desain-perilaku.html"><span class="nav-link__num">5</span><span class="nav-link__txt">Desain perilaku</span><span class="nav-badge">Activity · Sequence</span></a></li>
+      <li><a class="nav-link" href="06-desain-struktur.html"><span class="nav-link__num">6</span><span class="nav-link__txt">Desain struktur</span><span class="nav-badge">Class · ERD</span></a></li>
+      <li><a class="nav-link" href="07-validasi-logika.html"><span class="nav-link__num">7</span><span class="nav-link__txt">Validasi logika</span></a></li>
+      <li><a class="nav-link" href="08-pengujian.html"><span class="nav-link__num">8</span><span class="nav-link__txt">Pengujian &amp; test case</span></a></li>
+      <li><a class="nav-link" href="09-traceability.html"><span class="nav-link__num">9</span><span class="nav-link__txt">Traceability &amp; RBAC</span></a></li>
+      <li><a class="nav-link" href="10-glosarium.html"><span class="nav-link__num">10</span><span class="nav-link__txt">Glosarium</span></a></li>
+      <li><a class="nav-link" href="11-plantuml-changelog.html"><span class="nav-link__num">11</span><span class="nav-link__txt">PlantUML &amp; changelog</span></a></li>
+    </ul>
+
+    <p class="sidebar__label">Dokumen lain</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="../alur-tutorial/index.html"><i class="bi bi-signpost-split"></i><span class="nav-link__txt">Alur Tutorial</span></a></li>
+      <li><a class="nav-link" href="../index.html"><i class="bi bi-house"></i><span class="nav-link__txt">Beranda dokumentasi</span></a></li>
+    </ul>
+  </aside>
+
+  <div class="content">
+    <div class="wrap">
+
+      <nav>
+        <ol class="crumbs">
+          <li><a href="../index.html">Documentation</a></li>
+          <li>Software Documentation</li>
+          <li>Bagian 2</li>
+        </ol>
+      </nav>
+
+      <div class="page-head">
+        <span class="eyebrow"><span class="dot"></span> Bagian 2</span>
+        <h2>Arsitektur &amp; Teknologi</h2>
+        <p class="lead">
+          Bagian ini memaparkan tumpukan teknologi, pola arsitektur berlapis, komponen aplikasi yang berukuran
+          besar, struktur direktori, integrasi eksternal, dan catatan deployment SIAGA sebagai konteks teknis
+          bagi seluruh desain pada bagian berikutnya.
+        </p>
+      </div>
+
+      <!-- ================= STACK ================= -->
+      <div class="section-block" id="stack">
+        <h2><span class="num"><i class="bi bi-stack"></i></span> Tumpukan teknologi</h2>
+
+        <p>
+          SIAGA dibangun sebagai aplikasi monolitik Laravel dengan rendering sisi server (Blade) dan
+          peningkatan progresif pada sisi klien. Tabel berikut merangkum lapisan teknologi beserta
+          perannya.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>Lapisan</th><th>Teknologi</th><th>Keterangan</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">Framework aplikasi</td>
+                <td>Laravel 12 <span class="badge badge--gray">composer ^12.1.1</span></td>
+                <td>Routing, Eloquent ORM, middleware, scheduler, validasi, dan Blade templating.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Bahasa</td>
+                <td>PHP 8.2+ <span class="badge badge--gray">composer ^8.2</span></td>
+                <td>Container Docker memakai <code>php:8.4-apache</code>; ekstensi pdo_mysql, gd, zip, bcmath, intl, exif, dan mbstring diaktifkan.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Basis data</td>
+                <td>MySQL / MariaDB melalui Eloquent ORM</td>
+                <td>Logika query dibuat kompatibel SQLite untuk kebutuhan pengujian otomatis.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Frontend</td>
+                <td>Blade templating, Bootstrap 5 (NiceAdmin), Bootstrap Icons, Chart.js</td>
+                <td>Halaman dirender server; grafik dashboard memakai Chart.js dan aset di-bundle Vite.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Asset bundler</td>
+                <td>Vite (laravel-vite-plugin), Tailwind CSS 4</td>
+                <td>Perintah <code>npm run build</code> dan <code>npm run dev</code>; tahap build aset juga berjalan di Dockerfile.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">PDF</td>
+                <td>barryvdh/laravel-dompdf</td>
+                <td>Cetak surat tugas, bundel SPD/LPJ, laporan BBM, dan checklist pengecekan dengan kompresi gambar lossless.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Excel</td>
+                <td>maatwebsite/excel</td>
+                <td>Ekspor multi-sheet laporan katering dan voucher BBM ke format <code>.xlsx</code>.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">PDF, QR &amp; barcode</td>
+                <td>endroid/qr-code, BaconQrCode, picqer/php-barcode-generator</td>
+                <td>QR dinamis untuk tanda tangan SPD, absensi makan siang, riwayat kesehatan kendaraan, dan barcode kendaraan.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Pengolahan gambar</td>
+                <td>intervention/image</td>
+                <td>Kompresi otomatis foto struk dan odometer yang diunggah dari ponsel.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Pengujian</td>
+                <td>Pest PHP, PHPUnit, Larastan</td>
+                <td>Test suite berjalan di SQLite; analisis statis memakai Larastan dan <code>phpstan.neon</code>.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Keamanan &amp; header</td>
+                <td>spatie/laravel-csp, <code>SecurityHeaders</code>, <code>VerifyDeviceFingerprint</code></td>
+                <td>Middleware web tambahan untuk CSP, header keamanan, dan verifikasi sidik jari perangkat.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Versi harus diverifikasi</strong>
+            Terdapat perbedaan catatan versi antar dokumen sumber: <b>PRD bagian 3</b> menyebut
+            <b>Laravel 10/12 (PHP 8.1+)</b>, sedangkan <b>DOKUMENTASI_PROJECT.md bagian 2</b> menyebut
+            <b>Laravel 12 (PHP 8.2+)</b>. <code>composer.json</code> pada repositori mensyaratkan
+            <code>laravel/framework ^12.1.1</code> dan <code>php ^8.2</code>. Angka versi pada dokumen ini
+            wajib diverifikasi ulang ke <code>composer.json</code> (dan <code>composer.lock</code>) setiap
+            kali dokumen diperbarui.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= POLA ================= -->
+      <div class="section-block" id="pola">
+        <h2><span class="num"><i class="bi bi-diagram-2"></i></span> Pola arsitektur</h2>
+
+        <p>
+          SIAGA mengikuti pola <b>MVC Laravel</b> dengan penambahan service layer untuk domain katering.
+          Permintaan mengalir dari rute menuju middleware, lalu ke controller; controller memanggil model
+          Eloquent atau service, dan hasilnya dikembalikan sebagai tampilan Blade. Berikut rincian pola
+          yang dipakai.
+        </p>
+
+        <ol class="steps">
+          <li>
+            <strong>Routing terpusat di <code>routes/web.php</code></strong>
+            <p>Seluruh rute web utama terdaftar dalam satu berkas dan dikelompokkan per prefix domain serta dilindungi middleware pada tingkat grup.</p>
+          </li>
+          <li>
+            <strong>Pemisahan controller per jenis pengecekan</strong>
+            <p>Pengecekan harian, mingguan, bulanan, dan body dikelola controller terpisah (<code>DailyCheckingController</code>, <code>WeeklyCheckingController</code>, <code>MonthlyCheckingController</code>, <code>BodyCheckingController</code>) agar berkas tetap ramping dan mudah dipelihara.</p>
+          </li>
+          <li>
+            <strong>Service layer pada modul Lunch</strong>
+            <p>Logika katering dipisahkan ke lima layanan: <code>IdentityResolutionService</code> (resolusi QR dan alias ke pekerja), <code>LearningService</code> (pembelajaran pola historis), <code>LunchDistributionService</code> (penyusunan porsi terkunci untuk vendor), <code>LunchForecastService</code> (mesin forecast H+1), dan <code>NameNormalizer</code> (normalisasi nama untuk pencocokan kemiripan).</p>
+          </li>
+          <li>
+            <strong>Middleware <code>CheckPermission</code> (RBAC v2) dan <code>checkrole</code> (legacy)</strong>
+            <p><code>CheckPermission</code> memeriksa permission granular seperti <code>bbm.request</code> atau <code>spd.manage</code>; <code>checkrole</code> (kelas <code>CheckRole</code>, alias <code>role</code>) dipertahankan untuk pemeriksaan peran lama seperti <code>role:superadmin</code>.</p>
+          </li>
+          <li>
+            <strong>Strategi dual-write peran</strong>
+            <p>Kolom <code>user.role</code> dan tabel <code>user_roles</code> dipelihara bersamaan sehingga data peran lama tetap kompatibel selama migrasi ke RBAC v2 berlangsung.</p>
+          </li>
+        </ol>
+
+        <figure>
+          <div class="fig fig--tint">
+<pre class="mermaid">
+flowchart TB
+    subgraph L1["Lapisan klien"]
+        BR["Browser dan tablet kantin"]
+    end
+    subgraph L2["Lapisan presentasi"]
+        BV["Blade View<br/>templates/main dan public"]
+    end
+    subgraph L3["Lapisan routing"]
+        RT["routes/web.php<br/>ratusan rute terdaftar"]
+    end
+    subgraph L4["Lapisan middleware"]
+        MW1["CheckPermission<br/>RBAC v2"]
+        MW2["checkrole<br/>legacy"]
+        MW3["Throttle, CSP, SecurityHeaders"]
+    end
+    subgraph L5["Lapisan aplikasi"]
+        CT["Controller<br/>BBM, SPD, Checking, Lunch, Superadmin"]
+        SV["Service Layer<br/>Services/Lunch"]
+    end
+    subgraph L6["Lapisan data"]
+        MD["Eloquent Model<br/>40+ model"]
+        DB[("MySQL / MariaDB")]
+    end
+    subgraph L7["Integrasi eksternal"]
+        GQ["Groq API<br/>llama-3.3-70b-versatile"]
+        GP["API harga BBM publik"]
+        OCR["OCR struk<br/>gemini-3.1-flash-lite"]
+        FS[("Penyimpanan berkas<br/>StorageFileController")]
+    end
+    BR --> BV --> RT --> MW1 --> MW2 --> MW3 --> CT
+    CT --> SV
+    SV --> MD
+    MD --> DB
+    SV --> GQ
+    SV --> GP
+    SV --> OCR
+    CT --> FS
+
+    classDef client fill:#EAF1FA,stroke:#0B50A1,stroke-width:1.5px,color:#0B50A1
+    classDef app fill:#F2F9E8,stroke:#8DC63F,stroke-width:1.5px,color:#3F6120
+    classDef ext fill:#FFF7E6,stroke:#E0A400,stroke-width:1.5px,color:#7A5B00
+    class BR,BV client
+    class CT,SV app
+    class GQ,GP,OCR,FS ext
+</pre>
+          </div>
+          <figcaption><b>Gambar 2.1</b> — Arsitektur berlapis SIAGA dari klien hingga basis data, beserta titik integrasi eksternal.</figcaption>
+        </figure>
+
+        <details class="acc">
+          <summary>Kode PlantUML padanan — Gambar 2.1 Arsitektur berlapis</summary>
+          <div class="acc__body">
+            <div class="code-head"><span>plantuml</span><button data-copy="puml-arsitektur">Salin</button></div>
+<pre id="puml-arsitektur"><code>@startuml
+title Arsitektur Berlapis SIAGA
+skinparam componentStyle rectangle
+
+package "Lapisan klien" {
+  [Browser dan tablet kantin] as BR
+}
+package "Lapisan presentasi" {
+  [Blade View\\ntemplates/main dan public] as BV
+}
+package "Lapisan routing" {
+  [routes/web.php] as RT
+}
+package "Lapisan middleware" {
+  [CheckPermission - RBAC v2] as MW1
+  [checkrole - legacy] as MW2
+  [Throttle, CSP, SecurityHeaders] as MW3
+}
+package "Lapisan aplikasi" {
+  [Controller\\nBBM, SPD, Checking, Lunch, Superadmin] as CT
+  [Service Layer\\nServices/Lunch] as SV
+}
+package "Lapisan data" {
+  [Eloquent Model\\n40+ model] as MD
+  database "MySQL / MariaDB" as DB
+}
+package "Integrasi eksternal" {
+  [Groq API\\nllama-3.3-70b-versatile] as GQ
+  [API harga BBM publik] as GP
+  [OCR struk\\ngemini-3.1-flash-lite] as OCR
+  folder "Penyimpanan berkas" as FS
+}
+BR --> BV
+BV --> RT
+RT --> MW1
+MW1 --> MW2
+MW2 --> MW3
+MW3 --> CT
+CT --> SV
+SV --> MD
+MD --> DB
+SV --> GQ
+SV --> GP
+SV --> OCR
+CT --> FS
+@enduml</code></pre>
+          </div>
+        </details>
+      </div>
+
+      <!-- ================= KOMPONEN ================= -->
+      <div class="section-block" id="komponen">
+        <h2><span class="num"><i class="bi bi-boxes"></i></span> Komponen utama</h2>
+
+        <p>
+          Beberapa controller menampung banyak tanggung jawab sekaligus. Tabel berikut mencatat controller
+          terbesar beserta cakupan tugasnya agar risiko pemeliharaan dapat dinilai secara eksplisit.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>Komponen</th><th>Tanggung jawab utama</th><th>Ukuran tercatat</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead"><code>SuperadminController</code></td>
+                <td>Dashboard statistik dan grafik, CRUD pengguna dan kendaraan, kelola permohonan, analisis efisiensi BBM, validasi trip, log aktivitas, dashboard bisnis, matriks kesehatan kendaraan, dan laporan keuangan.</td>
+                <td>±3.329 baris <span class="badge badge--red">terbesar</span></td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>SpdController</code></td>
+                <td>Pembuatan dan pengelolaan surat perjalanan dinas, daftar dan detail surat tugas, perpanjangan berantai, pembuatan dan validasi LPJ, serta endpoint AJAX pendukung.</td>
+                <td>±1.248 baris</td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>RequestManagementController</code></td>
+                <td>Pengajuan permohonan BBM, approval tunggal dan massal, unggah bukti transaksi &amp; odometer, serta ekspor laporan BBM.</td>
+                <td>±1.190 baris</td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>DispatcherAdministrationController</code></td>
+                <td>Dashboard dispatcher, generate periode pengecekan bulanan, penugasan PIC, CRUD pengecekan, riwayat, dan ekspor checklist PDF.</td>
+                <td>±780 baris</td>
+              </tr>
+              <tr>
+                <td class="rowhead"><code>LunchForecastService</code> dan <code>LunchDistributionService</code></td>
+                <td>Mesin forecast H+1 berjenjang dan penyusunan porsi terkunci yang dikirim ke vendor katering.</td>
+                <td>Service layer</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Risiko ukuran berkas</strong>
+            Angka baris di atas berasal dari catatan <code>DOKUMENTASI_PROJECT.md</code> bagian 4 dan bersifat
+            perkiraan. Berkas pada repositori dapat bertambah seiring perubahan; ukuran aktual harus
+            diverifikasi dengan menghitung baris berkas terkini. Controller berukuran sangat besar menyulitkan
+            penelusuran, pengujian terisolasi, dan peninjauan kode, sehingga pemecahan menjadi controller
+            domain yang lebih kecil (misalnya memisahkan laporan, master data, dan validasi) layak
+            dipertimbangkan pada iterasi berikutnya.
+          </div>
+        </div>
+
+        <p>
+          Untuk modul katering, alur data dari penjadwal hingga pembentukan profil pembelajaran digambarkan
+          pada diagram berikut. Diagram ini memperlihatkan bagaimana hasil absensi hari ini menjadi masukan
+          forecast esok hari.
+        </p>
+
+        <figure>
+          <div class="fig">
+<pre class="mermaid">
+flowchart LR
+    SCH["Scheduler pukul 15:00<br/>lunch:generate-forecast"] --> LFS["LunchForecastService"]
+    LFS --> PR0["1. Manual Override"]
+    PR0 --> PR01["2. Self-booking tersimpan"]
+    PR01 --> PR1["3. Tomorrow Confirmation"]
+    PR1 --> PR2["4. Learning Profile<br/>histori kebiasaan"]
+    PR2 --> PR3["5. Default Site"]
+    PR3 --> BATCH["LunchForecastBatch"]
+    BATCH --> LOCK["Distribution Lock<br/>porsi final"]
+    LOCK --> VEN["Vendor katering"]
+    VEN --> ATT["Absensi QR publik"]
+    ATT --> TRX["LunchTransaction"]
+    TRX --> LP["LearningProfile"]
+    LP -. umpan balik .-> PR2
+
+    classDef sched fill:#EAF1FA,stroke:#0B50A1,stroke-width:1.5px,color:#0B50A1
+    classDef engine fill:#F2F9E8,stroke:#8DC63F,stroke-width:1.5px,color:#3F6120
+    classDef data fill:#FFF7E6,stroke:#E0A400,stroke-width:1.5px,color:#7A5B00
+    class SCH sched
+    class LFS,PR0,PR01,PR1,PR2,PR3 engine
+    class BATCH,LOCK,VEN,ATT,TRX,LP data
+</pre>
+          </div>
+          <figcaption><b>Gambar 2.2</b> — Alur data Lunch Forecast Engine H+1: dari scheduler hingga pembaruan profil pembelajaran. Lima tingkat prioritas sesuai <code>LunchForecastService</code> (PRD mendokumentasikan empat tingkat; <em>self-booking</em> adalah tambahan pada implementasi).</figcaption>
+        </figure>
+      </div>
+
+      <!-- ================= STRUKTUR ================= -->
+      <div class="section-block" id="struktur">
+        <h2><span class="num"><i class="bi bi-folder2-open"></i></span> Struktur direktori ringkas</h2>
+
+        <p>
+          Pohon direktori berikut disalin dari <code>DOKUMENTASI_PROJECT.md</code> bagian 3 dengan
+          penyesuaian penamaan agar tetap terbaca.
+        </p>
+
+        <div class="code-head"><span>struktur direktori</span><button data-copy="tree-struktur">Salin</button></div>
+<pre id="tree-struktur"><code>BBM_Project/
+├── app/
+│   ├── Console/Commands/               # Scheduler: lunch:generate-forecast, gasoline:sync
+│   ├── Exports/                        # CateringExport (Excel 3 sheet)
+│   ├── Http/
+│   │   ├── Controllers/                # BBM, SPD, checking, voucher, storage, superadmin
+│   │   │   ├── Lunch/                  # 9 sub-controller Lunch Management
+│   │   │   └── Superadmin/             # FinancialReportController
+│   │   └── Middleware/                 # CheckPermission.php, checkrole.php, SecurityHeaders
+│   ├── Models/                         # Model Eloquent per tabel
+│   └── Services/
+│       ├── Lunch/                      # IdentityResolution, Learning, Distribution, Forecast, NameNormalizer
+│       ├── GasolinePriceSyncService.php
+│       ├── GeminiAssistantService.php
+│       └── ImageAnalysisService.php
+├── config/                             # app, auth, database, dompdf, image, services, siaga
+├── database/
+│   ├── factories/
+│   ├── migrations/                     # Migrasi skema (puluhan berkas)
+│   └── seeders/                        # Seeder data awal
+├── docs/                               # LUNCH_MANAGEMENT.md
+├── resources/
+│   └── views/                          # admin, authentication, dispatcher, lunch,
+│                                       # manager, partials, profile, requester,
+│                                       # superadmin, templates
+├── routes/
+│   ├── console.php                     # Definisi scheduler
+│   └── web.php                         # Seluruh rute web utama
+├── storage/                            # Berkas terproteksi (diakses via StorageFileController)
+├── tests/                              # Pest / PHPUnit
+├── Dockerfile                          # Build aset + runtime Apache/PHP
+└── docker-compose.yml                  # Layanan app, db, dan scheduler</code></pre>
+
+        <div class="grid grid--2">
+          <div class="card card--soft">
+            <div class="card__head">
+              <span class="icon-sq"><i class="bi bi-diagram-3"></i></span>
+              <div>
+                <h3>app/</h3>
+                <p>Inti aplikasi: controller, model, middleware, service, command, dan export.</p>
+              </div>
+            </div>
+            <ul>
+              <li><code>Http/Controllers/Lunch/</code> memuat sembilan sub-controller katering; logika beratnya didelegasikan ke <code>Services/Lunch/</code>.</li>
+              <li><code>Services/</code> menampung integrasi eksternal (AI, harga BBM) dan pengolahan gambar.</li>
+              <li><code>Console/Commands/</code> memuat perintah terjadwal untuk forecast katering dan sinkronisasi harga BBM.</li>
+            </ul>
+          </div>
+
+          <div class="card card--soft">
+            <div class="card__head">
+              <span class="icon-sq"><i class="bi bi-folder"></i></span>
+              <div>
+                <h3>resources/ dan routes/</h3>
+                <p>Presentasi dan titik masuk aplikasi.</p>
+              </div>
+            </div>
+            <ul>
+              <li><code>resources/views/</code> dikelompokkan per peran: <code>admin/</code>, <code>dispatcher/</code>, <code>requester/</code>, <code>superadmin/</code>, <code>lunch/</code>, <code>manager/</code>, dan <code>templates/</code>.</li>
+              <li><code>partials/</code> menampung komponen bersama seperti navbar, sidebar, dan footer.</li>
+              <li><code>routes/web.php</code> menjadi sumber tunggal pemetaan URL ke controller; <code>routes/console.php</code> mendefinisikan penjadwalan tugas.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="callout callout--tip">
+          <span class="callout__icon"><i class="bi bi-lightbulb"></i></span>
+          <div class="callout__body">
+            <strong>Kaidah penempatan berkas</strong>
+            Fitur baru mengikuti pola yang ada: rute pada <code>routes/web.php</code>, controller sesuai domain,
+            logika lintas-domain pada <code>app/Services/</code>, dan tampilan pada folder peran di
+            <code>resources/views/</code>.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= INTEGRASI ================= -->
+      <div class="section-block" id="integrasi">
+        <h2><span class="num"><i class="bi bi-plug"></i></span> Integrasi eksternal</h2>
+
+        <p>
+          SIAGA berinteraksi dengan layanan luar untuk fungsi yang tidak dibangun sendiri. Seluruh
+          kredensial disimpan melalui berkas <code>.env</code> dan dibaca melalui berkas konfigurasi,
+          bukan ditulis langsung di dalam kode.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>Integrasi</th><th>Tujuan</th><th>Mekanisme &amp; titik kode</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">AI OCR struk BBM</td>
+                <td>Mengekstrak nominal dan jenis BBM dari foto struk belanja secara otomatis.</td>
+                <td>Vision-language model <code>gemini-3.1-flash-lite</code> melalui endpoint OpenAI-compatible; dipanggil dari <code>ImageAnalysisService</code> dan rute <code>POST /analyze-struk</code> (<code>ReportingController</code>) yang dibatasi <code>throttle:10,1</code> dan permission <code>pelaporan.analyze</code>.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">AI Assistant Gaga</td>
+                <td>Menjawab pertanyaan operasional atas data nyata melalui antarmuka percakapan.</td>
+                <td>API Groq model <code>llama-3.3-70b-versatile</code> melalui client OpenAI-compatible (<code>config/services.php</code> bagian <code>groq</code>); dilayani <code>AiAssistantController</code> dan <code>GeminiAssistantService</code>, dengan Data Mart sembilan domain (permohonan BBM, kendaraan, driver, harga bensin, SPD, LPJ, katering, suku cadang, pengecekan).</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Sinkronisasi harga BBM</td>
+                <td>Menjaga master harga BBM resmi tetap mutakhir tanpa input manual harian.</td>
+                <td>Perintah terjadwal <code>gasoline:sync</code> memanggil <code>GasolinePriceSyncService</code> dan menyinkronkan harga berbasis <code>province_slug</code> masing-masing site; dijadwalkan setiap pukul 06:00 pada <code>routes/console.php</code>.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">Penyimpanan berkas terproteksi</td>
+                <td>Menyajikan bukti transaksi, kuitansi, odometer, dan QR code tanpa membuka <code>storage/</code> secara publik.</td>
+                <td>Rute <code>GET /files/storage/{path}</code> ditangani <code>StorageFileController</code>; hanya berkas di dalam <code>storage/app/public</code> dilayani dan path traversal ditolak, dengan mime SVG dikoreksi agar QR dapat dirender.</td>
+              </tr>
+              <tr>
+                <td class="rowhead">QR code &amp; barcode</td>
+                <td>Tanda tangan digital dan pencatatan kehadiran tanpa input manual.</td>
+                <td><code>endroid/qr-code</code> dan BaconQrCode untuk tanda tangan SPD serta absensi makan siang; <code>picqer/php-barcode-generator</code> untuk barcode kendaraan; halaman absensi publik diakses melalui <code>/lunch-attendance/*</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--warn">
+          <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+          <div class="callout__body">
+            <strong>Verifikasi model dan kredensial</strong>
+            PRD menyebut model OCR <code>gemini-3.1-flash-lite</code>, sedangkan berkas konfigurasi
+            (<code>config/imageanalysis.php</code>) mengambil nama model dari variabel lingkungan
+            <code>GEMINI_MODEL</code> dengan nilai bawaan <code>gemini-2.0-flash</code>. Nama model dan
+            ketersediaan kunci API pada lingkungan produksi wajib diverifikasi langsung ke <code>.env</code>
+            dan konfigurasi <code>config/services.php</code>.
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= DEPLOYMENT ================= -->
+      <div class="section-block" id="deployment">
+        <h2><span class="num"><i class="bi bi-rocket-takeoff"></i></span> Catatan deployment</h2>
+
+        <p>
+          Langkah berikut merupakan urutan umum penyiapan aplikasi pada lingkungan baru. Perintah dijalankan
+          dari akar proyek.
+        </p>
+
+        <ol class="steps">
+          <li>
+            <strong>Menyiapkan konfigurasi lingkungan</strong>
+            <p>Salin <code>.env.example</code> menjadi <code>.env</code>, lalu sesuaikan koneksi basis data, kunci aplikasi, kunci API AI, dan parameter katering (<code>SIAGA_FORECAST_AT</code>, <code>SIAGA_LUNCH_START</code>, <code>SIAGA_LUNCH_END</code>).</p>
+          </li>
+          <li>
+            <strong>Memasang dependensi PHP</strong>
+            <p><code>composer install</code> untuk mengunduh seluruh paket sesuai <code>composer.lock</code>.</p>
+          </li>
+          <li>
+            <strong>Menjalankan migrasi basis data</strong>
+            <p><code>php artisan migrate</code> untuk membentuk skema, dilanjutkan seeder data awal bila diperlukan.</p>
+          </li>
+          <li>
+            <strong>Membuat tautan penyimpanan</strong>
+            <p><code>php artisan storage:link</code> agar berkas yang disajikan melalui perantara tersedia pada sistem berkas publik aplikasi.</p>
+          </li>
+          <li>
+            <strong>Membangun aset frontend</strong>
+            <p><code>npm install</code> lalu <code>npm run build</code> untuk menghasilkan bundel Vite produksi.</p>
+          </li>
+          <li>
+            <strong>Menjalankan penjadwal</strong>
+            <p>Scheduler menjalankan <code>lunch:generate-forecast</code> setiap pukul 15:00 (dapat diubah melalui <code>config/siaga.php</code> dan <code>routes/console.php</code>) serta <code>gasoline:sync</code> setiap pukul 06:00. Pada lingkungan kontainer dijalankan layanan <code>scheduler</code> dengan perintah <code>php artisan schedule:work</code>.</p>
+          </li>
+          <li>
+            <strong>Menjalankan melalui Docker (opsional)</strong>
+            <p>Repositori menyediakan <code>Dockerfile</code> (build aset Vite, runtime <code>php:8.4-apache</code>) dan <code>docker-compose.yml</code> dengan layanan <code>app</code>, <code>db</code> (MySQL 8.4), serta <code>scheduler</code> yang diaktifkan melalui profil.</p>
+          </li>
+        </ol>
+
+        <div class="callout callout--info">
+          <span class="callout__icon"><i class="bi bi-info-circle"></i></span>
+          <div class="callout__body">
+            <strong>Perlu verifikasi</strong>
+            Detail deployment di atas disusun dari berkas <code>Dockerfile</code>, <code>docker-compose.yml</code>,
+            <code>routes/console.php</code>, dan <code>composer.json</code>. Nilai aktual — nama basis data,
+            port, kredensial, jadwal scheduler, serta konfigurasi antrean dan cache — bergantung pada berkas
+            <code>.env</code> dan kebijakan infrastruktur setempat, sehingga seluruh langkah ini wajib
+            diverifikasi ulang pada lingkungan target sebelum eksekusi.
+          </div>
+        </div>
+      </div>
+
+      <div class="callout callout--info">
+        <span class="callout__icon"><i class="bi bi-arrow-right-circle"></i></span>
+        <div class="callout__body">
+          <strong>Lanjut ke Bagian 3 — Model Use Case</strong>
+          Bagian berikutnya menyusun model use case SIAGA: identifikasi 45 use case kanonik, relasi
+          «include» dan «extend», serta diagram use case per modul.
+          <div style="margin-top:10px;"><a class="btn btn--primary btn--sm" href="03-model-use-case.html">Buka Bagian 3 <i class="bi bi-arrow-right-short"></i></a></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="foot__inner">
+    <p>&copy; <span data-year>2026</span> PT Geo Dipa Energi (Persero) Unit Patuha — Divisi General Affairs.</p>
+    <div class="foot__links">
+      <a href="../index.html">Beranda dokumentasi</a>
+      <a href="index.html">Ikhtisar SDD</a>
+      <a href="../alur-tutorial/index.html">Alur Tutorial</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/js/docs.js"></script>
+<script src="../assets/js/diagrams.js" defer></script>
+</body>
+</html>

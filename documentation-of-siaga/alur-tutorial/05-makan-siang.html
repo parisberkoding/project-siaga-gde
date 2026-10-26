@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alur 5 — Booking &amp; Absen Makan Siang | Alur Tutorial SIAGA</title>
+<meta name="description" content="Tutorial langkah demi langkah modul Lunch Management SIAGA: booking mandiri lokasi makan, absen QR publik, forecast H+1, distribusi ke vendor, dan analitik.">
+<link rel="icon" href="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="../assets/css/docs.css">
+<link rel="stylesheet" href="../assets/css/mock.css">
+</head>
+<body data-base="../">
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <button class="icon-btn btn-menu" id="docMenuBtn" aria-label="Buka navigasi" aria-expanded="false"><i class="bi bi-list"></i></button>
+    <a class="brand" href="../index.html">
+      <img class="brand__logo" src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="Logo Geo Dipa Energi">
+      <span>
+        <span class="brand__name">SIAGA</span>
+        <span class="brand__sub">Sistem Informasi Administrasi General Affairs</span>
+      </span>
+    </a>
+    <span class="brand__divider"></span>
+    <span class="brand__doc">Alur Tutorial</span>
+    <div class="topbar__spacer"></div>
+    <div class="searchbox">
+      <i class="bi bi-search"></i>
+      <input type="search" id="docSearch" placeholder="Cari halaman…  ( / )" aria-label="Cari halaman dokumentasi">
+      <div class="search-results" id="docSearchResults"></div>
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" data-print title="Cetak / simpan PDF"><i class="bi bi-printer"></i></button>
+      <a class="icon-btn" href="../index.html" title="Kembali ke beranda dokumentasi"><i class="bi bi-house"></i></a>
+    </div>
+  </div>
+</header>
+
+<div class="scrim" id="docScrim"></div>
+
+<main class="shell">
+  <aside class="sidebar" id="docSidebar">
+    <p class="sidebar__label">Alur Tutorial</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="index.html"><span class="nav-link__num">&#9679;</span><span class="nav-link__txt">Ikhtisar alur</span></a></li>
+      <li><a class="nav-link" href="01-permohonan-bbm.html"><i class="bi bi-fuel-pump"></i><span class="nav-link__txt">1. Permohonan BBM</span></a></li>
+      <li><a class="nav-link" href="02-spd.html"><i class="bi bi-envelope-paper"></i><span class="nav-link__txt">2. Pengajuan SPD</span></a></li>
+      <li><a class="nav-link" href="03-cetak-surat.html"><i class="bi bi-printer"></i><span class="nav-link__txt">3. Cetak Surat</span></a></li>
+      <li><a class="nav-link" href="04-dispatcher.html"><i class="bi bi-truck"></i><span class="nav-link__txt">4. Dispatcher</span></a></li>
+      <li><a class="nav-link is-active" href="05-makan-siang.html"><i class="bi bi-cup-hot"></i><span class="nav-link__txt">5. Makan Siang</span></a></li>
+      <li><a class="nav-link" href="06-checking.html"><i class="bi bi-clipboard-check"></i><span class="nav-link__txt">6. Routine Checking</span></a></li>
+    </ul>
+
+    <p class="sidebar__label">Dokumen lain</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="../software-documentation/index.html"><i class="bi bi-journal-code"></i><span class="nav-link__txt">Software Documentation</span></a></li>
+      <li><a class="nav-link" href="index.html"><i class="bi bi-signpost-split"></i><span class="nav-link__txt">Semua alur</span></a></li>
+    </ul>
+  </aside>
+
+  <div class="content">
+    <div class="wrap">
+
+      <nav>
+        <ol class="crumbs">
+          <li><a href="../index.html">Documentation</a></li>
+          <li><a href="index.html">Alur Tutorial</a></li>
+          <li>Makan Siang</li>
+        </ol>
+      </nav>
+
+      <div class="page-head">
+        <span class="eyebrow"><span class="dot"></span> Alur 5 dari 6</span>
+        <h2>Booking &amp; Absen Makan Siang</h2>
+        <p class="lead">
+          Mengatur lokasi makan siang katering melalui booking mandiri dan absensi QR publik,
+          memprediksi kebutuhan porsi H+1, mengunci angka akhir, lalu mendistribusikannya ke vendor
+          di tiga site operasional (PMU, Patuha, BCMP).
+        </p>
+      </div>
+
+      <!-- ================= RINGKASAN ================= -->
+      <div class="split" style="margin-bottom:26px;">
+        <div>
+          <div class="card">
+            <div class="card__head">
+              <span class="icon-sq"><i class="bi bi-info-circle"></i></span>
+              <div>
+                <h3>Ringkasan alur</h3>
+                <p>Siklus harian dari konfirmasi karyawan sampai angka porsi terkunci untuk vendor.</p>
+              </div>
+            </div>
+
+            <ul class="meta-list">
+              <li><span class="meta-list__k">Peran terlibat</span><span class="meta-list__v">Karyawan, Admin GA, Vendor</span></li>
+              <li><span class="meta-list__k">Prasyarat</span><span class="meta-list__v">Pekerja terdaftar di Master Pekerja (<em>Employee Default</em>) &amp; site tersedia</span></li>
+              <li><span class="meta-list__k">Hasil akhir</span><span class="meta-list__v">Porsi terkunci dan terdistribusi ke vendor, serta kehadiran makan tercatat sebagai <em>ground truth</em></span></li>
+              <li><span class="meta-list__k">Menu aplikasi</span><span class="meta-list__v">Lunch Management — Dashboard, Employee Default, Forecast, Distribution, QR Codes, Booking Mandiri, Absen Publik</span></li>
+              <li><span class="meta-list__k">Use case terkait</span><span class="meta-list__v"><code>UC-LNC-05</code> … <code>UC-LNC-08</code></span></li>
+            </ul>
+
+            <div class="tag-row" style="margin-top:14px;">
+              <span class="badge badge--green">Tiga site operasional</span>
+              <span class="badge badge--blue">Absensi tanpa login</span>
+              <span class="badge badge--gray">Forecast otomatis 15:00</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <figure>
+            <div class="fig fig--tint">
+<pre class="mermaid">
+flowchart LR
+    A[1. Booking Mandiri &lt;br/&gt;pilih lokasi makan] --> B[2. Absen QR &lt;br/&gt;di kantin]
+    B --> C[3. Forecast H+1 &lt;br/&gt;pukul 15:00]
+    C --> D[4. Lock + Distribusi &lt;br/&gt;ke vendor]
+    D --> E[5. Penyajian &lt;br/&gt;oleh vendor]
+    E --> F[6. Analytics &lt;br/&gt;akurasi + learning]
+    classDef a fill:#EAF1FA,stroke:#0B50A1,color:#0B50A1
+    classDef b fill:#F2F9E8,stroke:#8DC63F,color:#3F6120
+    class A,B,C a
+    class D,E,F b
+</pre>
+            </div>
+            <figcaption><b>Gambar 5.1</b> — Peta enam tahap alur makan siang (Lunch Management).</figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span><i>1</i> Angka merah = langkah; sorot &amp; tooltip aktif saat kursor diarahkan</span>
+        <span><i class="bi bi-eye" style="background:transparent;color:var(--gde-blue);width:auto;"></i> Klik angka untuk membuka panel langkah terkait</span>
+      </div>
+
+      <!-- =====================================================================
+           BLOK TUTORIAL
+           ===================================================================== -->
+      <div class="tut">
+        <div>
+
+          <!-- ============ SCENE 1: BOOKING MANDIRI ============ -->
+          <article class="clip-wrap">
+            <div class="clip-head">
+              <span class="clip-step">Langkah 1–2</span>
+              <h3>Cari nama lalu tentukan lokasi makan</h3>
+              <span class="role">Karyawan</span>
+            </div>
+
+            <div class="clip">
+              <div class="device">
+                <div class="device__bar">
+                  <span class="device__dots"><i></i><i></i><i></i></span>
+                  <span class="device__url"><i class="bi bi-lock-fill"></i> siaga.geodipa.co.id/my/lunch-plan</span>
+                  <span class="device__tag">Booking Mandiri</span>
+                </div>
+                <div class="device__screen" style="background:var(--surface-2);">
+                  <div style="padding:16px;">
+
+                    <div class="m-row m-row--between" style="margin-bottom:12px;">
+                      <div>
+                        <div style="font-size:13px;font-weight:700;color:var(--gde-blue);">Booking Makan Siang</div>
+                        <div class="m-sub" style="margin:0;">Halaman publik — cukup masuk tanpa login</div>
+                      </div>
+                      <span class="m-badge m-badge--blue">Self Booking</span>
+                    </div>
+
+                    <div class="m-card" style="margin-bottom:12px;">
+                      <div class="m-card__head"><i class="bi bi-person-circle"></i> Masukkan Nama Anda</div>
+                      <div class="m-card__body">
+                        <div class="m-field" style="margin-bottom:6px;" data-annot="1">
+                          <span class="m-label">Nama karyawan</span>
+                          <input class="m-input m-input--focus" value="faris" readonly>
+                          <div class="m-help">Ketik minimal 2 karakter nama, lalu pilih dari daftar saran yang muncul.</div>
+                          <div class="m-suggest" style="margin-top:8px;">
+                            <div class="hi"><b>Faris I.</b> — Teknisi <small>· site PMU</small></div>
+                            <div><b>Rizal A.</b> — Operator <small>· site Patuha</small></div>
+                            <div><b>Dewi S.</b> — Admin GA <small>· site BCMP</small></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="m-card" data-annot="2">
+                      <div class="m-card__head"><i class="bi bi-calendar-range"></i> Pilih Lokasi Makan Siang — 1–7 Agustus 2026</div>
+                      <div class="m-card__body">
+                        <div class="tag-row" style="margin-bottom:10px;">
+                          <span class="badge badge--green">Override Admin</span>
+                          <span class="badge badge--gray">Akhir Pekan</span>
+                          <span class="badge badge--blue">Tersimpan</span>
+                        </div>
+
+                        <div class="m-cal">
+                          <div class="m-cal__head">Sab</div>
+                          <div class="m-cal__head">Min</div>
+                          <div class="m-cal__head">Sen</div>
+                          <div class="m-cal__head">Sel</div>
+                          <div class="m-cal__head">Rab</div>
+                          <div class="m-cal__head">Kam</div>
+                          <div class="m-cal__head">Jum</div>
+
+                          <div class="m-cal__cell m-cal__cell--weekend">
+                            <div class="m-cal__date">1<small>Agu 2026</small></div>
+                            <div>
+                              <span class="m-badge m-badge--gray">Weekend</span>
+                              <div class="m-cal__pick"><span class="m-input m-input--select" style="font-size:9px;padding:3px 5px;">— Skip / Libur —</span></div>
+                            </div>
+                          </div>
+
+                          <div class="m-cal__cell m-cal__cell--weekend">
+                            <div class="m-cal__date">2<small>Agu 2026</small></div>
+                            <div>
+                              <span class="m-badge m-badge--gray">Weekend</span>
+                              <div class="m-cal__pick"><span class="m-input m-input--select" style="font-size:9px;padding:3px 5px;">— Skip / Libur —</span></div>
+                            </div>
+                          </div>
+
+                          <div class="m-cal__cell m-cal__cell--override">
+                            <div class="m-cal__date">3<small>Agu 2026</small></div>
+                            <div>
+                              <span class="m-badge m-badge--green">Override</span>
+                              <div class="m-cal__pick"><span class="m-input m-input--select" style="font-size:9px;padding:3px 5px;">PMU (Patuha)</span></div>
+                            </div>
+                          </div>
+
+                          <div class="m-cal__cell">
+                            <div class="m-cal__date">4<small>Agu 2026</small></div>
+                            <div class="m-cal__pick"><span class="m-input m-input--select" style="font-size:9px;padding:3px 5px;">Patuha Basecamp</span></div>
+                          </div>
+
+                          <div class="m-cal__cell">
+                            <div class="m-cal__date">5<small>Agu 2026</small></div>
+                            <div class="m-cal__pick"><span class="m-input m-input--select" style="font-size:9px;padding:3px 5px;">PMU (Patuha)</span></div>
+                          </div>
+
+                          <div class="m-cal__cell">
+                            <div class="m-cal__date">6<small>Agu 2026</small></div>
+                            <div class="m-cal__pick"><span class="m-input m-input--select" style="font-size:9px;padding:3px 5px;">BCMP</span></div>
+                          </div>
+
+                          <div class="m-cal__cell">
+                            <div class="m-cal__date">7<small>Agu 2026</small></div>
+                            <div class="m-cal__pick"><span class="m-input m-input--select" style="font-size:9px;padding:3px 5px;">— Skip / Libur —</span></div>
+                          </div>
+                        </div>
+
+                        <div class="m-row m-row--between" style="margin-top:12px;">
+                          <span class="m-help" style="margin:0;">Pilih <b>— Skip / Libur —</b> bila Anda cuti atau tidak makan di site kantor.</span>
+                          <span class="m-btn m-btn--primary m-btn--sm"><i class="bi bi-save"></i> Simpan Booking</span>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+
+              <button class="pin" data-step="1" data-annot="1" data-pin-pos="right" style="left:50%;top:30%">
+                <span class="pin__tip"><b>Kolom pencarian nama</b><span>Ketik minimal 2 karakter; sistem menampilkan daftar saran dari Master Pekerja beserta site default-nya. Pilih nama Anda agar dikenali (termasuk pencocokan alias).</span></span>
+              </button>
+              <button class="pin" data-step="2" data-annot="2" data-pin-pos="right" style="left:50%;top:62%">
+                <span class="pin__tip"><b>Grid kalender 7 hari</b><span>Sel hijau berarti lokasi sudah ditetapkan Admin (override) dan tidak dapat diubah. Sel abu menandai akhir pekan. Gunakan pilihan <em>— Skip / Libur —</em> untuk hari tanpa makan.</span></span>
+              </button>
+            </div>
+
+            <div class="callout callout--info" style="margin-top:14px;">
+              <span class="callout__icon"><i class="bi bi-globe2"></i></span>
+              <div class="callout__body">
+                <strong>Halaman publik, bukan menu internal</strong>
+                Booking Mandiri (<code>/my/lunch-plan</code>) dan Absen Makan (<code>/lunch-attendance</code>) dapat dibuka
+                tanpa login agar mudah diakses dari tablet kantin maupun ponsel karyawan. Endpoint penyimpanannya
+                dibatasi <em>throttle</em> untuk mencegah penyalahgunaan.
+              </div>
+            </div>
+          </article>
+
+          <!-- ============ SCENE 2: ABSEN QR ============ -->
+          <article class="clip-wrap">
+            <div class="clip-head">
+              <span class="clip-step">Langkah 3</span>
+              <h3>Absen makan siang &amp; konfirmasi lokasi besok</h3>
+              <span class="role">Karyawan</span>
+            </div>
+
+            <div class="clip">
+              <div class="device device--sm">
+                <div class="device__bar">
+                  <span class="device__dots"><i></i><i></i><i></i></span>
+                  <span class="device__url"><i class="bi bi-lock-fill"></i> siaga.geodipa.co.id/lunch-attendance</span>
+                  <span class="device__tag">Absen Makan</span>
+                </div>
+                <div class="device__screen app__body--center" style="background:#fff;padding:20px;">
+                  <div class="m-card" data-annot="3" style="width:340px;margin:0;">
+                    <div class="m-card__body" style="padding:18px;">
+                      <div style="text-align:center;margin-bottom:12px;">
+                        <span class="m-badge m-badge--blue"><i class="bi bi-geo-alt-fill"></i> PMU — Patuha</span>
+                        <div style="font-size:14px;font-weight:700;color:var(--gde-blue);margin-top:8px;">Absen Makan Siang</div>
+                        <div class="m-sub" style="margin:0;">Kamis, 6 Agustus 2026 · 11:00–13:00</div>
+                      </div>
+
+                      <div class="m-field">
+                        <span class="m-label">Nama kamu</span>
+                        <input class="m-input m-input--focus" value="Faris I." readonly>
+                        <div class="m-help">Ketik nama/panggilan, atau pindai QR pribadi Anda.</div>
+                      </div>
+
+                      <button class="m-btn m-btn--primary m-btn--block" type="button"><i class="bi bi-check2-circle"></i> Catat Kehadiran</button>
+
+                      <div class="m-alert m-alert--info" style="margin:12px 0 8px;">
+                        <i class="bi bi-question-circle"></i>
+                        <div><b>Besok makan di mana?</b> Pilih satu lokasi untuk mengonfirmasi lokasi makan esok hari.</div>
+                      </div>
+                      <div class="m-row" style="gap:6px;flex-wrap:wrap;">
+                        <span class="m-btn m-btn--outline m-btn--sm">PMU</span>
+                        <span class="m-btn m-btn--outline m-btn--sm">Patuha</span>
+                        <span class="m-btn m-btn--outline m-btn--sm">BCMP</span>
+                      </div>
+                      <div class="m-help" style="margin-top:8px;">Jawaban ini tersimpan sebagai <em>Tomorrow Confirmation</em> — prioritas ke-2 pada Forecast H+1.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="pin" data-step="3" data-annot="3" data-pin-pos="right" style="left:50%;top:50%">
+                <span class="pin__tip"><b>Absen + konfirmasi besok</b><span>Karyawan memindai QR pribadi atau mengetik nama, lalu menekan <em>Catat Kehadiran</em>. Sistem kemudian menampilkan popup <em>“Makan di mana?”</em> untuk lokasi makan esok hari; konfirmasi diamankan dengan <em>confirmation_token</em>.</span></span>
+              </button>
+            </div>
+
+            <div class="callout callout--tip" style="margin-top:14px;">
+              <span class="callout__icon"><i class="bi bi-qr-code-scan"></i></span>
+              <div class="callout__body">
+                <strong>QR lokasi vs QR pribadi</strong>
+                QR per site (PMU/Patuha/BCMP) berisi URL <code>/lunch-attendance/site/{code}</code> dan dicetak dari menu
+                <em>QR Lokasi</em>. Saat hasil absensi dikirim, <em>Identity Resolution Engine</em> mencocokkan nama
+                (alias → nama persis → histori → <em>fuzzy match</em>) dan menyimpan skor keyakinan sebagai jejak audit.
+              </div>
+            </div>
+          </article>
+
+          <!-- ============ SCENE 3: FORECAST H+1 ============ -->
+          <article class="clip-wrap">
+            <div class="clip-head">
+              <span class="clip-step">Langkah 4–5</span>
+              <h3>Tinjau forecast H+1 dan lakukan override</h3>
+              <span class="role">Admin GA</span>
+            </div>
+
+            <div class="clip">
+              <div class="device">
+                <div class="device__bar">
+                  <span class="device__dots"><i></i><i></i><i></i></span>
+                  <span class="device__url"><i class="bi bi-lock-fill"></i> siaga.geodipa.co.id/lunch/forecasts</span>
+                  <span class="device__tag">Forecast</span>
+                </div>
+                <div class="device__screen">
+                  <div class="app">
+                    <aside class="app__aside">
+                      <div class="app__brand">
+                        <img src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="">
+                        <span><b>SIAGA</b><small>General Affairs</small></span>
+                      </div>
+                      <p class="app__navlabel">Lunch Management</p>
+                      <ul class="app__nav">
+                        <li><span class="nav"><i class="bi bi-speedometer2"></i>Dashboard Lunch</span></li>
+                        <li><span class="nav"><i class="bi bi-people"></i>Employee Default</span></li>
+                        <li>
+                          <span class="nav is-active"><i class="bi bi-graph-up-arrow"></i>Lunch Forecast<i class="bi bi-chevron-up chev"></i></span>
+                          <ul class="app__nav">
+                            <li><span class="nav sub is-active"><i class="bi bi-circle"></i>Forecast H+1</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Lunch Distribution</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Lunch Transactions</span></li>
+                          </ul>
+                        </li>
+                        <li><span class="nav"><i class="bi bi-person-badge"></i>Guest Reservation</span></li>
+                        <li><span class="nav"><i class="bi bi-bar-chart"></i>Analytics</span></li>
+                        <li><span class="nav"><i class="bi bi-qr-code"></i>QR Lokasi</span></li>
+                      </ul>
+                    </aside>
+                    <div class="app__main">
+                      <div class="app__topbar">
+                        <i class="bi bi-list burger"></i>
+                        <div class="app__search"><i class="bi bi-search"></i> Cari menu atau data…</div>
+                        <div class="app__user">
+                          <span class="who"><b>Dewi S.</b><small>Admin GA</small></span>
+                          <span class="avatar">DS</span>
+                        </div>
+                      </div>
+                      <div class="app__body">
+                        <div class="pagetitle">
+                          <h1>Lunch Forecast</h1>
+                          <ol class="md-breadcrumb"><li>Home</li><li>Lunch Management</li><li>Forecast</li></ol>
+                        </div>
+
+                        <div data-annot="4">
+                          <div class="m-grid m-grid--4" style="margin-bottom:10px;">
+                            <div class="m-stat"><b>96</b><small>Porsi PMU</small></div>
+                            <div class="m-stat"><b>78</b><small>Porsi Patuha</small></div>
+                            <div class="m-stat"><b>54</b><small>Porsi BCMP</small></div>
+                            <div class="m-stat m-stat--green"><b>87%</b><small>Akurasi (terisi aktual)</small></div>
+                          </div>
+
+                          <div class="m-card" style="margin-bottom:12px;">
+                            <div class="m-card__body">
+                              <div class="m-sub" style="margin:0 0 6px;">Sumber prediksi</div>
+                              <div class="tag-row">
+                                <span class="m-badge m-badge--dark">manual: 3</span>
+                                <span class="m-badge m-badge--blue">confirmation: 129</span>
+                                <span class="m-badge m-badge--green">learning: 62</span>
+                                <span class="m-badge m-badge--gray">default: 34</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="m-row m-row--between" style="margin-bottom:12px;" data-annot="5">
+                          <span class="m-help" style="margin:0;">Tanggal forecast: <b>7 Agustus 2026</b> (H+1)</span>
+                          <div class="m-row" style="gap:8px;">
+                            <span class="m-btn m-btn--outline m-btn--sm"><i class="bi bi-pencil-square"></i> Manual Override</span>
+                            <span class="m-btn m-btn--primary m-btn--sm"><i class="bi bi-magic"></i> Generate Forecast</span>
+                          </div>
+                        </div>
+
+                        <div class="m-card">
+                          <div class="m-card__body" style="padding:0;">
+                            <table class="m-table">
+                              <thead>
+                                <tr><th>Karyawan</th><th>Site Prediksi</th><th>Sumber</th><th class="ctr">Confidence</th><th>Site Aktual (QR)</th></tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td>Faris I.<br><small>Teknisi</small></td>
+                                  <td><span class="m-badge m-badge--blue">PMU</span></td>
+                                  <td><span class="m-badge m-badge--blue">confirmation</span></td>
+                                  <td class="ctr">96%</td>
+                                  <td><span class="m-badge m-badge--green">PMU</span></td>
+                                </tr>
+                                <tr>
+                                  <td>Rizal A.<br><small>Operator</small></td>
+                                  <td><span class="m-badge m-badge--blue">PTH</span></td>
+                                  <td><span class="m-badge m-badge--green">learning</span></td>
+                                  <td class="ctr">81%</td>
+                                  <td><span class="m-badge m-badge--green">PTH</span></td>
+                                </tr>
+                                <tr>
+                                  <td>Budi P.<br><small>Driver</small></td>
+                                  <td><span class="m-badge m-badge--blue">BCMP</span></td>
+                                  <td><span class="m-badge m-badge--gray">default</span></td>
+                                  <td class="ctr">—</td>
+                                  <td><span class="m-help" style="margin:0;">belum scan</span></td>
+                                </tr>
+                                <tr>
+                                  <td>Dewi S.<br><small>Admin GA</small></td>
+                                  <td><span class="m-badge m-badge--blue">PMU</span></td>
+                                  <td><span class="m-badge m-badge--dark">manual</span></td>
+                                  <td class="ctr">100%</td>
+                                  <td><span class="m-badge m-badge--green">PMU</span></td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="pin" data-step="4" data-annot="4" data-pin-pos="right" style="left:50%;top:34%">
+                <span class="pin__tip"><b>Ringkasan &amp; sumber prediksi</b><span>Kartu ringkasan menampilkan total porsi per site dan angka akurasi (persentase prediksi yang cocok dengan hasil absensi QR). Badge sumber prediksi memisahkan <em>manual / confirmation / learning / default</em>.</span></span>
+              </button>
+              <button class="pin" data-step="5" data-annot="5" data-pin-pos="right" style="left:60%;top:60%">
+                <span class="pin__tip"><b>Generate &amp; Manual Override</b><span><em>Generate Forecast</em> menghitung ulang prediksi H+1; <em>Manual Override</em> menetapkan lokasi seorang karyawan secara manual dan berstatus prioritas tertinggi sehingga tidak ditimpa saat forecast digenerate ulang.</span></span>
+              </button>
+            </div>
+          </article>
+
+          <!-- ============ SCENE 4: LOCK & DISTRIBUSI ============ -->
+          <article class="clip-wrap">
+            <div class="clip-head">
+              <span class="clip-step">Langkah 6</span>
+              <h3>Kunci angka final dan kirim ke vendor</h3>
+              <span class="role">Admin GA</span>
+            </div>
+
+            <div class="clip">
+              <div class="device">
+                <div class="device__bar">
+                  <span class="device__dots"><i></i><i></i><i></i></span>
+                  <span class="device__url"><i class="bi bi-lock-fill"></i> siaga.geodipa.co.id/lunch/distributions</span>
+                  <span class="device__tag">Distribution</span>
+                </div>
+                <div class="device__screen">
+                  <div class="app">
+                    <aside class="app__aside">
+                      <div class="app__brand">
+                        <img src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="">
+                        <span><b>SIAGA</b><small>General Affairs</small></span>
+                      </div>
+                      <p class="app__navlabel">Lunch Management</p>
+                      <ul class="app__nav">
+                        <li><span class="nav"><i class="bi bi-speedometer2"></i>Dashboard Lunch</span></li>
+                        <li><span class="nav"><i class="bi bi-people"></i>Employee Default</span></li>
+                        <li>
+                          <span class="nav is-active"><i class="bi bi-graph-up-arrow"></i>Lunch Forecast<i class="bi bi-chevron-up chev"></i></span>
+                          <ul class="app__nav">
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Forecast H+1</span></li>
+                            <li><span class="nav sub is-active"><i class="bi bi-circle"></i>Lunch Distribution</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Lunch Transactions</span></li>
+                          </ul>
+                        </li>
+                        <li><span class="nav"><i class="bi bi-person-badge"></i>Guest Reservation</span></li>
+                        <li><span class="nav"><i class="bi bi-bar-chart"></i>Analytics</span></li>
+                        <li><span class="nav"><i class="bi bi-qr-code"></i>QR Lokasi</span></li>
+                      </ul>
+                    </aside>
+                    <div class="app__main">
+                      <div class="app__topbar">
+                        <i class="bi bi-list burger"></i>
+                        <div class="app__search"><i class="bi bi-search"></i> Cari menu atau data…</div>
+                        <div class="app__user">
+                          <span class="who"><b>Dewi S.</b><small>Admin GA</small></span>
+                          <span class="avatar">DS</span>
+                        </div>
+                      </div>
+                      <div class="app__body">
+                        <div class="pagetitle">
+                          <h1>Lunch Distribution</h1>
+                          <ol class="md-breadcrumb"><li>Home</li><li>Lunch Management</li><li>Distribution</li></ol>
+                        </div>
+
+                        <div class="m-alert m-alert--warn" style="margin-bottom:12px;">
+                          <i class="bi bi-clock-history"></i>
+                          <div>Distribusi dibangun otomatis oleh scheduler <code>lunch:generate-forecast</code> setiap pukul <b>15:00</b>. Setelah dikunci, angka porsi tidak dapat diubah lagi.</div>
+                        </div>
+
+                        <div data-annot="6">
+                          <div class="m-card" style="margin-bottom:12px;">
+                            <div class="m-card__head m-card__head--primary"><i class="bi bi-lock"></i> Kunci Angka Vendor — 7 Agustus 2026</div>
+                            <div class="m-card__body m-row m-row--between">
+                              <div>
+                                <div class="m-sub" style="margin:0;">Total porsi terkunci</div>
+                                <b style="font-size:16px;color:var(--gde-blue);">228 porsi</b>
+                              </div>
+                              <div class="m-row" style="gap:8px;">
+                                <span class="m-btn m-btn--outline m-btn--sm"><i class="bi bi-printer"></i> Cetak QR Lokasi</span>
+                                <span class="m-btn m-btn--green m-btn--sm"><i class="bi bi-lock-fill"></i> Lock / Finalize</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="m-card">
+                          <div class="m-card__head"><i class="bi bi-send"></i> Porsi final per site yang dikirim ke vendor</div>
+                          <div class="m-card__body" style="padding:0;">
+                            <table class="m-table">
+                              <thead>
+                                <tr><th>Site</th><th>Vendor Katering</th><th class="num">Dine In</th><th class="num">Take Away</th><th class="num">Total Porsi</th><th>Status</th></tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td>PMU</td><td>Katering Sari Rasa</td>
+                                  <td class="num">72</td><td class="num">24</td><td class="num"><b>96</b></td>
+                                  <td><span class="m-badge m-badge--green">Final</span></td>
+                                </tr>
+                                <tr>
+                                  <td>Patuha Basecamp</td><td>Dapur Patuha Jaya</td>
+                                  <td class="num">61</td><td class="num">17</td><td class="num"><b>78</b></td>
+                                  <td><span class="m-badge m-badge--green">Final</span></td>
+                                </tr>
+                                <tr>
+                                  <td>BCMP</td><td>Katering Berkah</td>
+                                  <td class="num">46</td><td class="num">8</td><td class="num"><b>54</b></td>
+                                  <td><span class="m-badge m-badge--yellow">Menunggu</span></td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                          <div class="m-card__foot">
+                            <span class="m-help" style="margin:0;">Rekap dapat diekspor ke Excel (3 sheet) melalui menu <em>Export Vendor</em>.</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="pin" data-step="6" data-annot="6" data-pin-pos="right" style="left:52%;top:40%">
+                <span class="pin__tip"><b>Lock / Finalize</b><span>Setelah Admin GA menekan kunci, snapshot porsi disimpan sebagai data terkunci untuk vendor. Tabel di bawahnya menampilkan porsi final per site yang sudah dikirim ke masing-masing vendor katering.</span></span>
+              </button>
+            </div>
+          </article>
+
+          <!-- ============ SCENE 5: VENDOR ============ -->
+          <article class="clip-wrap">
+            <div class="clip-head">
+              <span class="clip-step">Langkah 7–8</span>
+              <h3>Vendor menyiapkan porsi &amp; memantau pengambilan</h3>
+              <span class="role">Vendor</span>
+            </div>
+
+            <div class="clip">
+              <div class="device">
+                <div class="device__bar">
+                  <span class="device__dots"><i></i><i></i><i></i></span>
+                  <span class="device__url"><i class="bi bi-lock-fill"></i> siaga.geodipa.co.id/vendor/lunch/today</span>
+                  <span class="device__tag">Dashboard Vendor</span>
+                </div>
+                <div class="device__screen">
+                  <div class="app">
+                    <aside class="app__aside">
+                      <div class="app__brand">
+                        <img src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="">
+                        <span><b>SIAGA</b><small>Vendor Katering</small></span>
+                      </div>
+                      <p class="app__navlabel">Menu Vendor</p>
+                      <ul class="app__nav">
+                        <li><span class="nav is-active"><i class="bi bi-basket"></i>Porsi Hari Ini</span></li>
+                        <li><span class="nav"><i class="bi bi-person-check"></i>Kehadiran</span></li>
+                        <li><span class="nav"><i class="bi bi-clock-history"></i>Riwayat Harian</span></li>
+                      </ul>
+                    </aside>
+                    <div class="app__main">
+                      <div class="app__topbar">
+                        <i class="bi bi-list burger"></i>
+                        <div class="app__search"><i class="bi bi-search"></i> Cari nama karyawan…</div>
+                        <div class="app__user">
+                          <span class="who"><b>Katering Sari Rasa</b><small>Vendor · PMU</small></span>
+                          <span class="avatar">SR</span>
+                        </div>
+                      </div>
+                      <div class="app__body">
+                        <div class="pagetitle">
+                          <h1>Porsi Hari Ini — Kamis, 6 Agustus 2026</h1>
+                          <ol class="md-breadcrumb"><li>Home</li><li>Vendor</li><li>Porsi Hari Ini</li></ol>
+                        </div>
+
+                        <div class="m-grid m-grid--3" style="margin-bottom:12px;">
+                          <div class="m-stat"><b>228</b><small>Total porsi terkunci</small></div>
+                          <div class="m-stat m-stat--green"><b>173</b><small>Sudah diambil</small></div>
+                          <div class="m-stat m-stat--yellow"><b>55</b><small>Belum diambil</small></div>
+                        </div>
+
+                        <div class="m-card" style="margin-bottom:12px;" data-annot="7">
+                          <div class="m-card__head"><i class="bi bi-basket"></i> Porsi yang harus disiapkan hari ini</div>
+                          <div class="m-card__body" style="padding:0;">
+                            <table class="m-table">
+                              <thead>
+                                <tr><th>Site</th><th class="num">Dine In</th><th class="num">Take Away</th><th class="num">Total</th><th>Catatan</th></tr>
+                              </thead>
+                              <tbody>
+                                <tr><td>PMU</td><td class="num">72</td><td class="num">24</td><td class="num"><b>96</b></td><td><span class="m-badge m-badge--gray">—</span></td></tr>
+                                <tr><td>Patuha Basecamp</td><td class="num">61</td><td class="num">17</td><td class="num"><b>78</b></td><td><span class="m-badge m-badge--gray">—</span></td></tr>
+                                <tr><td>BCMP</td><td class="num">46</td><td class="num">8</td><td class="num"><b>54</b></td><td><span class="m-badge m-badge--blue">4 tamu</span></td></tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        <div class="m-card" data-annot="8">
+                          <div class="m-card__head"><i class="bi bi-broadcast"></i> Karyawan yang sudah mengambil jatah <span class="m-badge m-badge--green">real-time</span></div>
+                          <div class="m-card__body" style="padding:0;">
+                            <table class="m-table">
+                              <thead>
+                                <tr><th>Nama</th><th>Site</th><th>Jenis</th><th class="ctr">Jam Ambil</th><th>Status</th></tr>
+                              </thead>
+                              <tbody>
+                                <tr><td>Faris I.</td><td>PMU</td><td>Dine In</td><td class="ctr">11:42</td><td><span class="m-badge m-badge--green">Diambil</span></td></tr>
+                                <tr><td>Rizal A.</td><td>Patuha</td><td>Take Away</td><td class="ctr">11:51</td><td><span class="m-badge m-badge--green">Diambil</span></td></tr>
+                                <tr><td>Budi P.</td><td>BCMP</td><td>Dine In</td><td class="ctr">—</td><td><span class="m-badge m-badge--yellow">Belum</span></td></tr>
+                                <tr><td>Dewi S.</td><td>PMU</td><td>Dine In</td><td class="ctr">12:03</td><td><span class="m-badge m-badge--green">Diambil</span></td></tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="pin" data-step="7" data-annot="7" data-pin-pos="right" style="left:50%;top:44%">
+                <span class="pin__tip"><b>Daftar porsi per site</b><span>Vendor hanya melihat angka yang sudah dikunci Admin GA, dipecah menjadi Dine In dan Take Away agar penyajian tepat jumlah.</span></span>
+              </button>
+              <button class="pin" data-step="8" data-annot="8" data-pin-pos="right" style="left:50%;top:70%">
+                <span class="pin__tip"><b>Status kehadiran real-time</b><span>Daftar karyawan yang sudah mengambil jatah beserta jam pengambilan. Data ini berasal dari absensi QR sehingga menjadi <em>ground truth</em> yang memperbarui learning profile dan akurasi forecast.</span></span>
+              </button>
+            </div>
+
+            <div class="callout callout--info" style="margin-top:14px;">
+              <span class="callout__icon"><i class="bi bi-person-badge"></i></span>
+              <div class="callout__body">
+                <strong>Reservasi tamu &amp; pengamanan halaman publik</strong>
+                Reservasi makan siang tamu (<em>Guest Reservation</em>) diajukan Admin GA dan <b>wajib dikonfirmasi maksimal H-2</b>
+                sebelum kedatangan; reservasi yang belum dikonfirmasi tidak ikut terhitung pada porsi terkunci. Seluruh endpoint
+                halaman publik (<code>/lunch-attendance</code> dan <code>/my/lunch-plan</code>, termasuk pencarian nama dan submit absensi)
+                dibatasi <em>rate limiting</em> untuk mencegah request massal dari luar.
+              </div>
+            </div>
+          </article>
+
+        </div>
+
+        <!-- ============ ASIDE: DAFTAR LANGKAH ============ -->
+        <aside class="tut__aside">
+          <div class="tut__stepbox tut__stepbox--scroll">
+            <div class="tag">Alur 5 — Makan Siang</div>
+            <h3>8 langkah</h3>
+            <div class="tut__progress">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <p class="tut__hint">Klik langkah untuk melompat dan menyorot elemen terkait.</p>
+            <ol class="tut__steps">
+              <li data-step="1"><b>Cari nama</b> Ketik nama, pilih dari daftar saran.</li>
+              <li data-step="2"><b>Kalender 7 hari</b> Tentukan lokasi makan per tanggal.</li>
+              <li data-step="3"><b>Absen &amp; konfirmasi</b> Scan QR, jawab “makan di mana?”.</li>
+              <li data-step="4"><b>Ringkasan forecast</b> Cek total per site &amp; akurasi.</li>
+              <li data-step="5"><b>Generate / Override</b> Hitung ulang atau ubah manual.</li>
+              <li data-step="6"><b>Lock distribusi</b> Kunci angka final untuk vendor.</li>
+              <li data-step="7"><b>Porsi hari ini</b> Vendor menyiapkan sesuai jumlah.</li>
+              <li data-step="8"><b>Status kehadiran</b> Pantau pengambilan jatah.</li>
+            </ol>
+          </div>
+
+          <div class="card card--tight card--soft">
+            <h3 style="font-size:.86rem;">Kesalahan yang sering terjadi</h3>
+            <ul class="list-cross list-check" style="font-size:.79rem;margin-bottom:0;">
+              <li>Nama tidak dipilih dari daftar saran sehingga absensi tidak dikenali.</li>
+              <li>Mengubah sel kalender yang sudah di-override Admin GA (sel hijau terkunci).</li>
+              <li>Melakukan Manual Override setelah distribusi dikunci pada pukul 15:00.</li>
+              <li>Lupa mengonfirmasi reservasi tamu maksimal H-2 sebelum kedatangan.</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+
+      <!-- ================= LANJUT ================= -->
+      <div class="callout callout--tip">
+        <span class="callout__icon"><i class="bi bi-lightbulb"></i></span>
+        <div class="callout__body">
+          <strong>Empat prioritas Forecast H+1 &amp; scheduler 15:00</strong>
+          Prediksi lokasi makan esok hari ditentukan berurutan dari prioritas tertinggi:
+          <ol class="steps" style="margin-top:10px;">
+            <li><strong>Manual Override</strong><p>Perubahan lokasi yang ditetapkan langsung oleh Admin GA — tidak pernah ditimpa.</p></li>
+            <li><strong>Tomorrow Confirmation</strong><p>Jawaban karyawan pada popup “makan di mana besok?” saat absensi hari ini.</p></li>
+            <li><strong>Historical Pattern (Learning Profile)</strong><p>Pola kebiasaan makan karyawan dari riwayat transaksi di site tertentu.</p></li>
+            <li><strong>Default Site</strong><p>Site utama tempat karyawan resmi terdaftar bekerja.</p></li>
+          </ol>
+          Scheduler <code>lunch:generate-forecast</code> berjalan otomatis setiap pukul <b>15:00</b>
+          (<code>siaga.forecast_generate_at</code>) untuk membentuk forecast H+1 sekaligus memperbarui distribusi.
+          <div class="callout callout--warn" style="margin:14px 0 0;">
+            <span class="callout__icon"><i class="bi bi-info-circle"></i></span>
+            <div class="callout__body">
+              <strong>Klarifikasi implementasi</strong>
+              Empat tingkat di atas adalah urutan yang didokumentasikan pada PRD. Pada
+              <code>LunchForecastService</code> terdapat satu tingkat tambahan yang tersimpan sebelum
+              konfirmasi: <b>self_booking</b> — yaitu lokasi yang dipilih karyawan sendiri melalui
+              halaman <em>Booking Mandiri</em>. Urutan aktual pada kode:
+              <code>manual</code> → <code>self_booking</code> → <code>confirmation</code> →
+              <code>historical</code> → <code>default</code>, dengan histori baru dipakai bila
+              jumlah observasi ≥ <code>MIN_HISTORY = 3</code> dan pangsa site dominan ≥ 50%.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout callout--info">
+        <span class="callout__icon"><i class="bi bi-arrow-right-circle"></i></span>
+        <div class="callout__body">
+          <strong>Lanjut ke Alur 6 — Routine Checking</strong>
+          Melakukan pengecekan harian, mingguan, bulanan, dan body inspection kendaraan, menandai suku cadang
+          yang butuh penggantian, hingga konfirmasi hasil pengecekan oleh driver.
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+            <a class="btn btn--primary btn--sm" href="06-checking.html">Buka Alur 6 <i class="bi bi-arrow-right-short"></i></a>
+            <a class="btn btn--ghost btn--sm" href="../software-documentation/04-spesifikasi-use-case.html">Lihat use case LNC <i class="bi bi-diagram-3"></i></a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="foot__inner">
+    <p>&copy; <span data-year>2026</span> PT Geo Dipa Energi (Persero) Unit Patuha — Divisi General Affairs.</p>
+    <div class="foot__links">
+      <a href="../index.html">Beranda dokumentasi</a>
+      <a href="index.html">Semua alur</a>
+      <a href="../software-documentation/index.html">Software Documentation</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/js/docs.js"></script>
+<script src="../assets/js/diagrams.js" defer></script>
+</body>
+</html>

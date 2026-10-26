@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bagian 4: Spesifikasi Use Case — SIAGA</title>
+<meta name="description" content="Spesifikasi rinci enam use case SIAGA: precondition, postcondition, alur utama, alternatif, pengecualian, dan aturan bisnis.">
+<link rel="icon" href="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="../assets/css/docs.css">
+</head>
+<body data-base="../">
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <button class="icon-btn btn-menu" id="docMenuBtn" aria-label="Buka navigasi" aria-expanded="false"><i class="bi bi-list"></i></button>
+    <a class="brand" href="../index.html">
+      <img class="brand__logo" src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="Logo Geo Dipa Energi">
+      <span>
+        <span class="brand__name">SIAGA</span>
+        <span class="brand__sub">Sistem Informasi Administrasi General Affairs</span>
+      </span>
+    </a>
+    <span class="brand__divider"></span>
+    <span class="brand__doc">Software Documentation</span>
+    <div class="topbar__spacer"></div>
+    <div class="searchbox">
+      <i class="bi bi-search"></i>
+      <input type="search" id="docSearch" placeholder="Cari halaman…  ( / )" aria-label="Cari halaman dokumentasi">
+      <div class="search-results" id="docSearchResults"></div>
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" data-print title="Cetak / simpan PDF"><i class="bi bi-printer"></i></button>
+      <a class="icon-btn" href="../index.html" title="Kembali ke beranda dokumentasi"><i class="bi bi-house"></i></a>
+    </div>
+  </div>
+</header>
+
+<div class="scrim" id="docScrim"></div>
+
+<main class="shell">
+  <aside class="sidebar" id="docSidebar">
+    <p class="sidebar__label">Software Documentation</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="index.html"><span class="nav-link__num">&#9679;</span><span class="nav-link__txt">Ikhtisar &amp; daftar isi</span></a></li>
+      <li><a class="nav-link" href="01-ruang-lingkup.html"><span class="nav-link__num">1</span><span class="nav-link__txt">Ruang lingkup &amp; visi produk</span></a></li>
+      <li><a class="nav-link" href="02-arsitektur-teknologi.html"><span class="nav-link__num">2</span><span class="nav-link__txt">Arsitektur &amp; teknologi</span></a></li>
+      <li><a class="nav-link" href="03-model-use-case.html"><span class="nav-link__num">3</span><span class="nav-link__txt">Model use case</span></a></li>
+      <li><a class="nav-link is-active" href="04-spesifikasi-use-case.html"><span class="nav-link__num">4</span><span class="nav-link__txt">Spesifikasi use case</span></a></li>
+      <li><a class="nav-link" href="05-desain-perilaku.html"><span class="nav-link__num">5</span><span class="nav-link__txt">Desain perilaku</span><span class="nav-badge">Activity · Sequence</span></a></li>
+      <li><a class="nav-link" href="06-desain-struktur.html"><span class="nav-link__num">6</span><span class="nav-link__txt">Desain struktur</span><span class="nav-badge">Class · ERD</span></a></li>
+      <li><a class="nav-link" href="07-validasi-logika.html"><span class="nav-link__num">7</span><span class="nav-link__txt">Validasi logika</span></a></li>
+      <li><a class="nav-link" href="08-pengujian.html"><span class="nav-link__num">8</span><span class="nav-link__txt">Pengujian &amp; test case</span></a></li>
+      <li><a class="nav-link" href="09-traceability.html"><span class="nav-link__num">9</span><span class="nav-link__txt">Traceability &amp; RBAC</span></a></li>
+      <li><a class="nav-link" href="10-glosarium.html"><span class="nav-link__num">10</span><span class="nav-link__txt">Glosarium</span></a></li>
+      <li><a class="nav-link" href="11-plantuml-changelog.html"><span class="nav-link__num">11</span><span class="nav-link__txt">PlantUML &amp; changelog</span></a></li>
+    </ul>
+
+    <p class="sidebar__label">Dokumen lain</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="../alur-tutorial/index.html"><i class="bi bi-signpost-split"></i><span class="nav-link__txt">Alur Tutorial</span></a></li>
+      <li><a class="nav-link" href="../index.html"><i class="bi bi-house"></i><span class="nav-link__txt">Beranda dokumentasi</span></a></li>
+    </ul>
+  </aside>
+
+  <div class="content">
+    <div class="wrap">
+      <nav><ol class="crumbs">
+        <li><a href="../index.html">Documentation</a></li>
+        <li>Software Documentation</li>
+        <li>Bagian 4</li>
+      </ol></nav>
+
+      <div class="page-head">
+        <span class="eyebrow"><span class="dot"></span> Bagian 4</span>
+        <h2>Spesifikasi use case</h2>
+        <p class="lead">
+          Enam use case dari modul berbeda dituliskan secara rinci: precondition, postcondition,
+          alur utama yang bernomor, alur alternatif, alur pengecualian, extension point, serta
+          aturan bisnis yang mengikatnya. Seluruh aturan dirangkum pada tabel di akhir bagian.
+        </p>
+      </div>
+
+      <!-- ================= 4.1 DAFTAR ================= -->
+      <div class="section-block" id="daftar">
+        <h2><span class="num"><i class="bi bi-list-ol"></i></span> Daftar use case yang dispesifikasikan</h2>
+
+        <p>
+          Enam use case berikut dipilih untuk mewakili modul BBM, SPD/LPJ, pengecekan kendaraan, dan
+          katering. Empat di antaranya melibatkan perhitungan otomatis atau validasi berlapis sehingga
+          layak dijelaskan sampai tingkat alur pengecualian.
+        </p>
+
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>Kode</th><th>Nama Use Case</th><th>Aktor Utama</th><th>Modul</th><th>Prioritas</th><th>Spesifikasi</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rowhead">UC-BBM-01</td><td>Mengajukan Permohonan BBM</td><td>Requester/Driver</td><td>Permohonan BBM</td>
+                <td><span class="badge">Tinggi</span></td><td><a href="#spec-bbm-01">Lihat spesifikasi</a></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-BBM-02</td><td>Meninjau &amp; Menyetujui Permohonan</td><td>Admin GA</td><td>Permohonan BBM</td>
+                <td><span class="badge badge--red">Kritis</span></td><td><a href="#spec-bbm-02">Lihat spesifikasi</a></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-SPD-01</td><td>Membuat Surat Perjalanan Dinas</td><td>Requester/Driver</td><td>SPD &amp; LPJ</td>
+                <td><span class="badge">Tinggi</span></td><td><a href="#spec-spd-01">Lihat spesifikasi</a></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-LPJ-01</td><td>Membuat Laporan Pertanggungjawaban</td><td>Requester/Driver</td><td>SPD &amp; LPJ</td>
+                <td><span class="badge badge--red">Kritis</span></td><td><a href="#spec-lpj-01">Lihat spesifikasi</a></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-CHK-01</td><td>Melakukan Pengecekan Harian</td><td>Dispatcher</td><td>Pengecekan Kendaraan</td>
+                <td><span class="badge">Tinggi</span></td><td><a href="#spec-chk-01">Lihat spesifikasi</a></td>
+              </tr>
+              <tr>
+                <td class="rowhead">UC-LNC-02</td><td>Menghasilkan Forecast Porsi H+1</td><td>Admin GA / Scheduler</td><td>Lunch Management</td>
+                <td><span class="badge badge--red">Kritis</span></td><td><a href="#spec-lnc-02">Lihat spesifikasi</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid grid--4">
+          <div class="kpi"><div class="kpi__label">Use case dispesifikasikan</div><div class="kpi__value">6</div><div class="kpi__hint">Mewakili empat modul</div></div>
+          <div class="kpi"><div class="kpi__label">Aturan bisnis</div><div class="kpi__value kpi__value--green">40</div><div class="kpi__hint">BR-BBM, BR-SPD, BR-LPJ, BR-CHK, BR-LNC</div></div>
+          <div class="kpi"><div class="kpi__label">Use case diperluas</div><div class="kpi__value">3</div><div class="kpi__hint">UC-BBM-02, UC-SPD-01, UC-LNC-02</div></div>
+          <div class="kpi"><div class="kpi__label">Diagram</div><div class="kpi__value">0</div><div class="kpi__hint">Disajikan dalam bentuk tabel</div></div>
+        </div>
+      </div>
+
+      <!-- ================= 4.2 SPESIFIKASI ================= -->
+      <div class="section-block" id="spesifikasi">
+        <h2><span class="num"><i class="bi bi-file-earmark-text"></i></span> Spesifikasi rinci</h2>
+
+        <p>
+          Notasi alur mengikuti konvensi: langkah utama bernomor 1, 2, 3, …; alur alternatif memakai
+          penanda turunan seperti <code>3a.</code>; alur pengecualian memakai penanda seperti
+          <code>7b.</code>. Kode aturan bisnis <code>BR-&lt;MODUL&gt;-&lt;nn&gt;</code> didefinisikan
+          pada <a href="#aturan">sub-bagian 4.3</a>.
+        </p>
+
+        <!-- ---------- UC-BBM-01 ---------- -->
+        <details class="acc" id="spec-bbm-01" open>
+          <summary>UC-BBM-01 — Mengajukan Permohonan BBM</summary>
+          <div class="acc__body">
+            <ul class="meta-list">
+              <li><span class="meta-list__k">Kode</span><span class="meta-list__v">UC-BBM-01</span></li>
+              <li><span class="meta-list__k">Nama</span><span class="meta-list__v">Mengajukan Permohonan BBM</span></li>
+              <li><span class="meta-list__k">Aktor utama</span><span class="meta-list__v">Requester/Driver</span></li>
+              <li><span class="meta-list__k">Aktor pendukung</span><span class="meta-list__v">Superadmin (persetujuan kendaraan rental), Sistem</span></li>
+              <li><span class="meta-list__k">Prioritas</span><span class="meta-list__v"><span class="badge">Tinggi</span></span></li>
+              <li><span class="meta-list__k">Frekuensi</span><span class="meta-list__v">Harian, beberapa kali per pengguna</span></li>
+              <li><span class="meta-list__k">Modul</span><span class="meta-list__v">Permohonan BBM (PRD 4.1)</span></li>
+            </ul>
+
+            <h3>Preconditions</h3>
+            <ul class="list-check">
+              <li>Pengguna terautentikasi dan memiliki peran Requester/Driver.</li>
+              <li>Jumlah permohonan aktif pengguna masih di bawah batas slot yang berlaku (BR-BBM-01).</li>
+              <li>Tersedia master kendaraan/alat berstatus aktif dan telah disetujui, atau pengguna bermaksud menambahkan kendaraan rental baru.</li>
+            </ul>
+
+            <h3>Postconditions</h3>
+            <ul class="list-check">
+              <li>Permohonan tersimpan dengan nomor permohonan unik, jenis BBM, nominal, dan kendaraan tertaut.</li>
+              <li>Status permohonan menjadi <code>pending</code> bila memakai kendaraan terdaftar, atau <code>pending_vehicle_approval</code> bila memakai kendaraan rental baru (BR-BBM-05).</li>
+              <li>Permohonan tampil pada dashboard requester dan masuk antrean peninjauan Admin GA.</li>
+            </ul>
+
+            <h3>Aturan bisnis terkait</h3>
+            <p>
+              <span class="badge badge--blue">BR-BBM-01</span>
+              <span class="badge badge--blue">BR-BBM-02</span>
+              <span class="badge badge--blue">BR-BBM-03</span>
+              <span class="badge badge--blue">BR-BBM-05</span>
+              <span class="badge badge--blue">BR-BBM-06</span>
+            </p>
+
+            <h3>Alur Utama (Main Success Scenario)</h3>
+            <ol class="steps">
+              <li><strong>Aktor membuka formulir permohonan BBM.</strong><p>Sistem menampilkan jumlah slot aktif terpakai dan batas slot pengguna.</p></li>
+              <li><strong>Sistem menyiapkan pilihan kendaraan/alat.</strong><p>Daftar berisi kendaraan aktif dan telah disetujui beserta jenis BBM, volume tangki, dan benchmark.</p></li>
+              <li><strong>Aktor memilih kendaraan/alat.</strong><p>Sistem menampilkan saran nominal full-tank berupa kelipatan Rp50.000 yang dihitung dari volume tangki dan harga BBM region site (BR-BBM-03).</p></li>
+              <li><strong>Aktor memilih jenis BBM dan mengisi nominal serta catatan opsional.</strong></li>
+              <li><strong>Aktor mengirim formulir.</strong></li>
+              <li><strong>Sistem memvalidasi masukan.</strong><p>Jenis BBM wajib; nominal wajib numerik, kelipatan Rp50.000, dan berada dalam rentang benchmark kendaraan (BR-BBM-02).</p></li>
+              <li><strong>Sistem membuat nomor permohonan dan menyimpan data permohonan.</strong></li>
+              <li><strong>Sistem menampilkan konfirmasi.</strong><p>Aktor diarahkan kembali ke dashboard dengan pesan keberhasilan berisi nomor permohonan.</p></li>
+            </ol>
+
+            <h3>Alur Alternatif</h3>
+            <div class="table-wrap">
+              <table class="tbl tbl--compact">
+                <thead><tr><th>Titik</th><th>Skenario</th><th>Perilaku sistem dan hasil</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead">3a.</td><td>Kendaraan/alat tidak ada di daftar (kendaraan rental baru).</td><td>Aktor mengisi tipe (KENDARAAN/ALAT), kode, nama, dan catatan; sistem membuat master kendaraan dengan <code>is_approved = false</code> sehingga status permohonan menjadi <code>pending_vehicle_approval</code> sampai disetujui Superadmin (BR-BBM-05).</td></tr>
+                  <tr><td class="rowhead">3b.</td><td>Data benchmark kendaraan belum lengkap.</td><td>Sistem menampilkan opsi nominal fallback berupa pilihan kelipatan Rp50.000 tanpa saran full-tank otomatis.</td></tr>
+                  <tr><td class="rowhead">4a.</td><td>Aktor sengaja mengisi nominal di bawah atau di atas saran full-tank.</td><td>Nominal tetap diterima selama berada dalam rentang benchmark dan kelipatan Rp50.000 (BR-BBM-02).</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Alur Pengecualian</h3>
+            <div class="table-wrap">
+              <table class="tbl tbl--compact">
+                <thead><tr><th>Titik</th><th>Kondisi gagal</th><th>Respons sistem</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead">6a.</td><td>Jumlah permohonan aktif telah mencapai atau melampaui batas slot.</td><td>Sistem menolak pengajuan dan menampilkan peringatan <em>Slot permohonan Anda sudah penuh (5/5). Silakan selesaikan permohonan yang ada terlebih dahulu.</em> (BR-BBM-01) — formulir tidak diproses.</td></tr>
+                  <tr><td class="rowhead">6b.</td><td>Nominal bukan kelipatan Rp50.000 atau di luar rentang benchmark.</td><td>Validasi gagal, formulir dikembalikan dengan pesan kesalahan nominal yang menyebutkan batas minimum/maksimum.</td></tr>
+                  <tr><td class="rowhead">6c.</td><td>Kendaraan terdaftar namun sudah tidak aktif atau belum disetujui.</td><td>Sistem menolak dan meminta aktor memilih kendaraan lain atau menghubungi tim terkait.</td></tr>
+                  <tr><td class="rowhead">6d.</td><td>Kode kendaraan rental baru sudah terdaftar.</td><td>Sistem menolak dan mengarahkan aktor memilih kendaraan tersebut dari daftar.</td></tr>
+                  <tr><td class="rowhead">7a.</td><td>Kegagalan basis data saat menyimpan.</td><td>Transaksi di-rollback; permohonan tidak terbentuk dan aktor menerima pesan kegagalan.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout callout--warn">
+              <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+              <div class="callout__body">
+                <strong>Usulan — transparansi batas slot</strong>
+                Pesan penolakan menyebut angka tetap 5/5, padahal batas slot dapat disesuaikan antara
+                1 sampai 6. Disarankan pesan menampilkan batas slot efektif milik pengguna agar tidak
+                membingungkan.
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!-- ---------- UC-BBM-02 ---------- -->
+        <details class="acc" id="spec-bbm-02" open>
+          <summary>UC-BBM-02 — Meninjau &amp; Menyetujui Permohonan</summary>
+          <div class="acc__body">
+            <ul class="meta-list">
+              <li><span class="meta-list__k">Kode</span><span class="meta-list__v">UC-BBM-02</span></li>
+              <li><span class="meta-list__k">Nama</span><span class="meta-list__v">Meninjau &amp; Menyetujui Permohonan</span></li>
+              <li><span class="meta-list__k">Aktor utama</span><span class="meta-list__v">Admin GA</span></li>
+              <li><span class="meta-list__k">Aktor pendukung</span><span class="meta-list__v">Requester/Driver (pemilik permohonan), Sistem</span></li>
+              <li><span class="meta-list__k">Prioritas</span><span class="meta-list__v"><span class="badge badge--red">Kritis</span></span></li>
+              <li><span class="meta-list__k">Frekuensi</span><span class="meta-list__v">Harian, mengikuti antrean permohonan</span></li>
+              <li><span class="meta-list__k">Modul</span><span class="meta-list__v">Permohonan BBM (PRD 4.1)</span></li>
+            </ul>
+
+            <h3>Preconditions</h3>
+            <ul class="list-check">
+              <li>Admin GA terautentikasi dan memiliki izin <code>bbm.approve</code>.</li>
+              <li>Terdapat minimal satu permohonan berstatus <code>pending</code> pada unit scope admin.</li>
+            </ul>
+
+            <h3>Postconditions</h3>
+            <ul class="list-check">
+              <li>Status permohonan berubah menjadi <code>approved</code> atau <code>rejected</code>, dengan <code>authorizer_id</code> dan <code>authorization_date</code> tercatat.</li>
+              <li>Pada keputusan setuju, terbentuk data persetujuan berisi nominal yang disetujui, kode voucher unik, dan masa berlaku voucher (BR-BBM-04).</li>
+              <li>Catatan peninjau tersimpan pada kolom <code>authorizer_notes</code> sesuai keputusan.</li>
+            </ul>
+
+            <h3>Aturan bisnis terkait</h3>
+            <p>
+              <span class="badge badge--blue">BR-BBM-04</span>
+              <span class="badge badge--blue">BR-BBM-07</span>
+              <span class="badge badge--blue">BR-BBM-02</span>
+            </p>
+
+            <h3>Alur Utama (Main Success Scenario)</h3>
+            <ol class="steps">
+              <li><strong>Admin membuka halaman peninjauan permohonan.</strong><p>Sistem menampilkan daftar permohonan pending dengan filter yang mengirim data otomatis 400 ms setelah input berubah.</p></li>
+              <li><strong>Admin membuka detail satu permohonan.</strong><p>Sistem menampilkan kendaraan, jenis BBM, nominal yang diajukan, benchmark, dan catatan requester.</p></li>
+              <li><strong>Admin memilih aksi Setujui dan mengisi catatan opsional.</strong></li>
+              <li><strong>Sistem memvalidasi bahwa permohonan masih berstatus pending.</strong></li>
+              <li><strong>Sistem menetapkan status <code>approved</code> dan mencatat peninjau.</strong></li>
+              <li><strong>Sistem menerbitkan voucher.</strong><p>Kode unik berbentuk <code>BBMGDE-&lt;6 karakter&gt;-&lt;ddmmyy&gt;</code> dengan masa berlaku 50 jam sejak penerbitan (BR-BBM-04).</p></li>
+              <li><strong>Sistem menampilkan konfirmasi keberhasilan.</strong></li>
+            </ol>
+
+            <h3>Alur Alternatif</h3>
+            <div class="table-wrap">
+              <table class="tbl tbl--compact">
+                <thead><tr><th>Titik</th><th>Skenario</th><th>Perilaku sistem dan hasil</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead">3a.</td><td>Admin memilih aksi Tolak disertai catatan alasan.</td><td>Status menjadi <code>rejected</code>; catatan ditandai sebagai alasan penolakan. Voucher tidak diterbitkan dan permohonan tidak masuk perhitungan slot aktif.</td></tr>
+                  <tr><td class="rowhead">3b.</td><td>Admin memproses banyak permohonan sekaligus.</td><td>Dijalankan melalui UC-BBM-03 (Melakukan Persetujuan Massal) yang memperluas use case ini pada extension point <em>selection</em>; sistem memproses daftar keputusan dan melewati permohonan yang sudah tidak pending.</td></tr>
+                  <tr><td class="rowhead">6a.</td><td>Permohonan menggunakan kendaraan rental baru yang sebelumnya menunggu persetujuan kendaraan.</td><td>Permohonan hanya dapat diproses setelah kendaraan disetujui Superadmin; status berpindah dari <code>pending_vehicle_approval</code> ke <code>pending</code>.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Alur Pengecualian</h3>
+            <div class="table-wrap">
+              <table class="tbl tbl--compact">
+                <thead><tr><th>Titik</th><th>Kondisi gagal</th><th>Respons sistem</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead">4a.</td><td>Permohonan sudah diproses pihak lain sehingga status bukan lagi pending.</td><td>Sistem menolak pemrosesan dan menampilkan pesan bahwa permohonan sudah diproses.</td></tr>
+                  <tr><td class="rowhead">4b.</td><td>Admin tidak memiliki izin <code>bbm.approve</code>.</td><td>Akses ditolak pada lapisan otorisasi; aksi tidak pernah mencapai logika bisnis.</td></tr>
+                  <tr><td class="rowhead">6b.</td><td>Kegagalan saat membuat data persetujuan atau voucher.</td><td>Transaksi di-rollback; status permohonan tetap <code>pending</code> dan admin menerima pesan kegagalan.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Extension point</h3>
+            <ul class="list-check">
+              <li><b>Selection</b> — UC-BBM-03 Melakukan Persetujuan Massal memperluas use case ini ketika admin memilih lebih dari satu permohonan.</li>
+            </ul>
+
+            <div class="callout callout--warn">
+              <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+              <div class="callout__body">
+                <strong>Usulan — pencatatan penyesuaian nominal</strong>
+                PRD 4.1 menyebut admin dapat memodifikasi nominal berdasarkan kapasitas kendaraan,
+                sedangkan implementasi saat ini menyetujui nominal yang diajukan. Bila penyesuaian
+                nominal akan diaktifkan, sebaiknya nominal usulan dan nominal disetujui disimpan
+                terpisah beserta alasannya agar dapat diaudit.
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!-- ---------- UC-SPD-01 ---------- -->
+        <details class="acc" id="spec-spd-01" open>
+          <summary>UC-SPD-01 — Membuat Surat Perjalanan Dinas</summary>
+          <div class="acc__body">
+            <ul class="meta-list">
+              <li><span class="meta-list__k">Kode</span><span class="meta-list__v">UC-SPD-01</span></li>
+              <li><span class="meta-list__k">Nama</span><span class="meta-list__v">Membuat Surat Perjalanan Dinas</span></li>
+              <li><span class="meta-list__k">Aktor utama</span><span class="meta-list__v">Requester/Driver</span></li>
+              <li><span class="meta-list__k">Aktor pendukung</span><span class="meta-list__v">Superadmin (validasi &amp; penetapan budget), Sistem</span></li>
+              <li><span class="meta-list__k">Prioritas</span><span class="meta-list__v"><span class="badge">Tinggi</span></span></li>
+              <li><span class="meta-list__k">Frekuensi</span><span class="meta-list__v">Sesuai kebutuhan penugasan perjalanan dinas</span></li>
+              <li><span class="meta-list__k">Modul</span><span class="meta-list__v">Perjalanan Dinas SPD &amp; LPJ (PRD 4.2)</span></li>
+            </ul>
+
+            <h3>Preconditions</h3>
+            <ul class="list-check">
+              <li>Pengguna terautentikasi sebagai Requester/Driver.</li>
+              <li>Tersedia master kendaraan aktif bertipe Kendaraan.</li>
+              <li>Data penumpang (opsional, maksimal tujuh nama) telah disiapkan.</li>
+            </ul>
+
+            <h3>Postconditions</h3>
+            <ul class="list-check">
+              <li>Surat perjalanan dinas tersimpan dengan nomor surat otomatis, lama perjalanan terhitung, dan status <code>pending</code>.</li>
+              <li>Detail penumpang tersimpan berurutan sesuai input.</li>
+              <li>Surat masuk antrean validasi Superadmin; budget harian masih bernilai nol sampai divalidasi (BR-SPD-05).</li>
+            </ul>
+
+            <h3>Aturan bisnis terkait</h3>
+            <p>
+              <span class="badge badge--blue">BR-SPD-01</span>
+              <span class="badge badge--blue">BR-SPD-02</span>
+              <span class="badge badge--blue">BR-SPD-03</span>
+              <span class="badge badge--blue">BR-SPD-04</span>
+              <span class="badge badge--blue">BR-SPD-05</span>
+              <span class="badge badge--blue">BR-SPD-06</span>
+            </p>
+
+            <h3>Alur Utama (Main Success Scenario)</h3>
+            <ol class="steps">
+              <li><strong>Aktor membuka formulir pembuatan surat perjalanan dinas.</strong></li>
+              <li><strong>Sistem menampilkan daftar kendaraan aktif.</strong><p>Formulir memuat tujuan, bidang yang dilayani, jumlah pemakai, kendaraan, tanggal berangkat, tanggal kembali, catatan, dan nama penumpang.</p></li>
+              <li><strong>Aktor mengisi seluruh data perjalanan.</strong></li>
+              <li><strong>Aktor mengirim formulir.</strong></li>
+              <li><strong>Sistem memvalidasi masukan.</strong><p>Jumlah pemakai 1 sampai 7; tanggal berangkat tidak mendahului hari ini; tanggal kembali tidak mendahului tanggal berangkat (BR-SPD-03).</p></li>
+              <li><strong>Sistem men-generate nomor surat.</strong><p>Format nomor urut tiga digit, kode wilayah, bulan Romawi berjalan, dan tahun (BR-SPD-01).</p></li>
+              <li><strong>Sistem menghitung lama perjalanan.</strong><p>Selisih hari tanggal berangkat dan kembali ditambah satu (BR-SPD-02).</p></li>
+              <li><strong>Sistem menyimpan surat beserta detail penumpang dengan status pending.</strong></li>
+              <li><strong>Sistem menampilkan konfirmasi berisi nomor surat.</strong></li>
+            </ol>
+
+            <h3>Alur Alternatif</h3>
+            <div class="table-wrap">
+              <table class="tbl tbl--compact">
+                <thead><tr><th>Titik</th><th>Skenario</th><th>Perilaku sistem dan hasil</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead">3a.</td><td>Pemberi tugas telah tersedia pada Master Pekerja.</td><td>Nama dan jabatan pemberi tugas dapat ditarik dari master pekerja (hibrid) tanpa pengetikan manual (BR-SPD-04).</td></tr>
+                  <tr><td class="rowhead">3b.</td><td>Pemberi tugas tidak ada pada master pekerja.</td><td>Aktor dapat mengisi nama dan jabatan pemberi tugas secara manual pada saat pengajuan.</td></tr>
+                  <tr><td class="rowhead">6a.</td><td>Pemberi tugas belum diisi saat pengajuan.</td><td>Surat tetap tersimpan pending; Superadmin wajib melengkapinya pada saat validasi sebelum status berubah menjadi approved (BR-SPD-04).</td></tr>
+                  <tr><td class="rowhead">7a.</td><td>Aktor tidak mengisi nama penumpang satu pun.</td><td>Surat tetap dapat diajukan karena daftar penumpang bersifat opsional; detail penumpang hanya dibuat untuk nama yang terisi.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Alur Pengecualian</h3>
+            <div class="table-wrap">
+              <table class="tbl tbl--compact">
+                <thead><tr><th>Titik</th><th>Kondisi gagal</th><th>Respons sistem</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead">5a.</td><td>Jumlah pemakai di luar rentang 1 sampai 7.</td><td>Validasi gagal dan formulir dikembalikan tanpa kehilangan isian.</td></tr>
+                  <tr><td class="rowhead">5b.</td><td>Tanggal berangkat mendahului hari ini, atau tanggal kembali mendahului tanggal berangkat.</td><td>Validasi gagal dengan pesan rentang tanggal.</td></tr>
+                  <tr><td class="rowhead">5c.</td><td>Kendaraan tidak valid atau tidak aktif.</td><td>Validasi gagal; aktor diminta memilih kendaraan lain.</td></tr>
+                  <tr><td class="rowhead">8a.</td><td>Kegagalan basis data saat menyimpan surat atau detail penumpang.</td><td>Transaksi di-rollback sehingga surat dan detail tidak terbentuk sebagian.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Extension point</h3>
+            <ul class="list-check">
+              <li><b>Perpanjangan perjalanan</b> — UC-SPD-03 Mengajukan Perpanjangan Perjalanan (ETD) memperluas use case ini dengan membentuk rantai surat induk menuju ekstensi dan menghitung tambahan anggaran (BR-SPD-07).</li>
+            </ul>
+          </div>
+        </details>
+
+        <!-- ---------- UC-LPJ-01 ---------- -->
+        <details class="acc" id="spec-lpj-01" open>
+          <summary>UC-LPJ-01 — Membuat Laporan Pertanggungjawaban</summary>
+          <div class="acc__body">
+            <ul class="meta-list">
+              <li><span class="meta-list__k">Kode</span><span class="meta-list__v">UC-LPJ-01</span></li>
+              <li><span class="meta-list__k">Nama</span><span class="meta-list__v">Membuat Laporan Pertanggungjawaban</span></li>
+              <li><span class="meta-list__k">Aktor utama</span><span class="meta-list__v">Requester/Driver</span></li>
+              <li><span class="meta-list__k">Aktor pendukung</span><span class="meta-list__v">Superadmin (validasi), Divisi GA, Sistem</span></li>
+              <li><span class="meta-list__k">Prioritas</span><span class="meta-list__v"><span class="badge badge--red">Kritis</span></span></li>
+              <li><span class="meta-list__k">Frekuensi</span><span class="meta-list__v">Satu kali per surat perjalanan dinas selesai</span></li>
+              <li><span class="meta-list__k">Modul</span><span class="meta-list__v">Perjalanan Dinas SPD &amp; LPJ (PRD 4.2)</span></li>
+            </ul>
+
+            <h3>Preconditions</h3>
+            <ul class="list-check">
+              <li>Terdapat surat perjalanan dinas berstatus <code>approved</code> yang menjadi milik pengguna.</li>
+              <li>Surat tersebut belum memiliki laporan pertanggungjawaban (BR-LPJ-07).</li>
+              <li>Struk pengeluaran dan angka odometer kendaraan sudah tersedia.</li>
+            </ul>
+
+            <h3>Postconditions</h3>
+            <ul class="list-check">
+              <li>Laporan tersimpan dengan nomor otomatis, total pengeluaran, tanggal jatuh tempo, status keterlambatan, dan status anggaran.</li>
+              <li>Detail pengeluaran dan lampiran struk tersimpan tertaut pada laporan.</li>
+              <li>Status laporan <code>pending</code> dan masuk antrean validasi berlapis.</li>
+            </ul>
+
+            <h3>Aturan bisnis terkait</h3>
+            <p>
+              <span class="badge badge--blue">BR-LPJ-01</span>
+              <span class="badge badge--blue">BR-LPJ-02</span>
+              <span class="badge badge--blue">BR-LPJ-03</span>
+              <span class="badge badge--blue">BR-LPJ-04</span>
+              <span class="badge badge--blue">BR-LPJ-05</span>
+              <span class="badge badge--blue">BR-LPJ-06</span>
+              <span class="badge badge--blue">BR-LPJ-07</span>
+              <span class="badge badge--blue">BR-LPJ-09</span>
+            </p>
+
+            <h3>Alur Utama (Main Success Scenario)</h3>
+            <ol class="steps">
+              <li><strong>Aktor membuka formulir pelaporan dari halaman detail surat perjalanan dinas.</strong><p>Sistem menampilkan tanggal jatuh tempo laporan dan sisa harinya.</p></li>
+              <li><strong>Aktor mengisi identitas pelapor, odometer awal dan akhir, kebutuhan BBM, asal dana, dan jumlah dana yang diberikan.</strong></li>
+              <li><strong>Aktor menambahkan item pengeluaran.</strong><p>Setiap item memuat tanggal, kategori (BBM, Tol, Parkir, atau Lainnya), nominal, keterangan, dan foto struk.</p></li>
+              <li><strong>Aktor mengirim laporan.</strong></li>
+              <li><strong>Sistem memvalidasi masukan.</strong><p>Minimal satu item; tanggal dan nominal wajib; struk berformat gambar dengan ukuran maksimum 10 MB (BR-LPJ-06).</p></li>
+              <li><strong>Sistem menghitung total pengeluaran dan status laporan.</strong><p>Tanggal jatuh tempo diambil dari deadline LPJ surat; status keterlambatan dan status over budget ditetapkan (BR-LPJ-01, BR-LPJ-02, BR-LPJ-03).</p></li>
+              <li><strong>Sistem menyimpan laporan, detail pengeluaran, dan lampiran struk.</strong><p>Gambar struk dikompresi di sisi server sebelum disimpan pada penyimpanan terproteksi; nomor laporan dibuat otomatis (BR-LPJ-05).</p></li>
+              <li><strong>Sistem menampilkan status pengajuan.</strong><p>Bila terdeteksi terlambat atau melebihi anggaran, pesan keberhasilan memuat peringatan terkait.</p></li>
+            </ol>
+
+            <h3>Alur Alternatif</h3>
+            <div class="table-wrap">
+              <table class="tbl tbl--compact">
+                <thead><tr><th>Titik</th><th>Skenario</th><th>Perilaku sistem dan hasil</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead">3a.</td><td>Struk difoto dan dibaca oleh layanan OCR.</td><td>Kategori dan nominal terisi otomatis dengan penanda sumber kategori berasal dari AI; aktor tetap dapat mengoreksi nilai sebelum mengirim.</td></tr>
+                  <tr><td class="rowhead">3b.</td><td>Item pengeluaran diisi tanpa foto struk.</td><td>Item tetap dapat disimpan karena lampiran struk bersifat opsional, namun item tanpa struk tidak muncul pada lampiran foto bundel cetak.</td></tr>
+                  <tr><td class="rowhead">2a.</td><td>Surat memiliki anggaran per tanggal.</td><td>Sistem menampilkan anggaran acuan per hari; nilai plafon harian baku adalah Rp1.400.000 (BR-LPJ-03).</td></tr>
+                  <tr><td class="rowhead">6a.</td><td>Batas waktu pelaporan sudah terlewat.</td><td>Sistem tetap mengizinkan pengajuan, menandai laporan sebagai terlambat, dan mencatat jumlah hari keterlambatan (BR-LPJ-02).</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Alur Pengecualian</h3>
+            <div class="table-wrap">
+              <table class="tbl tbl--compact">
+                <thead><tr><th>Titik</th><th>Kondisi gagal</th><th>Respons sistem</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead">5a.</td><td>Tidak ada satu pun item pengeluaran.</td><td>Validasi gagal dengan pesan bahwa minimal harus ada satu item pengeluaran.</td></tr>
+                  <tr><td class="rowhead">5b.</td><td>Nominal item negatif atau file struk bukan gambar atau melebihi 10 MB.</td><td>Validasi gagal dan formulir dikembalikan beserta isian sebelumnya.</td></tr>
+                  <tr><td class="rowhead">5c.</td><td>Surat bukan milik pengguna, belum disetujui, atau sudah memiliki laporan.</td><td>Permintaan ditolak sebelum penyimpanan; aktor diarahkan kembali ke daftar laporan.</td></tr>
+                  <tr><td class="rowhead">7a.</td><td>Kegagalan menyimpan gambar struk atau detail pengeluaran.</td><td>Transaksi di-rollback sehingga laporan tidak terbentuk setengah jalan.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Extension point</h3>
+            <ul class="list-check">
+              <li><b>Bukti pendukung</b> — UC-SYS-03 Menyimpan Berkas Terproteksi di-«include» untuk setiap unggahan struk.</li>
+              <li><b>Pengingat tenggat</b> — UC-SYS-04 Mengirim Notifikasi di-«include» untuk memberi tahu tenggat dan perubahan status.</li>
+            </ul>
+          </div>
+        </details>
+
+        <!-- ---------- UC-CHK-01 ---------- -->
+        <details class="acc" id="spec-chk-01" open>
+          <summary>UC-CHK-01 — Melakukan Pengecekan Harian</summary>
+          <div class="acc__body">
+            <ul class="meta-list">
+              <li><span class="meta-list__k">Kode</span><span class="meta-list__v">UC-CHK-01</span></li>
+              <li><span class="meta-list__k">Nama</span><span class="meta-list__v">Melakukan Pengecekan Harian</span></li>
+              <li><span class="meta-list__k">Aktor utama</span><span class="meta-list__v">Dispatcher</span></li>
+              <li><span class="meta-list__k">Aktor pendukung</span><span class="meta-list__v">Requester/Driver (pengemudi saat ini), Sistem</span></li>
+              <li><span class="meta-list__k">Prioritas</span><span class="meta-list__v"><span class="badge">Tinggi</span></span></li>
+              <li><span class="meta-list__k">Frekuensi</span><span class="meta-list__v">Harian, sebelum kendaraan beroperasi</span></li>
+              <li><span class="meta-list__k">Modul</span><span class="meta-list__v">Pengecekan Kendaraan (PRD 4.3)</span></li>
+            </ul>
+
+            <h3>Preconditions</h3>
+            <ul class="list-check">
+              <li>Dispatcher terautentikasi dan memiliki izin pengecekan kendaraan.</li>
+              <li>Master item pengecekan rutin harian tersedia dan berstatus aktif.</li>
+              <li>Kendaraan aktif dan pengemudi saat ini (driver) terdaftar pada sistem.</li>
+            </ul>
+
+            <h3>Postconditions</h3>
+            <ul class="list-check">
+              <li>Header pengecekan periode bulan berjalan dan satu detail pengecekan harian terbentuk.</li>
+              <li>Hasil setiap item tersimpan dengan status biner dan catatan; kendaraan ditandai belum dikonfirmasi driver.</li>
+              <li>Item yang ditandai memerlukan penggantian tercatat sebagai kandidat pengajuan penggantian suku cadang (BR-CHK-07).</li>
+            </ul>
+
+            <h3>Aturan bisnis terkait</h3>
+            <p>
+              <span class="badge badge--blue">BR-CHK-01</span>
+              <span class="badge badge--blue">BR-CHK-04</span>
+              <span class="badge badge--blue">BR-CHK-05</span>
+              <span class="badge badge--blue">BR-CHK-06</span>
+              <span class="badge badge--blue">BR-CHK-07</span>
+            </p>
+
+            <h3>Alur Utama (Main Success Scenario)</h3>
+            <ol class="steps">
+              <li><strong>Dispatcher membuka formulir pengecekan harian.</strong></li>
+              <li><strong>Sistem menampilkan pilihan kendaraan aktif dan daftar driver.</strong></li>
+              <li><strong>Dispatcher memilih kendaraan dan pengemudi saat ini.</strong></li>
+              <li><strong>Sistem menampilkan daftar item pengecekan rutin harian beserta urutannya.</strong></li>
+              <li><strong>Dispatcher mengisi status setiap item.</strong><p>Status bernilai OK atau NG; dispatcher dapat menambahkan catatan dan menandai item yang memerlukan penggantian (BR-CHK-01).</p></li>
+              <li><strong>Dispatcher mengirim formulir.</strong></li>
+              <li><strong>Sistem memvalidasi kelengkapan.</strong><p>Kendaraan dan driver wajib valid; minimal satu item; seluruh item wajib berstatus kecuali item yang ditandai memerlukan penggantian (BR-CHK-04, BR-CHK-05).</p></li>
+              <li><strong>Sistem mencari atau membuat header pengecekan periode bulan berjalan.</strong><p>Kode pengecekan dan detail pengecekan dibuat otomatis, lalu detail ditandai belum dikonfirmasi driver (BR-CHK-06).</p></li>
+              <li><strong>Sistem menyimpan hasil setiap item dan menandai kandidat penggantian bila ada.</strong></li>
+              <li><strong>Sistem menampilkan halaman hasil pengecekan.</strong></li>
+            </ol>
+
+            <h3>Alur Alternatif</h3>
+            <div class="table-wrap">
+              <table class="tbl tbl--compact">
+                <thead><tr><th>Titik</th><th>Skenario</th><th>Perilaku sistem dan hasil</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead">5a.</td><td>Dispatcher menandai satu atau lebih item memerlukan penggantian.</td><td>Status item tersebut boleh dikosongkan; sistem menandai adanya kebutuhan penggantian dan menyediakan tombol ajukan penggantian otomatis pada halaman hasil (BR-CHK-04, BR-CHK-07).</td></tr>
+                  <tr><td class="rowhead">8a.</td><td>Header periode bulan berjalan untuk kendaraan tersebut belum ada.</td><td>Sistem membuat header baru dengan kode pengecekan otomatis, rentang awal dan akhir bulan, serta revisi nol (BR-CHK-06).</td></tr>
+                  <tr><td class="rowhead">10a.</td><td>Driver menindaklanjuti hasil.</td><td>Konfirmasi hasil dilakukan melalui UC-CHK-06; sampai konfirmasi diterima, detail tetap berstatus belum diakui driver.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Alur Pengecualian</h3>
+            <div class="table-wrap">
+              <table class="tbl tbl--compact">
+                <thead><tr><th>Titik</th><th>Kondisi gagal</th><th>Respons sistem</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead">7a.</td><td>Terdapat item tanpa status dan tidak ditandai memerlukan penggantian.</td><td>Validasi gagal dengan pesan bahwa status setiap item harus diisi; formulir dikembalikan.</td></tr>
+                  <tr><td class="rowhead">7b.</td><td>Tidak ada item pengecekan yang dikirim.</td><td>Validasi gagal dengan pesan minimal satu item harus dicek.</td></tr>
+                  <tr><td class="rowhead">7c.</td><td>Status item bernilai di luar OK/NG.</td><td>Validasi gagal dengan pesan status item tidak valid.</td></tr>
+                  <tr><td class="rowhead">7d.</td><td>Kendaraan atau driver tidak ditemukan pada basis data.</td><td>Validasi gagal sebelum transaksi dibuka.</td></tr>
+                  <tr><td class="rowhead">9a.</td><td>Kegagalan saat menyimpan header, detail, atau hasil item.</td><td>Transaksi di-rollback sehingga tidak terbentuk pengecekan yang tidak lengkap.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Extension point</h3>
+            <ul class="list-check">
+              <li><b>Kandidat penggantian</b> — hasil pengecekan dengan item bertanda penggantian menjadi titik perluasan menuju UC-VPR-01 Mengajukan Penggantian Suku Cadang melalui mekanisme pengajuan otomatis (BR-CHK-07).</li>
+            </ul>
+          </div>
+        </details>
+
+        <!-- ---------- UC-LNC-02 ---------- -->
+        <details class="acc" id="spec-lnc-02" open>
+          <summary>UC-LNC-02 — Menghasilkan Forecast Porsi H+1</summary>
+          <div class="acc__body">
+            <ul class="meta-list">
+              <li><span class="meta-list__k">Kode</span><span class="meta-list__v">UC-LNC-02</span></li>
+              <li><span class="meta-list__k">Nama</span><span class="meta-list__v">Menghasilkan Forecast Porsi H+1</span></li>
+              <li><span class="meta-list__k">Aktor utama</span><span class="meta-list__v">Admin GA / Scheduler</span></li>
+              <li><span class="meta-list__k">Aktor pendukung</span><span class="meta-list__v">Karyawan (konfirmasi lokasi esok hari), Sistem penjadwal</span></li>
+              <li><span class="meta-list__k">Prioritas</span><span class="meta-list__v"><span class="badge badge--red">Kritis</span></span></li>
+              <li><span class="meta-list__k">Frekuensi</span><span class="meta-list__v">Sekali sehari secara otomatis, dapat dipicu manual</span></li>
+              <li><span class="meta-list__k">Modul</span><span class="meta-list__v">Lunch Management (PRD 4.5)</span></li>
+            </ul>
+
+            <h3>Preconditions</h3>
+            <ul class="list-check">
+              <li>Master pekerja aktif beserta konfigurasi site default tersedia.</li>
+              <li>Penjadwal aplikasi aktif atau Admin GA memiliki izin memicu pembuatan forecast secara manual.</li>
+              <li>Transaksi absensi makan siang hari berjalan telah tersimpan (bila ada).</li>
+            </ul>
+
+            <h3>Postconditions</h3>
+            <ul class="list-check">
+              <li>Satu batch forecast untuk tanggal H+1 terbentuk dan berstatus final.</li>
+              <li>Setiap karyawan menghasilkan paling banyak satu baris forecast berisi lokasi prediksi, sumber prediksi, dan tingkat keyakinan.</li>
+              <li>Baris yang berasal dari override manual atau booking mandiri tetap tidak berubah (BR-LNC-04).</li>
+            </ul>
+
+            <h3>Aturan bisnis terkait</h3>
+            <p>
+              <span class="badge badge--blue">BR-LNC-01</span>
+              <span class="badge badge--blue">BR-LNC-02</span>
+              <span class="badge badge--blue">BR-LNC-03</span>
+              <span class="badge badge--blue">BR-LNC-04</span>
+              <span class="badge badge--blue">BR-LNC-08</span>
+            </p>
+
+            <h3>Alur Utama (Main Success Scenario)</h3>
+            <ol class="steps">
+              <li><strong>Penjadwal aplikasi memicu pembuatan forecast.</strong><p>Perintah dijalankan otomatis setiap pukul 15:00 untuk tanggal H+1 (BR-LNC-02).</p></li>
+              <li><strong>Sistem membuat batch forecast dan mencatat versi algoritma serta ukuran sampel riwayat.</strong></li>
+              <li><strong>Sistem mengumpulkan jawaban konfirmasi lokasi makan esok hari dari transaksi absensi hari berjalan.</strong></li>
+              <li><strong>Sistem menelusuri seluruh pekerja aktif.</strong><p>Untuk setiap pekerja, sistem menentukan lokasi makan mengikuti hierarki sumber prediksi (BR-LNC-01).</p></li>
+              <li><strong>Sistem menyimpan atau memperbarui baris forecast.</strong><p>Baris menyimpan lokasi prediksi, sumber, tingkat keyakinan, dan keterkaitan ke batch.</p></li>
+              <li><strong>Sistem menandai batch sebagai final dan menampilkan ringkasan jumlah baris terbentuk.</strong></li>
+            </ol>
+
+            <h3>Alur Alternatif</h3>
+            <div class="table-wrap">
+              <table class="tbl tbl--compact">
+                <thead><tr><th>Titik</th><th>Skenario</th><th>Perilaku sistem dan hasil</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead">4a.</td><td>Baris forecast sudah berisi override manual admin.</td><td>Sistem mempertahankan baris tersebut, hanya memperbarui keterkaitan batch, dan tidak menimpa lokasi (BR-LNC-04).</td></tr>
+                  <tr><td class="rowhead">4b.</td><td>Karyawan telah melakukan booking mandiri untuk esok hari.</td><td>Sistem mempertahankan baris booking mandiri tanpa ditimpa engine (BR-LNC-04).</td></tr>
+                  <tr><td class="rowhead">4c.</td><td>Karyawan menjawab konfirmasi lokasi makan esok hari pada absensi hari ini.</td><td>Lokasi diambil dari jawaban konfirmasi dengan tingkat keyakinan tinggi.</td></tr>
+                  <tr><td class="rowhead">4d.</td><td>Tidak ada konfirmasi, namun riwayat pola makan memenuhi syarat.</td><td>Lokasi diambil dari pola historis bila jumlah transaksi riwayat mencapai minimal tiga dan proporsi lokasi dominan mencapai minimal 50 persen (BR-LNC-03).</td></tr>
+                  <tr><td class="rowhead">4e.</td><td>Tidak ada konfirmasi maupun pola historis yang memadai.</td><td>Lokasi diambil dari site default pekerja; bila site default tidak tersedia maka tidak ada baris forecast yang dibuat untuk pekerja tersebut.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Alur Pengecualian</h3>
+            <div class="table-wrap">
+              <table class="tbl tbl--compact">
+                <thead><tr><th>Titik</th><th>Kondisi gagal</th><th>Respons sistem</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead">3a.</td><td>Tidak ada transaksi absensi pada hari berjalan.</td><td>Peta konfirmasi kosong; engine turun ke prioritas pola historis atau site default.</td></tr>
+                  <tr><td class="rowhead">4f.</td><td>Pekerja tidak memiliki site default dan tidak memiliki data konfirmasi maupun riwayat.</td><td>Sistem melewati pekerja tersebut tanpa memaksakan prediksi.</td></tr>
+                  <tr><td class="rowhead">5a.</td><td>Kegagalan transaksi basis data saat membuat batch atau baris forecast.</td><td>Transaksi di-rollback sehingga batch setengah jadi tidak tersisa.</td></tr>
+                  <tr><td class="rowhead">1a.</td><td>Penjadwal tidak berjalan pada jam yang ditetapkan.</td><td>Admin GA dapat memicu generate secara manual dari halaman forecast; hasilnya setara dengan pemicu otomatis.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Extension point</h3>
+            <ul class="list-check">
+              <li><b>Intervensi admin</b> — UC-LNC-03 Melakukan Override Manual Lokasi Makan memperluas use case ini; lokasi hasil override berkedudukan sebagai prioritas tertinggi dan kebal terhadap regenerasi.</li>
+            </ul>
+
+            <div class="callout callout--info">
+              <span class="callout__icon"><i class="bi bi-info-circle"></i></span>
+              <div class="callout__body">
+                <strong>Catatan implementasi hirarki sumber prediksi</strong>
+                PRD 4.5 menyebut empat tingkat prioritas. Implementasi saat ini menambahkan satu
+                tingkat di antara override manual dan konfirmasi esok hari, yaitu booking mandiri
+                karyawan yang terhubung ke UC-LNC-06. Urutan efektifnya menjadi: override manual,
+                booking mandiri, konfirmasi esok hari, pola historis, lalu site default.
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <!-- ================= 4.3 ATURAN ================= -->
+      <div class="section-block" id="aturan">
+        <h2><span class="num"><i class="bi bi-shield-check"></i></span> Ringkasan aturan bisnis</h2>
+
+        <p>
+          Seluruh aturan bisnis yang dirujuk pada spesifikasi di atas dikumpulkan di satu tempat agar
+          dapat diuji dan ditelusuri. Kode aturan memakai pola <code>BR-&lt;MODUL&gt;-&lt;nn&gt;</code>
+          dan berlaku lintas modul sesuai cakupannya.
+        </p>
+
+        <div class="tabs" data-tabs>
+          <div class="tabs__nav">
+            <button class="tabs__btn is-active">BBM</button>
+            <button class="tabs__btn">SPD</button>
+            <button class="tabs__btn">LPJ</button>
+            <button class="tabs__btn">CHK</button>
+            <button class="tabs__btn">LNC</button>
+          </div>
+          <div class="tabs__panel is-active">
+            <div class="table-wrap">
+              <table class="tbl">
+                <thead><tr><th>Kode</th><th>Aturan Bisnis</th><th>Nilai / perilaku konkret</th><th>Sumber</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead">BR-BBM-01</td><td>Batas slot permohonan aktif per pengguna</td><td>Maksimum 5 permohonan aktif (status pending, pending_vehicle_approval, approved); dasar 5 dengan penyesuaian 1 sampai 6.</td><td>PRD 4.1, kode controller</td></tr>
+                  <tr><td class="rowhead">BR-BBM-02</td><td>Rentang dan kelipatan nominal permohonan</td><td>Wajib kelipatan Rp50.000 dan berada pada rentang benchmark kendaraan ± Rp500.000, dibatasi minimum Rp50.000 dan maksimum Rp3.000.000.</td><td>PRD 4.1</td></tr>
+                  <tr><td class="rowhead">BR-BBM-03</td><td>Saran nominal full-tank</td><td>Volume tangki dikalikan harga BBM per liter pada region site, dibulatkan ke kelipatan Rp50.000 terdekat.</td><td>PRD 4.1</td></tr>
+                  <tr><td class="rowhead">BR-BBM-04</td><td>Voucher BBM</td><td>Kode unik berformat BBMGDE-&lt;6 karakter&gt;-&lt;ddmmyy&gt; dengan masa berlaku 50 jam sejak diterbitkan.</td><td>PRD 4.1, kode model</td></tr>
+                  <tr><td class="rowhead">BR-BBM-05</td><td>Kendaraan rental baru</td><td>Master dibuat belum disetujui; permohonan berstatus pending_vehicle_approval sampai Superadmin menyetujui kendaraan.</td><td>PRD 4.1, kode controller</td></tr>
+                  <tr><td class="rowhead">BR-BBM-06</td><td>Sinkronisasi harga BBM</td><td>Harga resmi per province_slug disinkronkan otomatis setiap hari pukul 06:00 dari API publik.</td><td>PRD 4.1</td></tr>
+                  <tr><td class="rowhead">BR-BBM-07</td><td>Keputusan approval</td><td>Hanya berlaku untuk permohonan berstatus pending; catatan peninjau opsional maksimum 500 karakter.</td><td>Kode controller</td></tr>
+                  <tr><td class="rowhead">BR-BBM-08</td><td>Berkas bukti transaksi</td><td>Foto struk dan odometer disimpan pada penyimpanan terproteksi dan hanya disajikan melalui rute berotentikasi.</td><td>PRD 5.1</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="tabs__panel">
+            <div class="table-wrap">
+              <table class="tbl">
+                <thead><tr><th>Kode</th><th>Aturan Bisnis</th><th>Nilai / perilaku konkret</th><th>Sumber</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead">BR-SPD-01</td><td>Penomoran otomatis surat tugas</td><td>Pola &lt;nnn&gt;.TGS/PTH1.30-GDE/&lt;bulan Romawi&gt;/&lt;tahun&gt; dengan nomor urut berjalan per tahun.</td><td>PRD 4.2, kode model</td></tr>
+                  <tr><td class="rowhead">BR-SPD-02</td><td>Lama perjalanan</td><td>Selisih hari tanggal berangkat dan tanggal kembali, ditambah satu.</td><td>Kode model</td></tr>
+                  <tr><td class="rowhead">BR-SPD-03</td><td>Validasi pengajuan</td><td>Jumlah pemakai 1 sampai 7; tanggal berangkat tidak mendahului hari ini; tanggal kembali tidak mendahului tanggal berangkat.</td><td>Kode controller</td></tr>
+                  <tr><td class="rowhead">BR-SPD-04</td><td>Pemberi tugas hibrid</td><td>Dapat diambil dari master pekerja atau diisi manual, dan wajib dilengkapi saat validasi bila belum diisi.</td><td>PRD 4.2</td></tr>
+                  <tr><td class="rowhead">BR-SPD-05</td><td>Anggaran perjalanan</td><td>Budget harian ditetapkan saat validasi (nilai awal nol); total anggaran sama dengan lama perjalanan dikalikan budget harian.</td><td>PRD 4.2, kode model</td></tr>
+                  <tr><td class="rowhead">BR-SPD-06</td><td>Tenggat pelaporan</td><td>Deadline LPJ ditetapkan tiga hari setelah tanggal kembali dan disimpan pada surat.</td><td>PRD 4.2</td></tr>
+                  <tr><td class="rowhead">BR-SPD-07</td><td>Perpanjangan berantai</td><td>Surat induk menuju ekstensi pertama dan ekstensi berikutnya; setiap surat memiliki tenggat pelaporan sendiri.</td><td>PRD 4.2</td></tr>
+                  <tr><td class="rowhead">BR-SPD-08</td><td>Cetak bundel PDF</td><td>Satu berkas memuat ringkasan surat tugas, ringkasan LPJ, rincian biaya, dan lampiran struk base64, dilengkapi QR signature.</td><td>PRD 4.2</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="tabs__panel">
+            <div class="table-wrap">
+              <table class="tbl">
+                <thead><tr><th>Kode</th><th>Aturan Bisnis</th><th>Nilai / perilaku konkret</th><th>Sumber</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead">BR-LPJ-01</td><td>Tenggat laporan</td><td>Tanggal jatuh tempo diambil dari deadline LPJ surat; bila kosong dihitung dari tanggal kembali ditambah tiga hari.</td><td>PRD 4.2, kode model</td></tr>
+                  <tr><td class="rowhead">BR-LPJ-02</td><td>Penandaan keterlambatan</td><td>Status terlambat bernilai benar bila tanggal laporan melewati jatuh tempo; jumlah hari keterlambatan dicatat.</td><td>PRD 4.2, kode model</td></tr>
+                  <tr><td class="rowhead">BR-LPJ-03</td><td>Plafon anggaran harian</td><td>Plafon acuan Rp1.400.000 per hari; status over budget muncul bila total pengeluaran melampaui total anggaran yang ditetapkan.</td><td>PRD 4.2</td></tr>
+                  <tr><td class="rowhead">BR-LPJ-04</td><td>Rekalkulasi otomatis</td><td>Penambahan atau perubahan detail pengeluaran memicu perhitungan ulang total per kategori dan total pengeluaran pada tingkat model.</td><td>PRD 4.2</td></tr>
+                  <tr><td class="rowhead">BR-LPJ-05</td><td>Penomoran laporan</td><td>Pola PTH.01/LPJ/SPD/&lt;tahun&gt;/&lt;bulan&gt;/&lt;nomor urut empat digit&gt;.</td><td>Kode model</td></tr>
+                  <tr><td class="rowhead">BR-LPJ-06</td><td>Kelengkapan bukti</td><td>Minimal satu item pengeluaran; nominal tidak negatif; lampiran struk berformat gambar maksimum 10 MB.</td><td>Kode controller</td></tr>
+                  <tr><td class="rowhead">BR-LPJ-07</td><td>Relasi surat dan laporan</td><td>Surat harus berstatus approved dan milik pengguna; satu surat hanya boleh memiliki satu laporan.</td><td>Kode controller</td></tr>
+                  <tr><td class="rowhead">BR-LPJ-08</td><td>Persetujuan berlapis</td><td>Laporan dinyatakan disetujui setelah disetujui pengguna dan Divisi GA; saat disetujui, surat ditandai selesai.</td><td>Kode model</td></tr>
+                  <tr><td class="rowhead">BR-LPJ-09</td><td>Pengembalian dan kekurangan</td><td>Selisih dana yang diberikan terhadap total pengeluaran dipetakan menjadi pengembalian atau kekurangan.</td><td>Kode model</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="tabs__panel">
+            <div class="table-wrap">
+              <table class="tbl">
+                <thead><tr><th>Kode</th><th>Aturan Bisnis</th><th>Nilai / perilaku konkret</th><th>Sumber</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead">BR-CHK-01</td><td>Status biner pengecekan rutin</td><td>Setiap item pengecekan harian, mingguan, dan bulanan bernilai OK atau NG.</td><td>PRD 4.3</td></tr>
+                  <tr><td class="rowhead">BR-CHK-02</td><td>Skala body inspection</td><td>Penilaian bertingkat Baik, Cukup, Kurang, atau Tidak Layak.</td><td>PRD 4.3</td></tr>
+                  <tr><td class="rowhead">BR-CHK-03</td><td>Foto wajib per zona</td><td>Setiap temuan visual dipetakan ke salah satu dari empat zona: Depan, Belakang, Kiri, atau Kanan.</td><td>PRD 4.3</td></tr>
+                  <tr><td class="rowhead">BR-CHK-04</td><td>Kelengkapan status sebelum submit</td><td>Semua item wajib berstatus; pengecualian hanya untuk item yang ditandai memerlukan penggantian.</td><td>PRD 4.3, kode controller</td></tr>
+                  <tr><td class="rowhead">BR-CHK-05</td><td>Batas minimum item</td><td>Minimal satu item pengecekan; kendaraan dan pengemudi wajib valid.</td><td>Kode controller</td></tr>
+                  <tr><td class="rowhead">BR-CHK-06</td><td>Header pengecekan periodik</td><td>Hasil pengecekan menempel pada header periode bulan berjalan dengan kode pengecekan otomatis dan penanda revisi.</td><td>Kode controller</td></tr>
+                  <tr><td class="rowhead">BR-CHK-07</td><td>Kandidat penggantian suku cadang</td><td>Item bertanda memerlukan penggantian menjadi dasar pengajuan penggantian suku cadang otomatis.</td><td>PRD 4.4</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="tabs__panel">
+            <div class="table-wrap">
+              <table class="tbl">
+                <thead><tr><th>Kode</th><th>Aturan Bisnis</th><th>Nilai / perilaku konkret</th><th>Sumber</th></tr></thead>
+                <tbody>
+                  <tr><td class="rowhead">BR-LNC-01</td><td>Hirarki sumber prediksi</td><td>Override manual, booking mandiri, konfirmasi esok hari, pola historis, lalu site default.</td><td>PRD 4.5, kode service</td></tr>
+                  <tr><td class="rowhead">BR-LNC-02</td><td>Penjadwalan forecast</td><td>Forecast H+1 dijalankan otomatis setiap pukul 15:00 dan dapat dipicu manual oleh admin.</td><td>PRD 4.5</td></tr>
+                  <tr><td class="rowhead">BR-LNC-03</td><td>Syarat pola historis</td><td>Minimal tiga transaksi riwayat dan proporsi lokasi dominan minimal 50 persen agar pola dianggap bermakna.</td><td>Kode service</td></tr>
+                  <tr><td class="rowhead">BR-LNC-04</td><td>Override tidak ditimpa</td><td>Baris bersumber override manual dan booking mandiri dipertahankan saat batch forecast diregenerasi.</td><td>Kode service</td></tr>
+                  <tr><td class="rowhead">BR-LNC-05</td><td>Reservasi tamu</td><td>Reservasi wajib dikonfirmasi maksimal H-2; status berpindah dari menunggu konfirmasi ke terkonfirmasi atau dibatalkan.</td><td>PRD 4.5</td></tr>
+                  <tr><td class="rowhead">BR-LNC-06</td><td>Absensi publik</td><td>Halaman absensi tanpa login, dilindungi pembatasan laju pada endpoint lookup dan submit untuk mencegah penyalahgunaan.</td><td>PRD 5.1, rute</td></tr>
+                  <tr><td class="rowhead">BR-LNC-07</td><td>Penguncian dan distribusi</td><td>Data prediksi dikunci menjadi porsi final sebelum didistribusikan ke vendor katering.</td><td>PRD 4.5</td></tr>
+                  <tr><td class="rowhead">BR-LNC-08</td><td>Akurasi prediksi</td><td>Baris forecast yang telah memiliki data aktual dipakai menghitung akurasi prediksi harian.</td><td>Kode service</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout callout--tip">
+          <span class="callout__icon"><i class="bi bi-lightbulb"></i></span>
+          <div class="callout__body">
+            <strong>Penelusuran lanjutan</strong>
+            Kode aturan bisnis pada tabel ini akan dirujuk kembali pada Bagian 7 (validasi logika),
+            Bagian 8 (pengujian), dan Bagian 9 (ketertelusuran) agar setiap aturan memiliki tabel
+            keputusan dan sekurang-kurangnya satu kasus uji.
+          </div>
+        </div>
+
+        <div class="callout callout--info">
+          <span class="callout__icon"><i class="bi bi-arrow-right-circle"></i></span>
+          <div class="callout__body">
+            <strong>Lanjut ke Bagian 5 — Desain Perilaku</strong>
+            Bagian berikut menerjemahkan alur pada spesifikasi ini menjadi activity diagram dan
+            sequence diagram antar komponen.
+            <div style="margin-top:10px;"><a class="btn btn--primary btn--sm" href="05-desain-perilaku.html">Buka Bagian 5 <i class="bi bi-arrow-right-short"></i></a></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="foot__inner">
+    <p>&copy; <span data-year>2026</span> PT Geo Dipa Energi (Persero) Unit Patuha — Divisi General Affairs.</p>
+    <div class="foot__links">
+      <a href="../index.html">Beranda dokumentasi</a>
+      <a href="index.html">Ikhtisar SDD</a>
+      <a href="../alur-tutorial/index.html">Alur Tutorial</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/js/docs.js"></script>
+<script src="../assets/js/diagrams.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alur 3 — Cetak Surat &amp; Laporan | Alur Tutorial SIAGA</title>
+<meta name="description" content="Tutorial mencetak surat tugas, mencetak bundel SPD + LPJ beserta lampiran struk, dan memverifikasi QR tanda tangan digital SIAGA.">
+<link rel="icon" href="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="../assets/css/docs.css">
+<link rel="stylesheet" href="../assets/css/mock.css">
+</head>
+<body data-base="../">
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <button class="icon-btn btn-menu" id="docMenuBtn" aria-label="Buka navigasi" aria-expanded="false"><i class="bi bi-list"></i></button>
+    <a class="brand" href="../index.html">
+      <img class="brand__logo" src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="Logo Geo Dipa Energi">
+      <span>
+        <span class="brand__name">SIAGA</span>
+        <span class="brand__sub">Sistem Informasi Administrasi General Affairs</span>
+      </span>
+    </a>
+    <span class="brand__divider"></span>
+    <span class="brand__doc">Alur Tutorial</span>
+    <div class="topbar__spacer"></div>
+    <div class="searchbox">
+      <i class="bi bi-search"></i>
+      <input type="search" id="docSearch" placeholder="Cari halaman…  ( / )" aria-label="Cari halaman dokumentasi">
+      <div class="search-results" id="docSearchResults"></div>
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" data-print title="Cetak / simpan PDF"><i class="bi bi-printer"></i></button>
+      <a class="icon-btn" href="../index.html" title="Kembali ke beranda dokumentasi"><i class="bi bi-house"></i></a>
+    </div>
+  </div>
+</header>
+
+<div class="scrim" id="docScrim"></div>
+
+<main class="shell">
+  <aside class="sidebar" id="docSidebar">
+    <p class="sidebar__label">Alur Tutorial</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="index.html"><span class="nav-link__num">&#9679;</span><span class="nav-link__txt">Ikhtisar alur</span></a></li>
+      <li><a class="nav-link" href="01-permohonan-bbm.html"><i class="bi bi-fuel-pump"></i><span class="nav-link__txt">1. Permohonan BBM</span></a></li>
+      <li><a class="nav-link" href="02-spd.html"><i class="bi bi-envelope-paper"></i><span class="nav-link__txt">2. Pengajuan SPD</span></a></li>
+      <li><a class="nav-link is-active" href="03-cetak-surat.html"><i class="bi bi-printer"></i><span class="nav-link__txt">3. Cetak Surat</span></a></li>
+      <li><a class="nav-link" href="04-dispatcher.html"><i class="bi bi-truck"></i><span class="nav-link__txt">4. Dispatcher</span></a></li>
+      <li><a class="nav-link" href="05-makan-siang.html"><i class="bi bi-cup-hot"></i><span class="nav-link__txt">5. Makan Siang</span></a></li>
+      <li><a class="nav-link" href="06-checking.html"><i class="bi bi-clipboard-check"></i><span class="nav-link__txt">6. Routine Checking</span></a></li>
+    </ul>
+
+    <p class="sidebar__label">Dokumen lain</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="../software-documentation/index.html"><i class="bi bi-journal-code"></i><span class="nav-link__txt">Software Documentation</span></a></li>
+      <li><a class="nav-link" href="index.html"><i class="bi bi-signpost-split"></i><span class="nav-link__txt">Semua alur</span></a></li>
+    </ul>
+  </aside>
+
+  <div class="content">
+    <div class="wrap">
+
+      <nav>
+        <ol class="crumbs">
+          <li><a href="../index.html">Documentation</a></li>
+          <li><a href="index.html">Alur Tutorial</a></li>
+          <li>Cetak Surat &amp; Laporan</li>
+        </ol>
+      </nav>
+
+      <div class="page-head">
+        <span class="eyebrow"><span class="dot"></span> Alur 3 dari 6</span>
+        <h2>Cetak Surat &amp; Laporan</h2>
+        <p class="lead">
+          Memilih dokumen surat tugas, melihat pratinjaunya, lalu menghasilkan PDF — baik surat tunggal
+          maupun bundel SPD + LPJ beserta lampiran struk — yang sudah memuat QR tanda tangan digital
+          dan siap dicetak maupun disimpan.
+        </p>
+      </div>
+
+      <!-- ================= RINGKASAN ================= -->
+      <div class="split" style="margin-bottom:26px;">
+        <div>
+          <div class="card">
+            <div class="card__head">
+              <span class="icon-sq"><i class="bi bi-info-circle"></i></span>
+              <div>
+                <h3>Ringkasan alur</h3>
+                <p>Enam tahap dari pemilihan dokumen sampai dokumen siap ditandatangani dan diarsipkan.</p>
+              </div>
+            </div>
+
+            <ul class="meta-list">
+              <li><span class="meta-list__k">Peran terlibat</span><span class="meta-list__v">Semua peran terkait (Requester/Driver, Admin GA, Superadmin)</span></li>
+              <li><span class="meta-list__k">Prasyarat</span><span class="meta-list__v">Surat tugas berstatus <em>Disetujui</em>; LPJ sudah ada bila ingin mencetak bundel lengkap</span></li>
+              <li><span class="meta-list__k">Hasil akhir</span><span class="meta-list__v">Dokumen PDF siap tanda tangan dengan QR tanda tangan digital</span></li>
+              <li><span class="meta-list__k">Menu aplikasi</span><span class="meta-list__v">SPD Management › Daftar Surat Tugas; Cetak Laporan BBM</span></li>
+              <li><span class="meta-list__k">Use case terkait</span><span class="meta-list__v"><code>UC-SPD-05</code>, <code>UC-BBM-06</code>, <code>UC-LPJ-02</code></span></li>
+            </ul>
+
+            <div class="tag-row" style="margin-top:14px;">
+              <span class="badge badge--blue">PDF DomPDF · A4</span>
+              <span class="badge badge--yellow">QR signature</span>
+              <span class="badge badge--gray">Bundel 4+ halaman</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <figure>
+            <div class="fig fig--tint">
+<pre class="mermaid">
+flowchart LR
+    A["Pilih<br/>Dokumen"] --> B["Pratinjau"]
+    B --> C["Generate PDF<br/>(DomPDF)"]
+    C --> D["Verifikasi<br/>QR Signature"]
+    D --> E["Cetak / Simpan"]
+    E --> F["Arsip"]
+    classDef a fill:#EAF1FA,stroke:#0B50A1,color:#0B50A1
+    classDef b fill:#F2F9E8,stroke:#8DC63F,color:#3F6120
+    class A,B,C a
+    class D,E,F b
+</pre>
+            </div>
+            <figcaption><b>Gambar 3.1</b> — Peta enam tahap alur cetak surat &amp; laporan.</figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span><i>1</i> Angka merah = langkah; sorot &amp; tooltip aktif saat kursor diarahkan</span>
+        <span><i class="bi bi-eye" style="background:transparent;color:var(--gde-blue);width:auto;"></i> Klik angka untuk membuka panel langkah terkait</span>
+      </div>
+
+      <!-- =====================================================================
+           BLOK TUTORIAL
+           ===================================================================== -->
+      <div class="tut">
+        <div>
+
+          <!-- ============ SCENE 1: DAFTAR SURAT TUGAS ============ -->
+          <article class="clip-wrap">
+            <div class="clip-head">
+              <span class="clip-step">Langkah 1–2</span>
+              <h3>Pilih dokumen surat tugas yang akan dicetak</h3>
+              <span class="role">Semua peran terkait</span>
+            </div>
+
+            <div class="clip">
+              <div class="device">
+                <div class="device__bar">
+                  <span class="device__dots"><i></i><i></i><i></i></span>
+                  <span class="device__url"><i class="bi bi-lock-fill"></i> siaga.geodipa.co.id/surat_requester/main-surat</span>
+                  <span class="device__tag">Surat Tugas</span>
+                </div>
+                <div class="device__screen">
+                  <div class="app">
+                    <aside class="app__aside">
+                      <div class="app__brand">
+                        <img src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="">
+                        <span><b>SIAGA</b><small>General Affairs</small></span>
+                      </div>
+                      <p class="app__navlabel">Menu Utama</p>
+                      <ul class="app__nav">
+                        <li><span class="nav"><i class="bi bi-speedometer2"></i>Dashboard</span></li>
+                        <li><span class="nav"><i class="bi bi-fuel-pump"></i>Permohonan BBM</span></li>
+                        <li>
+                          <span class="nav is-active"><i class="bi bi-envelope-paper"></i>SPD Management<i class="bi bi-chevron-up chev"></i></span>
+                          <ul class="app__nav">
+                            <li><span class="nav sub is-active"><i class="bi bi-circle"></i>Daftar Surat Tugas</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Cetak Laporan BBM</span></li>
+                          </ul>
+                        </li>
+                        <li><span class="nav"><i class="bi bi-truck"></i>Kendaraan &amp; Alat</span></li>
+                        <li><span class="nav"><i class="bi bi-cup-hot"></i>Lunch Management</span></li>
+                      </ul>
+                    </aside>
+                    <div class="app__main">
+                      <div class="app__topbar">
+                        <i class="bi bi-list burger"></i>
+                        <div class="app__search"><i class="bi bi-search"></i> Cari menu atau data…</div>
+                        <div class="app__user">
+                          <span class="who"><b>Faris I.</b><small>Requester</small></span>
+                          <span class="avatar">FI</span>
+                        </div>
+                      </div>
+                      <div class="app__body">
+                        <div class="pagetitle">
+                          <h1>Surat Tugas Perjalanan Dinas</h1>
+                          <ol class="md-breadcrumb"><li>Home</li><li>SPD</li><li>Surat Tugas</li></ol>
+                        </div>
+
+                        <div class="m-grid m-grid--4" style="margin-bottom:12px;">
+                          <div class="m-stat"><b>12</b><small>Total Surat</small></div>
+                          <div class="m-stat m-stat--yellow"><b>2</b><small>Pending</small></div>
+                          <div class="m-stat m-stat--green"><b>7</b><small>Disetujui</small></div>
+                          <div class="m-stat m-stat--red"><b>3</b><small>Perlu LPJ</small></div>
+                        </div>
+
+                        <div class="m-card" data-annot="1">
+                          <div class="m-card__head"><i class="bi bi-file-earmark-text"></i> Daftar Surat Tugas</div>
+                          <div class="m-card__body" style="padding:0;">
+                            <div class="m-row" style="padding:11px 15px;border-bottom:1px solid var(--line-2);">
+                              <div class="m-input" style="max-width:210px;">Cari nomor surat / tujuan…</div>
+                              <div class="m-input m-input--select" style="max-width:150px;">Semua status</div>
+                              <div class="m-input m-input--select" style="max-width:150px;">Agustus 2026</div>
+                              <div class="m-spacer"></div>
+                              <button class="m-btn m-btn--outline-primary m-btn--sm" type="button"><i class="bi bi-funnel"></i> Terapkan</button>
+                            </div>
+                            <table class="m-table">
+                              <thead>
+                                <tr><th>Nomor Surat</th><th>Tujuan</th><th>Tanggal</th><th>Kendaraan</th><th>Status</th><th class="ctr">Aksi</th></tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td>001.TGS/PTH1.30-GDE/VIII/2026</td><td>Bandung</td><td>3 – 5 Agu 2026</td><td>PTH-014</td>
+                                  <td><span class="m-badge m-badge--green">Disetujui</span></td>
+                                  <td class="ctr"><button class="m-btn m-btn--outline-primary m-btn--sm" type="button" data-annot="2"><i class="bi bi-printer"></i> Cetak</button></td>
+                                </tr>
+                                <tr>
+                                  <td>002.TGS/PTH1.30-GDE/VIII/2026</td><td>Jakarta</td><td>10 – 12 Agu 2026</td><td>PMU-006</td>
+                                  <td><span class="m-badge m-badge--yellow">Menunggu</span></td>
+                                  <td class="ctr"><span class="m-sub" style="margin:0;">—</span></td>
+                                </tr>
+                                <tr>
+                                  <td>003.TGS/PTH1.30-GDE/VIII/2026</td><td>Site BCMP</td><td>18 – 20 Agu 2026</td><td>PTH-022</td>
+                                  <td><span class="m-badge m-badge--green">Disetujui</span></td>
+                                  <td class="ctr"><button class="m-btn m-btn--outline-primary m-btn--sm" type="button"><i class="bi bi-printer"></i> Cetak</button></td>
+                                </tr>
+                                <tr>
+                                  <td>004.TGS/PTH1.30-GDE/VIII/2026</td><td>Semarang</td><td>24 – 26 Agu 2026</td><td>PTH-014</td>
+                                  <td><span class="m-badge m-badge--red">Ditolak</span></td>
+                                  <td class="ctr"><span class="m-sub" style="margin:0;">—</span></td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="pin" data-step="1" data-annot="1" data-pin-pos="right" style="left:50%;top:50%">
+                <span class="pin__tip"><b>Filter &amp; daftar surat</b><span>Gunakan pencarian, filter status, dan periode untuk menemukan surat tugas. Hanya surat berstatus <em>Disetujui</em> yang dapat dicetak.</span></span>
+              </button>
+              <button class="pin" data-step="2" data-annot="2" data-pin-pos="left" style="left:50%;top:50%">
+                <span class="pin__tip"><b>Tombol Cetak</b><span>Klik <em>Cetak</em> pada baris dokumen untuk membuka pratinjau surat. Tombol tidak muncul pada surat yang masih menunggu validasi atau ditolak.</span></span>
+              </button>
+            </div>
+          </article>
+
+          <!-- ============ SCENE 2: PRATINJAU SURAT ============ -->
+          <article class="clip-wrap">
+            <div class="clip-head">
+              <span class="clip-step">Langkah 3</span>
+              <h3>Periksa pratinjau surat tugas</h3>
+              <span class="role">Semua peran terkait</span>
+            </div>
+
+            <div class="clip">
+              <div class="device">
+                <div class="device__bar">
+                  <span class="device__dots"><i></i><i></i><i></i></span>
+                  <span class="device__url"><i class="bi bi-lock-fill"></i> siaga.geodipa.co.id/surat/128/print</span>
+                  <span class="device__tag">Pratinjau</span>
+                </div>
+                <div class="device__screen">
+                  <div style="padding:18px;background:var(--surface-3);">
+                    <div class="m-card" data-annot="3" style="max-width:620px;margin:0 auto;padding:22px 24px;">
+                      <div class="m-row" style="align-items:center;gap:12px;border-bottom:2px solid var(--gde-blue);padding-bottom:10px;margin-bottom:14px;">
+                        <img src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="" style="width:46px;">
+                        <div style="line-height:1.25;">
+                          <div style="font-size:12px;font-weight:800;color:var(--gde-blue);">PT GEO DIPA ENERGI (PERSERO)</div>
+                          <div style="font-size:10px;color:var(--muted);">Unit Patuha — Jl. Raya Patuha Km. 25, Ciwidey, Kab. Bandung</div>
+                        </div>
+                      </div>
+
+                      <div style="text-align:center;margin-bottom:14px;">
+                        <div style="font-size:13px;font-weight:700;text-decoration:underline;">SURAT TUGAS</div>
+                        <div style="font-size:10.5px;color:var(--muted);">Nomor: 001.TGS/PTH1.30-GDE/VIII/2026</div>
+                      </div>
+
+                      <div class="m-sub" style="margin:0 0 12px;">Yang bertanda tangan di bawah ini menugaskan kepada:</div>
+
+                      <table class="m-table" style="font-size:11px;">
+                        <tbody>
+                          <tr><td style="width:120px;color:var(--muted);">Nama</td><td><b>Faris Iftikhar Alfarisi</b></td></tr>
+                          <tr><td style="color:var(--muted);">Jabatan</td><td>Requester / Driver — General Affairs</td></tr>
+                          <tr><td style="color:var(--muted);">Maksud Tugas</td><td>Koordinasi teknis operasional PLTP Unit Patuha</td></tr>
+                          <tr><td style="color:var(--muted);">Tempat Tujuan</td><td>Bandung, Jawa Barat</td></tr>
+                          <tr><td style="color:var(--muted);">Waktu</td><td>3 s.d. 5 Agustus 2026 (3 hari)</td></tr>
+                          <tr><td style="color:var(--muted);">Kendaraan</td><td>PTH-014 — Toyota Hilux Double Cabin</td></tr>
+                        </tbody>
+                      </table>
+
+                      <div style="margin-top:16px;display:flex;justify-content:flex-end;">
+                        <div style="text-align:center;font-size:10.5px;">
+                          <div>Ciwidey, 1 Agustus 2026</div>
+                          <div style="font-weight:700;margin-top:4px;">Pemberi Tugas</div>
+                          <div style="height:52px;"></div>
+                          <div style="font-weight:700;text-decoration:underline;">Rizal A.</div>
+                          <div style="color:var(--muted);">Manager General Affairs</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="m-sub" style="text-align:center;margin:0;">Halaman 1 dari 1 · format A4 · margin 3 cm</div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="pin" data-step="3" data-annot="3" data-pin-pos="right" style="left:50%;top:50%">
+                <span class="pin__tip"><b>Pratinjau dokumen surat</b><span>Periksa kop surat, nomor surat otomatis, daftar nama yang ditugaskan, dan tanggal sebelum dicetak. Nomor surat dibentuk sistem dengan pola <code>urut.TGS/PTH1.30-GDE/BULAN-ROMAWI/TAHUN</code>.</span></span>
+              </button>
+            </div>
+          </article>
+
+          <!-- ============ SCENE 3: BUNDEL SPD + LPJ ============ -->
+          <article class="clip-wrap">
+            <div class="clip-head">
+              <span class="clip-step">Langkah 4–5</span>
+              <h3>Hasil cetak bundel SPD + LPJ</h3>
+              <span class="role">Semua peran terkait</span>
+            </div>
+
+            <div class="clip">
+              <div class="device">
+                <div class="device__bar">
+                  <span class="device__dots"><i></i><i></i><i></i></span>
+                  <span class="device__url"><i class="bi bi-lock-fill"></i> siaga.geodipa.co.id/laporan/57/print</span>
+                  <span class="device__tag">Bundel PDF</span>
+                </div>
+                <div class="device__screen">
+                  <div style="padding:18px;background:var(--surface-3);">
+                    <div class="m-card" style="max-width:660px;margin:0 auto;">
+                      <div class="m-card__head m-card__head--primary"><i class="bi bi-file-earmark-pdf"></i> Bundel SPD + LPJ — PTH.01/LPJ/SPD/2026/08/0001</div>
+                      <div class="m-card__body" data-annot="4">
+                        <div class="m-sub" style="margin:0 0 10px;">Dokumen gabungan A4 berisi 4 halaman atau lebih, diurutkan sebagai berikut:</div>
+
+                        <div class="m-stack">
+                          <div class="m-row" style="align-items:flex-start;gap:10px;">
+                            <span class="m-badge m-badge--blue">Halaman 1</span>
+                            <div>
+                              <b style="font-size:11.5px;">Ringkasan Surat Tugas (SPD)</b>
+                              <div class="m-sub" style="margin:0;">Kop surat, nomor surat, data penugasan, dan daftar nama yang ditugaskan.</div>
+                            </div>
+                          </div>
+                          <div class="m-row" style="align-items:flex-start;gap:10px;">
+                            <span class="m-badge m-badge--blue">Halaman 2</span>
+                            <div>
+                              <b style="font-size:11.5px;">Ringkasan LPJ + verifikasi odometer</b>
+                              <div class="m-sub" style="margin:0;">Rekap pengeluaran per kategori dan konfirmasi angka odometer kendaraan.</div>
+                            </div>
+                          </div>
+                          <div class="m-row" style="align-items:flex-start;gap:10px;">
+                            <span class="m-badge m-badge--blue">Halaman 3</span>
+                            <div>
+                              <b style="font-size:11.5px;">Rincian Penggunaan Biaya + kolom tanda tangan</b>
+                              <div class="m-sub" style="margin:0;">Tabel item pengeluaran per tanggal, ditutup blok tanda tangan di bagian bawah halaman.</div>
+                            </div>
+                          </div>
+                          <div class="m-row" style="align-items:flex-start;gap:10px;">
+                            <span class="m-badge m-badge--gray">Halaman 4+</span>
+                            <div>
+                              <b style="font-size:11.5px;">Lampiran foto struk</b>
+                              <div class="m-sub" style="margin:0;">Grid foto struk, 6 foto per halaman (2 kolom × 3 baris).</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="m-card__foot" style="justify-content:space-between;">
+                        <div class="m-row">
+                          <span class="m-badge m-badge--green"><i class="bi bi-check2-circle"></i> LPJ disetujui</span>
+                          <span class="m-badge m-badge--gray">6 lampiran struk</span>
+                        </div>
+                        <div data-annot="5" style="text-align:center;">
+                          <div style="width:64px;height:64px;border:1px solid var(--line);border-radius:8px;background:repeating-linear-gradient(90deg,#16202E 0 4px,#fff 4px 8px);"></div>
+                          <div class="m-sub" style="margin:5px 0 0;font-size:9.5px;">QR Signature</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="m-sub" style="text-align:center;margin:10px 0 0;">Dokumen dirender server-side (DomPDF) · ukuran berkas bertambah sesuai jumlah lampiran</div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="pin" data-step="4" data-annot="4" data-pin-pos="right" style="left:50%;top:50%">
+                <span class="pin__tip"><b>Daftar isi bundel 4 halaman</b><span>Bundel menjahit surat tugas, ringkasan LPJ, rincian biaya bertanda tangan, dan lampiran struk menjadi satu berkas PDF agar pihak penandatangan tidak perlu membuka dokumen terpisah.</span></span>
+              </button>
+              <button class="pin" data-step="5" data-annot="5" data-pin-pos="left" style="left:50%;top:50%">
+                <span class="pin__tip"><b>QR tanda tangan digital</b><span>QR dibangkitkan dari data surat (id, nomor surat, pemberi tugas, tanggal terbit, tanggal disetujui) dan disimpan sebagai berkas signature di server.</span></span>
+              </button>
+            </div>
+          </article>
+
+          <!-- ============ SCENE 4: AKSI AKHIR ============ -->
+          <article class="clip-wrap">
+            <div class="clip-head">
+              <span class="clip-step">Langkah 6</span>
+              <h3>Simpan atau kirim dokumen ke printer</h3>
+              <span class="role">Semua peran terkait</span>
+            </div>
+
+            <div class="clip">
+              <div class="device">
+                <div class="device__bar">
+                  <span class="device__dots"><i></i><i></i><i></i></span>
+                  <span class="device__url"><i class="bi bi-lock-fill"></i> siaga.geodipa.co.id/laporan/57/print</span>
+                  <span class="device__tag">Cetak</span>
+                </div>
+                <div class="device__screen">
+                  <div style="padding:18px;background:var(--surface-3);">
+                    <div class="m-card" style="max-width:660px;margin:0 auto;">
+                      <div class="m-card__head"><i class="bi bi-printer"></i> Toolbar dokumen di atas halaman cetak</div>
+                      <div class="m-card__body">
+                        <div class="m-row m-row--between">
+                          <div>
+                            <span class="m-badge m-badge--blue">DOKUMEN</span>
+                            <b style="font-size:12px;margin-left:6px;">Surat SPD &amp; LPJ — 001.TGS/PTH1.30-GDE/VIII/2026</b>
+                            <div class="m-sub" style="margin:4px 0 0;">4 halaman + 6 lampiran · ukuran A4 · margin 3 cm</div>
+                          </div>
+                          <span class="m-badge m-badge--green">Siap cetak</span>
+                        </div>
+
+                        <div class="m-alert m-alert--info" style="margin:12px 0 0;">
+                          <i class="bi bi-info-circle"></i> Halaman bundel membuka dialog cetak secara otomatis. Pilih tujuan <b>Simpan sebagai PDF</b> untuk mengarsipkan berkas, atau pilih printer untuk mencetaknya.
+                        </div>
+                      </div>
+                      <div class="m-card__foot" data-annot="6" style="justify-content:flex-end;">
+                        <button class="m-btn m-btn--primary" type="button"><i class="bi bi-printer"></i> Cetak / Simpan PDF</button>
+                        <button class="m-btn m-btn--outline" type="button"><i class="bi bi-x-lg"></i> Tutup</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="pin" data-step="6" data-annot="6" data-pin-pos="top" style="left:50%;top:50%">
+                <span class="pin__tip"><b>Simpan PDF &amp; kirim ke printer</b><span>Tombol <em>Cetak / Simpan PDF</em> membuka dialog cetak peramban: pilih <em>Simpan sebagai PDF</em> untuk mengarsipkan berkas, atau pilih printer untuk mengirim dokumen. Tombol <em>Tutup</em> menutup halaman cetak tanpa mencetak.</span></span>
+              </button>
+            </div>
+          </article>
+
+        </div>
+
+        <!-- ============ ASIDE: DAFTAR LANGKAH ============ -->
+        <aside class="tut__aside">
+          <div class="tut__stepbox tut__stepbox--scroll">
+            <div class="tag">Alur 3 — Cetak Surat &amp; Laporan</div>
+            <h3>6 langkah</h3>
+            <div class="tut__progress">
+              <i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <p class="tut__hint">Klik langkah untuk melompat dan menyorot elemen terkait.</p>
+            <ol class="tut__steps">
+              <li data-step="1"><b>Filter &amp; daftar surat</b> Temukan surat tugas yang akan dicetak.</li>
+              <li data-step="2"><b>Tombol Cetak</b> Buka dokumen dari baris surat.</li>
+              <li data-step="3"><b>Pratinjau surat</b> Periksa kop, nomor, dan data penugasan.</li>
+              <li data-step="4"><b>Daftar isi bundel</b> Pastikan 4 halaman bundel lengkap.</li>
+              <li data-step="5"><b>QR tanda tangan</b> Cek QR signature pada dokumen.</li>
+              <li data-step="6"><b>Simpan / cetak</b> Unduh PDF atau kirim ke printer.</li>
+            </ol>
+          </div>
+
+          <div class="card card--tight card--soft">
+            <h3 style="font-size:.86rem;">Kesalahan yang sering terjadi</h3>
+            <ul class="list-cross list-check" style="font-size:.79rem;margin-bottom:0;">
+              <li>Mencetak surat yang belum disetujui sehingga halaman gagal dimuat.</li>
+              <li>Mencetak bundel LPJ padahal LPJ belum ada atau belum disetujui.</li>
+              <li>Menganggap QR hanya hiasan, padahal QR adalah tanda tangan elektronik dokumen.</li>
+              <li>Mencetak bundel berisi banyak struk sekaligus sehingga proses render lama.</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+
+      <!-- ================= CATATAN PENTING ================= -->
+      <div class="callout callout--info">
+        <span class="callout__icon"><i class="bi bi-qr-code"></i></span>
+        <div class="callout__body">
+          <strong>QR adalah tanda tangan elektronik yang valid</strong>
+          Setiap dokumen yang dicetak (surat tunggal maupun bundel) memuat QR yang dibangkitkan sistem
+          dari data surat: <code>id</code>, <code>nomor_surat</code>, <code>authorizer</code>,
+          <code>tanggal_terbit</code>, dan <code>tanggal_disetujui</code>. Berkas QR disimpan pada server
+          (<code>storage/app/public/qr-surat/</code>) dan dipakai ulang pada pencetakan berikutnya, sehingga
+          QR pada dokumen cetak dapat diverifikasi sebagai bukti sah dokumen tersebut diterbitkan SIAGA.
+        </div>
+      </div>
+
+      <div class="callout callout--tip">
+        <span class="callout__icon"><i class="bi bi-lightbulb"></i></span>
+        <div class="callout__body">
+          <strong>Penomoran otomatis &amp; lampiran struk</strong>
+          Nomor surat dibentuk otomatis dengan format <code>001.TGS/PTH1.30-GDE/VIII/2026</code>
+          (nomor urut, kode wilayah kerja, bulan Romawi, tahun), sedangkan nomor LPJ memakai pola
+          <code>PTH.01/LPJ/SPD/2026/08/0001</code>. Foto struk pada bundel di-<em>embed</em> sebagai
+          <em>base64</em> agar dokumen tetap utuh saat dicetak tanpa koneksi server — konsekuensinya
+          ukuran berkas bisa membesar. Bila lampiran sangat banyak, cetak per bagian
+          (Halaman 1–3 lebih dahulu, lalu lampiran) agar font dan gambar tetap tajam.
+        </div>
+      </div>
+
+      <div class="callout callout--warn">
+        <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+        <div class="callout__body">
+          <strong>Asumsi</strong>
+          Tahap <em>Arsip</em> pada diagram di atas dimaknai sebagai penyimpanan berkas PDF hasil
+          <em>Simpan PDF</em> ke folder komputer atau penyimpanan divisi. SIAGA tidak mengelola modul
+          kearsipan digital tersendiri, sehingga tata kelola arsip mengikuti kebijakan General Affairs
+          yang berlaku.
+        </div>
+      </div>
+
+      <div class="callout callout--info">
+        <span class="callout__icon"><i class="bi bi-arrow-right-circle"></i></span>
+        <div class="callout__body">
+          <strong>Lanjut ke Alur 4 — Dispatcher</strong>
+          Menetapkan PIC pengecekan, memantau status jadwal kendaraan, memindai QR riwayat kesehatan,
+          dan mengekspor checklist.
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+            <a class="btn btn--primary btn--sm" href="04-dispatcher.html">Buka Alur 4 <i class="bi bi-arrow-right-short"></i></a>
+            <a class="btn btn--ghost btn--sm" href="../software-documentation/03-model-use-case.html">Lihat use case SPD &amp; LPJ <i class="bi bi-diagram-3"></i></a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="foot__inner">
+    <p>&copy; <span data-year>2026</span> PT Geo Dipa Energi (Persero) Unit Patuha — Divisi General Affairs.</p>
+    <div class="foot__links">
+      <a href="../index.html">Beranda dokumentasi</a>
+      <a href="index.html">Semua alur</a>
+      <a href="../software-documentation/index.html">Software Documentation</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/js/docs.js"></script>
+<script src="../assets/js/diagrams.js" defer></script>
+</body>
+</html>

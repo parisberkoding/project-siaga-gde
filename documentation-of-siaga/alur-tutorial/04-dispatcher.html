@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alur 4 — Dispatcher &amp; Administrasi Kendaraan | Alur Tutorial SIAGA</title>
+<meta name="description" content="Tutorial dispatcher SIAGA: dashboard jadwal pengecekan, generate periode, penugasan PIC, pemindaian QR riwayat kesehatan kendaraan, dan ekspor checklist.">
+<link rel="icon" href="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="../assets/css/docs.css">
+<link rel="stylesheet" href="../assets/css/mock.css">
+</head>
+<body data-base="../">
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <button class="icon-btn btn-menu" id="docMenuBtn" aria-label="Buka navigasi" aria-expanded="false"><i class="bi bi-list"></i></button>
+    <a class="brand" href="../index.html">
+      <img class="brand__logo" src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="Logo Geo Dipa Energi">
+      <span>
+        <span class="brand__name">SIAGA</span>
+        <span class="brand__sub">Sistem Informasi Administrasi General Affairs</span>
+      </span>
+    </a>
+    <span class="brand__divider"></span>
+    <span class="brand__doc">Alur Tutorial</span>
+    <div class="topbar__spacer"></div>
+    <div class="searchbox">
+      <i class="bi bi-search"></i>
+      <input type="search" id="docSearch" placeholder="Cari halaman…  ( / )" aria-label="Cari halaman dokumentasi">
+      <div class="search-results" id="docSearchResults"></div>
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" data-print title="Cetak / simpan PDF"><i class="bi bi-printer"></i></button>
+      <a class="icon-btn" href="../index.html" title="Kembali ke beranda dokumentasi"><i class="bi bi-house"></i></a>
+    </div>
+  </div>
+</header>
+
+<div class="scrim" id="docScrim"></div>
+
+<main class="shell">
+  <aside class="sidebar" id="docSidebar">
+    <p class="sidebar__label">Alur Tutorial</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="index.html"><span class="nav-link__num">&#9679;</span><span class="nav-link__txt">Ikhtisar alur</span></a></li>
+      <li><a class="nav-link" href="01-permohonan-bbm.html"><i class="bi bi-fuel-pump"></i><span class="nav-link__txt">1. Permohonan BBM</span></a></li>
+      <li><a class="nav-link" href="02-spd.html"><i class="bi bi-envelope-paper"></i><span class="nav-link__txt">2. Pengajuan SPD</span></a></li>
+      <li><a class="nav-link" href="03-cetak-surat.html"><i class="bi bi-printer"></i><span class="nav-link__txt">3. Cetak Surat</span></a></li>
+      <li><a class="nav-link is-active" href="04-dispatcher.html"><i class="bi bi-truck"></i><span class="nav-link__txt">4. Dispatcher</span></a></li>
+      <li><a class="nav-link" href="05-makan-siang.html"><i class="bi bi-cup-hot"></i><span class="nav-link__txt">5. Makan Siang</span></a></li>
+      <li><a class="nav-link" href="06-checking.html"><i class="bi bi-clipboard-check"></i><span class="nav-link__txt">6. Routine Checking</span></a></li>
+    </ul>
+
+    <p class="sidebar__label">Dokumen lain</p>
+    <ul class="nav-list">
+      <li><a class="nav-link" href="../software-documentation/index.html"><i class="bi bi-journal-code"></i><span class="nav-link__txt">Software Documentation</span></a></li>
+      <li><a class="nav-link" href="index.html"><i class="bi bi-signpost-split"></i><span class="nav-link__txt">Semua alur</span></a></li>
+    </ul>
+  </aside>
+
+  <div class="content">
+    <div class="wrap">
+
+      <nav>
+        <ol class="crumbs">
+          <li><a href="../index.html">Documentation</a></li>
+          <li><a href="index.html">Alur Tutorial</a></li>
+          <li>Dispatcher &amp; Administrasi Kendaraan</li>
+        </ol>
+      </nav>
+
+      <div class="page-head">
+        <span class="eyebrow"><span class="dot"></span> Alur 4 dari 6</span>
+        <h2>Dispatcher &amp; Administrasi Kendaraan</h2>
+        <p class="lead">
+          Dispatcher memantau jadwal pengecekan dari dashboard, men-generate periode bulanan,
+          menugaskan PIC per kendaraan, memindai QR kendaraan untuk melihat riwayat kesehatannya,
+          lalu mengekspor checklist pengecekan.
+        </p>
+      </div>
+
+      <!-- ================= RINGKASAN ================= -->
+      <div class="split" style="margin-bottom:26px;">
+        <div>
+          <div class="card">
+            <div class="card__head">
+              <span class="icon-sq"><i class="bi bi-info-circle"></i></span>
+              <div>
+                <h3>Ringkasan alur</h3>
+                <p>Lima tahap pengelolaan jadwal pengecekan sampai ekspor checklist.</p>
+              </div>
+            </div>
+
+            <ul class="meta-list">
+              <li><span class="meta-list__k">Peran terlibat</span><span class="meta-list__v">Dispatcher, Admin GA</span></li>
+              <li><span class="meta-list__k">Prasyarat</span><span class="meta-list__v">Master kendaraan aktif &amp; jadwal pengecekan sudah terdaftar</span></li>
+              <li><span class="meta-list__k">Hasil akhir</span><span class="meta-list__v">Jadwal pengecekan tertib &amp; checklist terekam</span></li>
+              <li><span class="meta-list__k">Menu aplikasi</span><span class="meta-list__v">Scanner Kendaraan, Pemeriksaan Kendaraan, Riwayat &amp; Laporan, Export Form Pengecekan</span></li>
+              <li><span class="meta-list__k">Use case terkait</span><span class="meta-list__v"><code>UC-CHK-05</code>, <code>UC-CHK-07</code></span></li>
+            </ul>
+
+            <div class="tag-row" style="margin-top:14px;">
+              <span class="badge badge--blue">Jadwal bulanan</span>
+              <span class="badge badge--yellow">PIC per kendaraan</span>
+              <span class="badge badge--gray">QR fisik kendaraan</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <figure>
+            <div class="fig fig--tint">
+<pre class="mermaid">
+flowchart LR
+    A["Dashboard<br/>Dispatcher"] --> B["Generate<br/>Periode"]
+    B --> C["Assign<br/>PIC"]
+    C --> D["Kendaraan<br/>Dicek"]
+    D --> E["Riwayat"]
+    E --> F["Ekspor<br/>Checklist"]
+    classDef a fill:#EAF1FA,stroke:#0B50A1,color:#0B50A1
+    classDef b fill:#F2F9E8,stroke:#8DC63F,color:#3F6120
+    class A,B,C a
+    class D,E,F b
+</pre>
+            </div>
+            <figcaption><b>Gambar 4.1</b> — Peta enam tahap alur dispatcher &amp; administrasi kendaraan.</figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span><i>1</i> Angka merah = langkah; sorot &amp; tooltip aktif saat kursor diarahkan</span>
+        <span><i class="bi bi-eye" style="background:transparent;color:var(--gde-blue);width:auto;"></i> Klik angka untuk membuka panel langkah terkait</span>
+      </div>
+
+      <!-- =====================================================================
+           BLOK TUTORIAL
+           ===================================================================== -->
+      <div class="tut">
+        <div>
+
+          <!-- ============ SCENE 1: DASHBOARD ============ -->
+          <article class="clip-wrap">
+            <div class="clip-head">
+              <span class="clip-step">Langkah 1–2</span>
+              <h3>Pantau ringkasan jadwal &amp; generate periode</h3>
+              <span class="role">Dispatcher</span>
+            </div>
+
+            <div class="clip">
+              <div class="device">
+                <div class="device__bar">
+                  <span class="device__dots"><i></i><i></i><i></i></span>
+                  <span class="device__url"><i class="bi bi-lock-fill"></i> siaga.geodipa.co.id/dispatcher/dashboard</span>
+                  <span class="device__tag">Dashboard</span>
+                </div>
+                <div class="device__screen">
+                  <div class="app">
+                    <aside class="app__aside">
+                      <div class="app__brand">
+                        <img src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="">
+                        <span><b>SIAGA</b><small>General Affairs</small></span>
+                      </div>
+                      <p class="app__navlabel">Menu Utama</p>
+                      <ul class="app__nav">
+                        <li><span class="nav is-active"><i class="bi bi-speedometer2"></i>Dashboard</span></li>
+                        <li>
+                          <span class="nav"><i class="bi bi-clipboard-check"></i>Pemeriksaan Kendaraan<i class="bi bi-chevron-up chev"></i></span>
+                          <ul class="app__nav">
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Harian</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Mingguan</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Bulanan</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Body Inspection</span></li>
+                          </ul>
+                        </li>
+                        <li><span class="nav"><i class="bi bi-person-check"></i>Assign PIC</span></li>
+                        <li><span class="nav"><i class="bi bi-qr-code-scan"></i>Scanner Kendaraan</span></li>
+                        <li><span class="nav"><i class="bi bi-clock-history"></i>Riwayat &amp; Laporan</span></li>
+                        <li><span class="nav"><i class="bi bi-file-earmark-excel"></i>Export Form Pengecekan</span></li>
+                      </ul>
+                    </aside>
+                    <div class="app__main">
+                      <div class="app__topbar">
+                        <i class="bi bi-list burger"></i>
+                        <div class="app__search"><i class="bi bi-search"></i> Cari menu atau data…</div>
+                        <div class="app__user">
+                          <span class="who"><b>Budi P.</b><small>Dispatcher</small></span>
+                          <span class="avatar">BP</span>
+                        </div>
+                      </div>
+                      <div class="app__body">
+                        <div class="pagetitle">
+                          <h1>Dashboard Dispatcher</h1>
+                          <ol class="md-breadcrumb"><li>Home</li><li>Dashboard</li></ol>
+                        </div>
+
+                        <div class="m-grid m-grid--4" data-annot="1" style="margin-bottom:12px;">
+                          <div class="m-stat m-stat--red"><b>2</b><small>Overdue · pengecekan terlambat</small></div>
+                          <div class="m-stat m-stat--yellow"><b>3</b><small>Due Today · harus dicek hari ini</small></div>
+                          <div class="m-stat"><b>5</b><small>Upcoming · 7 hari ke depan</small></div>
+                          <div class="m-stat m-stat--green"><b>14</b><small>Completed bulan ini</small></div>
+                        </div>
+
+                        <div class="m-card" data-annot="2">
+                          <div class="m-card__head"><i class="bi bi-calendar-plus"></i> Periode Pengecekan</div>
+                          <div class="m-card__body">
+                            <div class="m-row m-row--between">
+                              <div>
+                                <b style="font-size:12px;">Periode Agustus 2026 belum di-generate</b>
+                                <div class="m-sub" style="margin:2px 0 0;">Target: 24 kendaraan aktif · jenis harian, mingguan, bulanan, dan body</div>
+                              </div>
+                              <button class="m-btn m-btn--primary" type="button"><i class="bi bi-calendar-plus"></i> Generate Periode Agustus 2026</button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="m-card">
+                          <div class="m-card__head"><i class="bi bi-exclamation-triangle-fill"></i> Overdue</div>
+                          <div class="m-card__body" style="padding:0;">
+                            <table class="m-table">
+                              <thead><tr><th>Kendaraan</th><th>Jenis</th><th>Harusnya</th></tr></thead>
+                              <tbody>
+                                <tr><td><b>PTH-022</b><br><span class="m-sub" style="margin:0;">Isuzu Traga · PIC Rizal A.</span></td><td><span class="m-badge m-badge--red">Bulanan</span></td><td>28 Jul 2026 <span class="m-sub" style="margin:0;">· 5 hari lalu</span></td></tr>
+                                <tr><td><b>PMU-006</b><br><span class="m-sub" style="margin:0;">Honda CR-V · PIC Dewi S.</span></td><td><span class="m-badge m-badge--red">Mingguan</span></td><td>30 Jul 2026 <span class="m-sub" style="margin:0;">· 3 hari lalu</span></td></tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="pin" data-step="1" data-annot="1" data-pin-pos="right" style="left:50%;top:50%">
+                <span class="pin__tip"><b>Kartu ringkasan Overdue / Due / Upcoming</b><span>Baca kondisi armada sekilas: <em>Overdue</em> (terlambat), <em>Due Today</em> (jatuh tempo hari ini), <em>Upcoming</em> (7 hari ke depan), dan <em>Completed</em> (sudah dicek). Prioritaskan yang overdue.</span></span>
+              </button>
+              <button class="pin" data-step="2" data-annot="2" data-pin-pos="bottom" style="left:50%;top:50%">
+                <span class="pin__tip"><b>Generate Periode bulanan</b><span>Tombol ini membuat target pengecekan untuk seluruh kendaraan aktif pada bulan berjalan. Jalankan sekali setiap awal bulan; bila periode bulan ini sudah ada, sistem menandainya selesai.</span></span>
+              </button>
+            </div>
+          </article>
+
+          <!-- ============ SCENE 2: ASSIGN PIC ============ -->
+          <article class="clip-wrap">
+            <div class="clip-head">
+              <span class="clip-step">Langkah 3</span>
+              <h3>Tugaskan PIC per kendaraan</h3>
+              <span class="role">Dispatcher · Admin GA</span>
+            </div>
+
+            <div class="clip">
+              <div class="device">
+                <div class="device__bar">
+                  <span class="device__dots"><i></i><i></i><i></i></span>
+                  <span class="device__url"><i class="bi bi-lock-fill"></i> siaga.geodipa.co.id/dispatcher/assign</span>
+                  <span class="device__tag">Assign PIC</span>
+                </div>
+                <div class="device__screen">
+                  <div class="app">
+                    <aside class="app__aside">
+                      <div class="app__brand">
+                        <img src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="">
+                        <span><b>SIAGA</b><small>General Affairs</small></span>
+                      </div>
+                      <p class="app__navlabel">Menu Utama</p>
+                      <ul class="app__nav">
+                        <li><span class="nav"><i class="bi bi-speedometer2"></i>Dashboard</span></li>
+                        <li>
+                          <span class="nav"><i class="bi bi-clipboard-check"></i>Pemeriksaan Kendaraan<i class="bi bi-chevron-up chev"></i></span>
+                          <ul class="app__nav">
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Harian</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Mingguan</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Bulanan</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Body Inspection</span></li>
+                          </ul>
+                        </li>
+                        <li><span class="nav is-active"><i class="bi bi-person-check"></i>Assign PIC</span></li>
+                        <li><span class="nav"><i class="bi bi-qr-code-scan"></i>Scanner Kendaraan</span></li>
+                        <li><span class="nav"><i class="bi bi-clock-history"></i>Riwayat &amp; Laporan</span></li>
+                        <li><span class="nav"><i class="bi bi-file-earmark-excel"></i>Export Form Pengecekan</span></li>
+                      </ul>
+                    </aside>
+                    <div class="app__main">
+                      <div class="app__topbar">
+                        <i class="bi bi-list burger"></i>
+                        <div class="app__search"><i class="bi bi-search"></i> Cari menu atau data…</div>
+                        <div class="app__user">
+                          <span class="who"><b>Budi P.</b><small>Dispatcher</small></span>
+                          <span class="avatar">BP</span>
+                        </div>
+                      </div>
+                      <div class="app__body">
+                        <div class="pagetitle">
+                          <h1>Assign Dispatcher</h1>
+                          <ol class="md-breadcrumb"><li>Dashboard</li><li>Assign Dispatcher</li></ol>
+                        </div>
+
+                        <div class="m-card" data-annot="3">
+                          <div class="m-card__head"><i class="bi bi-person-check"></i> Penugasan PIC per Kendaraan</div>
+                          <div class="m-card__body" style="padding:0;">
+                            <div class="m-sub" style="padding:11px 15px 0;margin:0;">Tentukan dispatcher penanggung jawab untuk setiap jadwal pengecekan.</div>
+                            <table class="m-table">
+                              <thead>
+                                <tr><th>Kendaraan</th><th class="ctr">Harian</th><th class="ctr">Mingguan</th><th class="ctr">Bulanan</th><th class="ctr">Body</th></tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td><b>PTH-014</b><br><span class="m-sub" style="margin:0;">Toyota Hilux Double Cabin</span></td>
+                                  <td class="ctr"><div class="m-input m-input--select" style="min-width:104px;">Budi P.</div><span class="m-badge m-badge--yellow" style="margin-top:4px;">Due</span></td>
+                                  <td class="ctr"><div class="m-input m-input--select" style="min-width:104px;">Budi P.</div></td>
+                                  <td class="ctr"><div class="m-input m-input--select" style="min-width:104px;">Rizal A.</div></td>
+                                  <td class="ctr"><div class="m-input m-input--select" style="min-width:104px;">— Belum —</div></td>
+                                </tr>
+                                <tr>
+                                  <td><b>PTH-022</b><br><span class="m-sub" style="margin:0;">Isuzu Traga</span></td>
+                                  <td class="ctr"><div class="m-input m-input--select" style="min-width:104px;">Rizal A.</div></td>
+                                  <td class="ctr"><div class="m-input m-input--select" style="min-width:104px;">Rizal A.</div></td>
+                                  <td class="ctr"><div class="m-input m-input--select" style="min-width:104px;">Rizal A.</div><span class="m-badge m-badge--red" style="margin-top:4px;">Overdue</span></td>
+                                  <td class="ctr"><div class="m-input m-input--select" style="min-width:104px;">Dewi S.</div></td>
+                                </tr>
+                                <tr>
+                                  <td><b>PMU-006</b><br><span class="m-sub" style="margin:0;">Honda CR-V</span></td>
+                                  <td class="ctr"><div class="m-input m-input--select" style="min-width:104px;">Dewi S.</div></td>
+                                  <td class="ctr"><div class="m-input m-input--select" style="min-width:104px;">— Belum —</div></td>
+                                  <td class="ctr"><div class="m-input m-input--select" style="min-width:104px;">Dewi S.</div></td>
+                                  <td class="ctr"><div class="m-input m-input--select" style="min-width:104px;">— Belum —</div></td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                          <div class="m-card__foot" style="justify-content:flex-end;">
+                            <button class="m-btn m-btn--primary" type="button"><i class="bi bi-check-lg"></i> Simpan Assignment</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="pin" data-step="3" data-annot="3" data-pin-pos="right" style="left:50%;top:50%">
+                <span class="pin__tip"><b>Form penugasan PIC</b><span>Pilih kendaraan pada baris, lalu tentukan dispatcher/driver sebagai PIC untuk tiap jenis pengecekan (harian, mingguan, bulanan, body). Pilihan <em>— Belum —</em> berarti jadwal tersebut belum bertanggung jawab. Simpan sekali untuk semua baris.</span></span>
+              </button>
+            </div>
+          </article>
+
+          <!-- ============ SCENE 3: DAFTAR KENDARAAN & STATUS ============ -->
+          <article class="clip-wrap">
+            <div class="clip-head">
+              <span class="clip-step">Langkah 4</span>
+              <h3>Baca status jadwal pada daftar kendaraan</h3>
+              <span class="role">Dispatcher</span>
+            </div>
+
+            <div class="clip">
+              <div class="device">
+                <div class="device__bar">
+                  <span class="device__dots"><i></i><i></i><i></i></span>
+                  <span class="device__url"><i class="bi bi-lock-fill"></i> siaga.geodipa.co.id/dispatcher/dashboard</span>
+                  <span class="device__tag">Jadwal</span>
+                </div>
+                <div class="device__screen">
+                  <div class="app">
+                    <aside class="app__aside">
+                      <div class="app__brand">
+                        <img src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="">
+                        <span><b>SIAGA</b><small>General Affairs</small></span>
+                      </div>
+                      <p class="app__navlabel">Menu Utama</p>
+                      <ul class="app__nav">
+                        <li><span class="nav is-active"><i class="bi bi-speedometer2"></i>Dashboard</span></li>
+                        <li>
+                          <span class="nav"><i class="bi bi-clipboard-check"></i>Pemeriksaan Kendaraan<i class="bi bi-chevron-up chev"></i></span>
+                          <ul class="app__nav">
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Harian</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Mingguan</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Bulanan</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Body Inspection</span></li>
+                          </ul>
+                        </li>
+                        <li><span class="nav"><i class="bi bi-person-check"></i>Assign PIC</span></li>
+                        <li><span class="nav"><i class="bi bi-qr-code-scan"></i>Scanner Kendaraan</span></li>
+                        <li><span class="nav"><i class="bi bi-clock-history"></i>Riwayat &amp; Laporan</span></li>
+                        <li><span class="nav"><i class="bi bi-file-earmark-excel"></i>Export Form Pengecekan</span></li>
+                      </ul>
+                    </aside>
+                    <div class="app__main">
+                      <div class="app__topbar">
+                        <i class="bi bi-list burger"></i>
+                        <div class="app__search"><i class="bi bi-search"></i> Cari menu atau data…</div>
+                        <div class="app__user">
+                          <span class="who"><b>Budi P.</b><small>Dispatcher</small></span>
+                          <span class="avatar">BP</span>
+                        </div>
+                      </div>
+                      <div class="app__body">
+                        <div class="pagetitle">
+                          <h1>Jadwal Pengecekan Kendaraan</h1>
+                          <ol class="md-breadcrumb"><li>Home</li><li>Dashboard</li><li>Jadwal</li></ol>
+                        </div>
+
+                        <div class="m-card" data-annot="4">
+                          <div class="m-card__head"><i class="bi bi-calendar-week"></i> Daftar Kendaraan &amp; Status Jadwal</div>
+                          <div class="m-card__body" style="padding:0;">
+                            <div class="m-row" style="padding:11px 15px;border-bottom:1px solid var(--line-2);">
+                              <div class="m-input m-input--select" style="max-width:170px;">Semua kendaraan</div>
+                              <div class="m-input m-input--select" style="max-width:150px;">Semua jenis</div>
+                              <div class="m-input m-input--select" style="max-width:150px;">Semua status</div>
+                              <div class="m-spacer"></div>
+                              <button class="m-btn m-btn--outline-primary m-btn--sm" type="button"><i class="bi bi-funnel"></i> Filter</button>
+                            </div>
+                            <table class="m-table">
+                              <thead>
+                                <tr><th>Kendaraan</th><th>Jenis</th><th>Jadwal Berikutnya</th><th>PIC</th><th>Status Jadwal</th></tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td><b>PTH-014</b><br><span class="m-sub" style="margin:0;">Toyota Hilux</span></td><td>Harian</td><td>3 Agu 2026</td><td>Budi P.</td>
+                                  <td><span class="m-badge m-badge--yellow">Due</span></td>
+                                </tr>
+                                <tr>
+                                  <td><b>PTH-022</b><br><span class="m-sub" style="margin:0;">Isuzu Traga</span></td><td>Bulanan</td><td>28 Jul 2026</td><td>Rizal A.</td>
+                                  <td><span class="m-badge m-badge--red">Overdue</span></td>
+                                </tr>
+                                <tr>
+                                  <td><b>PMU-006</b><br><span class="m-sub" style="margin:0;">Honda CR-V</span></td><td>Body</td><td>9 Agu 2026</td><td>Dewi S.</td>
+                                  <td><span class="m-badge m-badge--gray">Pending</span></td>
+                                </tr>
+                                <tr>
+                                  <td><b>PTH-014</b><br><span class="m-sub" style="margin:0;">Toyota Hilux</span></td><td>Mingguan</td><td>2 Agu 2026</td><td>Budi P.</td>
+                                  <td><span class="m-badge m-badge--green">Completed</span></td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="pin" data-step="4" data-annot="4" data-pin-pos="right" style="left:50%;top:50%">
+                <span class="pin__tip"><b>Kolom status jadwal &amp; filter</b><span>Status dihitung sistem dari tanggal jatuh tempo: <em>Pending</em> (belum waktunya), <em>Due</em> (jatuh tempo), <em>Overdue</em> (terlambat), dan <em>Completed</em> (sudah dicek). Gunakan filter untuk menyaring kendaraan, jenis, atau status tertentu.</span></span>
+              </button>
+            </div>
+          </article>
+
+          <!-- ============ SCENE 4: SCAN QR ============ -->
+          <article class="clip-wrap">
+            <div class="clip-head">
+              <span class="clip-step">Langkah 5–6</span>
+              <h3>Pindai QR kendaraan &amp; lihat riwayat kesehatannya</h3>
+              <span class="role">Dispatcher</span>
+            </div>
+
+            <div class="clip">
+              <div class="device">
+                <div class="device__bar">
+                  <span class="device__dots"><i></i><i></i><i></i></span>
+                  <span class="device__url"><i class="bi bi-lock-fill"></i> siaga.geodipa.co.id/dispatcher/scan-vehicle</span>
+                  <span class="device__tag">Scan QR</span>
+                </div>
+                <div class="device__screen">
+                  <div class="app">
+                    <aside class="app__aside">
+                      <div class="app__brand">
+                        <img src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="">
+                        <span><b>SIAGA</b><small>General Affairs</small></span>
+                      </div>
+                      <p class="app__navlabel">Menu Utama</p>
+                      <ul class="app__nav">
+                        <li><span class="nav"><i class="bi bi-speedometer2"></i>Dashboard</span></li>
+                        <li>
+                          <span class="nav"><i class="bi bi-clipboard-check"></i>Pemeriksaan Kendaraan<i class="bi bi-chevron-up chev"></i></span>
+                          <ul class="app__nav">
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Harian</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Mingguan</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Bulanan</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Body Inspection</span></li>
+                          </ul>
+                        </li>
+                        <li><span class="nav"><i class="bi bi-person-check"></i>Assign PIC</span></li>
+                        <li><span class="nav is-active"><i class="bi bi-qr-code-scan"></i>Scanner Kendaraan</span></li>
+                        <li><span class="nav"><i class="bi bi-clock-history"></i>Riwayat &amp; Laporan</span></li>
+                        <li><span class="nav"><i class="bi bi-file-earmark-excel"></i>Export Form Pengecekan</span></li>
+                      </ul>
+                    </aside>
+                    <div class="app__main">
+                      <div class="app__topbar">
+                        <i class="bi bi-list burger"></i>
+                        <div class="app__search"><i class="bi bi-search"></i> Cari menu atau data…</div>
+                        <div class="app__user">
+                          <span class="who"><b>Budi P.</b><small>Dispatcher</small></span>
+                          <span class="avatar">BP</span>
+                        </div>
+                      </div>
+                      <div class="app__body">
+                        <div class="pagetitle">
+                          <h1>Scan QR Code Kendaraan</h1>
+                          <ol class="md-breadcrumb"><li>Dashboard</li><li>Scanner Kendaraan</li></ol>
+                        </div>
+
+                        <div class="m-grid m-grid--2">
+                          <div class="m-card" data-annot="5">
+                            <div class="m-card__head"><i class="bi bi-qr-code-scan"></i> Arahkan kamera ke QR kendaraan</div>
+                            <div class="m-card__body">
+                              <div style="border:2px solid var(--gde-blue);border-radius:12px;background:#0C1A2E;height:150px;display:flex;align-items:center;justify-content:center;">
+                                <i class="bi bi-upc-scan" style="font-size:42px;color:rgba(255,255,255,.7);"></i>
+                              </div>
+                              <div class="m-row" style="justify-content:center;margin-top:8px;">
+                                <span class="m-badge m-badge--green">Kamera aktif</span>
+                                <span class="m-sub" style="margin:0;">Memindai…</span>
+                              </div>
+                              <div class="m-field" style="margin-top:12px;">
+                                <span class="m-label">Atau masukkan kode kendaraan manual</span>
+                                <input class="m-input m-input--focus" value="PTH-014" readonly>
+                                <div class="m-help">Gunakan kolom ini bila stiker QR rusak atau tidak terbaca kamera.</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div class="m-card" data-annot="6">
+                            <div class="m-card__head"><i class="bi bi-heart-pulse"></i> Riwayat Kesehatan PTH-014</div>
+                            <div class="m-card__body">
+                              <div class="m-row m-row--between" style="margin-bottom:8px;">
+                                <div>
+                                  <b style="font-size:12px;">Toyota Hilux Double Cabin</b>
+                                  <div class="m-sub" style="margin:0;">Plat B 9014 PTH · Site Patuha</div>
+                                </div>
+                                <span class="m-badge m-badge--green">Layak</span>
+                              </div>
+
+                              <div class="m-grid m-grid--2" style="margin-bottom:10px;">
+                                <div class="m-stat m-stat--green"><b>12</b><small>Hasil OK</small></div>
+                                <div class="m-stat m-stat--red"><b>2</b><small>Hasil NG</small></div>
+                              </div>
+
+                              <div class="m-stack">
+                                <div class="m-row m-row--between"><span class="m-badge m-badge--blue">Body</span><span class="m-sub" style="margin:0;">28 Jul 2026 · Dewi S.</span></div>
+                                <div class="m-row m-row--between"><span class="m-badge m-badge--yellow">Mingguan</span><span class="m-sub" style="margin:0;">2 Agu 2026 · Budi P.</span></div>
+                                <div class="m-row m-row--between"><span class="m-badge m-badge--green">Harian</span><span class="m-sub" style="margin:0;">3 Agu 2026 · Budi P.</span></div>
+                              </div>
+
+                              <div class="m-alert m-alert--warn" style="margin:10px 0 0;">
+                                <i class="bi bi-exclamation-triangle"></i> 1 temuan: <b>ban depan kanan</b> menipis — ditandai perlu penggantian.
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="pin" data-step="5" data-annot="5" data-pin-pos="right" style="left:50%;top:50%">
+                <span class="pin__tip"><b>Input scan QR kendaraan</b><span>Arahkan kamera ke stiker QR yang tertempel pada kendaraan. Bila QR rusak, masukkan kode kendaraan secara manual pada kolom di bawahnya.</span></span>
+              </button>
+              <button class="pin" data-step="6" data-annot="6" data-pin-pos="left" style="left:50%;top:50%">
+                <span class="pin__tip"><b>Ringkasan riwayat kesehatan</b><span>Sistem langsung menampilkan identitas kendaraan, jumlah hasil OK/NG, dan riwayat pengecekan per jenis (body, mingguan, harian) beserta temuan yang perlu ditindak lanjuti.</span></span>
+              </button>
+            </div>
+          </article>
+
+          <!-- ============ SCENE 5: EXPORT CHECKING ============ -->
+          <article class="clip-wrap">
+            <div class="clip-head">
+              <span class="clip-step">Langkah 7</span>
+              <h3>Ekspor checklist pengecekan</h3>
+              <span class="role">Dispatcher · Admin GA</span>
+            </div>
+
+            <div class="clip">
+              <div class="device">
+                <div class="device__bar">
+                  <span class="device__dots"><i></i><i></i><i></i></span>
+                  <span class="device__url"><i class="bi bi-lock-fill"></i> siaga.geodipa.co.id/dispatcher/export-checking</span>
+                  <span class="device__tag">Export</span>
+                </div>
+                <div class="device__screen">
+                  <div class="app">
+                    <aside class="app__aside">
+                      <div class="app__brand">
+                        <img src="https://jojo-static-files-klfm7hjb.s3.ap-southeast-3.amazonaws.com/logo-geodipa-officeless.png" alt="">
+                        <span><b>SIAGA</b><small>General Affairs</small></span>
+                      </div>
+                      <p class="app__navlabel">Menu Utama</p>
+                      <ul class="app__nav">
+                        <li><span class="nav"><i class="bi bi-speedometer2"></i>Dashboard</span></li>
+                        <li>
+                          <span class="nav"><i class="bi bi-clipboard-check"></i>Pemeriksaan Kendaraan<i class="bi bi-chevron-up chev"></i></span>
+                          <ul class="app__nav">
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Harian</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Mingguan</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Bulanan</span></li>
+                            <li><span class="nav sub"><i class="bi bi-circle"></i>Body Inspection</span></li>
+                          </ul>
+                        </li>
+                        <li><span class="nav"><i class="bi bi-person-check"></i>Assign PIC</span></li>
+                        <li><span class="nav"><i class="bi bi-qr-code-scan"></i>Scanner Kendaraan</span></li>
+                        <li><span class="nav"><i class="bi bi-clock-history"></i>Riwayat &amp; Laporan</span></li>
+                        <li><span class="nav is-active"><i class="bi bi-file-earmark-excel"></i>Export Form Pengecekan</span></li>
+                      </ul>
+                    </aside>
+                    <div class="app__main">
+                      <div class="app__topbar">
+                        <i class="bi bi-list burger"></i>
+                        <div class="app__search"><i class="bi bi-search"></i> Cari menu atau data…</div>
+                        <div class="app__user">
+                          <span class="who"><b>Budi P.</b><small>Dispatcher</small></span>
+                          <span class="avatar">BP</span>
+                        </div>
+                      </div>
+                      <div class="app__body">
+                        <div class="pagetitle">
+                          <h1>Export Form Pengecekan</h1>
+                          <ol class="md-breadcrumb"><li>Dashboard</li><li>Export Form Pengecekan</li></ol>
+                        </div>
+
+                        <div class="m-grid m-grid--3" style="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);">
+                          <div class="m-card" data-annot="7">
+                            <div class="m-card__head"><i class="bi bi-file-earmark-excel"></i> Unduh Form Pengecekan (Excel)</div>
+                            <div class="m-card__body">
+                              <div class="m-sub" style="margin:0 0 10px;">Buat format pengecekan dispatcher per kendaraan per bulan. Logo perusahaan otomatis diambil dari pengaturan sistem.</div>
+
+                              <div class="m-field">
+                                <span class="m-label">Kendaraan <span class="req">*</span></span>
+                                <div class="m-input m-input--select">PTH-014 — Toyota Hilux Double Cabin</div>
+                              </div>
+
+                              <div class="m-grid m-grid--2">
+                                <div class="m-field">
+                                  <span class="m-label">Periode Bulan <span class="req">*</span></span>
+                                  <div class="m-input m-input--select">Agustus</div>
+                                </div>
+                                <div class="m-field">
+                                  <span class="m-label">Periode Tahun <span class="req">*</span></span>
+                                  <div class="m-input m-input--select">2026</div>
+                                </div>
+                              </div>
+
+                              <div class="m-field">
+                                <span class="m-label">Jenis Pengecekan</span>
+                                <div class="m-input m-input--select">Routine Checking (harian / mingguan / bulanan)</div>
+                                <div class="m-help">Pilihan <em>Body Checking</em> tersedia pada halaman ekspor terpisah.</div>
+                              </div>
+                            </div>
+                            <div class="m-card__foot">
+                              <button class="m-btn m-btn--green" type="button"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+                              <button class="m-btn m-btn--outline" type="button"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>
+                              <button class="m-btn m-btn--ghost" type="button">Reset</button>
+                            </div>
+                          </div>
+
+                          <div class="m-card">
+                            <div class="m-card__head"><i class="bi bi-info-circle"></i> Isi Format Export</div>
+                            <div class="m-card__body">
+                              <ul style="font-size:11px;margin:0;padding-left:16px;line-height:1.7;">
+                                <li><b>Pengecekan Harian</b> — kolom Hari 1..N berisi V (baik) / X (rusak).</li>
+                                <li><b>Pengecekan Mingguan</b> — kolom mengikuti tanggal pengecekan mingguan pada periode tersebut.</li>
+                                <li><b>Pengecekan Bulanan</b> — daftar item beserta tanggal, status, dan keterangan.</li>
+                                <li><b>Pengemudi &amp; Tanda Tangan</b> — sengaja dikosongkan untuk diisi manual.</li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="pin" data-step="7" data-annot="7" data-pin-pos="right" style="left:50%;top:50%">
+                <span class="pin__tip"><b>Pilih periode &amp; jenis lalu ekspor</b><span>Pilih kendaraan, bulan, dan tahun, lalu klik <em>Export Excel</em> untuk mengunduh format pengecekan. Laporan PDF (routine check, body check, vehicle checklist) tersedia dari halaman Riwayat &amp; Laporan.</span></span>
+              </button>
+            </div>
+          </article>
+
+        </div>
+
+        <!-- ============ ASIDE: DAFTAR LANGKAH ============ -->
+        <aside class="tut__aside">
+          <div class="tut__stepbox tut__stepbox--scroll">
+            <div class="tag">Alur 4 — Dispatcher</div>
+            <h3>7 langkah</h3>
+            <div class="tut__progress">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <p class="tut__hint">Klik langkah untuk melompat dan menyorot elemen terkait.</p>
+            <ol class="tut__steps">
+              <li data-step="1"><b>Kartu ringkasan</b> Cek Overdue, Due, dan Upcoming.</li>
+              <li data-step="2"><b>Generate Periode</b> Bentuk target pengecekan bulanan.</li>
+              <li data-step="3"><b>Assign PIC</b> Tugaskan dispatcher per kendaraan.</li>
+              <li data-step="4"><b>Status jadwal</b> Baca Pending / Due / Overdue / Completed.</li>
+              <li data-step="5"><b>Scan QR</b> Pindai stiker QR pada kendaraan.</li>
+              <li data-step="6"><b>Riwayat kesehatan</b> Lihat hasil OK/NG dan temuan.</li>
+              <li data-step="7"><b>Ekspor checklist</b> Unduh rekap Excel/PDF per periode.</li>
+            </ol>
+          </div>
+
+          <div class="card card--tight card--soft">
+            <h3 style="font-size:.86rem;">Kesalahan yang sering terjadi</h3>
+            <ul class="list-cross list-check" style="font-size:.79rem;margin-bottom:0;">
+              <li>Generate periode diulang padahal periode bulan ini sudah ada.</li>
+              <li>Jadwal overdue dibiarkan karena PIC kendaraan belum ditetapkan.</li>
+              <li>Stiker QR kendaraan kotor atau rusak sehingga tidak terbaca kamera.</li>
+              <li>Mengekspor checklist sebelum seluruh pengecekan bulan itu diinput.</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+
+      <!-- ================= CATATAN PENTING ================= -->
+      <div class="callout callout--info">
+        <span class="callout__icon"><i class="bi bi-qr-code"></i></span>
+        <div class="callout__body">
+          <strong>QR kendaraan ditempel fisik untuk akses cepat</strong>
+          Setiap kendaraan memiliki lembar QR Code yang ditempel pada unitnya. Saat dipindai melalui
+          menu <em>Scanner Kendaraan</em>, QR tersebut langsung membuka ringkasan riwayat kesehatan
+          kendaraan tanpa perlu menelusuri menu pencarian — berguna saat inspeksi di lapangan atau
+          saat kendaraan berpindah site (PMU, Patuha, BCMP).
+        </div>
+      </div>
+
+      <div class="callout callout--tip">
+        <span class="callout__icon"><i class="bi bi-diagram-3"></i></span>
+        <div class="callout__body">
+          <strong>Setiap jenis pengecekan dikelola controller terpisah</strong>
+          Pengecekan harian, mingguan, bulanan, dan body inspection ditangani oleh controller yang
+          berbeda (<code>DailyCheckingController</code>, <code>WeeklyCheckingController</code>,
+          <code>MonthlyCheckingController</code>, <code>BodyCheckingController</code>). Pemisahan ini
+          menjaga performa serta memudahkan pemeliharaan, sehingga satu jenis pengecekan dapat
+          diperbaiki tanpa mengganggu jenis lainnya.
+        </div>
+      </div>
+
+      <div class="callout callout--warn">
+        <span class="callout__icon"><i class="bi bi-exclamation-triangle"></i></span>
+        <div class="callout__body">
+          <strong>Asumsi</strong>
+          Daftar kendaraan beserta status jadwal pada Langkah 4 mengacu pada tabel jadwal pengecekan
+          yang tersaji di Dashboard Dispatcher dan halaman penugasan PIC; SIAGA belum memiliki halaman
+          khusus &ldquo;daftar jadwal&rdquo; yang berdiri sendiri. Status <em>Pending</em>, <em>Due</em>,
+          <em>Overdue</em>, dan <em>Completed</em> dihitung sistem dari tanggal jatuh tempo jadwal.
+        </div>
+      </div>
+
+      <div class="callout callout--info">
+        <span class="callout__icon"><i class="bi bi-arrow-right-circle"></i></span>
+        <div class="callout__body">
+          <strong>Lanjut ke Alur 5 — Makan Siang</strong>
+          Booking mandiri lokasi makan, absensi QR di kantin, forecast porsi H+1, sampai penguncian
+          distribusi porsi ke vendor katering.
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+            <a class="btn btn--primary btn--sm" href="05-makan-siang.html">Buka Alur 5 <i class="bi bi-arrow-right-short"></i></a>
+            <a class="btn btn--ghost btn--sm" href="../software-documentation/03-model-use-case.html">Lihat use case pengecekan <i class="bi bi-diagram-3"></i></a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="foot__inner">
+    <p>&copy; <span data-year>2026</span> PT Geo Dipa Energi (Persero) Unit Patuha — Divisi General Affairs.</p>
+    <div class="foot__links">
+      <a href="../index.html">Beranda dokumentasi</a>
+      <a href="index.html">Semua alur</a>
+      <a href="../software-documentation/index.html">Software Documentation</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/js/docs.js"></script>
+<script src="../assets/js/diagrams.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+# ─────────────────────────────────────────────────────────────
+#  OPSIONAL — mode development (kode live tanpa rebuild)
+#
+#  Cara pakai:
+#     cp docker-compose.override.yml.example docker-compose.override.yml
+#     docker compose up -d
+#
+#  File `docker-compose.override.yml` sudah masuk .gitignore dan
+#  otomatis dibaca docker compose. Hapus file itu untuk kembali ke mode
+#  image (kode di-bake; perubahan butuh --build).
+#
+#  Yang jadi live (tanpa rebuild):
+#     - app/, resources/, routes/, config/, database/
+#     - public/  (aset statis + hasil `npm run dev` lewat service `vite`)
+#
+#  Yang TETAP butuh rebuild:
+#     - composer.json / composer.lock  -> docker compose build app
+#     - Dockerfile / docker/*
+#     - package.json / package-lock.json
+#
+#  Catatan: karena source di-mount dari macOS (case-insensitive),
+#  kesalahan huruf pada nama view/class tidak akan terlihat di sini.
+#  Jalankan `make case` sebelum push.
+# ─────────────────────────────────────────────────────────────
+services:
+  app:
+    volumes:
+      - ./app:/var/www/html/app
+      - ./resources:/var/www/html/resources
+      - ./routes:/var/www/html/routes
+      - ./config:/var/www/html/config
+      - ./database:/var/www/html/database
+      - ./public:/var/www/html/public
+      - ./storage/app/public:/var/www/html/storage/app/public
+
+  # ── Vite dev server (hot reload CSS/JS) ────────────────────
+  # Setara `npm run dev` pada `composer dev` di host.
+  # Wajib dijalankan bareng override ini supaya Blade membaca
+  # http://localhost:5173 (public/hot).
+  #   docker compose up -d          -> semua termasuk vite
+  #   docker compose up -d app      -> tanpa vite (pakai aset hasil build)
+  vite:
+    image: node:22-alpine
+    container_name: bbm_vite
+    working_dir: /app
+    restart: unless-stopped
+    command: ["sh", "-lc", "npm ci --no-audit --no-fund && npm run dev -- --host 0.0.0.0"]
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - vite_node_modules:/app/node_modules
+
+volumes:
+  vite_node_modules:
