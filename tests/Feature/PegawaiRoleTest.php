@@ -75,9 +75,10 @@ it('mengarahkan pegawai ke daftar validasi perjalanan setelah login', function (
 
     expect($redirect->routeFor($pegawai))->toBe(route('lpj.pengguna.index'));
 
-    // Driver tetap diarahkan ke halaman permohonan BBM.
+    // Driver diarahkan ke dashboard driver miliknya sendiri (bukan ke
+    // dashboard analitik unit milik superadmin/GA).
     $driver = ($this->buatUser)('requester', 'requester');
-    expect($redirect->routeFor($driver))->toBe(route('requester-index'));
+    expect($redirect->routeFor($driver))->toBe(route('driver.dashboard'));
 });
 
 it('menyiapkan akun demo pegawai lewat PegawaiDemoSeeder', function () {

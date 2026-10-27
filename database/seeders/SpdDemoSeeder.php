@@ -153,8 +153,11 @@ class SpdDemoSeeder extends Seeder
             // Lama perjalanan
             $lamaHari = Carbon::parse($data['tanggal_berangkat'])->diffInDays(Carbon::parse($data['tanggal_kembali'])) + 1;
 
-            // Insert langsung via DB agar boot creating tidak overwrite total_budget
+            // Insert langsung via DB agar boot creating tidak overwrite total_budget.
+            // Konsekuensinya event `creating` tidak jalan, jadi slug route key
+            // (yang normalnya diisi model) WAJIB diisi eksplisit di sini.
             $id = DB::table('surat_spds')->insertGetId(array_merge($data, [
+                'slug'                 => str_replace('/', '-', $nomorSurat),
                 'nomor_surat'          => $nomorSurat,
                 'nomor_urut'           => $nomorUrut,
                 'lama_perjalanan_hari' => $lamaHari,

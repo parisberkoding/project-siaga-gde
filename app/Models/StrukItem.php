@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Concerns\HasSafeSlugRouteKey;
 use Illuminate\Database\Eloquent\Model;
 
 class StrukItem extends Model
 {
-    use HasFactory;
+    use HasFactory, HasSafeSlugRouteKey;
 
     protected $table = 'struk_items';
 

@@ -13,10 +13,11 @@ use App\Models\User;
  * siteIds disimpan terpisah untuk module yang masih memakai scope berbasis
  * site (mis. Lunch Management) yang tidak memiliki kolom unit_id langsung.
  *
- * Ditentukan dari relasi User -> Unit:
- *   - user tanpa unit (unit_id null)            => global (pusat).
- *   - user dengan unit PUSAT (Kantor Pusat)     => global (pusat).
- *   - selain itu                                => dibatasi ke unitnya.
+ * Ditentukan dari User::hasGlobalUnitScope():
+ *   - user tanpa unit (unit_id null)                 => global.
+ *   - role developers                                => global.
+ *   - role superadmin yang unitnya Pusat             => global.
+ *   - selain itu (termasuk GA di Pusat)              => dibatasi ke unitnya.
  */
 final class DataMartScope
 {
@@ -37,10 +38,14 @@ final class DataMartScope
             return new self(null, null, 'pusat');
         }
 
+        if ($user->hasGlobalUnitScope()) {
+            return new self(null, null, 'global');
+        }
+
         $unit = $user->unit;
 
-        if ($unit === null || mb_strtoupper((string) $unit->code) === 'PUSAT') {
-            return new self(null, null, 'pusat');
+        if ($unit === null) {
+            return new self(null, null, 'global');
         }
 
         return new self($unit->id, $user->unitSiteIds() ?: [], 'unit '.$unit->code);

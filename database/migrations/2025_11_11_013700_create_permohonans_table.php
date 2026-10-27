@@ -17,7 +17,12 @@ return new class extends Migration
             // request number unique
             $table->string('request_number')->unique();
 
-            $table->unsignedBigInteger('unit_id')->nullable();
+            // CATATAN: `unit_id` SENGAJA TIDAK dibuat di sini.
+            // Tabel `units` baru ada di migrasi 2026_08_12_000100, sedangkan
+            // migrasi ini berjalan jauh sebelumnya. Menaruh foreign key ke
+            // `units` di sini membuat `migrate:fresh` gagal di MySQL
+            // ("Failed to open the referenced table 'units'"). Kolom + FK-nya
+            // ditambahkan oleh 2026_10_01_000001 setelah tabel `units` ada.
 
             // foreign key to users table, requester data
             $table->unsignedBigInteger('requester_id');
@@ -54,11 +59,6 @@ return new class extends Migration
             $table->foreign('consumerial_tools_id')
                   ->references('id')
                   ->on('vehicle_and_tools_consumers')
-                  ->onDelete('restrict');
-
-            $table->foreign('unit_id')
-                  ->references('id')
-                  ->on('units')
                   ->onDelete('restrict');
         });
     }

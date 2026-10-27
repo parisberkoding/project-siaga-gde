@@ -22,18 +22,55 @@
                placeholder="Ketik nama / panggilan…" required maxlength="150">
         <input type="hidden" id="employee_id">
         <div id="suggestions" class="list-group position-absolute w-100 shadow-sm d-none"
-             style="z-index: 1050; max-height: 260px; overflow-y: auto;"></div>
+             style="z-index: 1050; max-height: 280px; overflow-y: auto;"></div>
         <div class="form-text">Pilih nama dari daftar agar langsung dikenali.</div>
       </div>
 
-      <button type="submit" class="btn btn-primary btn-lg w-100" id="submit-btn">
+      {{-- Kartu identitas setelah nama dipilih --}}
+      <div id="selected-card" class="alert alert-light border d-none mb-3">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div>
+            <div class="fw-bold" id="selected-name"></div>
+            <div class="small text-muted" id="selected-meta"></div>
+          </div>
+          <div id="selected-badges" class="text-end"></div>
+        </div>
+      </div>
+
+      {{-- Field tambahan untuk pegawai non-SSO / belum terdaftar --}}
+      <div id="profile-fields" class="d-none">
+        <div class="alert alert-warning py-2 small">
+          <i class="bi bi-info-circle me-1"></i>
+          Nama belum terdaftar. Lengkapi data berikut — akun SIAGA akan dibuatkan
+          dan diverifikasi admin unit.
+        </div>
+        <div class="row g-2">
+          <div class="col-12 col-sm-6">
+            <label for="division" class="form-label fw-semibold">Divisi</label>
+            <input type="text" class="form-control" id="division" placeholder="Contoh: Operasi" maxlength="100">
+          </div>
+          <div class="col-12 col-sm-6">
+            <label for="unit_id" class="form-label fw-semibold">Unit</label>
+            <select class="form-select" id="unit_id">
+              <option value="">— pilih unit —</option>
+              @foreach ($units as $unit)
+                <option value="{{ $unit->id }}" {{ (int) $site->unit_id === (int) $unit->id ? 'selected' : '' }}>
+                  {{ $unit->name }}
+                </option>
+              @endforeach
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-lg w-100 mt-2" id="submit-btn">
         <i class="bi bi-check2-circle me-1"></i>Catat Kehadiran
       </button>
     </form>
 
     <hr class="my-3">
     <div class="text-center">
-      <a href="#" id="guest-toggle" class="text-muted text-decoration-none" style="transition: all 0.2s;" onmouseover="this.style.textDecoration='underline'; this.style.color='#0B50A1';" onmouseout="this.style.textDecoration='none'; this.style.color='#64748B';">
+      <a href="#" id="guest-toggle" class="text-muted text-decoration-none">
         <i class="bi bi-people me-1"></i>Klik di sini untuk absen tamu
       </a>
     </div>
@@ -73,10 +110,16 @@
   <div class="card-body p-4 text-center">
     <i class="bi bi-check-circle-fill text-success" style="font-size: 3.5rem;"></i>
     <h5 class="fw-bold mt-3" id="done-title">Tercatat!</h5>
-    <p class="text-muted" id="done-message"></p>
-    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="location.reload()">
-      Absen lagi
-    </button>
+    <p class="text-muted mb-2" id="done-message"></p>
+    <p class="small text-muted d-none" id="done-account-note"></p>
+    <div class="d-grid gap-2 mt-3">
+      <a href="{{ route('my.lunch-plan') }}" class="btn btn-outline-primary" id="booking-link">
+        <i class="bi bi-calendar-check me-1"></i>Atur jadwal makan beberapa hari ke depan
+      </a>
+      <button type="button" class="btn btn-light" onclick="location.reload()">
+        Absen lagi
+      </button>
+    </div>
   </div>
 </div>
 
@@ -90,52 +133,41 @@
   </div>
 </div>
 
-{{-- ─── MODAL 1: Pilih Lokasi Makan ────────────────────────────── --}}
-<div class="modal fade" id="site-modal" tabindex="-1" data-bs-backdrop="static">
-  <div class="modal-dialog modal-dialog-centered">
+{{-- ─── MODAL: BESOK MAKAN DI MANA ─────────────────────────────── --}}
+<div class="modal fade" id="tomorrow-modal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header border-0 pb-0">
-        <h5 class="modal-title fw-bold"><i class="bi bi-geo-alt me-1"></i>Makan di mana?</h5>
-      </div>
-      <div class="modal-body">
-        <p class="text-muted mb-3">Pilih lokasi makan siang kamu hari ini.</p>
-        <div class="d-grid gap-2" id="site-options">
-          @foreach ($sites as $s)
-            <button type="button" class="btn btn-outline-primary btn-lg site-btn"
-                    data-site-id="{{ $s->id }}">
-              <i class="bi bi-geo-alt me-1"></i>{{ $s->code }}
-            </button>
-          @endforeach
-          <a href="{{ route('my.lunch-plan') }}" class="btn btn-outline-dark btn-lg" target="_blank">
-            <i class="bi bi-calendar-check me-1"></i>Booking Lama
-          </a>
+        <div>
+          <h5 class="modal-title fw-bold mb-1"><i class="bi bi-sun me-1"></i>Besok makan di mana?</h5>
+          <p class="text-muted small mb-0" id="tomorrow-date"></p>
         </div>
       </div>
-    </div>
-  </div>
-</div>
+      <div class="modal-body">
+        <p class="text-muted small mb-3">
+          Pilihan di bawah hanya site di unit kamu. Kalau dilewati, besok otomatis
+          memakai site default.
+        </p>
 
-{{-- ─── MODAL 2: Dine In / Take Away ───────────────────────────── --}}
-<div class="modal fade" id="dine-modal" tabindex="-1" data-bs-backdrop="static">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header border-0 pb-0">
-        <h5 class="modal-title fw-bold"><i class="bi bi-shop me-1"></i>Mau makan bagaimana?</h5>
-      </div>
-      <div class="modal-body">
-        <p class="text-muted mb-3">Pilih cara penyajian atau gunakan default.</p>
-        <div class="d-grid gap-2">
-          <button type="button" class="btn btn-outline-success btn-lg dine-btn" data-dine-type="dine_in">
-            <i class="bi bi-cup-hot me-1"></i>Dine In
-          </button>
-          <button type="button" class="btn btn-outline-warning btn-lg dine-btn" data-dine-type="take_away">
-            <i class="bi bi-bag me-1"></i>Take Away
-          </button>
-          <button type="button" class="btn btn-light btn-lg" id="dine-skip">
-            <i class="bi bi-arrow-counterclockwise me-1"></i>Skip — pakai default
-          </button>
+        <div class="row g-2" id="tomorrow-sites"></div>
+
+        <div class="mt-4">
+          <label class="form-label fw-semibold small mb-2">Cara makan</label>
+          <div class="btn-group w-100" role="group" id="dine-group">
+            <input type="radio" class="btn-check" name="dine_type" id="dine-in" value="dine_in">
+            <label class="btn btn-outline-success" for="dine-in"><i class="bi bi-cup-hot me-1"></i>Dine In</label>
+            <input type="radio" class="btn-check" name="dine_type" id="dine-away" value="take_away">
+            <label class="btn btn-outline-warning" for="dine-away"><i class="bi bi-bag me-1"></i>Take Away</label>
+          </div>
         </div>
-        <p class="text-muted small text-center mt-3 mb-0" id="dine-default-hint"></p>
+      </div>
+      <div class="modal-footer border-0 pt-0 flex-column flex-sm-row">
+        <button type="button" class="btn btn-light w-100 w-sm-auto" id="tomorrow-skip">
+          Lewati, pakai default
+        </button>
+        <button type="button" class="btn btn-primary w-100 w-sm-auto" id="tomorrow-save" disabled>
+          <i class="bi bi-check2 me-1"></i>Simpan jawaban
+        </button>
       </div>
     </div>
   </div>
@@ -144,36 +176,44 @@
 
 @push('scripts')
 <script nonce="{{ csp_nonce() }}">
-  const lookupUrl     = @json(route('lunch.attendance.lookup'));
-  const submitUrl     = @json(route('lunch.attendance.submit'));
-  const chooseSiteUrl = @json(url('lunch-attendance'));
-  const chooseDineUrl = @json(url('lunch-attendance'));
-  const guestSubmitUrl= @json(route('lunch.attendance.guest-submit'));
-  const siteCode      = @json($site->code);
-  const csrfToken     = @json(csrf_token());
+  const lookupUrl       = @json(route('lunch.attendance.lookup'));
+  const submitUrl       = @json(route('lunch.attendance.submit'));
+  const confirmUrlBase  = @json(url('lunch-attendance'));
+  const guestSubmitUrl  = @json(route('lunch.attendance.guest-submit'));
+  const siteCode        = @json($site->code);
+  const csrfToken       = @json(csrf_token());
 
-  const nameInput      = document.getElementById('name');
-  const employeeId     = document.getElementById('employee_id');
-  const suggestions    = document.getElementById('suggestions');
-  const submitBtn      = document.getElementById('submit-btn');
-  const stepForm       = document.getElementById('step-form');
-  const stepGuest      = document.getElementById('step-guest');
-  const stepDone       = document.getElementById('step-done');
-  const guestToggle    = document.getElementById('guest-toggle');
-  const guestBack      = document.getElementById('guest-back');
-  const guestForm      = document.getElementById('guest-form');
-  const guestName      = document.getElementById('guest-name');
-  const guestInst      = document.getElementById('guest-institution');
-  const guestSubmitBtn = document.getElementById('guest-submit-btn');
-
-  const siteModal      = new bootstrap.Modal(document.getElementById('site-modal'));
-  const dineModal      = new bootstrap.Modal(document.getElementById('dine-modal'));
-  const siteOptions    = document.getElementById('site-options');
-  const dineDefaultHint= document.getElementById('dine-default-hint');
+  const nameInput       = document.getElementById('name');
+  const employeeId      = document.getElementById('employee_id');
+  const divisionInput   = document.getElementById('division');
+  const unitSelect      = document.getElementById('unit_id');
+  const suggestions     = document.getElementById('suggestions');
+  const selectedCard    = document.getElementById('selected-card');
+  const selectedName    = document.getElementById('selected-name');
+  const selectedMeta    = document.getElementById('selected-meta');
+  const selectedBadges  = document.getElementById('selected-badges');
+  const profileFields   = document.getElementById('profile-fields');
+  const submitBtn       = document.getElementById('submit-btn');
+  const stepForm        = document.getElementById('step-form');
+  const stepGuest       = document.getElementById('step-guest');
+  const stepDone        = document.getElementById('step-done');
+  const guestToggle     = document.getElementById('guest-toggle');
+  const guestBack       = document.getElementById('guest-back');
+  const guestForm       = document.getElementById('guest-form');
+  const guestName       = document.getElementById('guest-name');
+  const guestInst       = document.getElementById('guest-institution');
+  const guestSubmitBtn  = document.getElementById('guest-submit-btn');
+  const tomorrowModalEl = document.getElementById('tomorrow-modal');
+  const tomorrowModal   = new bootstrap.Modal(tomorrowModalEl);
+  const tomorrowSites   = document.getElementById('tomorrow-sites');
+  const tomorrowDate    = document.getElementById('tomorrow-date');
+  const tomorrowSave    = document.getElementById('tomorrow-save');
+  const tomorrowSkip    = document.getElementById('tomorrow-skip');
 
   let transactionId   = null;
   let confirmToken    = null;
   let defaultDineType = 'dine_in';
+  let selectedSiteId  = null;
   let debounceTimer   = null;
 
   // ─── Guest toggle ────────────────────────────────────────────
@@ -191,6 +231,8 @@
   // ─── Autocomplete ────────────────────────────────────────────
   nameInput.addEventListener('input', () => {
     employeeId.value = '';
+    selectedCard.classList.add('d-none');
+    profileFields.classList.toggle('d-none', nameInput.value.trim().length < 2);
     clearTimeout(debounceTimer);
     const q = nameInput.value.trim();
     if (q.length < 2) { suggestions.classList.add('d-none'); return; }
@@ -210,17 +252,54 @@
       const a = document.createElement('a');
       a.href = '#';
       a.className = 'list-group-item list-group-item-action py-2';
-      a.innerHTML = `<strong>${escapeHtml(item.name)}</strong>` +
-        (item.position ? `<br><small class="text-muted">${escapeHtml(item.position)}</small>` : '');
+
+      const badges = [];
+      if (item.has_sso) badges.push('<span class="badge bg-success">SSO</span>');
+      else if (item.has_account) badges.push('<span class="badge bg-secondary">Akun SIAGA</span>');
+      else badges.push('<span class="badge bg-warning text-dark">Belum ada akun</span>');
+      if (item.pending_verification) badges.push('<span class="badge bg-info text-dark">Pending</span>');
+
+      a.innerHTML = `<div class="d-flex justify-content-between gap-2">
+          <div>
+            <strong>${escapeHtml(item.name)}</strong>
+            ${item.division ? `<br><small class="text-muted">${escapeHtml(item.division)}</small>` : ''}
+          </div>
+          <div class="text-end small">
+            ${item.unit ? `<div class="text-muted">${escapeHtml(item.unit)}</div>` : ''}
+            ${badges.join(' ')}
+          </div>
+        </div>`;
+
       a.addEventListener('click', (e) => {
         e.preventDefault();
-        nameInput.value  = item.name;
-        employeeId.value = item.id;
-        suggestions.classList.add('d-none');
+        selectEmployee(item);
       });
       suggestions.appendChild(a);
     });
     suggestions.classList.remove('d-none');
+  }
+
+  function selectEmployee(item) {
+    nameInput.value  = item.name;
+    employeeId.value = item.id;
+    suggestions.classList.add('d-none');
+
+    // Master lama mungkin belum punya divisi/unit. Tampilkan field tambahan
+    // hanya bila datanya memang belum lengkap.
+    const needsProfile = !item.division || !item.unit_id;
+    profileFields.classList.toggle('d-none', !needsProfile);
+
+    if (needsProfile) {
+      if (item.division) divisionInput.value = item.division;
+      if (item.unit_id) unitSelect.value = item.unit_id;
+    }
+
+    selectedName.textContent = item.name;
+    selectedMeta.textContent = [item.division, item.unit].filter(Boolean).join(' · ') || 'Data master karyawan';
+    selectedBadges.innerHTML = item.has_sso
+      ? '<span class="badge bg-success">SSO</span>'
+      : (item.has_account ? '<span class="badge bg-secondary">Akun SIAGA</span>' : '<span class="badge bg-warning text-dark">Belum ada akun</span>');
+    selectedCard.classList.remove('d-none');
   }
 
   document.addEventListener('click', (e) => {
@@ -233,6 +312,12 @@
   document.getElementById('attendance-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    if (!employeeId.value && !unitSelect.value) {
+      profileFields.classList.remove('d-none');
+      showError('Pilih unit kamu terlebih dahulu.');
+      return;
+    }
+
     submitBtn.disabled  = true;
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan…';
 
@@ -244,6 +329,8 @@
           site_code:   siteCode,
           name:        nameInput.value.trim(),
           employee_id: employeeId.value || null,
+          division:    divisionInput.value.trim() || null,
+          unit_id:     unitSelect.value || null,
         }),
       });
 
@@ -254,63 +341,139 @@
       confirmToken    = data.token;
       defaultDineType = data.default_dine_type || 'dine_in';
 
-      dineDefaultHint.textContent = 'Default: ' + (defaultDineType === 'take_away' ? 'Take Away' : 'Dine In');
+      const bookingLink = document.getElementById('booking-link');
+      if (bookingLink && data.slug) {
+        bookingLink.href = @json(route('my.lunch-plan')) + '?slug=' + encodeURIComponent(data.slug);
+      }
+      selectedSiteId  = data.tomorrow_site_id || data.default_site_id;
 
-      siteModal.show();
+      openTomorrowModal(data);
     } catch (err) {
       showError(err.message);
+      if (/unit|lengkapi|terdaftar/i.test(err.message || '')) {
+        profileFields.classList.remove('d-none');
+      }
     } finally {
       submitBtn.disabled  = false;
       submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>Catat Kehadiran';
     }
   });
 
-  // ─── Modal 1: site selection ─────────────────────────────────
-  siteOptions.querySelectorAll('.site-btn').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      try {
-        await fetch(chooseSiteUrl + '/' + transactionId + '/choose-site', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-          body: JSON.stringify({ token: confirmToken, site_id: btn.dataset.siteId }),
+  // ─── Modal besok ─────────────────────────────────────────────
+  function openTomorrowModal(data) {
+    const date = data.tomorrow_date
+      ? new Date(data.tomorrow_date + 'T00:00:00')
+      : new Date(Date.now() + 86400000);
+    tomorrowDate.textContent = date.toLocaleDateString('id-ID', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
+
+    tomorrowSites.innerHTML = '';
+
+    (data.tomorrow_sites || []).forEach((s) => {
+      const col = document.createElement('div');
+      col.className = 'col-6';
+      const active = Number(s.id) === Number(selectedSiteId);
+      col.innerHTML = `
+        <button type="button" class="btn w-100 h-100 border site-choice ${active ? 'btn-primary text-white' : 'btn-outline-primary'}"
+                data-site-id="${s.id}">
+          <div class="fw-semibold">${escapeHtml(s.name)}</div>
+          <small class="${active ? 'text-white-50' : 'text-muted'}">${escapeHtml(s.code)}</small>
+          ${s.is_default ? '<div class="badge bg-light text-dark mt-1">Default</div>' : ''}
+        </button>`;
+      col.querySelector('button').addEventListener('click', () => {
+        selectedSiteId = Number(s.id);
+        tomorrowSites.querySelectorAll('.site-choice').forEach((btn) => {
+          btn.classList.remove('btn-primary', 'text-white');
+          btn.classList.add('btn-outline-primary');
         });
-      } catch (e) { /* ignore */ }
-
-      siteModal.hide();
-      dineModal.show();
+        const btn = col.querySelector('button');
+        btn.classList.remove('btn-outline-primary');
+        btn.classList.add('btn-primary', 'text-white');
+        tomorrowSave.disabled = false;
+      });
+      tomorrowSites.appendChild(col);
     });
-  });
 
-  siteOptions.querySelector('[target="_blank"]').addEventListener('click', () => {
-    siteModal.hide();
-  });
+    // Dine type default.
+    const dineInput = document.getElementById(defaultDineType === 'take_away' ? 'dine-away' : 'dine-in');
+    if (dineInput) dineInput.checked = true;
 
-  // ─── Modal 2: dine type ──────────────────────────────────────
-  document.querySelectorAll('.dine-btn').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      await submitDineType(btn.dataset.dineType);
-    });
-  });
+    tomorrowSave.disabled = !selectedSiteId;
 
-  document.getElementById('dine-skip').addEventListener('click', async () => {
-    await submitDineType(defaultDineType);
-  });
+    stepDone.dataset.accountPending = data.account_pending ? '1' : '';
+    stepDone.dataset.registered = data.registered ? '1' : '';
 
-  async function submitDineType(dineType) {
+    tomorrowModal.show();
+  }
+
+  tomorrowSave.addEventListener('click', async () => {
+    if (!selectedSiteId) return;
+    tomorrowSave.disabled = true;
+    tomorrowSave.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan…';
+
     try {
-      const res = await fetch(chooseDineUrl + '/' + transactionId + '/choose-dine-type', {
+      await saveTomorrow(selectedSiteId);
+      await saveDineType();
+      finish('Terima kasih!', 'Kehadiran hari ini dan rencana makan besok sudah tercatat.');
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      tomorrowSave.disabled = false;
+      tomorrowSave.innerHTML = '<i class="bi bi-check2 me-1"></i>Simpan jawaban';
+    }
+  });
+
+  tomorrowSkip.addEventListener('click', async () => {
+    tomorrowSkip.disabled = true;
+    try {
+      await saveTomorrow(null);
+      await saveDineType();
+      finish('Baik, dilewati.', 'Besok otomatis memakai site default kamu.');
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      tomorrowSkip.disabled = false;
+    }
+  });
+
+  async function saveTomorrow(siteId) {
+    const res = await fetch(confirmUrlBase + '/' + transactionId + '/tomorrow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+      body: JSON.stringify({ token: confirmToken, site_id: siteId }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Gagal menyimpan jawaban besok.');
+    return data;
+  }
+
+  async function saveDineType() {
+    const checked = document.querySelector('input[name="dine_type"]:checked');
+    const dineType = checked ? checked.value : defaultDineType;
+
+    try {
+      await fetch(confirmUrlBase + '/' + transactionId + '/choose-dine-type', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
         body: JSON.stringify({ token: confirmToken, dine_type: dineType }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.message || 'Gagal menyimpan pilihan.');
-    } catch (err) {
-      showError(err.message);
-    }
+    } catch (e) { /* dine type opsional, jangan blokir flow */ }
+  }
 
-    dineModal.hide();
-    window.location.href = '/';
+  function finish(title, message) {
+    tomorrowModal.hide();
+    stepForm.classList.add('d-none');
+    stepGuest.classList.add('d-none');
+    stepDone.classList.remove('d-none');
+    document.getElementById('done-title').textContent = title;
+    document.getElementById('done-message').textContent = message;
+
+    const note = document.getElementById('done-account-note');
+    if (stepDone.dataset.accountPending === '1') {
+      note.textContent = 'Akun SIAGA kamu sedang menunggu verifikasi admin unit. Kredensial akan diberikan admin secara langsung.';
+      note.classList.remove('d-none');
+    }
   }
 
   // ─── Guest submit ────────────────────────────────────────────
@@ -334,7 +497,10 @@
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.message || 'Gagal menyimpan tamu.');
 
-      window.location.href = '/';
+      stepGuest.classList.add('d-none');
+      stepDone.classList.remove('d-none');
+      document.getElementById('done-title').textContent = 'Tercatat!';
+      document.getElementById('done-message').textContent = data.message;
     } catch (err) {
       showError(err.message);
     } finally {

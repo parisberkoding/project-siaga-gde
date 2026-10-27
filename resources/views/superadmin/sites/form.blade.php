@@ -51,8 +51,22 @@
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Nama Site <span class="text-danger">*</span></label>
                             <input type="text" class="form-control @error('name') is-invalid @enderror" name="name"
-                                   value="{{ old('name', $site->name ?? '') }}" placeholder="Contoh: Site Basecamp" required>
+                                   value="{{ old('name', $site->name ?? '') }}" placeholder="Contoh: Basecamp Patuha" required>
                             @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Tipe Site <span class="text-danger">*</span></label>
+                            <select class="form-select @error('type') is-invalid @enderror" name="type" required>
+                                <option value="">-- Pilih Tipe --</option>
+                                @foreach(\App\Models\Site::typeOptions() as $value => $label)
+                                    <option value="{{ $value }}" {{ old('type', $site->type ?? '') === $value ? 'selected' : '' }}>
+                                        {{ $label }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <small class="text-muted">Site adalah lokasi spesifik di bawah unit: Power Plant, Basecamp, Kantor, Reservoir, atau Sumur.</small>
+                            @error('type')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
                         <div class="mb-3">

@@ -32,7 +32,7 @@
             <div class="card">
                 <div class="card-body text-center py-3">
                     <h4 class="fw-bold text-primary mb-0">{{ $totalsBySite[$site->id] ?? 0 }}</h4>
-                    <small class="text-muted">Default {{ $site->code }}</small>
+                    <small class="text-muted">{{ $site->name }}</small>
                 </div>
             </div>
         </div>
@@ -43,18 +43,33 @@
         <div class="card-body pt-3">
 
             <div class="row g-2 mb-3">
-                <div class="col-md-6">
+                <div class="col-md-7">
                     <form method="GET" action="{{ route('lunch.employee-defaults.index') }}" class="row g-2">
                         <div class="col">
                             <input type="text" name="search" value="{{ request('search') }}"
                                    class="form-control" placeholder="Cari nama / kode / alias…">
                         </div>
                         <div class="col-auto">
+                            <select name="unit_id" class="form-select">
+                                <option value="">Semua Unit</option>
+                                @foreach($units as $unit)
+                                    <option value="{{ $unit->id }}" @selected(request('unit_id') == $unit->id)>{{ $unit->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-auto">
                             <select name="site_id" class="form-select">
                                 <option value="">Semua Site</option>
                                 @foreach($sites as $site)
-                                    <option value="{{ $site->id }}" @selected(request('site_id') == $site->id)>{{ $site->code }}</option>
+                                    <option value="{{ $site->id }}" @selected(request('site_id') == $site->id)>{{ $site->name }}</option>
                                 @endforeach
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <select name="verification" class="form-select">
+                                <option value="">Semua status</option>
+                                <option value="pending" @selected(request('verification') === 'pending')>Pending verifikasi</option>
+                                <option value="verified" @selected(request('verification') === 'verified')>Terverifikasi</option>
                             </select>
                         </div>
                         <div class="col-auto">
@@ -62,7 +77,7 @@
                         </div>
                     </form>
                 </div>
-                <div class="col-md-6 text-md-end">
+                <div class="col-md-5 text-md-end">
                     <a href="{{ route('lunch.employee-defaults.export') }}" class="btn btn-outline-success">
                         <i class="bi bi-download me-1"></i>Export CSV
                     </a>
@@ -81,10 +96,11 @@
                         <tr>
                             <th>Kode</th>
                             <th>Nama</th>
+                            <th>Unit</th>
                             <th>Divisi</th>
                             <th>Jabatan</th>
                             <th>Default Site</th>
-                            <th>Alias</th>
+                            <th>Verifikasi</th>
                             <th>Status</th>
                             <th class="text-end">Aksi</th>
                         </tr>
@@ -93,22 +109,29 @@
                         @forelse($employees as $employee)
                         <tr class="{{ $employee->is_active ? '' : 'table-light text-muted' }}">
                             <td>{{ $employee->employee_code ?? '-' }}</td>
-                            <td class="fw-semibold">{{ $employee->employee_name }}</td>
+                            <td class="fw-semibold">
+                                {{ $employee->employee_name }}
+                                @if($employee->source === 'scan')
+                                    <br><small class="text-muted"><i class="bi bi-qr-code me-1"></i>hasil scan</small>
+                                @endif
+                            </td>
+                            <td>
+                                {{ $employee->unit?->name ?? $employee->defaultSite?->unit?->name ?? '—' }}
+                            </td>
                             <td>{{ $employee->division ?? '-' }}</td>
                             <td>{{ $employee->position ?? '-' }}</td>
                             <td>
                                 @if($employee->defaultSite)
-                                    <span class="badge bg-primary">{{ $employee->defaultSite->code }}</span>
+                                    <span class="badge bg-primary">{{ $employee->defaultSite->name }}</span>
                                 @else
                                     <span class="badge bg-secondary">—</span>
                                 @endif
                             </td>
                             <td>
-                                @foreach($employee->aliases->take(3) as $alias)
-                                    <span class="badge bg-light text-dark border">{{ $alias->alias }}</span>
-                                @endforeach
-                                @if($employee->aliases->count() > 3)
-                                    <span class="badge bg-light text-muted border">+{{ $employee->aliases->count() - 3 }}</span>
+                                @if($employee->isPendingVerification())
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                @else
+                                    <span class="badge bg-success">Terverifikasi</span>
                                 @endif
                             </td>
                             <td>
@@ -116,7 +139,15 @@
                                     {{ $employee->is_active ? 'Aktif' : 'Nonaktif' }}
                                 </span>
                             </td>
-                            <td class="text-end">
+                            <td class="text-end text-nowrap">
+                                @if($employee->isPendingVerification())
+                                <form method="POST" action="{{ route('lunch.employee-defaults.verify', $employee) }}" class="d-inline">
+                                    @csrf
+                                    <button class="btn btn-sm btn-success" title="Verifikasi">
+                                        <i class="bi bi-check2-circle"></i>
+                                    </button>
+                                </form>
+                                @endif
                                 <button class="btn btn-sm btn-outline-primary edit-btn"
                                         data-bs-toggle="modal" data-bs-target="#editModal"
                                         data-id="{{ $employee->id }}"
@@ -124,6 +155,7 @@
                                         data-name="{{ $employee->employee_name }}"
                                         data-division="{{ $employee->division }}"
                                         data-position="{{ $employee->position }}"
+                                        data-unit="{{ $employee->unit_id }}"
                                         data-site="{{ $employee->default_site_id }}"
                                         data-aliases="{{ $employee->aliases->where('source', 'manual')->pluck('alias')->implode(', ') }}">
                                     <i class="bi bi-pencil"></i>
@@ -143,7 +175,7 @@
                             </td>
                         </tr>
                         @empty
-                        <tr><td colspan="8" class="text-center text-muted py-4">Belum ada data karyawan.</td></tr>
+                        <tr><td colspan="9" class="text-center text-muted py-4">Belum ada data karyawan.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -208,7 +240,7 @@
             <div class="modal-body">
                 <p class="text-muted small">
                     Format kolom sama dengan hasil <strong>Export CSV</strong>:
-                    <code>employee_code, employee_name, division, position, default_site, aliases, is_active</code>.
+                    <code>employee_code, employee_name, division, position, unit, default_site, verification_status, aliases, is_active</code>.
                     Baris dengan <code>employee_code</code> yang sudah ada akan diperbarui.
                 </p>
                 <input type="file" name="file" class="form-control" accept=".csv,.txt" required>
@@ -223,7 +255,38 @@
 @endsection
 
 @push('scripts')
-<script>
+<script nonce="{{ csp_nonce() }}">
+function filterSites(modal, selectedSite) {
+    const unitSelect = modal.querySelector('[name=unit_id]');
+    const siteSelect = modal.querySelector('[name=default_site_id]');
+    if (!unitSelect || !siteSelect) return;
+
+    const unitId = unitSelect.value;
+
+    Array.from(siteSelect.options).forEach((opt) => {
+        if (!opt.value) return;
+        const match = !unitId || String(opt.dataset.unit) === String(unitId);
+        opt.hidden = !match;
+        opt.disabled = !match;
+    });
+
+    if (selectedSite) {
+        siteSelect.value = String(selectedSite);
+        if (siteSelect.selectedOptions[0]?.disabled) siteSelect.value = '';
+    } else if (siteSelect.selectedOptions[0]?.disabled) {
+        siteSelect.value = '';
+    }
+}
+
+['addModal', 'editModal'].forEach((id) => {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    const unitSelect = modal.querySelector('[name=unit_id]');
+    if (unitSelect) {
+        unitSelect.addEventListener('change', () => filterSites(modal));
+    }
+});
+
 document.querySelectorAll('.edit-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
         const form = document.getElementById('editForm');
@@ -232,8 +295,9 @@ document.querySelectorAll('.edit-btn').forEach((btn) => {
         form.querySelector('[name=employee_name]').value   = btn.dataset.name || '';
         form.querySelector('[name=division]').value        = btn.dataset.division || '';
         form.querySelector('[name=position]').value        = btn.dataset.position || '';
-        form.querySelector('[name=default_site_id]').value = btn.dataset.site || '';
+        form.querySelector('[name=unit_id]').value         = btn.dataset.unit || '';
         form.querySelector('[name=aliases]').value         = btn.dataset.aliases || '';
+        filterSites(form, btn.dataset.site);
     });
 });
 </script>

@@ -207,10 +207,14 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <a href="{{ route('admin.replacement-approval.show', optional($tx->replacement)->vpr_code ?? '') }}"
-                                           class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
+                                        @if($tx->replacement)
+                                            <a href="{{ route('admin.replacement-approval.show', $tx->replacement->vpr_code) }}"
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
                                     </td>
                                 </tr>
                                 @endforeach

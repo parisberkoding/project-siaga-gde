@@ -20,7 +20,11 @@ class EmployeeDefault extends Model
         'employment_type',
         'position',
         'default_site_id',
+        'unit_id',
         'is_active',
+        'verification_status',
+        'source',
+        'created_by',
     ];
 
     protected $casts = [
@@ -65,6 +69,59 @@ class EmployeeDefault extends Model
         return $this->belongsTo(Site::class, 'default_site_id');
     }
 
+    public function unit()
+    {
+        return $this->belongsTo(Unit::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Unit efektif karyawan: kolom unit_id, fallback ke unit site default.
+     */
+    public function resolvedUnitId(): ?int
+    {
+        return $this->unit_id ?? $this->defaultSite?->unit_id;
+    }
+
+    public function resolvedUnit(): ?Unit
+    {
+        $id = $this->resolvedUnitId();
+
+        return $id ? ($this->unit ?? Unit::find($id)) : null;
+    }
+
+    /**
+     * Site yang boleh dipilih karyawan ini untuk "besok makan dimana".
+     *
+     * Hanya site di unitnya sendiri. Bila unit belum diketahui, fallback ke
+     * site default (bukan seluruh site) supaya tidak ada kebocoran lintas unit.
+     *
+     * @return \Illuminate\Support\Collection<int, Site>
+     */
+    public function selectableSites()
+    {
+        $unitId = $this->resolvedUnitId();
+
+        if ($unitId) {
+            return Site::active()->where('unit_id', $unitId)->orderBy('name')->get();
+        }
+
+        if ($this->default_site_id) {
+            return Site::active()->whereKey($this->default_site_id)->get();
+        }
+
+        return collect();
+    }
+
+    public function isPendingVerification(): bool
+    {
+        return $this->verification_status === 'pending';
+    }
+
     public function aliases()
     {
         return $this->hasMany(EmployeeAlias::class);
@@ -91,7 +148,7 @@ class EmployeeDefault extends Model
     }
 
     /**
-     * Scope unit bisnis: karyawan yang default site-nya ada di dalam unit.
+     * Scope unit bisnis: karyawan yang unit/default site-nya ada di dalam unit.
      * Null = tanpa scope (global / pusat).
      */
     public function scopeInUnit($query, ?array $siteIds)
@@ -100,7 +157,25 @@ class EmployeeDefault extends Model
             return;
         }
 
-        $query->whereIn('default_site_id', $siteIds);
+        $unitIds = Site::whereIn('id', $siteIds)->pluck('unit_id')->filter()->unique()->values();
+
+        $query->where(function ($q) use ($siteIds, $unitIds) {
+            $q->whereIn('default_site_id', $siteIds);
+
+            if ($unitIds->isNotEmpty()) {
+                $q->orWhereIn('unit_id', $unitIds);
+            }
+        });
+    }
+
+    public function scopeVerified($query)
+    {
+        return $query->where('verification_status', 'verified');
+    }
+
+    public function scopePendingVerification($query)
+    {
+        return $query->where('verification_status', 'pending');
     }
 
     /**

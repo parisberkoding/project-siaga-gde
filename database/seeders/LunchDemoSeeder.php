@@ -95,6 +95,9 @@ class LunchDemoSeeder extends Seeder
         foreach ($employees as $data) {
             $data['is_active'] = true;
             $data['slug'] = Str::slug($data['employee_name']);
+            $data['unit_id'] = Site::whereKey($data['default_site_id'] ?? null)->value('unit_id');
+            $data['verification_status'] = 'verified';
+            $data['source'] = 'admin';
             $emp = EmployeeDefault::firstOrCreate(
                 ['employee_code' => $data['employee_code']],
                 $data

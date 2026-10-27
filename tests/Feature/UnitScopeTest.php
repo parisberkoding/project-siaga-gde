@@ -71,6 +71,36 @@ it('unitSiteIds mengembalikan site milik unit, null untuk user global', function
     expect($this->globalGa->unitSiteIds())->toBeNull();
 });
 
+it('bypass unit hanya untuk superadmin pusat dan developers', function () {
+    $unitPusat = Unit::where('code', 'PUSAT')->first();
+
+    $gaPusat = User::factory()->create(['role' => 'general_affairs', 'unit_id' => $unitPusat->id]);
+    $gaPusat->roles()->attach(Role::where('code', 'general_affairs')->first()->id, ['is_primary' => true]);
+
+    $superPusat = User::factory()->create(['role' => 'superadmin', 'unit_id' => $unitPusat->id]);
+    $superPusat->roles()->attach(Role::where('code', 'superadmin')->first()->id, ['is_primary' => true]);
+
+    $superPatuha = User::factory()->create(['role' => 'superadmin', 'unit_id' => $this->unitPatuha->id]);
+    $superPatuha->roles()->attach(Role::where('code', 'superadmin')->first()->id, ['is_primary' => true]);
+
+    $developer = User::factory()->create(['role' => 'developers', 'unit_id' => $this->unitPatuha->id]);
+    $developer->roles()->attach(Role::where('code', 'developers')->first()->id, ['is_primary' => true]);
+
+    // GA Pusat TETAP dibatasi ke site Pusat.
+    expect($gaPusat->hasGlobalUnitScope())->toBeFalse();
+    expect($gaPusat->unitSiteIds())->toContain($this->sitePusat->id)
+        ->not->toContain($this->sitePTH->id);
+
+    // Superadmin hanya global bila unitnya Pusat.
+    expect($superPusat->hasGlobalUnitScope())->toBeTrue();
+    expect($superPusat->unitSiteIds())->toBeNull();
+    expect($superPatuha->hasGlobalUnitScope())->toBeFalse();
+
+    // Developers selalu global.
+    expect($developer->hasGlobalUnitScope())->toBeTrue();
+    expect($developer->unitSiteIds())->toBeNull();
+});
+
 it('scope kendaraan inUnit hanya menampilkan unit', function () {
     $vehiclePatuha = ($this->makeVehicle)('B-PTHU-1', $this->sitePTH->id);
     $vehicleDieng  = ($this->makeVehicle)('B-DIEN-1', $this->siteDieng->id);

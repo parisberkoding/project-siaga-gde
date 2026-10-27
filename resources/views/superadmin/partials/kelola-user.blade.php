@@ -116,7 +116,13 @@
                         @forelse($users as $user)
                         <tr>
                             <td><small class="text-muted">{{ $user->id }}</small></td>
-                            <td><strong>{{ $user->username }}</strong><div class="small text-muted">{{ $user->user_code }}</div></td>
+                            <td>
+                                <strong>{{ $user->username }}</strong>
+                                <div class="small text-muted">{{ $user->user_code }}</div>
+                                @if($user->isPendingCredentials())
+                                    <span class="badge bg-warning text-dark">Kredensial pending</span>
+                                @endif
+                            </td>
                             <td>{{ $user->nama_lengkap }}</td>
                             <td><small>{{ $user->email }}</small></td>
                             <td><small class="text-muted">{{ $user->jabatan ?? '-' }}</small></td>
@@ -161,7 +167,7 @@
                             <td>
                                 @can('permission', 'users.update')
                                 <button class="btn btn-warning btn-sm btn-action"
-                                        onclick="openEditModal({{ $user->id }}, '{{ $user->username }}', '{{ e($user->nama_lengkap) }}', '{{ $user->email }}', '{{ e($user->jabatan ?? '') }}', '{{ $user->roles->first()->code ?? $user->role }}', '{{ $user->default_site_id ?? '' }}', '{{ $user->unit_id ?? '' }}')"
+                                        onclick="openEditModal({{ $user->id }}, '{{ $user->username }}', '{{ e($user->nama_lengkap) }}', '{{ $user->email }}', '{{ e($user->jabatan ?? '') }}', '{{ $user->roles->first()->code ?? $user->role }}', '{{ $user->default_site_id ?? '' }}', '{{ $user->unit_id ?? '' }}', {{ $user->is_active ? 1 : 0 }})"
                                         title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </button>
@@ -169,6 +175,11 @@
                                         onclick="openResetModal({{ $user->id }}, '{{ $user->username }}')"
                                         title="Reset Password">
                                     <i class="bi bi-key"></i>
+                                </button>
+                                <button class="btn btn-secondary btn-sm btn-action"
+                                        onclick="openCredentialsModal({{ $user->id }}, '{{ $user->username }}', {{ $user->hasOperationalCredentials() ? 'true' : 'false' }})"
+                                        title="Kredensial akun (untuk dibagikan offline)">
+                                    <i class="bi bi-person-badge"></i>
                                 </button>
                                 @endcan
                                 @can('permission', 'users.delete')
@@ -307,8 +318,9 @@
                         <input type="text" class="form-control" name="nama_lengkap" id="editNamaLengkap" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Email *</label>
-                        <input type="email" class="form-control" name="email" id="editEmail" required>
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" name="email" id="editEmail">
+                        <small class="text-muted">Boleh kosong untuk akun hasil scan yang belum punya email.</small>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Jabatan</label>
@@ -341,6 +353,11 @@
                             @endforeach
                         </select>
                         <small class="text-muted">Kosongkan untuk akses global (pusat).</small>
+                    </div>
+                    <div class="form-check">
+                        <input type="hidden" name="is_active" value="0">
+                        <input class="form-check-input" type="checkbox" name="is_active" id="editIsActive" value="1">
+                        <label class="form-check-label" for="editIsActive">Akun aktif (bisa login)</label>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -403,6 +420,57 @@
     </div>
 </div>
 
+<!-- Modal: Kredensial Akun -->
+<div class="modal fade" id="credentialsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="credentialsForm" method="POST">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-person-badge me-2"></i>Kredensial Akun</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Kredensial ini untuk diberikan ke pegawai secara <strong>offline</strong>.
+                        Setiap kali password dibuka, akses tercatat di audit trail.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-control" id="credUsername" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password baru / ganti</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" name="password" id="credPassword" minlength="6">
+                            <button class="btn btn-outline-secondary" type="button"
+                                    onclick="togglePassword('credPassword', this)">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted">Minimal 6 karakter. Kosongkan jika hanya ingin melihat password tersimpan.</small>
+                    </div>
+                    <div id="credRevealed" class="alert alert-success d-none">
+                        <div class="small text-muted">Password tersimpan:</div>
+                        <div class="fw-bold fs-5" id="credRevealedPassword"></div>
+                        <div class="small text-muted mt-1" id="credRevealCount"></div>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="credRevealBtn">
+                        <i class="bi bi-eye me-1"></i>Lihat password tersimpan
+                    </button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-2"></i>Simpan Kredensial
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 // ✅ CRITICAL FIX: Pisahkan event listeners dari lifecycle alert
 (function() {
@@ -438,7 +506,7 @@
     };
 
     // ✅ Open Edit User Modal
-    window.openEditModal = function(id, username, namaLengkap, email, jabatan, role, siteId, unitId) {
+    window.openEditModal = function(id, username, namaLengkap, email, jabatan, role, siteId, unitId, isActive) {
         if (window.isModalOpening) {
             console.log('Modal already opening, blocked');
             return;
@@ -482,6 +550,7 @@
             editRoleCode: document.getElementById('editRoleCode'),
             editSiteId: document.getElementById('editSiteId'),
             editUnitId: document.getElementById('editUnitId'),
+            editIsActive: document.getElementById('editIsActive'),
         };
 
         if (elements.editUsername) elements.editUsername.value = username;
@@ -491,6 +560,7 @@
         if (elements.editRoleCode) elements.editRoleCode.value = role;
         if (elements.editSiteId) elements.editSiteId.value = siteId || '';
         if (elements.editUnitId) elements.editUnitId.value = unitId || '';
+        if (elements.editIsActive) elements.editIsActive.checked = Number(isActive) === 1;
 
         // Create new modal instance
         const modal = new bootstrap.Modal(modalElement, {
@@ -590,6 +660,54 @@
             modalElement.removeEventListener('hidden.bs.modal', hideHandler);
         });
     };
+
+    window.openCredentialsModal = function(id, username, hasCredentials) {
+        const modalElement = document.getElementById('credentialsModal');
+        const form = document.getElementById('credentialsForm');
+        if (!modalElement || !form) return;
+
+        form.action = `/users/${id}/credentials`;
+        document.getElementById('credUsername').value = username;
+        document.getElementById('credPassword').value = '';
+        document.getElementById('credRevealed').classList.add('d-none');
+        document.getElementById('credRevealedPassword').textContent = '';
+        document.getElementById('credRevealCount').textContent = '';
+
+        const revealBtn = document.getElementById('credRevealBtn');
+        revealBtn.dataset.url = `/users/${id}/credentials/reveal`;
+        revealBtn.disabled = !hasCredentials;
+        revealBtn.innerHTML = hasCredentials
+            ? '<i class="bi bi-eye me-1"></i>Lihat password tersimpan'
+            : '<i class="bi bi-slash-circle me-1"></i>Belum ada password tersimpan';
+
+        const existing = bootstrap.Modal.getInstance(modalElement);
+        if (existing) existing.dispose();
+        cleanupModals();
+
+        new bootstrap.Modal(modalElement, { backdrop: 'static', keyboard: false }).show();
+    };
+
+    document.getElementById('credRevealBtn')?.addEventListener('click', async function() {
+        const url = this.dataset.url;
+        if (!url) return;
+
+        this.disabled = true;
+        try {
+            const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || 'Gagal membuka kredensial.');
+            }
+
+            document.getElementById('credRevealedPassword').textContent = data.password;
+            document.getElementById('credRevealCount').textContent = `Sudah dibuka ${data.reveals} kali.`;
+            document.getElementById('credRevealed').classList.remove('d-none');
+        } catch (err) {
+            alert(err.message);
+        } finally {
+            this.disabled = false;
+        }
+    });
 
     // ✅ Init on DOM ready
     if (document.readyState === 'loading') {

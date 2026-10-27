@@ -43,7 +43,7 @@ class IdentityResolutionService
 
         $byAlias = EmployeeAlias::query()
             ->where('alias', 'like', $normalized . '%')
-            ->with('employee.defaultSite')
+            ->with('employee.defaultSite.unit', 'employee.unit', 'employee.user')
             ->limit($limit)
             ->get()
             ->pluck('employee');
@@ -51,7 +51,7 @@ class IdentityResolutionService
         $byName = EmployeeDefault::query()
             ->active()
             ->where('employee_name', 'like', '%' . $normalized . '%')
-            ->with('defaultSite')
+            ->with('defaultSite.unit', 'unit', 'user')
             ->limit($limit)
             ->get();
 
@@ -61,12 +61,18 @@ class IdentityResolutionService
             ->take($limit)
             ->values()
             ->map(fn (EmployeeDefault $e) => [
-                'id'       => $e->id,
-                'slug'     => $e->slug,
-                'name'     => $e->employee_name,
-                'position' => $e->position,
-                'division' => $e->division,
-                'site'     => $e->defaultSite?->code,
+                'id'               => $e->id,
+                'slug'             => $e->slug,
+                'name'             => $e->employee_name,
+                'position'         => $e->position,
+                'division'         => $e->division,
+                'site'             => $e->defaultSite?->code,
+                'default_site_id'  => $e->default_site_id,
+                'unit_id'          => $e->resolvedUnitId(),
+                'unit'             => $e->resolvedUnit()?->name,
+                'has_account'      => $e->user_id !== null,
+                'has_sso'          => $e->user?->auth_provider === 'sso',
+                'pending_verification' => $e->isPendingVerification(),
             ]);
     }
 

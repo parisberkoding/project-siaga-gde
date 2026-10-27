@@ -16,6 +16,8 @@ class LunchDistribution extends Model
         'guest_count',
         'total_count',
         'forecast_batch_id',
+        'custom_purchase_id',
+        'is_custom_purchase',
         'is_locked',
         'locked_at',
         'locked_by',
@@ -23,6 +25,7 @@ class LunchDistribution extends Model
 
     protected $casts = [
         'distribution_date' => 'date',
+        'is_custom_purchase' => 'boolean',
         'is_locked'         => 'boolean',
         'locked_at'         => 'datetime',
     ];
@@ -30,6 +33,11 @@ class LunchDistribution extends Model
     public function site()
     {
         return $this->belongsTo(Site::class);
+    }
+
+    public function customPurchase()
+    {
+        return $this->belongsTo(LunchCustomPurchase::class, 'custom_purchase_id');
     }
 
     public function forecastBatch()

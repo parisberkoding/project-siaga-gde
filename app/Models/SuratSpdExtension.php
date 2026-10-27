@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Concerns\HasSafeSlugRouteKey;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 
 class SuratSpdExtension extends Model
 {
-    use HasFactory;
+    use HasFactory, HasSafeSlugRouteKey;
 
     protected $table = 'surat_spd_extensions';
 

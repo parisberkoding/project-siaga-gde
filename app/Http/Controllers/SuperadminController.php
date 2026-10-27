@@ -13,10 +13,12 @@ use App\Models\Transaction_Proofs;
 use App\Models\TripValidation;
 use App\Models\Unit;
 use App\Models\User;
+use App\Models\UserCredentialReveal;
 use App\Models\VehicleAndToolsConsumers;
 use App\Models\VehicleBarcode;
 use App\Models\VehicleDetail;
 use App\Models\VehicleTripAnalysis;
+use App\Services\UnitScope;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -591,7 +593,24 @@ class SuperadminController extends Controller
     // ==================== BUSINESS DASHBOARD VIEW ====================
     public function dashboardBisnis(Request $request)
     {
-        $title = 'Dashboard Bisnis';
+        // Dashboard ini analitik TINGKAT UNIT: memuat permohonan seluruh
+        // driver (top pengeluaran, pivot, statistik per driver). Driver yang
+        // membuka URL-nya langsung (deep link / bookmark lama) diarahkan ke
+        // dashboard driver miliknya sendiri supaya tidak melihat agregat
+        // data driver lain.
+        $currentUser = $request->user();
+
+        if (! $currentUser->hasPermission('dashboard.view')
+            && $currentUser->hasPermission(['bbm.request', 'spd.create', 'lpj.create', 'vehicle.acknowledge'])) {
+            return redirect()->route('driver.dashboard');
+        }
+
+        // Route yang sama dipakai dua konteks:
+        //  - modules.dashboard.bbm : dashboard modul BBM (setelah pilih modul)
+        //  - superadmin.dashboard.bisnis / dashboard-bisnis : dashboard legacy
+        $title = $request->routeIs('modules.dashboard.bbm')
+            ? 'Dashboard BBM & Permohonan'
+            : 'Dashboard Bisnis';
         $period = $request->get('period', 'month');
 
         // ✅ Bangun query transaksi + terapkan filter (realtime via query string)
@@ -1594,15 +1613,22 @@ class SuperadminController extends Controller
 
     // ==================== USER MANAGEMENT ====================
 
-    public function createUser()
+    public function createUser(Request $request)
     {
+        $scope = UnitScope::for($request->user());
+
         $title = 'Tambah User Baru';
-        $roles = Role::where('is_active', true)->with('permissions')->orderBy('name')->get();
-        $sites = Site::active()->orderBy('name')->get();
-        $units = Unit::active()->orderBy('name')->get();
+        $roles = Role::where('is_active', true)
+            ->when(! $scope->isGlobal(), fn ($q) => $q->availableFor($request->user()?->unit_id))
+            ->with('permissions')
+            ->orderBy('name')
+            ->get();
+        $sites = $scope->sites();
+        $units = $scope->units();
 
         // Master Pekerja aktif yang belum punya akun (untuk mode Aktivasi)
         $employees = EmployeeDefault::active()
+            ->inUnit($scope->siteIds())
             ->whereNull('user_id')
             ->with('defaultSite')
             ->orderBy('employee_name')
@@ -1615,13 +1641,16 @@ class SuperadminController extends Controller
     {
         $title = 'Kelola User';
 
+        $scope = UnitScope::for($request->user());
+
         // Get filters
         $role = $request->get('role');
         $search = $request->get('search');
         $tab = $request->get('tab', 'list'); // list, add, deleted
 
-        // Query users
-        $query = User::query();
+        // Query users — admin unit hanya melihat user unitnya.
+        $query = User::query()
+            ->when(! $scope->isGlobal(), fn ($q) => $q->where('unit_id', $request->user()?->unit_id));
 
         if ($role) {
             $query->whereHas('roles', fn ($q) => $q->where('code', $role));
@@ -1635,17 +1664,24 @@ class SuperadminController extends Controller
             });
         }
 
-        $users = $query->with(['roles', 'employeeDefault', 'defaultSite', 'unit'])->orderBy('created_at', 'desc')->paginate(15);
+        $users = $query->with(['roles', 'employeeDefault', 'defaultSite', 'unit'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
 
         // Get deleted users
         $deletedUsers = User::onlyTrashed()
+            ->when(! $scope->isGlobal(), fn ($q) => $q->where('unit_id', $request->user()?->unit_id))
             ->with('roles')
             ->orderBy('deleted_at', 'desc')
             ->paginate(15, ['*'], 'deleted_page');
 
-        $roles = Role::where('is_active', true)->orderBy('name')->get();
-        $sites = Site::active()->orderBy('name')->get();
-        $units = Unit::active()->orderBy('name')->get();
+        $roles = Role::where('is_active', true)
+            ->when(! $scope->isGlobal(), fn ($q) => $q->availableFor($request->user()?->unit_id))
+            ->orderBy('name')
+            ->get();
+
+        $sites = $scope->sites();
+        $units = $scope->units();
 
         return view('superadmin.partials.kelola-user', compact(
             'title',
@@ -1740,6 +1776,44 @@ class SuperadminController extends Controller
             }
         }
 
+        // Unit scope — admin unit tidak boleh membuat user di unit lain.
+        $scope = UnitScope::for($request->user());
+
+        if ($mode === 'activate' && $employee) {
+            $scope->ensureEmployee($employee);
+        }
+
+        if (! $scope->isGlobal()) {
+            $unitId = $request->user()?->unit_id;
+
+            // Untuk admin unit, fallback site berbasis role di atas bisa
+            // menunjuk unit lain. Paksa site default ke site milik unitnya.
+            if (! $defaultSiteId || ! $scope->allowsSite($defaultSiteId)) {
+                $defaultSiteId = $request->user()?->default_site_id
+                    ?: $scope->sites()->first()?->id;
+            }
+
+            if ($defaultSiteId) {
+                $scope->ensureSite($defaultSiteId);
+                $locationCode = Site::whereKey($defaultSiteId)->value('code') ?? $locationCode;
+            }
+        }
+
+        if ($unitId) {
+            $scope->ensureUnit($unitId);
+        }
+
+        if ($defaultSiteId) {
+            $scope->ensureSite($defaultSiteId);
+        }
+
+        // Role developers bersifat global — hanya aktor global yang boleh
+        // memberikannya, agar admin unit tidak bisa menaikkan akses ke seluruh unit.
+        if ($role->code === 'developers' && ! $scope->isGlobal()) {
+            return redirect()->back()->withInput()
+                ->with('error', 'Role developers hanya dapat diberikan oleh superadmin Pusat / developer.');
+        }
+
         // Item 4 — segmentasi role per unit: role yang dimiliki sebuah unit
         // hanya boleh diberikan kepada user di unit tersebut. Diperiksa
         // SEBELUM transaksi supaya tidak ada perubahan setengah jalan.
@@ -1765,6 +1839,9 @@ class SuperadminController extends Controller
             $user->user_code = $rolePrefix.'.'.str_pad($user->id, 4, '0', STR_PAD_LEFT).'.'.$locationCode;
             $user->save();
 
+            // Simpan salinan terenkripsi untuk dibagikan offline oleh admin.
+            $user->setOperationalCredentials($validated['password'], $request->user());
+
             // Satu user = satu role RBAC (source of truth permission).
             // Lewat assignRole() agar aturan segmentasi unit tetap ditegakkan
             // dan cache otorisasi ikut dibersihkan.
@@ -1781,6 +1858,10 @@ class SuperadminController extends Controller
                     'employee_name' => $namaLengkap,
                     'position' => $jabatan,
                     'default_site_id' => $defaultSiteId,
+                    'unit_id' => $unitId,
+                    'verification_status' => 'verified',
+                    'source' => 'admin',
+                    'created_by' => $request->user()?->id,
                     'is_active' => true,
                 ]);
             }
@@ -1808,28 +1889,53 @@ class SuperadminController extends Controller
     public function updateUser(Request $request, $id)
     {
         $user = User::findOrFail($id);
+        $scope = UnitScope::for($request->user());
+
+        // Admin unit hanya boleh mengubah user di unitnya.
+        if (! $scope->isGlobal() && (int) $user->unit_id !== (int) $request->user()?->unit_id) {
+            abort(403, 'User ini berada di luar unit Anda.');
+        }
 
         $validated = $request->validate([
             'username' => 'required|max:255|unique:users,username,'.$id,
             'nama_lengkap' => 'required|max:255',
-            'email' => 'required|email|unique:users,email,'.$id,
+            'email' => 'nullable|email|unique:users,email,'.$id,
             'role_code' => 'required|exists:roles,code',
             'jabatan' => 'nullable|max:255',
             'default_site_id' => 'nullable|exists:sites,id',
             'unit_id' => 'nullable|exists:units,id',
+            'password' => 'nullable|min:6',
+            'is_active' => 'nullable|boolean',
         ], [
             'username.required' => 'Username harus diisi',
             'username.unique' => 'Username sudah terdaftar',
             'nama_lengkap.required' => 'Nama lengkap harus diisi',
-            'email.required' => 'Email harus diisi',
             'email.email' => 'Format email tidak valid',
             'email.unique' => 'Email sudah terdaftar',
             'role_code.required' => 'Role harus dipilih',
             'role_code.exists' => 'Role tidak valid',
+            'password.min' => 'Password minimal 6 karakter',
         ]);
 
         $role = Role::where('code', $validated['role_code'])->firstOrFail();
         $newUnitId = $validated['unit_id'] ?? null;
+
+        if (! $scope->isGlobal()) {
+            $newUnitId = $request->user()?->unit_id;
+        }
+
+        if ($newUnitId) {
+            $scope->ensureUnit((int) $newUnitId);
+        }
+
+        if (! empty($validated['default_site_id'])) {
+            $scope->ensureSite((int) $validated['default_site_id']);
+        }
+
+        if ($role->code === 'developers' && ! $scope->isGlobal()) {
+            return redirect()->back()->withInput()
+                ->with('error', 'Role developers hanya dapat diberikan oleh superadmin Pusat / developer.');
+        }
 
         // Item 4 — tolak pemindahan user ke unit lain yang tidak memiliki
         // role tersebut, atau pemberian role milik unit lain. Diperiksa
@@ -1845,15 +1951,20 @@ class SuperadminController extends Controller
             $user->update([
                 'username' => $validated['username'],
                 'nama_lengkap' => $validated['nama_lengkap'],
-                'email' => $validated['email'],
+                'email' => $validated['email'] ?: null,
                 'role' => $validated['role_code'],
                 'jabatan' => $validated['jabatan'] ?? null,
                 'default_site_id' => $validated['default_site_id'] ?? null,
                 'unit_id' => $newUnitId,
+                'is_active' => $request->boolean('is_active', $user->is_active),
             ]);
 
             // Ganti role (bukan menumpuk) supaya permission lama tidak tertinggal.
             $user->assignRole($role);
+
+            if (! empty($validated['password'])) {
+                $user->setOperationalCredentials($validated['password'], $request->user());
+            }
 
             DB::commit();
 
@@ -1874,6 +1985,11 @@ class SuperadminController extends Controller
     {
         try {
             $user = User::findOrFail($id);
+            $scope = UnitScope::for(auth()->user());
+
+            if (! $scope->isGlobal() && (int) $user->unit_id !== (int) auth()->user()?->unit_id) {
+                abort(403, 'User ini berada di luar unit Anda.');
+            }
 
             // Prevent deleting self
             if ($user->id === auth()->id()) {
@@ -1908,8 +2024,13 @@ class SuperadminController extends Controller
 
         try {
             $user = User::findOrFail($id);
-            $user->password = Hash::make($validated['new_password']);
-            $user->save();
+            $scope = UnitScope::for($request->user());
+
+            if (! $scope->isGlobal() && (int) $user->unit_id !== (int) $request->user()?->unit_id) {
+                abort(403, 'User ini berada di luar unit Anda.');
+            }
+
+            $user->setOperationalCredentials($validated['new_password'], $request->user());
 
             return redirect()
                 ->route('users', ['tab' => 'list'])
@@ -1922,10 +2043,79 @@ class SuperadminController extends Controller
         }
     }
 
+    /**
+     * Set / ganti kredensial operasional (username tetap, password baru).
+     * Password disimpan sebagai hash untuk login + salinan terenkripsi
+     * untuk dibagikan offline.
+     */
+    public function setCredentials(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'password' => 'required|min:6',
+        ], [
+            'password.required' => 'Password harus diisi',
+            'password.min' => 'Password minimal 6 karakter',
+        ]);
+
+        $user = User::findOrFail($id);
+        $scope = UnitScope::for($request->user());
+
+        if (! $scope->isGlobal() && (int) $user->unit_id !== (int) $request->user()?->unit_id) {
+            abort(403, 'User ini berada di luar unit Anda.');
+        }
+
+        $user->setOperationalCredentials($validated['password'], $request->user());
+
+        return back()->with('success', 'Kredensial user '.$user->username.' berhasil disimpan.');
+    }
+
+    /**
+     * Buka kredensial operasional. Setiap pembukaan dicatat di audit trail.
+     */
+    public function revealCredentials(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+        $scope = UnitScope::for($request->user());
+
+        if (! $scope->isGlobal() && (int) $user->unit_id !== (int) $request->user()?->unit_id) {
+            abort(403, 'User ini berada di luar unit Anda.');
+        }
+
+        if (! $user->hasOperationalCredentials()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kredensial belum dibuat. Set password terlebih dahulu.',
+            ], 422);
+        }
+
+        UserCredentialReveal::create([
+            'user_id'     => $user->id,
+            'revealed_by' => $request->user()?->id,
+            'ip_address'  => $request->ip(),
+            'user_agent'  => substr((string) $request->userAgent(), 0, 1000),
+            'revealed_at' => now(),
+        ]);
+
+        $user->increment('credentials_reveal_count');
+        $user->update(['credentials_last_revealed_at' => now()]);
+
+        return response()->json([
+            'success'  => true,
+            'username' => $user->username,
+            'password' => $user->credentials_plain,
+            'reveals'  => $user->credentials_reveal_count,
+        ]);
+    }
+
     public function restoreUser($id)
     {
         try {
             $user = User::withTrashed()->findOrFail($id);
+            $scope = UnitScope::for(auth()->user());
+
+            if (! $scope->isGlobal() && (int) $user->unit_id !== (int) auth()->user()?->unit_id) {
+                abort(403, 'User ini berada di luar unit Anda.');
+            }
 
             if (! $user->trashed()) {
                 return redirect()
@@ -1994,7 +2184,7 @@ class SuperadminController extends Controller
         // Query vehicles/tools - HANYA YANG SUDAH APPROVED
         $query = VehicleAndToolsConsumers::with(['creator', 'approver', 'barcode', 'detail.site', 'unit'])
             ->where('is_approved', true) // Hanya tampilkan yang approved
-            ->inUnit($request->user()?->unit_id);
+            ->inUnit(UnitScope::for($request->user())->unitId());
 
         // ✅ Filter berdasarkan tipe (uppercase)
         if ($type) {
@@ -2024,7 +2214,7 @@ class SuperadminController extends Controller
         // Get deleted vehicles/tools
         $deletedVehicles = VehicleAndToolsConsumers::onlyTrashed()
             ->with(['creator', 'approver'])
-            ->inUnit($request->user()?->unit_id)
+            ->inUnit(UnitScope::for($request->user())->unitId())
             ->orderBy('deleted_at', 'desc')
             ->paginate(15, ['*'], 'deleted_page');
 
@@ -2032,8 +2222,8 @@ class SuperadminController extends Controller
             ->get()->pluck('barcode_path', 'vehicle_and_tools_consumer_id');
 
         // Daftar unit untuk dropdown filter — user ber-unit hanya melihat unitnya.
-        $units = $request->user()?->hasUnitScope()
-            ? Unit::where('id', $request->user()->unit_id)->orderBy('name')->get()
+        $units = UnitScope::for($request->user())->isScoped()
+            ? Unit::whereKey($request->user()->unit_id)->orderBy('name')->get()
             : Unit::active()->orderBy('name')->get();
 
         $siteIds = $request->user()?->unitSiteIds();
@@ -2378,7 +2568,7 @@ class SuperadminController extends Controller
 
         // Query Permohonan
         $queryPermohonan = Permohonan::with(['requester', 'vehicle', 'authorizer', 'approvedRequest'])
-            ->inUnit($request->user()?->unit_id);
+            ->inUnit(UnitScope::for($request->user())->unitId());
 
         if ($status) {
             $queryPermohonan->where('status', $status);
@@ -2400,7 +2590,7 @@ class SuperadminController extends Controller
 
         // Query Laporan Transaksi
         $queryLaporan = Transaction_Proofs::with(['permohonan.requester', 'permohonan.vehicle'])
-            ->inUnit($request->user()?->unit_id);
+            ->inUnit(UnitScope::for($request->user())->unitId());
 
         if ($search) {
             $queryLaporan->where(function ($q) use ($search) {
@@ -2416,7 +2606,7 @@ class SuperadminController extends Controller
         // Get all vehicles for dropdown (+ detail utk label "Plat - Merk" & budget full tank)
         $vehicles = VehicleAndToolsConsumers::with('detail')
             ->where('is_approved', true)
-            ->inUnit($request->user()?->unit_id)
+            ->inUnit(UnitScope::for($request->user())->unitId())
             ->orderBy('consumerial_type')
             ->orderBy('consumerial_name')
             ->get();

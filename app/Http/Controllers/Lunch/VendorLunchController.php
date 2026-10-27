@@ -31,7 +31,7 @@ class VendorLunchController extends Controller
         // Kehadiran aktual per site (siapa makan hari ini)
         $attendanceBySite = LunchTransaction::forDate($date)
             ->inUnit($siteIds)
-            ->with('site', 'employeeDefault')
+            ->with(['site', 'employee'])
             ->orderBy('scanned_at')
             ->get()
             ->groupBy('site_id');

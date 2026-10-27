@@ -4,30 +4,38 @@ namespace App\Http\Controllers\Lunch;
 
 use App\Http\Controllers\Controller;
 use App\Models\EmployeeDefault;
+use App\Models\LunchCustomPurchase;
 use App\Models\LunchDistribution;
 use App\Models\LunchForecast;
 use App\Models\LunchGuestReservation;
 use App\Models\LunchTransaction;
 use App\Models\Site;
 use App\Services\Lunch\LunchForecastService;
+use App\Services\UnitScope;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class LunchDashboardController extends Controller
 {
     /**
-     * Dashboard Lunch Management: forecast hari ini, kehadiran aktual
-     * (QR), akurasi kemarin, tamu, dan item yang butuh perhatian.
+     * Dashboard = "check-in hari ini".
+     *
+     * Fokus: siapa yang sudah scan, berapa porsi hari ini, tamu yang perlu
+     * konfirmasi, dan pintasan ke Data Forecast. Forecast detail, override,
+     * dan distribusi tidak diduplikasi di sini agar alurnya tidak bercabang.
      */
     public function index(Request $request, LunchForecastService $forecastService)
     {
         $date = $request->get('date', now()->toDateString());
         $yesterday = Carbon::parse($date)->subDay()->toDateString();
 
-        $siteIds = $request->user()?->unitSiteIds();
+        $scope = UnitScope::for($request->user());
+        $siteIds = $scope->siteIds();
 
         $sites = Site::active()
+            ->with('unit')
             ->when($siteIds !== null, fn ($q) => $q->whereIn('id', $siteIds))
+            ->orderBy('name')
             ->get();
 
         $forecastBySite = LunchForecast::forDate($date)
@@ -50,9 +58,12 @@ class LunchDashboardController extends Controller
             ->groupBy('site_id')
             ->pluck('total', 'site_id');
 
-        $accuracyYesterday = $forecastService->accuracyForDate($yesterday);
+        $accuracyYesterday = $forecastService->accuracyForDate($yesterday, $siteIds);
 
-        $unresolvedToday = LunchTransaction::forDate($date)->inUnit($siteIds)->unresolved()->count();
+        $unresolvedToday = LunchTransaction::forDate($date)
+            ->inUnit($siteIds)
+            ->unresolved()
+            ->count();
 
         $pendingGuests = LunchGuestReservation::pending()
             ->inUnit($siteIds)
@@ -60,23 +71,41 @@ class LunchDashboardController extends Controller
             ->whereDate('reservation_date', '<=', now()->addDays(2)->toDateString())
             ->count();
 
-        $distributions = LunchDistribution::forDate($date)->inUnit($siteIds)->with('site')->get();
+        $distributions = LunchDistribution::forDate($date)
+            ->inUnit($siteIds)
+            ->with(['site', 'customPurchase'])
+            ->get();
 
-        // Step-status untuk panduan alur (seamless) — relatif terhadap hari ini
-        $today = now()->toDateString();
+        $customPurchases = LunchCustomPurchase::whereDate('purchase_date', $date)
+            ->inUnit($siteIds)
+            ->with('site')
+            ->get();
+
+        $recentTransactions = LunchTransaction::forDate($date)
+            ->inUnit($siteIds)
+            ->with('site')
+            ->orderByDesc('scanned_at')
+            ->limit(10)
+            ->get();
+
+        $pendingEmployees = EmployeeDefault::active()
+            ->inUnit($siteIds)
+            ->pendingVerification()
+            ->count();
+
         $tomorrow = now()->addDay()->toDateString();
-        $stepStatus = [
-            'employee_count' => EmployeeDefault::active()->inUnit($siteIds)->count(),
-            'forecast_tomorrow' => LunchForecast::forDate($tomorrow)->inUnit($siteIds)->exists(),
-            'distribution_today' => LunchDistribution::forDate($today)->inUnit($siteIds)->get(),
-            'attendance_today' => LunchTransaction::forDate($today)->inUnit($siteIds)->count(),
-        ];
-        $stepStatus['distribution_today_locked'] = $stepStatus['distribution_today']->where('is_locked', true)->count() > 0;
+        $tomorrowForecastCount = LunchForecast::forDate($tomorrow)
+            ->inUnit($siteIds)
+            ->whereNotNull('predicted_site_id')
+            ->count();
+
+        $units = $scope->units();
 
         return view('lunch.dashboard', compact(
             'date', 'sites', 'forecastBySite', 'attendanceBySite', 'guestBySite',
             'accuracyYesterday', 'unresolvedToday', 'pendingGuests', 'distributions',
-            'stepStatus'
+            'customPurchases', 'recentTransactions', 'pendingEmployees',
+            'tomorrowForecastCount', 'units'
         ));
     }
 }

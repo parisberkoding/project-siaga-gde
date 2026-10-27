@@ -2,13 +2,18 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
+    /**
+     * CATATAN: trait `WithoutModelEvents` SENGAJA TIDAK dipakai.
+     *
+     * Beberapa model mengisi kolom wajib lewat event `creating`
+     * (mis. User::user_code, kode trip/jadwal). Kalau event dimatikan,
+     * seeding pada database BARU gagal dengan
+     * "Field 'user_code' doesn't have a default value".
+     */
 
     /**
      * Seed the application's database.

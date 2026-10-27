@@ -128,6 +128,28 @@ php artisan storage:link
 php artisan serve
 ```
 
+### Bagikan ke internet (Cloudflare Tunnel)
+
+Cukup jalankan:
+
+```bash
+./share.sh
+```
+
+Script akan menyalakan server Laravel (default port `8000`) dan membuka
+**Cloudflare Quick Tunnel** tanpa perlu akun. URL publik
+`https://<acak>.trycloudflare.com` ditampilkan di terminal dan hanya aktif
+selama script berjalan. Tekan `Ctrl+C` untuk menutup server + tunnel.
+
+```bash
+PORT=8001 ./share.sh          # kalau port 8000 sudah dipakai
+CF_PROTOCOL=http2 ./share.sh  # kalau jaringan memblokir QUIC
+```
+
+Prasyarat: `cloudflared` (`brew install cloudflared`), PHP, dan `curl`.
+Script mempercayai loopback sebagai proxy (`bootstrap/app.php`) agar URL yang
+dihasilkan tetap `https://`, bukan `http://`.
+
 ---
 
 ## Struktur Modul

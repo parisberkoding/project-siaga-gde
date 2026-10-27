@@ -95,7 +95,7 @@ it('module permohonan menyertakan entity vehicle dan site', function () {
     $record = $mart->records()[0];
 
     expect($record['vehicle'])->toContain('B 222 YYY')
-        ->and($record['site'])->toBe('PMU')
+        ->and($record['site'])->toBe('Kantor Pusat – PMU')
         ->and($record['driver'])->toBe('Budi');
 });
 
@@ -132,7 +132,7 @@ it('module vehicle menampilkan detail teknis kendaraan', function () {
     $record = $mart->records()[0];
 
     expect($record['vehicle_code'])->toBe('B 333 ZZZ')
-        ->and($record['site'])->toBe('PMU')
+        ->and($record['site'])->toBe('Kantor Pusat – PMU')
         ->and($record['fuel_type'])->toBe('Pertamax')
         ->and($record['tank_liter'])->toBe(80.0)
         ->and($record['kapasitas_penumpang'])->toBe(7)

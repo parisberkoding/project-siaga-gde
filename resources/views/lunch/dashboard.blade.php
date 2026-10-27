@@ -6,7 +6,7 @@
     <nav>
         <ol class="breadcrumb">
             <li class="breadcrumb-item">Lunch Management</li>
-            <li class="breadcrumb-item active">Dashboard</li>
+            <li class="breadcrumb-item active">Check-in Hari Ini</li>
         </ol>
     </nav>
 </div>
@@ -19,214 +19,214 @@
         </div>
     @endif
 
-    <div class="row mb-3">
-        <div class="col-md-4">
+    <div class="row g-3 mb-3">
+        <div class="col-md-5">
             <form method="GET" action="{{ route('lunch.dashboard') }}" class="d-flex gap-2">
                 <input type="date" name="date" value="{{ $date }}" class="form-control" onchange="this.form.submit()">
+                <a href="{{ route('lunch.forecasts.index') }}" class="btn btn-primary text-nowrap">
+                    <i class="bi bi-calendar2-week me-1"></i>Data Forecast
+                </a>
             </form>
         </div>
-    </div>
-
-    {{-- ── Panduan Alur Lunch (step by step, seamless) ── --}}
-    @if(!empty($stepStatus))
-    <div class="card border-0 shadow-sm mb-3">
-        <div class="card-header bg-light">
-            <strong><i class="bi bi-list-ol me-2 text-primary"></i>Alur Lunch Management — Status Langkah</strong>
-        </div>
-        <div class="card-body">
-            <div class="row g-3">
-                {{-- Step 1: Master Pekerja --}}
-                <div class="col-md-3">
-                    <div class="border rounded p-3 h-100">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <span class="badge bg-secondary">1</span>
-                            @if($stepStatus['employee_count'] > 0)
-                                <i class="bi bi-check-circle-fill text-success"></i>
-                            @else
-                                <i class="bi bi-exclamation-circle-fill text-danger"></i>
-                            @endif
-                        </div>
-                        <h6 class="mt-2 mb-1">Master Pekerja</h6>
-                        <small class="text-muted d-block mb-2">{{ $stepStatus['employee_count'] }} pekerja terdaftar</small>
-                        @can('permission', 'lunch.manage')
-                        <a href="{{ route('lunch.employee-defaults.index') }}" class="btn btn-sm btn-outline-primary w-100">Kelola Pekerja</a>
-                        @endcan
-                    </div>
-                </div>
-                {{-- Step 2: Forecast H+1 --}}
-                <div class="col-md-3">
-                    <div class="border rounded p-3 h-100">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <span class="badge bg-secondary">2</span>
-                            @if($stepStatus['forecast_tomorrow'])
-                                <i class="bi bi-check-circle-fill text-success"></i>
-                            @else
-                                <i class="bi bi-clock text-warning"></i>
-                            @endif
-                        </div>
-                        <h6 class="mt-2 mb-1">Forecast Besok</h6>
-                        <small class="text-muted d-block mb-2">
-                            {{ $stepStatus['forecast_tomorrow'] ? 'Sudah digenerate' : 'Belum digenerate' }}
-                        </small>
-                        @can('permission', 'lunch.manage')
-                        <form method="POST" action="{{ route('lunch.forecasts.generate') }}" class="d-inline w-100">
-                            @csrf
-                            <button class="btn btn-sm btn-outline-success w-100" onclick="return confirm('Generate forecast untuk besok?')">
-                                <i class="bi bi-magic"></i> Generate
-                            </button>
-                        </form>
-                        @endcan
-                    </div>
-                </div>
-                {{-- Step 3: Distribusi --}}
-                <div class="col-md-3">
-                    <div class="border rounded p-3 h-100">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <span class="badge bg-secondary">3</span>
-                            @if($stepStatus['distribution_today_locked'])
-                                <i class="bi bi-lock-fill text-success"></i>
-                            @else
-                                <i class="bi bi-pencil text-warning"></i>
-                            @endif
-                        </div>
-                        <h6 class="mt-2 mb-1">Distribusi Hari Ini</h6>
-                        <small class="text-muted d-block mb-2">
-                            {{ $stepStatus['distribution_today']->count() }} site ·
-                            {{ $stepStatus['distribution_today_locked'] ? 'terkunci' : 'draft' }}
-                        </small>
-                        <a href="{{ route('lunch.distributions.index') }}" class="btn btn-sm btn-outline-primary w-100">Kelola Distribusi</a>
-                    </div>
-                </div>
-                {{-- Step 4: Kehadiran & Export --}}
-                <div class="col-md-3">
-                    <div class="border rounded p-3 h-100">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <span class="badge bg-secondary">4</span>
-                            <i class="bi bi-qr-code-scan text-primary"></i>
-                        </div>
-                        <h6 class="mt-2 mb-1">Kehadiran & Export</h6>
-                        <small class="text-muted d-block mb-2">{{ $stepStatus['attendance_today'] }} sudah scan hari ini</small>
-                        <div class="d-grid gap-1">
-                            <a href="{{ route('vendor.lunch.today') }}" class="btn btn-sm btn-outline-info">Siapa Makan</a>
-                            <a href="{{ route('lunch.export-form') }}" class="btn btn-sm btn-outline-success">Export Vendor</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="col-md-7 text-md-end">
+            <a href="{{ route('lunch.qr-codes') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-qr-code me-1"></i>Cetak QR
+            </a>
+            <a href="{{ route('lunch.transactions.index', ['date' => $date]) }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-list-check me-1"></i>Semua Check-in
+            </a>
+            @can('permission', 'lunch.manage')
+            <a href="{{ route('lunch.forecasts.index', ['date' => $date]) }}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-pencil-square me-1"></i>Kelola Forecast
+            </a>
+            @endcan
         </div>
     </div>
-    @endif
 
-    {{-- Summary Cards per site --}}
+    {{-- ── KPI utama ───────────────────────────────────────────── --}}
     <div class="row g-3 mb-3">
-        @foreach($sites as $site)
-        <div class="col-md-4">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h5 class="card-title pb-0">{{ $site->name }} <span class="badge bg-light text-dark">{{ $site->code }}</span></h5>
-                    <div class="d-flex justify-content-between text-center">
-                        <div>
-                            <h4 class="fw-bold text-primary mb-0">{{ $forecastBySite[$site->id] ?? 0 }}</h4>
-                            <small class="text-muted">Forecast</small>
-                        </div>
-                        <div>
-                            <h4 class="fw-bold text-success mb-0">{{ $attendanceBySite[$site->id] ?? 0 }}</h4>
-                            <small class="text-muted">Hadir (QR)</small>
-                        </div>
-                        <div>
-                            <h4 class="fw-bold text-info mb-0">{{ $guestBySite[$site->id] ?? 0 }}</h4>
-                            <small class="text-muted">Tamu</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        @endforeach
-    </div>
-
-    <div class="row g-3 mb-3">
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <div class="card h-100">
                 <div class="card-body text-center">
-                    <h3 class="fw-bold {{ ($accuracyYesterday['accuracy'] ?? 0) >= 80 ? 'text-success' : 'text-warning' }}">
+                    <h3 class="fw-bold text-success mb-0">{{ $attendanceBySite->sum() }}</h3>
+                    <p class="mb-0 small">Sudah Check-in</p>
+                    <small class="text-muted">{{ \Carbon\Carbon::parse($date)->translatedFormat('d M Y') }}</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h3 class="fw-bold text-primary mb-0">{{ $forecastBySite->sum() }}</h3>
+                    <p class="mb-0 small">Forecast Hari Ini</p>
+                    <small class="text-muted">{{ $tomorrowForecastCount }} sudah terjadwal besok</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h3 class="fw-bold {{ $unresolvedToday > 0 ? 'text-danger' : 'text-success' }} mb-0">{{ $unresolvedToday }}</h3>
+                    <p class="mb-0 small">Nama Belum Dikenali</p>
+                    <a href="{{ route('lunch.transactions.index', ['date' => $date, 'status' => 'unresolved']) }}" class="small">periksa</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h3 class="fw-bold {{ $pendingGuests > 0 ? 'text-warning' : 'text-success' }} mb-0">{{ $pendingGuests }}</h3>
+                    <p class="mb-0 small">Tamu Perlu Konfirmasi</p>
+                    <a href="{{ route('lunch.guests.calendar') }}" class="small">buka kalender</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if($pendingEmployees > 0)
+        <div class="alert alert-warning d-flex justify-content-between align-items-center">
+            <div><i class="bi bi-person-exclamation me-1"></i>{{ $pendingEmployees }} karyawan hasil scan belum diverifikasi.</div>
+            @can('permission', 'lunch.manage')
+            <a href="{{ route('lunch.employee-defaults.index', ['verification' => 'pending']) }}" class="btn btn-sm btn-outline-dark">Verifikasi</a>
+            @endcan
+        </div>
+    @endif
+
+    {{-- ── Check-in per site ───────────────────────────────────── --}}
+    <div class="row g-3 mb-3">
+        @forelse($sites as $site)
+            @php
+                $forecast = (int) ($forecastBySite[$site->id] ?? 0);
+                $hadir = (int) ($attendanceBySite[$site->id] ?? 0);
+                $guest = (int) ($guestBySite[$site->id] ?? 0);
+                $dist = $distributions->firstWhere('site_id', $site->id);
+                $custom = $customPurchases->firstWhere('site_id', $site->id);
+            @endphp
+            <div class="col-12 col-md-6 col-xl-4">
+                <div class="card h-100 {{ $custom ? 'border-warning' : '' }}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="fw-bold mb-0">{{ $site->name }}</h6>
+                                <small class="text-muted">{{ $site->unit?->name }} · {{ $site->code }}</small>
+                            </div>
+                            @if($dist?->is_locked)
+                                <span class="badge bg-success"><i class="bi bi-lock-fill me-1"></i>Vendor</span>
+                            @else
+                                <span class="badge bg-secondary">Open</span>
+                            @endif
+                        </div>
+
+                        <div class="d-flex justify-content-between text-center mt-3">
+                            <div>
+                                <h5 class="fw-bold text-success mb-0">{{ $hadir }}</h5>
+                                <small class="text-muted">Check-in</small>
+                            </div>
+                            <div>
+                                <h5 class="fw-bold text-primary mb-0">{{ $forecast }}</h5>
+                                <small class="text-muted">Forecast</small>
+                            </div>
+                            <div>
+                                <h5 class="fw-bold text-info mb-0">{{ $guest }}</h5>
+                                <small class="text-muted">Tamu</small>
+                            </div>
+                            <div>
+                                <h5 class="fw-bold text-dark mb-0">{{ $dist?->total_count ?? 0 }}</h5>
+                                <small class="text-muted">Porsi</small>
+                            </div>
+                        </div>
+
+                        <div class="progress mt-3" style="height: 6px;">
+                            @php($percent = $forecast > 0 ? min(100, round($hadir / $forecast * 100)) : 0)
+                            <div class="progress-bar bg-success" style="width: {{ $percent }}%"></div>
+                        </div>
+                        <small class="text-muted">{{ $percent }}% dari forecast sudah check-in</small>
+
+                        @if($custom)
+                            <div class="alert alert-warning py-1 px-2 small mt-2 mb-0">
+                                <i class="bi bi-bag-heart me-1"></i>Katering diganti: {{ $custom->title }}
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @empty
+            <div class="col-12"><div class="alert alert-info mb-0">Tidak ada site dalam kewenangan Anda.</div></div>
+        @endforelse
+    </div>
+
+    <div class="row g-3">
+        {{-- ── Check-in terbaru ────────────────────────────────── --}}
+        <div class="col-lg-7">
+            <div class="card h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <strong><i class="bi bi-clock-history me-1"></i>Check-in Terbaru</strong>
+                    <a href="{{ route('lunch.transactions.index', ['date' => $date]) }}" class="small">lihat semua</a>
+                </div>
+                <div class="card-body pt-2">
+                    @if($recentTransactions->isEmpty())
+                        <p class="text-muted small mb-0">Belum ada yang check-in pada tanggal ini.</p>
+                    @else
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead><tr><th>Nama</th><th>Site</th><th>Jam</th></tr></thead>
+                                <tbody>
+                                    @foreach($recentTransactions as $trx)
+                                        <tr>
+                                            <td>
+                                                {{ $trx->employee_name ?? $trx->raw_alias }}
+                                                @unless($trx->isResolved())
+                                                    <span class="badge bg-danger ms-1">belum dikenali</span>
+                                                @endunless
+                                            </td>
+                                            <td><small>{{ $trx->site?->name }}</small></td>
+                                            <td><small>{{ $trx->scanned_at?->format('H:i') ?? '—' }}</small></td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        {{-- ── Akurasi & pintasan ──────────────────────────────── --}}
+        <div class="col-lg-5">
+            <div class="card mb-3">
+                <div class="card-body text-center">
+                    <h3 class="fw-bold {{ ($accuracyYesterday['accuracy'] ?? 0) >= 80 ? 'text-success' : 'text-warning' }} mb-1">
                         {{ $accuracyYesterday['accuracy'] !== null ? $accuracyYesterday['accuracy'] . '%' : '—' }}
                     </h3>
-                    <p class="mb-0">Akurasi Forecast Kemarin</p>
+                    <p class="mb-0 small">Akurasi Forecast Kemarin</p>
                     <small class="text-muted">{{ $accuracyYesterday['correct'] }}/{{ $accuracyYesterday['evaluated'] }} tepat</small>
                 </div>
             </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card h-100">
-                <div class="card-body text-center">
-                    <h3 class="fw-bold {{ $unresolvedToday > 0 ? 'text-danger' : 'text-success' }}">{{ $unresolvedToday }}</h3>
-                    <p class="mb-0">Nama Belum Dikenali</p>
-                    <small class="text-muted">
-                        <a href="{{ route('lunch.transactions.index', ['status' => 'unresolved']) }}">lihat transaksi</a>
-                    </small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card h-100">
-                <div class="card-body text-center">
-                    <h3 class="fw-bold {{ $pendingGuests > 0 ? 'text-warning' : 'text-success' }}">{{ $pendingGuests }}</h3>
-                    <p class="mb-0">Tamu Butuh Konfirmasi</p>
-                    <small class="text-muted"><a href="{{ route('lunch.guests.calendar') }}">buka kalender tamu</a></small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card h-100">
-                <div class="card-body text-center">
-                    <h3 class="fw-bold text-primary">{{ $distributions->sum('total_count') }}</h3>
-                    <p class="mb-0">Total Porsi Distribusi</p>
-                    <small class="text-muted"><a href="{{ route('lunch.distributions.index', ['date' => $date]) }}">detail distribusi</a></small>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    {{-- Distribusi hari ini --}}
-    <div class="card">
-        <div class="card-body">
-            <h5 class="card-title">Distribusi {{ \Carbon\Carbon::parse($date)->translatedFormat('d F Y') }}</h5>
-            @if($distributions->isEmpty())
-                <p class="text-muted mb-0">Belum ada distribusi untuk tanggal ini.
-                    <a href="{{ route('lunch.distributions.index', ['date' => $date]) }}">Generate di halaman Distribution</a>.
-                </p>
-            @else
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead>
-                            <tr>
-                                <th>Site</th>
-                                <th class="text-center">Karyawan</th>
-                                <th class="text-center">Tamu</th>
-                                <th class="text-center">Total</th>
-                                <th class="text-center">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($distributions as $d)
-                            <tr>
-                                <td>{{ $d->site->name }}</td>
-                                <td class="text-center">{{ $d->employee_count }}</td>
-                                <td class="text-center">{{ $d->guest_count }}</td>
-                                <td class="text-center fw-bold">{{ $d->total_count }}</td>
-                                <td class="text-center">
-                                    @if($d->is_locked)
-                                        <span class="badge bg-success"><i class="bi bi-lock-fill me-1"></i>Terkunci</span>
-                                    @else
-                                        <span class="badge bg-secondary">Draft</span>
-                                    @endif
-                                </td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+            <div class="card">
+                <div class="card-header bg-white"><strong>Pintasan</strong></div>
+                <div class="list-group list-group-flush">
+                    <a href="{{ route('lunch.forecasts.index') }}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-calendar2-week me-2 text-primary"></i>Data Forecast & override
+                    </a>
+                    @can('permission', 'lunch.manage')
+                    <a href="{{ route('lunch.employee-defaults.index') }}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-people me-2 text-primary"></i>Master Karyawan
+                    </a>
+                    @endcan
+                    <a href="{{ route('lunch.guests.calendar') }}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-person-check me-2 text-primary"></i>Reservasi Tamu
+                    </a>
+                    @can('permission', 'lunch.manage')
+                    <a href="{{ route('lunch.custom-purchases.index') }}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-bag-heart me-2 text-primary"></i>Custom Purchase
+                    </a>
+                    <a href="{{ route('lunch.vendor-payments.index') }}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-cash-coin me-2 text-primary"></i>Pengeluaran & Pembayaran Vendor
+                    </a>
+                    @endcan
                 </div>
-            @endif
+            </div>
         </div>
     </div>
 

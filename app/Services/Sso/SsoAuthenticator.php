@@ -501,6 +501,11 @@ class SsoAuthenticator
                 $existing->save();
             }
 
+            if (! $existing->unit_id && $unit) {
+                $existing->unit_id = $unit->id;
+                $existing->save();
+            }
+
             return;
         }
 
@@ -529,6 +534,9 @@ class SsoAuthenticator
             'employee_name' => $user->nama_lengkap,
             'position' => $user->jabatan,
             'default_site_id' => $siteId,
+            'unit_id' => $unit?->id,
+            'verification_status' => 'verified',
+            'source' => 'sso',
             'is_active' => true,
         ]);
     }

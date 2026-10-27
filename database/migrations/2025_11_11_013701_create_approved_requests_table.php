@@ -15,11 +15,11 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('permohonan_id');
 
-            $table->unsignedBigInteger('unit_id')->nullable();
+            // `unit_id` + FK-nya ditambahkan oleh migrasi 2026_10_01_000001.
+            // Tidak dibuat di sini karena tabel `units` belum ada pada urutan
+            // migrasi ini (penyebab kegagalan `migrate:fresh`).
 
             $table->foreign('permohonan_id')->references('id')->on('permohonans')->onDelete('cascade');
-
-            $table->foreign('unit_id')->references('id')->on('units')->onDelete('cascade');
 
             $table->timestamp('approval_date')->useCurrent();
             $table->string('voucher_code')->unique();

@@ -38,6 +38,7 @@ class User extends Authenticatable
         'email',
         'is_active',
         'added_at',
+        'registration_source',
     ];
 
     /**
@@ -68,6 +69,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'credentials_plain',
     ];
 
     /**
@@ -83,6 +85,9 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'deactivated_at' => 'datetime',
             'sso_synced_at' => 'datetime',
+            'credentials_plain' => 'encrypted',
+            'credentials_set_at' => 'datetime',
+            'credentials_last_revealed_at' => 'datetime',
         ];
     }
 
@@ -150,7 +155,7 @@ class User extends Authenticatable
 
     /**
      * Apakah unit user adalah unit Pusat (is_central).
-     * Unit Pusat TIDAK dibatasi data dan TIDAK terkena gate modul.
+     * Unit Pusat TIDAK terkena gate modul.
      */
     public function unitIsCentral(): bool
     {
@@ -163,21 +168,73 @@ class User extends Authenticatable
 
     protected ?bool $unitIsCentralCache = null;
 
+    /** @var array<int, string>|null */
+    protected ?array $roleCodesCache = null;
+
+    /**
+     * Kode role efektif: kolom legacy `role` + role RBAC.
+     *
+     * @return array<int, string>
+     */
+    public function roleCodes(): array
+    {
+        if ($this->roleCodesCache === null) {
+            $codes = $this->roles()->pluck('code')->all();
+
+            if (! empty($this->role)) {
+                $codes[] = (string) $this->role;
+            }
+
+            $this->roleCodesCache = array_values(array_unique($codes));
+        }
+
+        return $this->roleCodesCache;
+    }
+
+    public function hasRoleCode(string|array $codes): bool
+    {
+        $codes = is_array($codes) ? $codes : [$codes];
+
+        return count(array_intersect($codes, $this->roleCodes())) > 0;
+    }
+
+    /**
+     * Apakah user boleh melihat SELURUH unit (tanpa batas data)?
+     *
+     * Aturan yang disepakati:
+     *   1. `unit_id` kosong        -> global (masa transisi backfill);
+     *   2. role `developers`       -> global (tim pengembang);
+     *   3. role `superadmin` yang unitnya Pusat (is_central) -> global.
+     *
+     * Role lain yang kebetulan berada di unit Pusat (mis. General Affairs
+     * Pusat) TETAP dibatasi ke site unit Pusat. Ini mencegah "Pusat" menjadi
+     * jalan pintas untuk melihat data seluruh unit.
+     */
+    public function hasGlobalUnitScope(): bool
+    {
+        if ($this->unit_id === null) {
+            return true;
+        }
+
+        if ($this->hasRoleCode('developers')) {
+            return true;
+        }
+
+        return $this->unitIsCentral() && $this->hasRoleCode('superadmin');
+    }
+
     /**
      * ID site milik unit user, atau null bila TIDAK dibatasi.
      *
-     * Mengembalikan null (tanpa scope) untuk:
-     *   - user tanpa unit          -> belum di-assign, jangan dipotong datanya
-     *   - user di unit Pusat       -> Pusat harus bisa melihat seluruh unit
-     *
-     * Catatan: sebelum gate modul diperkenalkan, unit Pusat diwakili oleh
-     * unit_id yang kosong. Kini Pusat punya unit_id sendiri (PUSAT) dengan
-     * is_central = true, sehingga "tanpa scope" ditentukan oleh flag itu —
-     * bukan lagi oleh unit_id yang kosong.
+     * null = global (lihat hasGlobalUnitScope()).
      */
     public function unitSiteIds(): ?array
     {
-        if (! $this->unit_id || $this->unitIsCentral()) {
+        if ($this->hasGlobalUnitScope()) {
+            return null;
+        }
+
+        if (! $this->unit_id) {
             return null;
         }
 
@@ -189,21 +246,21 @@ class User extends Authenticatable
      */
     public function unitSiteCodes(): ?array
     {
-        if (! $this->unit_id || $this->unitIsCentral()) {
+        $ids = $this->unitSiteIds();
+
+        if ($ids === null) {
             return null;
         }
 
-        return $this->unit?->sites()->pluck('sites.code')->all() ?: [];
+        return Site::whereIn('id', $ids)->pluck('code')->all();
     }
 
     /**
      * True bila user dibatasi ke unit tertentu.
-     *
-     * Unit Pusat SENGAJA mengembalikan false: dia harus bisa melihat semua unit.
      */
     public function hasUnitScope(): bool
     {
-        return ! is_null($this->unit_id) && ! $this->unitIsCentral();
+        return ! $this->hasGlobalUnitScope();
     }
 
     /**
@@ -526,8 +583,47 @@ class User extends Authenticatable
         $this->moduleCodesResolved = false;
         $this->enabledModuleCodesCache = null;
         $this->unitIsCentralCache = null;
+        $this->roleCodesCache = null;
         $this->unsetRelation('roles');
         $this->unsetRelation('unit');
     }
 
+    /* =========================================================
+     * KREDENSIAL AKUN HASIL SCAN
+     * =======================================================*/
+
+    /**
+     * Simpan password baru sekaligus salinan terenkripsi untuk kebutuhan
+     * operasional (dibagikan offline oleh superadmin unit).
+     *
+     * `password` tetap hash satu arah untuk login. `credentials_plain`
+     * dienkripsi dengan APP_KEY dan hanya bisa dibuka lewat endpoint yang
+     * mencatat audit trail.
+     */
+    public function setOperationalCredentials(string $plainPassword, ?User $actor = null): void
+    {
+        $this->password = $plainPassword;
+        $this->credentials_plain = $plainPassword;
+        $this->credentials_set_at = now();
+        $this->credentials_set_by = $actor?->id;
+        $this->credentials_reveal_count = 0;
+        $this->credentials_last_revealed_at = null;
+        $this->save();
+    }
+
+    public function hasOperationalCredentials(): bool
+    {
+        return ! empty($this->credentials_plain) && $this->credentials_set_at !== null;
+    }
+
+    public function isPendingCredentials(): bool
+    {
+        return $this->registration_source === 'scan'
+            && ! $this->hasOperationalCredentials();
+    }
+
+    public function credentialReveals()
+    {
+        return $this->hasMany(UserCredentialReveal::class);
+    }
 }

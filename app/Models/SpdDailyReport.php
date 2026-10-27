@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Concerns\HasSafeSlugRouteKey;
 use Illuminate\Database\Eloquent\Model;
 
 class SpdDailyReport extends Model
 {
-    use HasFactory;
+    use HasFactory, HasSafeSlugRouteKey;
 
     protected $table = 'spd_daily_reports';
 

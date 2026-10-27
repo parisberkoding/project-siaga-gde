@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Lunch;
 use App\Http\Controllers\Controller;
 use App\Models\LunchTransaction;
 use App\Models\Site;
+use App\Services\UnitScope;
 use Illuminate\Http\Request;
 
 class LunchTransactionController extends Controller
@@ -17,13 +18,15 @@ class LunchTransactionController extends Controller
     {
         $date = $request->get('date', now()->toDateString());
 
-        $siteIds = $request->user()?->unitSiteIds();
+        $scope = UnitScope::for($request->user());
+        $siteIds = $scope->siteIds();
 
         $query = LunchTransaction::forDate($date)
             ->inUnit($siteIds)
             ->with(['site', 'employee', 'tomorrowSite']);
 
         if ($siteId = $request->get('site_id')) {
+            $scope->ensureSite((int) $siteId);
             $query->where('site_id', $siteId);
         }
 
@@ -50,9 +53,7 @@ class LunchTransactionController extends Controller
 
         $unresolvedCount = LunchTransaction::forDate($date)->inUnit($siteIds)->unresolved()->count();
 
-        $sites = Site::active()
-            ->when($siteIds !== null, fn ($q) => $q->whereIn('id', $siteIds))
-            ->get();
+        $sites = $scope->sites();
 
         return view('lunch.transactions.index', compact(
             'date', 'transactions', 'totalsBySite', 'unresolvedCount', 'sites'
@@ -66,7 +67,7 @@ class LunchTransactionController extends Controller
     {
         $date = $request->get('date', now()->toDateString());
 
-        $siteIds = $request->user()?->unitSiteIds();
+        $siteIds = UnitScope::for($request->user())->siteIds();
 
         return response()->json([
             'total'      => LunchTransaction::forDate($date)->inUnit($siteIds)->count(),

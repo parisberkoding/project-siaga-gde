@@ -6,16 +6,21 @@ use App\Http\Controllers\BodyCheckingController;
 use App\Http\Controllers\CateringGuestController;
 use App\Http\Controllers\DailyCheckingController;
 use App\Http\Controllers\DispatcherAdministrationController;
+use App\Http\Controllers\DriverDashboardController;
 use App\Http\Controllers\Lunch\EmployeeDefaultController;
 use App\Http\Controllers\Lunch\LunchAnalyticsController;
+use App\Http\Controllers\Lunch\LunchCustomPurchaseController;
 use App\Http\Controllers\Lunch\LunchDashboardController;
 use App\Http\Controllers\Lunch\LunchDistributionController;
 use App\Http\Controllers\Lunch\LunchForecastController;
 use App\Http\Controllers\Lunch\LunchTransactionController;
+use App\Http\Controllers\Lunch\LunchVendorPaymentController;
 use App\Http\Controllers\Lunch\PublicAttendanceController;
 use App\Http\Controllers\Lunch\SelfBookingController;
 use App\Http\Controllers\Lunch\VendorLunchController;
 use App\Http\Controllers\MasterGasolineController;
+use App\Http\Controllers\ModuleController;
+use App\Http\Controllers\ModuleDashboardController;
 use App\Http\Controllers\MonthlyCheckingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RbacController;
@@ -62,6 +67,47 @@ Route::get('/', function () {
 
 Route::get('/login', [AuthentiactionController::class, 'index'])->name('login');
 Route::post('/login-process', [AuthentiactionController::class, 'authenticate'])->name('login-process');
+
+// ── All Modules (titik masuk setelah login) ──
+// Halaman ini SENGAJA berada di luar konteks modul: membukanya berarti
+// "keluar" dari modul sebelumnya. Setelah memilih satu modul, sidebar dan
+// akses route dibatasi oleh middleware EnsureModuleContext.
+Route::middleware(['auth'])->group(function () {
+    Route::get('/modules', [ModuleController::class, 'index'])->name('modules.index');
+    Route::post('/modules/{module:code}', [ModuleController::class, 'activate'])->name('modules.activate');
+
+    // ── Dashboard per modul ──
+    // Satu dashboard untuk satu siklus bisnis. Permission memakai gabungan
+    // permission modul agar user dengan hak baca saja tetap bisa melihat
+    // ringkasan modulnya (tanpa akses ke dashboard modul lain).
+    Route::get('/modules/bbm/dashboard', [SuperadminController::class, 'dashboardBisnis'])
+        ->middleware('permission:bbm.view,bbm.approve,bbm.export,bbm.request,bbm.report,pelaporan.view,pelaporan.create,pelaporan.analyze')
+        ->name('modules.dashboard.bbm');
+
+    Route::get('/modules/spd/dashboard', [ModuleDashboardController::class, 'spd'])
+        ->middleware('permission:spd.view,spd.create,spd.update,spd.delete,spd.approve,spd.assign,spd.manage,spd.validate_trip,lpj.view,lpj.create,lpj.update,lpj.delete,lpj.validate,lpj.validate_management,lpj.export,lpj.pencairan,pelaporan.view,pelaporan.create,pelaporan.analyze')
+        ->name('modules.dashboard.spd');
+
+    Route::get('/modules/vehicle/dashboard', [ModuleDashboardController::class, 'vehicle'])
+        ->middleware('permission:vehicle.view,vehicle.create,vehicle.update,vehicle.delete,vehicle.approve,vehicle.checking,vehicle.scan,vehicle.acknowledge,vehicle.export,vehicle.report,vehicle.master,vehicle.sparepart')
+        ->name('modules.dashboard.vehicle');
+
+    Route::get('/modules/ai/dashboard', [ModuleDashboardController::class, 'ai'])
+        ->middleware('permission:ai.view')
+        ->name('modules.dashboard.ai');
+
+    Route::get('/modules/users/dashboard', [ModuleDashboardController::class, 'users'])
+        ->middleware('permission:users.view,users.create,users.update,users.delete')
+        ->name('modules.dashboard.users');
+
+    Route::get('/modules/rbac/dashboard', [ModuleDashboardController::class, 'rbac'])
+        ->middleware('permission:rbac.view,rbac.roles,rbac.permissions')
+        ->name('modules.dashboard.rbac');
+
+    Route::get('/modules/settings/dashboard', [ModuleDashboardController::class, 'settings'])
+        ->middleware('permission:settings.view,settings.manage,settings.modules,settings.sso_mapping,features.manage')
+        ->name('modules.dashboard.settings');
+});
 
 // ── SSO Geodipa (provider-agnostic) ──
 // Publik seperti /login: memang harus dapat diakses SEBELUM login.
@@ -158,6 +204,15 @@ Route::middleware(['auth', 'permission:pelaporan.view,pelaporan.create'])->prefi
     });
 });
 
+// ── Dashboard Driver ────────────────────────────────────────────────────────
+// Driver TIDAK memakai dashboard analitik modul (yang menampilkan agregat
+// seluruh unit). Dashboard ini hanya memuat pekerjaan milik user yang login:
+// permohonan BBM, SPD berjalan, LPJ yang belum dilaporkan, pengecekan
+// kendaraan yang menunggu acknowledge, dan jadwal service yang di-assign.
+Route::middleware(['auth', 'permission:bbm.request,spd.create,lpj.create,vehicle.acknowledge'])
+    ->get('/driver/dashboard', [DriverDashboardController::class, 'index'])
+    ->name('driver.dashboard');
+
 // Requester Routes
 Route::middleware(['auth'])->group(function () {
     // ── Permohonan BBM (requester) ──
@@ -175,7 +230,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/requester/request/{id}', [RequestManagementController::class, 'requester_show'])->name('requester-show');
 
         // Pelaporan bukti pembelian → butuh izin report
-        Route::post('/requester/request/{id}/upload-proof', [RequestManagementController::class, 'requestper_upload_proof'])
+        Route::post('/requester/request/{id}/upload-proof', [RequestManagementController::class, 'requester_upload_proof'])
             ->middleware('permission:bbm.report')->name('requester-upload-proof');
 
         Route::post('/requester/request/{id}/submit-report', [RequestManagementController::class, 'requester_submit_report'])
@@ -364,7 +419,9 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
         Route::get('/pivot-table', [SuperadminController::class, 'getCompletePivotTable'])->name('pivot-table');
     });
 
-    Route::get('/activity-log', [SuperadminController::class, 'getActivityLog'])->name('activity-log');
+    // Route `activity-log` dihapus: method SuperadminController::getActivityLog()
+    // sudah dikomentari seluruhnya (tidak ada implementasi), sehingga route ini
+    // hanya menghasilkan error 500 dan tidak dipakai satu view pun.
 });
 
 // ── PERMISSION-BASED ROUTES (ex-superadmin group) ──
@@ -381,6 +438,8 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('permission:users.update')->group(function () {
         Route::post('users/{id}/update', [SuperadminController::class, 'updateUser'])->name('users.update');
         Route::post('users/{id}/reset-password', [SuperadminController::class, 'resetPassword'])->name('users.reset-password');
+        Route::post('users/{id}/credentials', [SuperadminController::class, 'setCredentials'])->name('users.credentials.update');
+        Route::get('users/{id}/credentials/reveal', [SuperadminController::class, 'revealCredentials'])->name('users.credentials.reveal');
     });
     Route::middleware('permission:users.delete')->group(function () {
         Route::post('users/{id}/delete', [SuperadminController::class, 'deleteUser'])->name('users.delete');
@@ -758,7 +817,7 @@ Route::prefix('lunch-attendance')->name('lunch.attendance.')->group(function () 
         ->middleware('throttle:60,1')->name('lookup');
     Route::post('/submit', [PublicAttendanceController::class, 'submit'])
         ->middleware('throttle:15,1')->name('submit');
-    Route::post('/tomorrow/{transaction}', [PublicAttendanceController::class, 'confirmTomorrow'])
+    Route::post('/{transaction}/tomorrow', [PublicAttendanceController::class, 'confirmTomorrow'])
         ->middleware('throttle:15,1')->name('tomorrow');
     Route::post('/guest-submit', [PublicAttendanceController::class, 'guestSubmit'])
         ->middleware('throttle:15,1')->name('guest-submit');
@@ -773,7 +832,7 @@ Route::prefix('lunch-attendance')->name('lunch.attendance.')->group(function () 
 // Employee Default → Forecast → Distribution → QR Attendance →
 // Transaction → Learning → Forecast H+1
 // ────────────────────────────────────────────────────────────────────────
-Route::middleware(['auth', 'permission:lunch.view,lunch.export'])->prefix('lunch')->name('lunch.')->group(function () {
+Route::middleware(['auth', 'permission:lunch.view,lunch.export', 'lunch.vendor_guard'])->prefix('lunch')->name('lunch.')->group(function () {
     // ── Halaman read-only (lunch.view / lunch.export) ──
     Route::get('/', [LunchDashboardController::class, 'index'])->name('dashboard');
     Route::get('/forecasts', [LunchForecastController::class, 'index'])->name('forecasts.index');
@@ -784,7 +843,7 @@ Route::middleware(['auth', 'permission:lunch.view,lunch.export'])->prefix('lunch
     Route::get('/transactions/feed', [LunchTransactionController::class, 'feed'])->name('transactions.feed');
     Route::get('/analytics', [LunchAnalyticsController::class, 'index'])->name('analytics.index');
     Route::get('/guests', [CateringGuestController::class, 'calendar'])->name('guests.calendar');
-    Route::get('/self-booking', [SelfBookingController::class, 'index'])->name('self-booking.index');
+    Route::get('/self-booking', [SelfBookingController::class, 'index'])->middleware('permission:lunch.manage')->name('self-booking.index');
 
     // ── Aksi mutasi: butuh lunch.manage (view-only TIDAK boleh) ──
     Route::middleware('permission:lunch.manage')->group(function () {
@@ -816,8 +875,38 @@ Route::middleware(['auth', 'permission:lunch.manage'])->prefix('lunch')->name('l
     Route::put('/employee-defaults/{employeeDefault}', [EmployeeDefaultController::class, 'update'])->name('employee-defaults.update');
     Route::delete('/employee-defaults/{employeeDefault}', [EmployeeDefaultController::class, 'destroy'])->name('employee-defaults.destroy');
     Route::post('/employee-defaults/{employeeDefault}/restore', [EmployeeDefaultController::class, 'restore'])->name('employee-defaults.restore');
+    Route::post('/employee-defaults/{employeeDefault}/verify', [EmployeeDefaultController::class, 'verify'])->name('employee-defaults.verify');
     Route::get('/employee-defaults-export', [EmployeeDefaultController::class, 'export'])->name('employee-defaults.export');
     Route::post('/employee-defaults-import', [EmployeeDefaultController::class, 'import'])->name('employee-defaults.import');
+});
+
+// ────────────────────────────────────────────────────────────────────────
+// LUNCH — Data Pengeluaran & Pembayaran Vendor
+// ────────────────────────────────────────────────────────────────────────
+Route::middleware(['auth', 'permission:lunch.manage'])->prefix('lunch/vendor-payments')->name('lunch.vendor-payments.')->group(function () {
+    Route::get('/', [LunchVendorPaymentController::class, 'index'])->name('index');
+    Route::post('/vendors', [LunchVendorPaymentController::class, 'storeVendor'])->name('vendors.store');
+    Route::put('/vendors/{vendor}', [LunchVendorPaymentController::class, 'updateVendor'])->name('vendors.update');
+    Route::delete('/vendors/{vendor}', [LunchVendorPaymentController::class, 'destroyVendor'])->name('vendors.destroy');
+    Route::post('/generate', [LunchVendorPaymentController::class, 'generate'])->name('generate');
+    Route::post('/payments/{payment}/delete', [LunchVendorPaymentController::class, 'destroyPayment'])->name('payments.destroy');
+    Route::get('/{invoice}', [LunchVendorPaymentController::class, 'show'])->name('show');
+    Route::post('/{invoice}/update', [LunchVendorPaymentController::class, 'updateInvoice'])->name('update');
+    Route::post('/{invoice}/approve', [LunchVendorPaymentController::class, 'approve'])->name('approve');
+    Route::post('/{invoice}/payments', [LunchVendorPaymentController::class, 'storePayment'])->name('payments.store');
+});
+
+// ────────────────────────────────────────────────────────────────────────
+// LUNCH — Custom Purchase (pengganti katering pada hari tertentu)
+// ────────────────────────────────────────────────────────────────────────
+Route::middleware(['auth', 'permission:lunch.manage'])->prefix('lunch/custom-purchases')->name('lunch.custom-purchases.')->group(function () {
+    Route::get('/', [LunchCustomPurchaseController::class, 'index'])->name('index');
+    Route::post('/', [LunchCustomPurchaseController::class, 'store'])->name('store');
+    Route::put('/{customPurchase}', [LunchCustomPurchaseController::class, 'update'])->name('update');
+    Route::delete('/{customPurchase}', [LunchCustomPurchaseController::class, 'destroy'])->name('destroy');
+    Route::post('/{customPurchase}/approve', [LunchCustomPurchaseController::class, 'approve'])->name('approve');
+    Route::post('/{customPurchase}/complete', [LunchCustomPurchaseController::class, 'complete'])->name('complete');
+    Route::post('/{customPurchase}/cancel', [LunchCustomPurchaseController::class, 'cancel'])->name('cancel');
 });
 
 // Self-Booking untuk semua pegawai (public — cukup masuk tanpa login)
