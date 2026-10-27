@@ -71,6 +71,7 @@
                         <tr>
                             <th width="110">Kode</th>
                             <th>Nama</th>
+                            <th>Tipe</th>
                             <th>Unit</th>
                             <th class="text-center">Kendaraan</th>
                             <th class="text-center">User</th>
@@ -83,6 +84,7 @@
                         <tr>
                             <td><strong>{{ $site->code }}</strong></td>
                             <td>{{ $site->name }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ $site->typeLabel() }}</span></td>
                             <td>
                                 @if($site->unit)
                                     <span class="badge bg-primary">{{ $site->unit->name }}</span>

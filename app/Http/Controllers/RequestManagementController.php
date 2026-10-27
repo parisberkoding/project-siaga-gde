@@ -9,6 +9,7 @@ use App\Models\Transaction_Proofs;
 use App\Models\UserSlotAdjustment;
 use App\Models\VehicleAndToolsConsumers;
 use App\Services\FuelBenchmarkService;
+use App\Services\UnitScope;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -866,7 +867,7 @@ class RequestManagementController extends Controller
         // ✅ LAZY CHECK: Cek expired vouchers
         $this->checkAndExpireVouchers();
 
-        $unitId = Auth::user()?->unit_id;
+        $unitId = UnitScope::for(Auth::user())->unitId();
 
         // Get statistics
         $stats = [
@@ -946,7 +947,7 @@ class RequestManagementController extends Controller
     {
         $title = 'Approval Permohonan BBM';
 
-        $unitId = Auth::user()?->unit_id;
+        $unitId = UnitScope::for(Auth::user())->unitId();
 
         // Get pending requests
         $pendingRequests = Permohonan::with(['requester', 'vehicle'])
@@ -1018,7 +1019,7 @@ class RequestManagementController extends Controller
         $date = $request->get('date', now()->subDay()->toDateString());
         $status = $request->get('status', 'all'); // all | active | expired
 
-        $unitId = Auth::user()?->unit_id;
+        $unitId = UnitScope::for(Auth::user())->unitId();
 
         $query = Approved_Request::with([
             'permohonan.requester',

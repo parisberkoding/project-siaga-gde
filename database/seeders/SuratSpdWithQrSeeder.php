@@ -86,6 +86,11 @@ class SuratSpdWithQrSeeder extends Seeder
                 $surat->approved_at           = now();
                 $surat->lpj_deadline          = $tanggalKembali->copy()->addDays(3)->endOfDay();
 
+                // `withoutEvents` mematikan event `creating` yang biasanya
+                // mengisi slug. Isi eksplisit agar route('surat.superadmin.show')
+                // tidak gagal "Missing required parameter".
+                $surat->slug = str_replace('/', '-', $nomorSurat);
+
                 SuratSpd::withoutEvents(fn() => $surat->save());
 
                 foreach ([

@@ -14,8 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
  * mengubah hak akses untuk unitnya sendiri — itu kewenangan Pusat.
  *
  * Catatan transisi: user yang belum punya unit (unit_id null) diperlakukan
- * sebagai global/Pusat, konsisten dengan User::bypassesModuleGate(). Setelah
- * backfill unit_id selesai, hanya is_central = true yang lolos.
+ * sebagai global, konsisten dengan User::hasGlobalUnitScope().
  */
 class EnsureCentralUnit
 {
@@ -27,10 +26,10 @@ class EnsureCentralUnit
             abort(403, 'Anda harus login terlebih dahulu.');
         }
 
-        if ($user->unit_id === null || $user->unitIsCentral()) {
+        if ($user->hasGlobalUnitScope()) {
             return $next($request);
         }
 
-        abort(403, 'Hanya superadmin unit Pusat yang dapat mengubah konfigurasi hak akses.');
+        abort(403, 'Hanya superadmin Pusat / developer yang dapat mengubah konfigurasi hak akses.');
     }
 }

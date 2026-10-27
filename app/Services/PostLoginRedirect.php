@@ -26,8 +26,26 @@ class PostLoginRedirect
             return route('profile');
         }
 
+        // Superadmin memegang hampir seluruh siklus bisnis sekaligus. Kalau
+        // langsung diarahkan ke dashboard, sidebar-nya berisi puluhan menu dari
+        // modul berbeda. Karena itu superadmin mendarat di All Modules lebih
+        // dulu, lalu memilih satu modul yang ingin dikerjakan.
+        //
+        // Syarat `> 1` penting: instalasi yang belum menjalankan ModuleSeeder
+        // (tabel modules kosong) atau user yang hanya punya satu modul tetap
+        // memakai alur lama, sehingga tidak ada layar kosong.
+        $moduleContext = app(ModuleContext::class);
+        $availableModules = $moduleContext->availableModules($user);
+
+        if ($moduleContext->isSuperadmin($user) && $availableModules->count() > 1) {
+            return route('modules.index');
+        }
+
         return match ($this->effectiveRole($user)) {
-            'requester' => route('requester-index'),
+            // Driver mendarat di dashboard-nya sendiri: ringkasan pekerjaan
+            // pribadi (permohonan BBM, SPD/LPJ, pengecekan kendaraan).
+            // Dashboard analitik unit tetap milik superadmin/GA/manager.
+            'requester' => route('driver.dashboard'),
             'general_affairs' => route('admin-dashboard'),
             'dispatcher' => route('dispatcher.dispatcher-dashboard'),
             'manager' => route('superadmin.dashboard.bisnis'),

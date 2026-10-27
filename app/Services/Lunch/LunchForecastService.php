@@ -6,6 +6,7 @@ use App\Models\EmployeeDefault;
 use App\Models\LunchForecast;
 use App\Models\LunchForecastBatch;
 use App\Models\LunchTransaction;
+use App\Models\Site;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -33,16 +34,22 @@ class LunchForecastService
 
     /**
      * Generate (atau regenerate) forecast untuk satu tanggal.
+     *
+     * @param  array<int, int>|null  $siteIds  null = global (semua unit)
      */
-    public function generateForDate(string $date, ?User $generator = null, string $type = 'manual'): LunchForecastBatch
-    {
-        return DB::transaction(function () use ($date, $generator, $type) {
+    public function generateForDate(
+        string $date,
+        ?User $generator = null,
+        string $type = 'manual',
+        ?array $siteIds = null
+    ): LunchForecastBatch {
+        return DB::transaction(function () use ($date, $generator, $type, $siteIds) {
             $batch = LunchForecastBatch::create([
                 'forecast_date'        => $date,
                 'generated_by_type'    => $type,
                 'generated_by_user_id' => $generator?->id,
                 'algorithm_version'    => self::ALGORITHM_VERSION,
-                'history_sample_size'  => LunchTransaction::resolved()->count(),
+                'history_sample_size'  => LunchTransaction::resolved()->inUnit($siteIds)->count(),
                 'status'               => 'finalized',
                 'finalized_at'         => now(),
             ]);
@@ -57,7 +64,8 @@ class LunchForecastService
                 ->pluck('tomorrow_site_id', 'employee_default_id');
 
             $employees = EmployeeDefault::active()
-                ->with('learningProfiles')
+                ->inUnit($siteIds)
+                ->with(['learningProfiles', 'defaultSite'])
                 ->get();
 
             foreach ($employees as $employee) {
@@ -71,8 +79,9 @@ class LunchForecastService
                     continue;
                 }
 
-                // Prioritas 2 — Self Booking milik user tidak ditimpa.
-                if ($existing && $existing->prediction_source === 'self_booking') {
+                // Prioritas 2 — Self Booking & konfirmasi "besok" milik user
+                // tidak ditimpa. Keduanya adalah jawaban eksplisit.
+                if ($existing && in_array($existing->prediction_source, ['self_booking', 'confirmation'], true)) {
                     $existing->update(['forecast_batch_id' => $batch->id]);
                     continue;
                 }
@@ -99,14 +108,71 @@ class LunchForecastService
     }
 
     /**
+     * Simpan jawaban "besok makan dimana" secara real-time.
+     *
+     * Ini yang membuat admin tidak perlu menekan Generate setiap hari:
+     * begitu pegawai menjawab (atau melewati), baris forecast H+1 langsung
+     * terbentuk. Generate harian hanya mengisi mereka yang belum menjawab.
+     *
+     * @param  string  $source  confirmation | default
+     */
+    public function recordTomorrowChoice(
+        EmployeeDefault $employee,
+        ?int $siteId,
+        string $source = 'confirmation'
+    ): ?LunchForecast {
+        $date = now()->addDay()->toDateString();
+
+        $existing = LunchForecast::where('employee_default_id', $employee->id)
+            ->whereDate('lunch_date', $date)
+            ->first();
+
+        // Jawaban admin adalah prioritas tertinggi.
+        if ($existing && $existing->prediction_source === 'manual') {
+            return $existing;
+        }
+
+        $siteId = $siteId ?: $employee->default_site_id;
+
+        if (! $siteId) {
+            return null;
+        }
+
+        // Guard: site harus berada di unit karyawan. Ini mencegah jawaban
+        // "besok makan di Dieng" dari pegawai unit Patuha.
+        $unitId = $employee->resolvedUnitId();
+        $site = \App\Models\Site::find($siteId);
+
+        if ($site && $unitId && (int) $site->unit_id !== (int) $unitId) {
+            return null;
+        }
+
+        return $this->upsertForecast($employee->id, $date, [
+            'user_id'           => $employee->user_id,
+            'predicted_site_id' => $siteId,
+            'prediction_source' => $source === 'default' ? 'default' : 'confirmation',
+            'confidence'        => $source === 'default' ? 60.0 : 100.0,
+            'created_by'        => null,
+            'updated_by'        => null,
+        ]);
+    }
+
+    /**
      * @param  \Illuminate\Support\Collection  $confirmations  employee_default_id => site_id
      * @return array{0: ?int, 1: string, 2: float}
      */
     private function predict(EmployeeDefault $employee, $confirmations): array
     {
-        // Prioritas 3 — Tomorrow Confirmation.
+        // Prioritas 3 — Tomorrow Confirmation. Site harus masih di unit
+        // karyawan; data lama bisa saja menunjuk site unit lain.
         if ($confirmations->has($employee->id)) {
-            return [(int) $confirmations->get($employee->id), 'confirmation', 95.0];
+            $siteId = (int) $confirmations->get($employee->id);
+            $unitId = $employee->resolvedUnitId();
+            $site = Site::find($siteId);
+
+            if (! $unitId || ! $site || (int) $site->unit_id === (int) $unitId) {
+                return [$siteId, 'confirmation', 95.0];
+            }
         }
 
         // Prioritas 4 — Historical Pattern dari Learning Engine.
@@ -170,11 +236,12 @@ class LunchForecastService
     /**
      * Akurasi forecast untuk satu tanggal (baris yang sudah punya actual).
      *
+     * @param  array<int, int>|null  $siteIds  null = global
      * @return array{total: int, evaluated: int, correct: int, accuracy: ?float}
      */
-    public function accuracyForDate(string $date): array
+    public function accuracyForDate(string $date, ?array $siteIds = null): array
     {
-        $rows = LunchForecast::forDate($date)->get(['is_prediction_correct']);
+        $rows = LunchForecast::forDate($date)->inUnit($siteIds)->get(['is_prediction_correct']);
 
         $evaluated = $rows->whereNotNull('is_prediction_correct');
         $correct   = $evaluated->where('is_prediction_correct', true)->count();

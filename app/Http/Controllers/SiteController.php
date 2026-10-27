@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Site;
 use App\Models\Unit;
+use App\Services\UnitScope;
 use Illuminate\Http\Request;
 
 class SiteController extends Controller
@@ -11,12 +12,14 @@ class SiteController extends Controller
     public function index(Request $request)
     {
         $title = 'Site / Lokasi';
+        $scope = UnitScope::for($request->user());
 
         $search = $request->get('search');
         $unitId = $request->get('unit_id');
 
         $query = Site::with('unit')
             ->withCount(['vehicleDetails', 'users', 'employeeDefaults'])
+            ->when(! $scope->isGlobal(), fn ($q) => $q->where('unit_id', $request->user()?->unit_id))
             ->orderBy('name');
 
         if ($search) {
@@ -27,19 +30,21 @@ class SiteController extends Controller
         }
 
         if ($unitId) {
+            $scope->ensureUnit((int) $unitId);
             $query->where('unit_id', $unitId);
         }
 
         $sites = $query->paginate(20);
-        $units = Unit::orderBy('name')->get();
+        $units = $scope->units();
 
         return view('superadmin.sites.index', compact('title', 'sites', 'units', 'search', 'unitId'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $title = 'Tambah Site';
-        $units = Unit::orderBy('name')->get();
+        $scope = UnitScope::for($request->user());
+        $units = $scope->units();
 
         return view('superadmin.sites.form', compact('title', 'units'));
     }
@@ -49,6 +54,7 @@ class SiteController extends Controller
         $validated = $request->validate([
             'code' => 'required|alpha_dash|unique:sites,code|max:20',
             'name' => 'required|max:100',
+            'type' => 'nullable|in:office,power_plant,basecamp,reservoir,well,other',
             'unit_id' => 'required|exists:units,id',
             'province_slug' => 'nullable|max:100',
             'is_active' => 'boolean',
@@ -57,13 +63,22 @@ class SiteController extends Controller
             'code.alpha_dash' => 'Kode site hanya huruf, angka, dash, underscore',
             'code.unique' => 'Kode site sudah digunakan',
             'name.required' => 'Nama site harus diisi',
+            'type.required' => 'Tipe site harus dipilih',
             'unit_id.required' => 'Site harus terhubung ke unit',
         ]);
+
+        $scope = UnitScope::for($request->user());
+        $unitId = $scope->isGlobal()
+            ? $validated['unit_id']
+            : $request->user()?->unit_id;
+
+        $scope->ensureUnit((int) $unitId);
 
         Site::create([
             'code' => strtoupper($validated['code']),
             'name' => $validated['name'],
-            'unit_id' => $validated['unit_id'],
+            'type' => $validated['type'] ?? \App\Models\Site::TYPE_OTHER,
+            'unit_id' => $unitId,
             'province_slug' => $validated['province_slug'] ?? null,
             'is_active' => $request->boolean('is_active', true),
         ]);
@@ -72,10 +87,13 @@ class SiteController extends Controller
             ->with('success', 'Site ' . strtoupper($validated['code']) . ' berhasil dibuat.');
     }
 
-    public function edit(Site $site)
+    public function edit(Request $request, Site $site)
     {
+        $scope = UnitScope::for($request->user());
+        $scope->ensureSite($site);
+
         $title = 'Edit Site';
-        $units = Unit::orderBy('name')->get();
+        $units = $scope->units();
 
         return view('superadmin.sites.form', compact('title', 'site', 'units'));
     }
@@ -84,17 +102,29 @@ class SiteController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|max:100',
+            'type' => 'nullable|in:office,power_plant,basecamp,reservoir,well,other',
             'unit_id' => 'required|exists:units,id',
             'province_slug' => 'nullable|max:100',
             'is_active' => 'boolean',
         ], [
             'name.required' => 'Nama site harus diisi',
+            'type.required' => 'Tipe site harus dipilih',
             'unit_id.required' => 'Site harus terhubung ke unit',
         ]);
 
+        $scope = UnitScope::for($request->user());
+        $scope->ensureSite($site);
+
+        $unitId = $scope->isGlobal()
+            ? $validated['unit_id']
+            : $request->user()?->unit_id;
+
+        $scope->ensureUnit((int) $unitId);
+
         $site->update([
             'name' => $validated['name'],
-            'unit_id' => $validated['unit_id'],
+            'type' => $validated['type'] ?? \App\Models\Site::TYPE_OTHER,
+            'unit_id' => $unitId,
             'province_slug' => $validated['province_slug'] ?? null,
             'is_active' => $request->boolean('is_active', $site->is_active),
         ]);
@@ -103,8 +133,10 @@ class SiteController extends Controller
             ->with('success', 'Site ' . $site->code . ' berhasil diupdate.');
     }
 
-    public function destroy(Site $site)
+    public function destroy(Request $request, Site $site)
     {
+        UnitScope::for($request->user())->ensureSite($site);
+
         $dependentCount = $site->vehicleDetails()->count()
             + $site->users()->count()
             + $site->employeeDefaults()->count()

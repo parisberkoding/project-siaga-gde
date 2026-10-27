@@ -141,9 +141,16 @@
                                     {{-- Kode --}}
                                     <td>
                                         @php
-                                            $detailRoute = $checking->type === 'routine'
-                                                ? route('dispatcher.routine-check.show', $checking->checking_detail_code)
-                                                : route('dispatcher.body-check.show', $checking->checking_detail_code);
+                                            // Detail pengecekan rutin punya halaman per frekuensi
+                                            // (harian/mingguan/bulanan). Tidak ada route
+                                            // `dispatcher.routine-check.*` — memakai nama itu
+                                            // membuat halaman riwayat melempar RouteNotFoundException.
+                                            $detailRoute = match (true) {
+                                                $checking->type === 'body' => route('dispatcher.body-check.show', $checking->checking_detail_code),
+                                                $checking->sub_type === 'weekly' => route('dispatcher.weekly-check.show', $checking->checking_detail_code),
+                                                $checking->sub_type === 'monthly' => route('dispatcher.monthly-check.show', $checking->checking_detail_code),
+                                                default => route('dispatcher.daily-check.show', $checking->checking_detail_code),
+                                            };
                                         @endphp
                                         <a href="{{ $detailRoute }}" class="fw-semibold text-primary text-decoration-none">
                                             {{ $checking->checking_detail_code }}

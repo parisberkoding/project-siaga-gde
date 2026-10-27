@@ -58,12 +58,14 @@
          role custom buatan superadmin (dynamic RBAC). Isi menu disaring
          berdasarkan permission di partials/sidebar. --}}
     @include('partials.navbar')
-    @include('partials.sidebar')
+    @unless ($hideSidebar ?? false)
+      @include('partials.sidebar')
+    @endunless
     @include('partials.gemini-status-banner')
   @endauth
 
 
-    <main id="main" class="main">
+    <main id="main" class="main {{ ($hideSidebar ?? false) ? 'main--full' : '' }}">
       @yield('content')
     </main><!-- End #main -->
 

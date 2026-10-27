@@ -45,23 +45,23 @@ class UnitSeeder extends Seeder
         // Site bersifat CRUD — superadmin dapat menambah/mengubah lewat menu
         // "Site / Lokasi". Setiap site wajib terhubung ke satu unit.
         $sites = [
-            ['code' => 'Pusat',   'name' => 'Kantor Pusat', 'unit' => 'PUSAT'],
-            ['code' => 'PMU',     'name' => 'PMU',          'unit' => 'PUSAT'],
-            ['code' => 'Patuha',  'name' => 'Patuha',       'unit' => 'PATUHA'],
-            ['code' => 'PTH',     'name' => 'Patuha',       'unit' => 'PATUHA'],
-            ['code' => 'PTH-BC',  'name' => 'Basecamp Patuha', 'unit' => 'PATUHA'],
-            ['code' => 'BCMP',    'name' => 'Basecamp',     'unit' => 'PATUHA'],
-            ['code' => 'SUMUR-1', 'name' => 'Sumur Patuha 1', 'unit' => 'PATUHA'],
-            ['code' => 'Dieng',   'name' => 'Dieng',        'unit' => 'DIENG'],
-            ['code' => 'DIENG-BC', 'name' => 'Basecamp Dieng', 'unit' => 'DIENG'],
-            ['code' => 'DIENG-RSV', 'name' => 'Reservoir Dieng', 'unit' => 'DIENG'],
+            ['code' => 'Pusat',     'name' => 'Kantor Pusat – Jakarta', 'type' => 'office',      'unit' => 'PUSAT'],
+            ['code' => 'PMU',       'name' => 'Kantor Pusat – PMU',     'type' => 'office',      'unit' => 'PUSAT'],
+            ['code' => 'Patuha',    'name' => 'Power Plant Patuha',     'type' => 'power_plant', 'unit' => 'PATUHA'],
+            ['code' => 'PTH',       'name' => 'Patuha (PTH)',           'type' => 'power_plant', 'unit' => 'PATUHA'],
+            ['code' => 'PTH-BC',    'name' => 'Basecamp Patuha',        'type' => 'basecamp',    'unit' => 'PATUHA'],
+            ['code' => 'BCMP',      'name' => 'Basecamp Patuha',        'type' => 'basecamp',    'unit' => 'PATUHA'],
+            ['code' => 'SUMUR-1',   'name' => 'Sumur Patuha 1',         'type' => 'well',        'unit' => 'PATUHA'],
+            ['code' => 'Dieng',     'name' => 'Power Plant Dieng',      'type' => 'power_plant', 'unit' => 'DIENG'],
+            ['code' => 'DIENG-BC',  'name' => 'Basecamp Dieng',         'type' => 'basecamp',    'unit' => 'DIENG'],
+            ['code' => 'DIENG-RSV', 'name' => 'Reservoir Dieng',        'type' => 'reservoir',   'unit' => 'DIENG'],
         ];
 
         foreach ($sites as $data) {
             $unitId = Unit::where('code', $data['unit'])->value('id');
             Site::updateOrCreate(
                 ['code' => $data['code']],
-                ['name' => $data['name'], 'unit_id' => $unitId, 'is_active' => true]
+                ['name' => $data['name'], 'type' => $data['type'], 'unit_id' => $unitId, 'is_active' => true]
             );
         }
 

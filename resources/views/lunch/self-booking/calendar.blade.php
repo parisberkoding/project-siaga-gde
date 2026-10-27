@@ -255,8 +255,11 @@
         @if ($employee->division)
           <span class="me-2"><i class="bi bi-briefcase me-1"></i>{{ $employee->division }}</span>
         @endif
+        @if ($employee->resolvedUnit())
+          <span class="me-2"><i class="bi bi-diagram-3 me-1"></i>{{ $employee->resolvedUnit()->name }}</span>
+        @endif
         @if ($employee->defaultSite)
-          <span><i class="bi bi-geo-alt me-1"></i>Default Site: <strong class="text-primary">{{ $employee->defaultSite->code }}</strong></span>
+          <span><i class="bi bi-geo-alt me-1"></i>Default Site: <strong class="text-primary">{{ $employee->defaultSite->name }}</strong></span>
         @endif
       </p>
     </div>
@@ -354,10 +357,17 @@
                 <select name="bookings[{{ $i }}][site_id]"
                         class="form-select form-select-sm {{ $isAdminOverride ? 'border-success bg-white text-success fw-bold' : '' }}"
                         {{ $isAdminOverride ? 'disabled' : '' }}>
-                  <option value="">— Skip / Libur —</option>
+                  <option value="">— Libur / tidak makan —</option>
+                  @if ($employee?->defaultSite)
+                    <option value="{{ $employee->default_site_id }}"
+                            {{ ($selectedSiteId == $employee->default_site_id) ? 'selected' : '' }}>
+                      Default — {{ $employee->defaultSite->name }}
+                    </option>
+                  @endif
                   @foreach ($sites as $site)
+                    @continue($employee?->default_site_id == $site->id)
                     <option value="{{ $site->id }}" {{ ($selectedSiteId == $site->id) ? 'selected' : '' }}>
-                      {{ $site->code }} ({{ $site->name }})
+                      {{ $site->name }} ({{ $site->code }})
                     </option>
                   @endforeach
                 </select>

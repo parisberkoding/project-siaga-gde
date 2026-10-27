@@ -294,10 +294,14 @@
                                                 <br><small class="text-muted">{{ $ext->acknowledged_at->translatedFormat('d M Y H:i') }}</small>
                                             </td>
                                             <td class="text-center">
-                                                <a href="{{ route('surat.superadmin.show', $ext->extensionSurat) }}"
-                                                   class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-eye"></i>
-                                                </a>
+                                                @if($ext->extensionSurat)
+                                                    <a href="{{ route('surat.superadmin.show', $ext->extensionSurat) }}"
+                                                       class="btn btn-sm btn-outline-primary">
+                                                        <i class="bi bi-eye"></i>
+                                                    </a>
+                                                @else
+                                                    <span class="text-muted" title="Surat perpanjangan tidak ditemukan">-</span>
+                                                @endif
                                             </td>
                                         </tr>
                                     @endforeach

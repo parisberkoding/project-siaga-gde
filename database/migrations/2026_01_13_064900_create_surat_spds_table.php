@@ -17,8 +17,9 @@ return new class extends Migration
             $table->string('nomor_surat', 100)->unique();
             $table->string('nomor_urut')->nullable();
 
-            $table->unsignedBigInteger('unit_id')->nullable();
-            $table->foreign('unit_id')->references('id')->on('units')->onDelete('set null');
+            // `unit_id` + FK-nya ditambahkan oleh migrasi 2026_10_01_000001.
+            // Tidak dibuat di sini karena tabel `units` belum ada pada urutan
+            // migrasi ini (penyebab kegagalan `migrate:fresh`).
 
             // Pemberi Tugas
             $table->string('pemberi_tugas_nama');

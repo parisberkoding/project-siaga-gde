@@ -113,9 +113,25 @@
   </div>
 
   @auth
-  <!-- Right Section: Profile Dropdown -->
+  @php $navModule = app(\App\Services\ModuleContext::class)->current(); @endphp
+  <!-- Right Section: Module Indicator + Profile Dropdown -->
   <nav class="header-nav ms-auto">
     <ul class="d-flex align-items-center">
+      @if ($navModule)
+        <li class="nav-item d-none d-md-flex align-items-center me-2">
+          <a href="{{ route('modules.index') }}" class="nav-module-switch" title="Kembali ke All Modules">
+            <i class="bi bi-grid-1x2"></i>
+            <span>All Modules</span>
+          </a>
+        </li>
+        <li class="nav-item d-none d-lg-flex align-items-center me-3">
+          <span class="nav-module-current">
+            <i class="{{ $navModule->icon ?: 'bi bi-grid' }}"></i>
+            {{ $navModule->name }}
+          </span>
+        </li>
+      @endif
+
       <li class="nav-item dropdown pe-3">
         <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
           <i class="bi bi-person-circle" style="font-size: 1.5rem;"></i>
@@ -126,6 +142,14 @@
           <li class="dropdown-header">
             <h6>{{ Auth::user()->nama_lengkap }}</h6>
             <span>{{ ucfirst(strtolower(Auth::user()->jabatan)) }}</span>
+          </li>
+          <li><hr class="dropdown-divider"></li>
+
+          <li>
+            <a class="dropdown-item d-flex align-items-center" href="{{ route('modules.index') }}">
+              <i class="bi bi-grid-1x2"></i>
+              <span>All Modules</span>
+            </a>
           </li>
           <li><hr class="dropdown-divider"></li>
 

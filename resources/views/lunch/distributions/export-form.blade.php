@@ -38,7 +38,7 @@
                             <label class="form-label">Site</label>
                             <select name="site_id" class="form-select">
                                 <option value="">Semua Site</option>
-                                @foreach(\App\Models\Site::active()->get() as $site)
+                                @foreach($sites as $site)
                                     <option value="{{ $site->id }}">{{ $site->name }} ({{ $site->code }})</option>
                                 @endforeach
                             </select>

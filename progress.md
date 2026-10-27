@@ -720,3 +720,150 @@ Untuk input ISO yang **sudah benar** `2026-06-25`, regex ini cocok pada ekor str
 **Tes baru** (`tests/Feature/VehicleUnitDetailTest.php`, 11 kasus): create menyimpan unit + seluruh identitas (termasuk status SEWA & tanggal pajak/KIR), unit diturunkan dari site, site beda unit ditolak, update memindah unit + menyinkronkan `unit_id`, kolom & filter unit di daftar, filter "belum ada unit", identitas tampil di halaman detail, dropdown unit + field detailing ada di form create & edit, driver hanya melihat plat unitnya di form permohonan, dan permohonan dengan plat unit lain ditolak.
 
 **Verifikasi:** `php artisan test` → **368 passed (1461 assertions)** (sebelumnya 357 passed tanpa file test baru). Bukti regresi transaksi: `php artisan test tests/Feature/VehicleUnitDetailTest.php tests/Feature/VendorLunchTest.php` gagal `cannot start a transaction within a transaction` sebelum perbaikan `DB::rollBack()`, hijau setelahnya. Migration dijalankan ke DB dev (`php artisan migrate`) — kolom baru ada dan backfill unit berjalan.
+
+---
+
+## 35. All Modules: Satu Modul Satu Waktu + Perbaikan `migrate:fresh`
+
+**Kebutuhan (dari user):**
+1. Superadmin punya terlalu banyak menu karena seluruh workflow digabung. Skema baru: **Login → All Modules → pilih modul → sidebar & flow mengikuti modul itu**. Selama di modul X, route modul lain tidak boleh diakses; harus kembali ke All Modules lebih dulu.
+2. `migrate:fresh` gagal karena issue unit di tabel `permohonans`.
+3. UI mengikuti **GDE UI Assets** yang sudah ada (bukan gaya Odoo).
+4. Issue UX dari MoM (menu terlalu panjang / berpindah konteks) terakomodasi.
+
+**Akar masalah `migrate:fresh`:** migrasi create `permohonans` (2025_11_11), `approved_requests` (2025_11_11), dan `surat_spds` (2026_01_13) sudah mendeklarasikan `unit_id` + foreign key ke tabel `units`, padahal tabel `units` baru dibuat 2026_08_12. Di MySQL ini gagal `Failed to open the referenced table 'units'`; di SQLite test tidak terasa. Kolom + FK tersebut memang sudah ditambahkan ulang oleh `2026_10_01_000001_add_unit_id_to_vehicle_and_tools_consumers_table`, jadi deklarasi dini dihapus dari ketiga migrasi create (dengan komentar penjelas). Ditemukan juga seeding database baru gagal `Field 'user_code' doesn't have a default value` karena `DatabaseSeeder` memakai `WithoutModelEvents` sehingga event `creating` User (generator `user_code`) mati — trait dihapus.
+
+**Perubahan kode:**
+- **`App\Services\ModuleContext`** — sumber tunggal untuk: daftar modul yang boleh dibuka user (RBAC + gate unit), peta eksplisit route → modul, dan halaman pendarat tiap modul. Modul disimpan di session (`module_context.active`).
+- **`App\Http\Middleware\EnsureModuleContext`** (global web, setelah cek akun aktif) — bila modul aktif, route milik modul lain diarahkan ke All Modules + pesan; request JSON mendapat 403. Route lintas modul (profil, dashboard, file, logout, pelaporan) tetap terbuka. Tanpa modul aktif, perilaku lama dipertahankan; deep link yang jelas bermodul otomatis membuka modulnya.
+- **`ModuleController` + route `modules.index` / `modules.activate`** — halaman All Modules dan pemilihan modul.
+- **`PostLoginRedirect`** — superadmin dengan >1 modul diarahkan ke All Modules (login lokal & SSO memakai jalur yang sama). Instalasi tanpa `ModuleSeeder` tetap memakai alur lama.
+- **Sidebar** — setiap item diberi `module`; saat modul aktif hanya menu modul itu (+ item lintas modul seperti Dashboard/Profil) yang dirender. Ditambah kartu **Modul Aktif + tombol All Modules** di atas sidebar.
+- **Navbar** — indikator modul aktif + tombol All Modules; menu All Modules juga masuk dropdown profil.
+- **`resources/views/modules/index.blade.php` + `gde-app.css`** — halaman All Modules memakai komponen/token GDE (kartu, badge, alert, grid responsif), tanpa sidebar, dengan ringkasan unit & hak akses. Tidak memakai gaya Odoo.
+
+**Tes baru** (`tests/Feature/ModuleNavigationTest.php`, 10 kasus): redirect superadmin ke All Modules, fallback saat seeder modul kosong, kartu modul disaring permission & gate unit, modul disabled tidak tampil, aktivasi modul membatasi sidebar, route modul lain ditolak + kembali ke All Modules, route lintas modul (profil) tetap boleh, modul tanpa hak ditolak 403, dan deep link otomatis membuka modul.
+
+**Verifikasi:** `php artisan migrate:fresh --seed` → **selesai tanpa error** (sebelumnya gagal di `create_permohonans_table`). `php artisan test` → **378 passed (1500 assertions)**. Dicek langsung via Chrome headless: login `superadmin_pusat` mendarat di `/modules` (8 kartu), membuka BBM → `/kelola-permohonan` dengan sidebar hanya Dashboard/Permohonan BBM/Cetak Laporan BBM/Profil, dan membuka `/lunch` dari modul BBM dialihkan kembali ke `/modules` dengan pesan modul yang jelas.
+
+---
+
+## 36. Audit Route: `Missing required parameter surat` & Referensi Route Rusak
+
+**Laporan:** `UrlGenerationException: Missing required parameter for [Route: surat.superadmin.show] [URI: surat/{surat}] [Missing parameter: surat]`.
+
+**Akar masalah:** `surat_spds.slug` (route key) berisi NULL pada data hasil seeder. Seeder lama menyimpan lewat `DB::table()` / `SuratSpd::withoutEvents()`, sehingga event model `creating` yang biasa mengisi slug tidak berjalan. Laravel memakai `getRouteKey()` = slug = NULL, lalu menganggap parameter `{surat}` tidak dikirim. Dibuktikan langsung: `route('surat.superadmin.show', SuratSpd::first())` melempar exception yang sama persis.
+
+**Perbaikan data & pencegahan:**
+- Migration baru `2026_10_21_000001_backfill_null_route_slugs` mengisi slug kosong pada `surat_spds`, `surat_spd_extensions`, `lpj_penggantians`, `spd_daily_reports`, dan `struk_items`, lengkap dengan penjaga duplikat.
+- `SpdDemoSeeder` dan `SuratSpdWithQrSeeder` kini mengisi slug eksplisit (keduanya menyimpan tanpa event `creating`).
+- Trait baru `App\Models\Concerns\HasSafeSlugRouteKey` dipakai 5 model ber-slug: `getRouteKey()` jatuh ke primary key bila slug kosong, dan `resolveRouteBinding()` menerima ID sebagai fallback. Jadi tautan tidak pernah lagi melempar “Missing required parameter” meskipun ada data lama yang lolos.
+
+**Hasil audit seluruh route (292 route, 289 bernama):**
+- 842 pemanggilan `route()`/`to_route()` diperiksa: **0 pemanggilan tanpa parameter wajib**, **0 route tanpa nama ganda**, **0 URI duplikat**.
+- Seluruh 289 route bernama juga diperiksa terhadap peta modul: **46 route lintas modul + 243 route bermodul + 0 route tanpa pemetaan**, sehingga tidak ada route yang lolos dari isolasi modul.
+- Audit controller action menemukan **2 route rusak** dan sudah diperbaiki:
+  1. `requester-upload-proof` mengarah ke method `requestper_upload_proof` yang tidak ada → dibetulkan ke `requester_upload_proof` (form upload bukti pembelian sebelumnya pasti 500).
+  2. `activity-log` mengarah ke `SuperadminController@getActivityLog` yang seluruh method-nya dikomentari → route dihapus (tidak dipakai view mana pun).
+- Referensi route yang tidak terdaftar di halaman aktif diperbaiki:
+  - `dispatcher/history`: pengecekan `type=routine` memanggil `dispatcher.routine-check.show` yang tidak pernah didaftarkan → sekarang memetakan `sub_type` ke route harian/mingguan/bulanan yang benar.
+  - `requester/spd/surat/show`: tautan surat induk sekarang juga memeriksa `parentSurat` tidak null.
+  - `superadmin/spd/perpanjangan/index`: tautan detail hanya dirender bila `extensionSurat` ada.
+  - `admin/transaction-monitoring` dan `admin/service-scheduling`: parameter `vpr_code` kosong tidak lagi menghasilkan URL rusak.
+- Sisa 16 referensi nama route tak terdaftar seluruhnya berada di file **dead code/tidak pernah dirender**: folder `resources/views/dispatcher/routine-check/*` (controller-nya tidak punya route) dan partial `superadmin/partials/baseline-management.blade.php` (tidak di-include di mana pun), plus dua blok komentar Blade di `dispatcher/dashboard.blade.php`.
+
+**Tes baru** (`tests/Feature/RouteParameterSafetyTest.php`, 5 kasus): slug NULL tetap menghasilkan URL + halaman detail 200, seluruh route menunjuk controller method yang ada, tidak ada nama route duplikat, setiap route terpetakan ke modul/daftar lintas modul, dan riwayat pengecekan rutin menaut ke halaman frekuensi yang benar.
+
+**Verifikasi:** migration backfill dijalankan ke DB dev (`php artisan migrate`) → 5 surat yang sebelumnya NULL kini punya slug, `route('surat.superadmin.show', $surat)` menghasilkan `/surat/010.TGS-PTH1.30-GDE-X-2026`. `php artisan test` → **383 passed (1508 assertions)**.
+
+---
+
+## 37. Dashboard per Modul (bukan satu dashboard BBM untuk semua modul)
+
+**Kebutuhan:** `/dashboard-bisnis` selama ini adalah dashboard BBM, tetapi dipakai di semua modul. Setelah alur All Modules, tiap modul perlu dashboard sendiri yang relevan dengan siklus bisnisnya.
+
+**Perubahan:**
+- **Dashboard tiap modul** dan menjadi halaman pendarat saat modul dipilih:
+  - `/modules/bbm/dashboard` → Dashboard BBM & Permohonan (memakai analitik BBM yang sudah ada; judul/breadcrumb berubah sesuai konteks route).
+  - `/modules/spd/dashboard` → Dashboard SPD & LPJ (surat bulan ini, menunggu validasi, perjalanan berjalan, LPJ menunggu/terlambat, budget, tren 6 bulan, status surat, surat terbaru, perjalanan aktif).
+  - `/modules/vehicle/dashboard` → Dashboard Kendaraan & Alat (total/aktif, jadwal terlambat, VPR menunggu, pengecekan bulan ini, tren pengecekan, status VPR, jadwal terdekat, VPR terbaru).
+  - `/lunch` → Dashboard Lunch Management (dashboard lunch yang sudah ada, tetap dipakai).
+  - `/modules/ai/dashboard` → Dashboard AI Assistant (sesi, pesan, pengguna aktif, sesi terakhir).
+  - `/modules/users/dashboard` → Dashboard Manajemen Pengguna (akun aktif/nonaktif/baru, sebaran role & unit, user terbaru).
+  - `/modules/rbac/dashboard` → Dashboard RBAC (role, permission, grup, user tanpa role, ringkasan role).
+  - `/modules/settings/dashboard` → Dashboard Pengaturan (unit, site, modul, fitur production/development, pemetaan SSO, harga BBM, matrix modul per unit).
+- **`ModuleDashboardController`** baru — semua query memakai scope unit (`inUnit`/`unit_id`): unit non-Pusat hanya melihat data unitnya, Pusat melihat seluruh unit.
+- **`ModuleContext::routeForModule()`** kini memakai `DASHBOARD_ROUTES` sehingga setiap modul mendarat di dashboard-nya. `bbm/lunch/ai/users/rbac/settings` tidak lagi mendarat di halaman list.
+- **Sidebar** — item dashboard paling atas berubah mengikuti modul aktif (“Dashboard BBM”, “Dashboard SPD”, “Dashboard Kendaraan”, dst.), lengkap dengan permission union modul. Anak menu “Dashboard Lunch” disembunyikan saat dashboard modul sudah tampil agar tidak ganda.
+- **Route isolation** — seluruh route dashboard didaftarkan ke peta modul (`modules.dashboard.*`), sehingga dashboard modul lain tetap ditolak saat konteks modul aktif. `modules.index`/`modules.activate` tetap lintas modul.
+- **UI** memakai GDE: `gde-stat`, `gde-card`, `gde-table`, `gde-badge`, `gde-progress`, `gde-chip`, `gde-empty` + CSS `module-dash` yang ditambahkan ke `gde-app.css` (grid responsif, kartu KPI, chart, daftar antrean, tombol pintasan).
+- **Kartu All Modules** kini hanya menampilkan ikon, nama modul, dan tombol “Buka Modul”. Teks deskripsi siklus (“Siklus BBM: permohonan → approval → …”) dihapus sesuai permintaan; CSS `.modules-card__desc` ikut dibuang.
+
+**Tes baru** (`tests/Feature/ModuleDashboardTest.php`, 3 kasus): seluruh 8 modul punya dashboard dan mengarah ke sana saat diaktifkan, dashboard modul lain ditolak saat konteks aktif, dan dashboard BBM memakai judul modul (bukan “Dashboard Bisnis”).
+
+**Verifikasi:** `php artisan test` → **386 passed (1571 assertions)**. Dicek visual via Chrome headless untuk dashboard BBM, SPD, Kendaraan, Pengguna, Pengaturan, AI, dan RBAC: sidebar hanya menu modul terkait, KPI dan tabel terisi data demo (5 surat, 44 kendaraan, 60 user, 10 role, 8 modul), chart tampil.
+
+---
+
+## 38. `./share.sh` — Publikasi Cepat via Cloudflare Quick Tunnel
+
+**Kebutuhan:** cukup satu perintah `./share.sh` untuk membagikan aplikasi ke internet; gunakan Cloudflare (bukan ngrok).
+
+**Implementasi (`share.sh`, executable):**
+- Cek dependency `php`, `curl`, `cloudflared`; beri instruksi `brew install cloudflared` bila belum ada.
+- Preflight port: kalau port sudah dipakai aplikasi lain (bukan `/up` milik SIAGA), berhenti dan sarankan `PORT=8001 ./share.sh`.
+- Mulai **Cloudflare Quick Tunnel** (`cloudflared tunnel --url http://127.0.0.1:$PORT`), parse URL `https://<acak>.trycloudflare.com` dari log.
+- Start `php artisan serve` dengan `APP_URL`/`APP_PUBLIC_URL` = URL tunnel, tunggu `/up` merespons 200.
+- Tampilkan URL publik + lokal + lokasi log; `Ctrl+C` menutup tunnel & server (trap cleanup, termasuk saat job dihentikan).
+- `--help`, `PORT`, `HOST`, `CF_PROTOCOL=http2` untuk jaringan yang memblokir QUIC.
+
+**Perbaikan HTTPS di belakang tunnel:** `bootstrap/app.php` kini memakai `trustProxies` HANYA untuk loopback (`127.0.0.1`, `::1`) dengan header `X-Forwarded-*`. Tanpa ini Laravel menghasilkan URL `http://...trycloudflare.com`; sesudahnya form action, asset, dan redirect menjadi `https://`.
+
+**Dokumentasi:** bagian “Bagikan ke internet (Cloudflare Tunnel)” ditambahkan di `README.md`.
+
+**Verifikasi:** `./share.sh --help` OK; tunnel diuji nyata (`PORT=8011` & `8012`): `/login` publik HTTP 200, form action & asset memakai `https://`, lalu cleanup mematikan server + cloudflared. Tes fitur terkait (module, route, security, SSO) → 48 passed.
+
+
+
+
+
+---
+
+## 39. Refactor Modul Lunch Management — Alur Scan, Forecast, Guard Unit, Vendor & Custom Purchase
+
+**Kebutuhan:** menyelaraskan sub-flow makan siang: scan barcode/QR → check-in → pertanyaan "besok makan dimana" yang dibatasi unit → forecast real-time; sidebar admin GA cukup 4 menu; self-override hanya site sesuai unit; guard unit terpusat; auto-registrasi pegawai non-SSO; plus Data Pengeluaran & Pembayaran Vendor dan Custom Purchase.
+
+**Keputusan yang disepakati:**
+- Unit = administratif (Patuha/Dieng/Pusat); Site = lokasi spesifik (Power Plant/Basecamp/Kantor/Reservoir/Sumur).
+- Bypass unit hanya: `unit_id` kosong (transisi), role `developers`, dan role `superadmin` yang unitnya `is_central`. Role lain di Pusat tetap ter-scope ke site Pusat.
+- Pegawai non-SSO auto-dibuatkan `users` nonaktif + `employee_defaults` pending; superadmin unit menerbitkan username/password lalu memberikannya offline.
+- "Besok makan dimana" langsung meng-upsert forecast H+1; yang tidak menjawab diisi default site.
+- Vendor invoice = porsi × harga/porsi, nominal bisa dikoreksi; pembayaran bisa bertahap.
+- Custom Purchase bisa menggantikan katering pada tanggal + site tertentu.
+
+**Implementasi utama:**
+- Migrasi: `employee_defaults.unit_id/verification_status/source/created_by`, `sites.type` + rename site, kolom kredensial user + `user_credential_reveals`, `lunch_vendors`, `lunch_vendor_invoices`, `lunch_vendor_payments`, `lunch_custom_purchases` + items, kolom custom purchase di `lunch_distributions`.
+- `App\Services\UnitScope` + `User::hasGlobalUnitScope()`; seluruh query lunch, site/unit/user CRUD, DataMart scope memakai resolver ini.
+- `EmployeeRegistrationService` (auto-registrasi scan), `LunchForecastService::recordTomorrowChoice()` (forecast real-time), guard site per unit di `LunchForecastService`, `SelfBookingController`, `CateringGuestController`, `PublicAttendanceController`.
+- UI publik: form identitas + field non-SSO, modal "Besok makan di mana?" dengan site per unit, dine-in/take-away, tautan booking mandiri via slug.
+- UI admin: sidebar 4 item (Dashboard, Data Forecast, Data Pengeluaran & Pembayaran Vendor, Custom Purchase); Dashboard check-in hari ini; Data Forecast dengan override inline, tamu, distribusi, kunci vendor, QR, export; vendor payment index/detail; custom purchase CRUD + item.
+- Manajemen User: scope unit, dukungan akun scan (email nullable, aktif/nonaktif), set/reveal kredensial dengan audit trail.
+- Site CRUD: tipe site + tampilan Unit › Site; rename site: PMU/Pusat, Power Plant Patuha/Dieng, Basecamp Patuha/Dieng, Sumur Patuha 1, Reservoir Dieng, Patuha (PTH).
+
+**Tes:** `tests/Feature/LunchRefactorTest.php` (9 kasus: render 4 menu + sub-halaman, guard master/override, self-booking lintas unit, scan + forecast besok, auto-registrasi non-SSO, invoice + pembayaran, custom purchase replace/restore, kredensial). Full suite: **397 passed (1662 assertions)**.
+
+---
+
+## 40. Kompatibilitas PHP 8.5 — Deprecation PDO & Upgrade PhpSpreadsheet
+
+**Masalah:** `composer update` gagal karena `maatwebsite/excel` 3.1.70 membutuhkan `phpoffice/phpspreadsheet ^1.30.5`, sedangkan PhpSpreadsheet 1.30.x mensyaratkan PHP `<8.5.0`. PHP lokal 8.5.8.
+
+**Perbaikan:**
+- `config/database.php`: `PDO::MYSQL_ATTR_SSL_CA` diganti `Pdo\Mysql::ATTR_SSL_CA` saat PHP ≥ 8.5, dengan fallback untuk PHP < 8.5. `config:clear` dijalankan.
+- `maatwebsite/excel`: `^3.1` → `^4.0` (terpasang 4.0.5).
+- `phpoffice/phpspreadsheet`: 1.30.7 → 5.10.0 (mendukung PHP 8.5).
+- `ezyang/htmlpurifier` terhapus otomatis (tidak lagi dibutuhkan PhpSpreadsheet 5).
+- `composer check-platform-reqs`: seluruh requirement platform sukses di PHP 8.5.8.
+- Smoke test `CateringExport` menghasilkan file XLSX valid (9.881 bytes, signature ZIP).
+
+**Verifikasi:** `php artisan test` → **397 passed (1662 assertions)**.

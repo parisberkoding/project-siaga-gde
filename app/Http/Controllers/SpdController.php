@@ -14,6 +14,7 @@ use App\Models\SuratSpdFundAddition;
 use App\Models\User;
 use App\Models\VehicleAndToolsConsumers;
 use App\Services\ImageCompressor;
+use App\Services\UnitScope;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -226,7 +227,7 @@ class SpdController extends Controller
      */
     public function indexSuratSuperadmin()
     {
-        $unitId = Auth::user()?->unit_id;
+        $unitId = UnitScope::for(Auth::user())->unitId();
 
         $pending_list = SuratSpd::pending()
             ->inUnit($unitId)
@@ -567,7 +568,7 @@ class SpdController extends Controller
      */
     public function reportSpending()
     {
-        $unitId = Auth::user()?->unit_id;
+        $unitId = UnitScope::for(Auth::user())->unitId();
 
         $suratList = SuratSpd::with(['vehicle', 'user', 'lpjPenggantian', 'budgets'])
             ->inUnit($unitId)
@@ -877,7 +878,7 @@ class SpdController extends Controller
      */
     public function indexPerpanjanganSuperadmin()
     {
-        $unitId = Auth::user()?->unit_id;
+        $unitId = UnitScope::for(Auth::user())->unitId();
 
         // Pending approval
         $ext_pending = SuratSpdExtension::pending()
@@ -1445,7 +1446,7 @@ class SpdController extends Controller
      */
     public function indexLaporanSuperadmin()
     {
-        $unitId = Auth::user()?->unit_id;
+        $unitId = UnitScope::for(Auth::user())->unitId();
 
         $pending_list = LpjPenggantian::pending()
             ->inUnit($unitId)
@@ -1532,7 +1533,7 @@ class SpdController extends Controller
      */
     public function indexLaporanPengguna()
     {
-        $unitId = Auth::user()?->unit_id;
+        $unitId = UnitScope::for(Auth::user())->unitId();
 
         $pending_list = LpjPenggantian::pending()
             ->inUnit($unitId)
@@ -1573,7 +1574,7 @@ class SpdController extends Controller
      */
     public function indexLaporanManagement()
     {
-        $unitId = Auth::user()?->unit_id;
+        $unitId = UnitScope::for(Auth::user())->unitId();
 
         $pending_list = LpjPenggantian::pending()
             ->inUnit($unitId)

@@ -9,9 +9,32 @@ class Site extends Model
 {
     use HasFactory;
 
+    public const TYPE_OFFICE = 'office';
+    public const TYPE_POWER_PLANT = 'power_plant';
+    public const TYPE_BASECAMP = 'basecamp';
+    public const TYPE_RESERVOIR = 'reservoir';
+    public const TYPE_WELL = 'well';
+    public const TYPE_OTHER = 'other';
+
+    /**
+     * @return array<string, string>
+     */
+    public static function typeOptions(): array
+    {
+        return [
+            self::TYPE_POWER_PLANT => 'Power Plant',
+            self::TYPE_BASECAMP    => 'Basecamp',
+            self::TYPE_OFFICE      => 'Kantor',
+            self::TYPE_RESERVOIR   => 'Reservoir',
+            self::TYPE_WELL        => 'Sumur / Well',
+            self::TYPE_OTHER       => 'Lainnya',
+        ];
+    }
+
     protected $fillable = [
         'code',
         'name',
+        'type',
         'unit_id',
         'province_slug',
         'is_active',
@@ -20,6 +43,21 @@ class Site extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    public function typeLabel(): string
+    {
+        return self::typeOptions()[$this->type] ?? 'Lainnya';
+    }
+
+    /**
+     * Label hierarkis: "Unit Patuha › Basecamp Patuha".
+     */
+    public function hierarchicalLabel(): string
+    {
+        $unit = $this->unit?->name;
+
+        return $unit ? "{$unit} › {$this->name}" : $this->name;
+    }
 
     public function unit()
     {

@@ -8,6 +8,7 @@ use App\Models\LunchDistribution;
 use App\Models\LunchGuestReservation;
 use App\Models\Site;
 use App\Services\Lunch\LunchDistributionService;
+use App\Services\UnitScope;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -27,11 +28,12 @@ class LunchDistributionController extends Controller
     {
         $date = $request->get('date', now()->addDay()->toDateString());
 
-        $siteIds = $request->user()?->unitSiteIds();
+        $scope = UnitScope::for($request->user());
+        $siteIds = $scope->siteIds();
 
         $distributions = LunchDistribution::forDate($date)
             ->inUnit($siteIds)
-            ->with(['site', 'lockedBy'])
+            ->with(['site.unit', 'lockedBy', 'customPurchase'])
             ->get();
 
         $guests = LunchGuestReservation::whereDate('reservation_date', $date)
@@ -47,7 +49,9 @@ class LunchDistributionController extends Controller
     {
         $validated = $request->validate(['date' => 'required|date']);
 
-        $this->service->buildForDate($validated['date'], $request->user());
+        $scope = UnitScope::for($request->user());
+
+        $this->service->buildForDate($validated['date'], $request->user(), $scope->siteIds());
 
         return back()->with('success', "Distribusi {$validated['date']} berhasil dihitung ulang dari forecast + reservasi tamu.");
     }
@@ -56,7 +60,9 @@ class LunchDistributionController extends Controller
     {
         $validated = $request->validate(['date' => 'required|date']);
 
-        $count = $this->service->lockForDate($validated['date'], $request->user());
+        $scope = UnitScope::for($request->user());
+
+        $count = $this->service->lockForDate($validated['date'], $request->user(), $scope->siteIds());
 
         return back()->with('success', "{$count} distribusi dikunci. Angka pesanan vendor tidak akan berubah otomatis.");
     }
@@ -64,39 +70,52 @@ class LunchDistributionController extends Controller
     /**
      * Form filter export Excel untuk vendor.
      */
-    public function exportForm()
+    public function exportForm(Request $request)
     {
-        return view('lunch.distributions.export-form');
+        $scope = UnitScope::for($request->user());
+
+        $sites = $scope->sites();
+
+        return view('lunch.distributions.export-form', compact('sites'));
     }
 
     /**
-     * Download Excel catering report (3 sheet).
+     * Download Excel catering report (3 sheet), dibatasi unit user.
      */
     public function export(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'start_date' => 'required|date',
             'end_date'   => 'required|date|after_or_equal:start_date',
             'site_id'    => 'nullable|exists:sites,id',
         ]);
 
-        $fileName = 'CateringPatuha-' . $request->start_date . '-sd-' . $request->end_date . '.xlsx';
+        $scope = UnitScope::for($request->user());
+
+        if (! empty($validated['site_id'])) {
+            $scope->ensureSite((int) $validated['site_id']);
+        }
+
+        $fileName = 'Catering-' . $validated['start_date'] . '-sd-' . $validated['end_date'] . '.xlsx';
 
         $export = new CateringExport(
-            $request->start_date,
-            $request->end_date,
-            $request->site_id ? (int) $request->site_id : null
+            $validated['start_date'],
+            $validated['end_date'],
+            ! empty($validated['site_id']) ? (int) $validated['site_id'] : null,
+            $scope->siteIds()
         );
 
         return $export->download($fileName);
     }
 
     /**
-     * Halaman cetak QR lokasi untuk QR Attendance.
+     * Halaman cetak QR lokasi untuk QR Attendance, hanya site di unit user.
      */
-    public function qrCodes()
+    public function qrCodes(Request $request)
     {
-        $sites = Site::active()->get();
+        $scope = UnitScope::for($request->user());
+
+        $sites = $scope->sites();
 
         return view('lunch.qr-codes', compact('sites'));
     }
@@ -105,8 +124,10 @@ class LunchDistributionController extends Controller
      * Gambar QR (SVG) untuk satu site. QR berisi URL halaman attendance
      * publik, sehingga karyawan cukup scan dengan kamera HP apa pun.
      */
-    public function qrImage(Site $site)
+    public function qrImage(Request $request, Site $site)
     {
+        UnitScope::for($request->user())->ensureSite($site);
+
         $url = route('lunch.attendance.form', ['siteCode' => $site->code]);
 
         $writer = new Writer(new ImageRenderer(

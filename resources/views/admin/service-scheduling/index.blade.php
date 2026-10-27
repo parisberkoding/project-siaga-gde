@@ -187,10 +187,12 @@
                                     <br><small class="text-danger">{{ abs($item->scheduled_date?->diffInDays(now()) ?? 0) }} hari lalu</small>
                                 </div>
                                 <div class="col-md-2 col-6 text-end">
-                                    <a href="{{ route('admin.replacement-approval.show', $item->vpr_code ?? '') }}"
-                                       class="btn btn-sm btn-outline-danger">
-                                        <i class="bi bi-eye me-1"></i> Detail
-                                    </a>
+                                    @if($item->vpr_code)
+                                        <a href="{{ route('admin.replacement-approval.show', $item->vpr_code) }}"
+                                           class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-eye me-1"></i> Detail
+                                        </a>
+                                    @endif
                                 </div>
                             </div>
                         </div>

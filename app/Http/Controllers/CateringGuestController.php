@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LunchGuestReservation;
 use App\Models\Site;
+use App\Services\UnitScope;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -11,36 +12,44 @@ class CateringGuestController extends Controller
 {
     /**
      * Kalender tamu catering bulanan.
-     * Superadmin bisa melihat, menambah, dan mengkonfirmasi tamu.
+     *
+     * Site pada form diambil dari unit user, bukan hardcode PMU/Patuha.
      */
     public function calendar(Request $request)
     {
+        $scope = UnitScope::for($request->user());
+        $siteIds = $scope->siteIds();
+
         $month      = $request->get('month', now()->format('Y-m'));
         $monthStart = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
         $monthEnd   = $monthStart->copy()->endOfMonth();
         $prevMonth  = $monthStart->copy()->subMonth()->format('Y-m');
         $nextMonth  = $monthStart->copy()->addMonth()->format('Y-m');
 
-        // Semua tamu dalam bulan ini, digroup per tanggal
-        $guests = LunchGuestReservation::with('site')
+        $guests = LunchGuestReservation::with('site.unit')
+            ->inUnit($siteIds)
             ->whereDate('reservation_date', '>=', $monthStart->toDateString())
             ->whereDate('reservation_date', '<=', $monthEnd->toDateString())
-            ->get()->groupBy(fn ($g) => $g->reservation_date->toDateString());
+            ->get()
+            ->groupBy(fn ($g) => $g->reservation_date->toDateString());
 
-        // Cari tamu yang butuh konfirmasi H-2 (status pending, 0–2 hari lagi)
         $today      = Carbon::today();
         $h2Deadline = $today->copy()->addDays(2);
 
         $pendingH2 = LunchGuestReservation::with('site')
+            ->inUnit($siteIds)
             ->where('status', 'pending')
             ->whereDate('reservation_date', '>=', $today->toDateString())
             ->whereDate('reservation_date', '<=', $h2Deadline->toDateString())
             ->orderBy('reservation_date')
             ->get();
 
+        $sites = $scope->sites();
+        $units = $scope->units();
+
         return view('lunch.guests-calendar', compact(
-            'monthStart', 'prevMonth', 'nextMonth',
-            'guests', 'pendingH2'
+            'monthStart', 'prevMonth', 'nextMonth', 'month',
+            'guests', 'pendingH2', 'sites', 'units'
         ));
     }
 
@@ -49,19 +58,17 @@ class CateringGuestController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'tanggal'  => 'required|date|after_or_equal:today',
-            'instansi' => 'required|string|max:200',
-            'jumlah'   => 'required|integer|min:1|max:9999',
-            'site'     => 'required|in:PMU,Patuha',
-            'catatan'  => 'nullable|string|max:500',
-        ]);
+        $scope = UnitScope::for($request->user());
+
+        $validated = $this->validatePayload($request);
+        $site = Site::findOrFail((int) $validated['site_id']);
+        $scope->ensureSite($site);
 
         LunchGuestReservation::create([
             'reservation_date' => $validated['tanggal'],
             'institution'      => $validated['instansi'],
             'guest_count'      => $validated['jumlah'],
-            'site_id'          => Site::where('code', $validated['site'])->value('id'),
+            'site_id'          => $site->id,
             'notes'            => $validated['catatan'] ?? null,
             'status'           => 'pending',
             'created_by'       => auth()->id(),
@@ -75,23 +82,22 @@ class CateringGuestController extends Controller
      */
     public function update(Request $request, LunchGuestReservation $cateringGuest)
     {
+        $scope = UnitScope::for($request->user());
+        $scope->ensureSite($cateringGuest->site_id);
+
         if ($cateringGuest->status !== 'pending') {
             return back()->with('error', 'Data tamu yang sudah dikonfirmasi atau dibatalkan tidak bisa diubah.');
         }
 
-        $validated = $request->validate([
-            'tanggal'  => 'required|date',
-            'instansi' => 'required|string|max:200',
-            'jumlah'   => 'required|integer|min:1|max:9999',
-            'site'     => 'required|in:PMU,Patuha',
-            'catatan'  => 'nullable|string|max:500',
-        ]);
+        $validated = $this->validatePayload($request, false);
+        $site = Site::findOrFail((int) $validated['site_id']);
+        $scope->ensureSite($site);
 
         $cateringGuest->update([
             'reservation_date' => $validated['tanggal'],
             'institution'      => $validated['instansi'],
             'guest_count'      => $validated['jumlah'],
-            'site_id'          => Site::where('code', $validated['site'])->value('id'),
+            'site_id'          => $site->id,
             'notes'            => $validated['catatan'] ?? null,
         ]);
 
@@ -101,8 +107,10 @@ class CateringGuestController extends Controller
     /**
      * Hapus data tamu (hanya jika masih pending).
      */
-    public function destroy(LunchGuestReservation $cateringGuest)
+    public function destroy(Request $request, LunchGuestReservation $cateringGuest)
     {
+        UnitScope::for($request->user())->ensureSite($cateringGuest->site_id);
+
         if ($cateringGuest->status !== 'pending') {
             return back()->with('error', 'Data tamu yang sudah dikonfirmasi tidak bisa dihapus.');
         }
@@ -113,10 +121,12 @@ class CateringGuestController extends Controller
     }
 
     /**
-     * Superadmin konfirmasi tamu jadi datang (H-2 confirmation).
+     * Konfirmasi tamu jadi datang (H-2 confirmation).
      */
-    public function h2Confirm(LunchGuestReservation $cateringGuest)
+    public function h2Confirm(Request $request, LunchGuestReservation $cateringGuest)
     {
+        UnitScope::for($request->user())->ensureSite($cateringGuest->site_id);
+
         if ($cateringGuest->status !== 'pending') {
             return response()->json(['success' => false, 'message' => 'Status tidak valid.'], 422);
         }
@@ -133,10 +143,12 @@ class CateringGuestController extends Controller
     }
 
     /**
-     * Superadmin batalkan tamu (H-2 cancellation).
+     * Batalkan tamu (H-2 cancellation).
      */
-    public function h2Cancel(LunchGuestReservation $cateringGuest)
+    public function h2Cancel(Request $request, LunchGuestReservation $cateringGuest)
     {
+        UnitScope::for($request->user())->ensureSite($cateringGuest->site_id);
+
         if ($cateringGuest->status !== 'pending') {
             return response()->json(['success' => false, 'message' => 'Status tidak valid.'], 422);
         }
@@ -146,6 +158,20 @@ class CateringGuestController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Tamu dari {$cateringGuest->institution} dibatalkan. Tidak akan dimasukkan ke order catering.",
+        ]);
+    }
+
+    /**
+     * Validasi form tamu. `site_id` wajib dan harus berada di unit user.
+     */
+    private function validatePayload(Request $request, bool $checkDate = true): array
+    {
+        return $request->validate([
+            'tanggal'  => ($checkDate ? 'required|date|after_or_equal:today' : 'required|date'),
+            'instansi' => 'required|string|max:200',
+            'jumlah'   => 'required|integer|min:1|max:9999',
+            'site_id'  => 'required|exists:sites,id',
+            'catatan'  => 'nullable|string|max:500',
         ]);
     }
 }

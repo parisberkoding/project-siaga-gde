@@ -29,7 +29,8 @@ class CateringExport
     public function __construct(
         private string $startDate,
         private string $endDate,
-        private ?int   $siteId = null
+        private ?int   $siteId = null,
+        private ?array $siteIds = null
     ) {}
 
     public function download(string $fileName)
@@ -57,6 +58,7 @@ class CateringExport
     {
         return Site::active()
             ->when($this->siteId, fn ($q) => $q->where('id', $this->siteId))
+            ->when($this->siteIds !== null, fn ($q) => $q->whereIn('id', $this->siteIds))
             ->get();
     }
 
@@ -181,6 +183,11 @@ class CateringExport
         $forecasts = LunchForecast::with(['employee', 'user', 'predictedSite', 'actualSite'])
             ->whereDate('lunch_date', '>=', $this->startDate)
             ->whereDate('lunch_date', '<=', $this->endDate)
+            ->when($this->siteIds !== null, function ($q) {
+                $q->where(fn ($sq) => $sq
+                    ->whereIn('predicted_site_id', $this->siteIds)
+                    ->orWhereIn('actual_site_id', $this->siteIds));
+            })
             ->when($this->siteId, function ($q) {
                 $q->where(fn ($sq) => $sq
                     ->where('predicted_site_id', $this->siteId)
@@ -193,6 +200,7 @@ class CateringExport
         $attendanceKeys = LunchTransaction::resolved()
             ->whereDate('transaction_date', '>=', $this->startDate)
             ->whereDate('transaction_date', '<=', $this->endDate)
+            ->when($this->siteIds !== null, fn ($q) => $q->whereIn('site_id', $this->siteIds))
             ->get(['employee_default_id', 'transaction_date'])
             ->map(fn ($t) => $t->employee_default_id . '|' . $t->transaction_date->toDateString())
             ->flip();

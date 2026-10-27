@@ -5,17 +5,20 @@ namespace App\Http\Controllers;
 use App\Models\Module;
 use App\Models\Unit;
 use App\Services\ModuleGate;
+use App\Services\UnitScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class UnitController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $title = 'Unit Bisnis';
+        $scope = UnitScope::for($request->user());
 
         $units = Unit::withCount(['sites', 'users'])
             ->with(['sites', 'enabledModules'])
+            ->when(! $scope->isGlobal(), fn ($q) => $q->whereKey($request->user()?->unit_id))
             ->orderBy('name')
             ->get();
 
@@ -24,8 +27,12 @@ class UnitController extends Controller
         return view('superadmin.units.index', compact('title', 'units', 'totalModules'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        if (! UnitScope::for($request->user())->isGlobal()) {
+            abort(403, 'Hanya superadmin Pusat / developer yang dapat menambah unit.');
+        }
+
         $title = 'Tambah Unit Bisnis';
 
         $modules = Module::active()->ordered()->get();
@@ -37,6 +44,10 @@ class UnitController extends Controller
 
     public function store(Request $request)
     {
+        if (! UnitScope::for($request->user())->isGlobal()) {
+            abort(403, 'Hanya superadmin Pusat / developer yang dapat menambah unit.');
+        }
+
         $validated = $request->validate([
             'code' => 'required|alpha_dash|unique:units,code|max:50',
             'name' => 'required|max:100',
@@ -71,8 +82,10 @@ class UnitController extends Controller
             ->with('success', "Unit {$unit->name} berhasil dibuat.");
     }
 
-    public function edit(Unit $unit)
+    public function edit(Request $request, Unit $unit)
     {
+        UnitScope::for($request->user())->ensureUnit($unit->id);
+
         $title = 'Edit Unit Bisnis';
         $unit->loadCount('sites');
 
@@ -89,6 +102,8 @@ class UnitController extends Controller
 
     public function update(Request $request, Unit $unit)
     {
+        UnitScope::for($request->user())->ensureUnit($unit->id);
+
         $validated = $request->validate([
             'name' => 'required|max:100',
             'description' => 'nullable|max:500',
@@ -113,8 +128,10 @@ class UnitController extends Controller
             ->with('success', "Unit {$unit->name} berhasil diupdate.");
     }
 
-    public function destroy(Unit $unit)
+    public function destroy(Request $request, Unit $unit)
     {
+        UnitScope::for($request->user())->ensureUnit($unit->id);
+
         if ($unit->is_central) {
             return redirect()->route('superadmin.units.index')
                 ->with('error', "Unit {$unit->name} adalah unit Pusat dan tidak dapat dihapus.");
@@ -155,8 +172,7 @@ class UnitController extends Controller
      * menyalakan modul untuk unitnya sendiri.
      *
      * Catatan transisi: user yang belum punya unit (unit_id null) diperlakukan
-     * sebagai global/Pusat, konsisten dengan User::bypassesModuleGate().
-     * Setelah backfill unit_id selesai, hanya is_central = true yang lolos.
+     * sebagai global, konsisten dengan User::hasGlobalUnitScope().
      */
     private function canManageModules(Request $request): bool
     {
@@ -166,7 +182,7 @@ class UnitController extends Controller
             return false;
         }
 
-        return $actor->unit_id === null || $actor->unitIsCentral();
+        return $actor->hasGlobalUnitScope();
     }
 
     /**

@@ -96,7 +96,7 @@ it('user unit hanya melihat data BBM unitnya sendiri lewat AI assistant', functi
         ->and($assistant->metadata['records_matched'])->toBe(1);
 });
 
-it('user pusat melihat SEMUA data lewat AI assistant', function () {
+it('GA di unit Pusat tetap dibatasi ke site unit Pusat', function () {
     $pthVehicle = aiScopeFakeVehicle('B-PTH-AI-2', $this->sitePTH->id);
     $diengVehicle = aiScopeFakeVehicle('B-DIEN-AI-2', $this->siteDieng->id);
 
@@ -124,7 +124,7 @@ it('user pusat melihat SEMUA data lewat AI assistant', function () {
 
     $assistant = AiChatMessage::where('role', 'assistant')->first();
     expect($assistant->metadata['module'])->toBe('permohonan_bbm')
-        ->and($assistant->metadata['records_matched'])->toBe(2);
+        ->and($assistant->metadata['records_matched'])->toBe(0);
 });
 
 it('user unit hanya melihat kendaraan unitnya lewat AI assistant', function () {

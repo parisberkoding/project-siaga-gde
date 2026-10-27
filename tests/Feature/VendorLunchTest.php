@@ -36,6 +36,20 @@ it('vendor bisa mengakses halaman kehadiran lunch', function () {
         ->assertStatus(200);
 });
 
+it('vendor tidak bisa membuka dashboard/forecast admin lunch', function () {
+    $vendor = User::factory()->create(['role' => 'vendor']);
+    $role = Role::where('code', 'vendor')->first();
+    $vendor->roles()->attach($role->id, ['is_primary' => true]);
+
+    $this->actingAs($vendor)
+        ->get(route('lunch.dashboard'))
+        ->assertForbidden();
+
+    $this->actingAs($vendor)
+        ->get(route('lunch.forecasts.index'))
+        ->assertForbidden();
+});
+
 it('requester tidak bisa mengakses halaman vendor lunch', function () {
     $requester = User::factory()->create(['role' => 'requester']);
     $role = Role::where('code', 'requester')->first();

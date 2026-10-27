@@ -89,3 +89,65 @@ Lunch Distribution · Lunch Transactions · Analytics · QR Lokasi · Export Ven
 3. Karyawan scan QR saat makan siang; Learning Engine memperbarui pola dan
    akurasi forecast terisi otomatis.
 4. Export Excel vendor (3 sheet) dari menu **Export Vendor**.
+
+---
+
+## Revisi 2026-10 — Alur baru & guard unit
+
+### 1. Hierarki Unit → Site
+
+- **Unit** = satuan administratif (Patuha, Dieng, Pusat).
+- **Site** = lokasi spesifik di bawah unit (Power Plant, Basecamp, Kantor,
+  Reservoir, Sumur). `sites.type` menyimpan klasifikasi ini.
+- `employee_defaults.unit_id` sekarang eksplisit; bila kosong, diturunkan dari
+  `default_site_id`.
+
+### 2. Siapa yang melihat semua unit?
+
+| Aktor | Scope data |
+|---|---|
+| `unit_id` kosong (transisi) | global |
+| role `developers` | global |
+| role `superadmin` **dan** unit `is_central` (Pusat) | global |
+| role lain di unit Pusat (mis. GA Pusat) | hanya site unit Pusat |
+| role lain dengan unit | hanya site unitnya |
+
+Implementasi terpusat: `App\Services\UnitScope` + `User::hasGlobalUnitScope()`.
+
+### 3. Alur scan pegawai
+
+1. Scan QR site (cetak dari menu QR Lokasi).
+2. Cari nama. Jika sudah ada di master → check-in.
+3. Jika belum ada / belum punya akun → isi nama, divisi, unit.
+   Sistem membuat `employee_defaults` (status `pending`) + akun `User`
+   nonaktif (`registration_source = scan`). Superadmin unit membuat
+   username/password final lalu memberikannya offline.
+4. Check-in tercatat. Popup **"Besok makan di mana?"** hanya menampilkan site
+   di unit pegawai. Jawaban langsung meng-*upsert* forecast H+1
+   (`confirmation`); jika dilewati, forecast diisi `default` site.
+5. Site QR = lokasi makan **hari ini**; tidak ada lagi modal terpisah untuk
+   mengubah site hari ini.
+
+### 4. Menu admin GA (4 item)
+
+1. **Dashboard** — check-in hari ini, belum dikenali, tamu perlu konfirmasi,
+   pintasan.
+2. **Data Forecast** — ringkasan per site, override inline, tamu, distribusi,
+   kunci vendor, export, QR, booking mandiri, dan master karyawan.
+3. **Data Pengeluaran & Pembayaran Vendor** — vendor + harga/porsi, generate
+   invoice dari porsi distribusi, koreksi nominal, approve, pembayaran
+   bertahap (proof upload), status draft/partial/paid.
+4. **Custom Purchase** — pembelian manual per tanggal + site dengan rincian
+   item. Jika `replaces_catering` aktif, porsi katering pada tanggal + site
+   tersebut di-nol-kan agar vendor tidak menagih dua kali.
+
+### 5. Kredensial akun hasil scan
+
+- Password login tetap hash satu arah.
+- Salinan terenkripsi (`users.credentials_plain`, APP_KEY) dapat dibuka
+  superadmin unit lewat Manajemen User; setiap pembukaan dicatat di
+  `user_credential_reveals` dan `credentials_reveal_count`.
+- Endpoint: `POST /users/{id}/credentials` dan
+  `GET /users/{id}/credentials/reveal` (permission `users.update`, dibatasi
+  unit pelaku).
+

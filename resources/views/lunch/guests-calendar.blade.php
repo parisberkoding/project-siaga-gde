@@ -277,10 +277,11 @@
                         </div>
                         <div class="col-6">
                             <label class="form-label fw-semibold">Site <span class="text-danger">*</span></label>
-                            <select name="site" class="form-select" required>
-                                <option value="">-- Pilih --</option>
-                                <option value="PMU">PMU</option>
-                                <option value="Patuha">Patuha</option>
+                            <select name="site_id" class="form-select" required>
+                                <option value="">-- Pilih site --</option>
+                                @foreach($sites as $site)
+                                    <option value="{{ $site->id }}">{{ $site->name }} ({{ $site->unit?->code }})</option>
+                                @endforeach
                             </select>
                         </div>
                     </div>
