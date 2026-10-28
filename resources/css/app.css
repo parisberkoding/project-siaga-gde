@@ -5,7 +5,175 @@
 @source '../**/*.blade.php';
 @source '../**/*.js';
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+/*
+ * Token warna mengikuti struktur shadcn/ui (background, primary, muted, ...),
+ * nilainya dipetakan ke design system GDE (public/gde-ui-templates/css/gde-tokens.css).
+ */
+:root {
+    --radius: 0.625rem;
+
+    --background: #f6f8fb;
+    --foreground: #16202e;
+    --card: #ffffff;
+    --card-foreground: #16202e;
+    --popover: #ffffff;
+    --popover-foreground: #16202e;
+
+    --primary: #0b50a1;
+    --primary-foreground: #ffffff;
+    --secondary: #eef2f7;
+    --secondary-foreground: #16202e;
+    --muted: #f1f5f9;
+    --muted-foreground: #5b6b80;
+    --accent: #eaf1fa;
+    --accent-foreground: #093d7d;
+    --destructive: #c4142a;
+    --destructive-foreground: #ffffff;
+
+    --success: #4a7a1c;
+    --success-soft: #f2f9e8;
+    --warning: #9a6b00;
+    --warning-soft: #fff8e1;
+    --info: #0b50a1;
+    --info-soft: #eaf1fa;
+    --destructive-soft: #fdecee;
+
+    --border: #e4e9f0;
+    --input: #d6dee8;
+    --ring: #0b50a1;
+
+    --sidebar: #ffffff;
+    --sidebar-foreground: #33465c;
+    --sidebar-accent: #eaf1fa;
+    --sidebar-accent-foreground: #093d7d;
+    --sidebar-border: #e4e9f0;
+
+    /* Warna modul (sama dengan kartu All Modules) */
+    --module-bbm: #ff771d;
+    --module-spd: #4154f1;
+}
+
+@theme inline {
+    --font-sans: 'Poppins', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 4px);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-destructive-soft: var(--destructive-soft);
+    --color-success: var(--success);
+    --color-success-soft: var(--success-soft);
+    --color-warning: var(--warning);
+    --color-warning-soft: var(--warning-soft);
+    --color-info: var(--info);
+    --color-info-soft: var(--info-soft);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-module-bbm: var(--module-bbm);
+    --color-module-spd: var(--module-spd);
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+
+    body {
+        @apply bg-background text-foreground font-sans antialiased;
+    }
+
+    /* <dialog> native: preflight menghapus margin auto, kembalikan supaya tetap di tengah. */
+    dialog {
+        @apply m-auto;
+    }
+
+    /* ::backdrop tidak selalu mewarisi variabel CSS, jadi warna ditulis langsung. */
+    dialog::backdrop {
+        background: rgb(0 0 0 / 0.5);
+    }
+}
+
+/*
+ * simple-datatables: class bawaan library diberi gaya shadcn
+ * (input, select, pagination) supaya tidak perlu CSS dari CDN.
+ */
+@layer components {
+    .datatable-top,
+    .datatable-bottom {
+        @apply flex flex-wrap items-center justify-between gap-2 py-3;
+    }
+
+    .datatable-input,
+    .datatable-selector {
+        @apply h-9 rounded-md border border-input bg-card px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50;
+    }
+
+    .datatable-dropdown label {
+        @apply flex items-center gap-2 text-sm text-muted-foreground;
+    }
+
+    .datatable-info {
+        @apply text-sm text-muted-foreground;
+    }
+
+    .datatable-sorter {
+        @apply inline-flex items-center gap-1 hover:text-foreground;
+    }
+
+    .datatable-sorter::after {
+        content: '\2195';
+        @apply text-xs text-muted-foreground;
+    }
+
+    .datatable-ascending .datatable-sorter::after {
+        content: '\2191';
+    }
+
+    .datatable-descending .datatable-sorter::after {
+        content: '\2193';
+    }
+
+    .datatable-pagination-list {
+        @apply flex items-center gap-1;
+    }
+
+    .datatable-pagination-list-item-link {
+        @apply inline-flex size-8 items-center justify-center rounded-md text-sm hover:bg-accent;
+    }
+
+    .datatable-active .datatable-pagination-list-item-link {
+        @apply border border-border bg-card font-medium shadow-xs;
+    }
+
+    .datatable-disabled .datatable-pagination-list-item-link {
+        @apply pointer-events-none opacity-50;
+    }
+
+    .datatable-empty {
+        @apply py-8 text-center text-muted-foreground;
+    }
 }
