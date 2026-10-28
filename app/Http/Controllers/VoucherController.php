@@ -11,20 +11,37 @@ class VoucherController extends Controller
     /**
      * Generate JSON response untuk Thermer App
      * Method ini akan dipanggil oleh Bluetooth Print App
+     *
+     * PENTING: endpoint ini diunduh langsung oleh aplikasi Android (bukan oleh
+     * browser), sehingga TIDAK membawa cookie session. Karena itu route-nya
+     * publik dan diamankan dengan signed URL (dibuat di
+     * resources/views/requester/partials/voucher-print-modal.blade.php).
+     * Bila signature tidak valid, tetap balas JSON — jangan HTML — supaya app
+     * tidak menampilkan "Invalid json value".
      */
-    public function thermerJsonResponse($requestId)
+    public function thermerJsonResponse(Request $httpRequest, $requestId)
     {
+        if (! $httpRequest->hasValidSignature()) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Link cetak tidak valid atau sudah kedaluwarsa. Muat ulang halaman lalu klik Print lagi.',
+            ], 403);
+        }
+
         try {
-            $request = Permohonan::with(['requester', 'vehicle', 'approvedRequest'])
+            $request = Permohonan::with(['requester', 'authorizer', 'vehicle', 'approvedRequest'])
                 ->findOrFail($requestId);
 
             $printData = [];
 
             // 1. LOGO
             // Logo disimpan di public/img/ agar independen dari theme template.
-            // Path di-resolve ke URL absolut yang reachable dari HP driver
-            // (tidak pakai asset() karena bergantung APP_URL yang bisa localhost).
-            $logoUrl = rtrim(config('app.public_url', config('app.url')), '/') . '/img/geodipa-logo.png';
+            // Path di-resolve ke URL ABSOLUT yang reachable dari HP driver.
+            // APP_PUBLIC_URL dipakai bila diisi; kalau kosong (default di .env)
+            // fallback ke host request — host inilah yang dipakai app untuk
+            // mengunduh JSON, jadi pasti bisa dijangkau dari perangkat yang sama.
+            $publicBase = config('app.public_url') ?: url('/');
+            $logoUrl = rtrim($publicBase, '/') . '/img/geodipa-logo.png';
             $printData[] = [
                 'type' => 1, // image
                 'path' => $logoUrl,
@@ -174,7 +191,7 @@ class VoucherController extends Controller
 
             $printData[] = [
                 'type' => 0,
-                'content' => 'Rp ' . number_format($request->bill_amounts, 0, ',', '.'),
+                'content' => 'Rp ' . number_format((float) $request->bill_amounts, 0, ',', '.'),
                 'bold' => 1,
                 'align' => 1,
                 'format' => 2 // double height + width
@@ -217,7 +234,13 @@ class VoucherController extends Controller
                 'format' => 0
             ];
 
-            $approver = $request->approver->username ?? $request->requester->nama_lengkap ?? 'N/A';
+            // Relasi yang benar adalah authorizer(); sebelumnya memakai
+            // $request->approver yang tidak ada sehingga selalu jatuh ke nama
+            // pemohon dan bukan nama penyetuju.
+            $approver = $request->authorizer->username
+                ?? $request->authorizer->nama_lengkap
+                ?? $request->requester->nama_lengkap
+                ?? 'N/A';
 
             $printData[] = [
                 'type' => 0,
@@ -286,14 +309,25 @@ class VoucherController extends Controller
                 'format' => 0
             ];
 
-            // Return JSON response (force object seperti di dokumentasi)
+            // Wajib JSON_FORCE_OBJECT: sample resmi aplikasi Thermer /
+            // Bluetooth Print (assets/response.php di APK-nya) memakai
+            // json_encode($a, JSON_FORCE_OBJECT), sehingga top-level-nya
+            // objek {"0":{...},"1":{...}}, bukan array.
             return response()->json($printData, 200, [], JSON_FORCE_OBJECT);
 
-        } catch (\Exception $e) {
-            // Return error dalam format JSON juga
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'error' => true,
-                'message' => $e->getMessage()
+                'message' => 'Permohonan tidak ditemukan.',
+            ], 404);
+        } catch (\Exception $e) {
+            // Tetap balas JSON supaya aplikasi tidak menampilkan
+            // "Invalid json value" saat terjadi error di server.
+            \Log::error('Thermer voucher JSON error: '.$e->getMessage());
+
+            return response()->json([
+                'error' => true,
+                'message' => 'Gagal menyiapkan data cetak.',
             ], 500);
         }
     }

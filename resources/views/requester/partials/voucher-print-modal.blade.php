@@ -1,6 +1,16 @@
 <!-- Modal Print Voucher -->
 <!-- Modal Print Voucher -->
 <meta name="csrf-token" content="{{ csrf_token() }}">
+@php
+    // Endpoint JSON untuk app Thermer/Bluetooth Print bersifat publik karena
+    // app mengunduh URL ini sendiri tanpa cookie session. Pengamannya signed
+    // URL + masa berlaku, jadi link lama tidak bisa dipakai selamanya.
+    $thermerResponseUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+        'voucher.thermer.response',
+        now()->addHour(),
+        ['id' => $request->id]
+    );
+@endphp
 <div class="modal fade" id="voucherModal{{ $slotNum }}" tabindex="-1" aria-labelledby="voucherModalLabel{{ $slotNum }}" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -63,8 +73,10 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
 
-                {{-- ✅ FIXED: Pakai <a> tag dengan URL scheme langsung --}}
-                <a href="my.bluetoothprint.scheme://{{ str_replace('https://', 'http://', route('voucher.thermer.response', $request->id)) }}"
+                {{-- URL scheme Thermer/Bluetooth Print: app akan GET URL di
+                     belakangnya lalu mengharapkan JSON. Jangan mengubah
+                     https→http: itu merusak signature dan memicu redirect. --}}
+                <a href="my.bluetoothprint.scheme://{{ $thermerResponseUrl }}"
                    class="btn btn-success"
                    onclick="return handleThermerPrint{{ $slotNum }}(event)">
                     <i class="bi bi-phone"></i> Print
@@ -138,7 +150,7 @@ function handleThermerPrint{{ $slotNum }}(event) {
     if (!isAndroid && !isMobile) {
         event.preventDefault();
 
-        const responseUrl = '{{ route("voucher.thermer.response", $request->id) }}';
+        const responseUrl = @json($thermerResponseUrl);
 
         if (confirm('⚠️ Anda menggunakan desktop.\n\nPreview JSON akan dibuka di tab baru.\n\nUntuk print, gunakan perangkat Android dengan Bluetooth Print app terinstall.\n\nLanjutkan?')) {
             window.open(responseUrl, '_blank');

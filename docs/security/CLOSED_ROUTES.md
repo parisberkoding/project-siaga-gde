@@ -46,7 +46,12 @@ Semua route di bawah memakai middleware `auth` PLUS lapisan tambahan (`role`/`pe
 | GET | requester/request/{id} | requester-show |
 | POST | requester/request/{id}/upload-proof | requester-upload-proof |
 | POST | requester/request/{id}/submit-report | requester.submit-report |
-| GET | voucher/{id}/thermer/response | voucher.thermer.response |
+
+> **Pengecualian:** `GET voucher/{id}/thermer/response` (`voucher.thermer.response`)
+> sengaja **publik** karena diunduh langsung oleh aplikasi Android Thermer /
+> Bluetooth Print tanpa cookie session. Pengganti `auth` adalah **signed URL**
+> berumur 1 jam (`URL::temporarySignedRoute`) yang diverifikasi di controller;
+> tanpa signature valid endpoint membalas JSON 403, bukan HTML.
 
 ### requester.surat (permission spd.view)
 | Method | URI | Name |

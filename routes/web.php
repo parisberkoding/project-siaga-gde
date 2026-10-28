@@ -213,6 +213,17 @@ Route::middleware(['auth', 'permission:bbm.request,spd.create,lpj.create,vehicle
     ->get('/driver/dashboard', [DriverDashboardController::class, 'index'])
     ->name('driver.dashboard');
 
+// ────────────────────────────────────────────────────────────────────────
+// THERMER / BLUETOOTH PRINT — response JSON untuk voucher BBM.
+// HARUS publik (tanpa 'auth'): aplikasi Android mengunduh URL ini lewat HTTP
+// client-nya sendiri, tanpa cookie session browser. Kalau dipasangi 'auth',
+// Laravel membalas 302 → halaman login (HTML) dan aplikasi menampilkan
+// "Invalid json value". Pengamannya signed URL + masa berlaku (lihat
+// VoucherController::thermerJsonResponse()).
+// ────────────────────────────────────────────────────────────────────────
+Route::get('voucher/{id}/thermer/response', [VoucherController::class, 'thermerJsonResponse'])
+    ->name('voucher.thermer.response');
+
 // Requester Routes
 Route::middleware(['auth'])->group(function () {
     // ── Permohonan BBM (requester) ──
@@ -238,10 +249,6 @@ Route::middleware(['auth'])->group(function () {
 
         Route::put('/requester/cancel-request/{id}', [RequestManagementController::class, 'requester_cancel_request'])
             ->middleware('permission:bbm.request')->name('requester.cancel-request');
-
-        // Thermer Print Routes
-        Route::get('voucher/{id}/thermer/response', [VoucherController::class, 'thermerJsonResponse'])
-            ->name('voucher.thermer.response');
     });
 
     // ────────────────────────────────────────────────────────────────────────
