@@ -1,137 +1,72 @@
-@extends('templates.main')
+@php($proof = $request->transactionProof)
 
-@section('content')
-<div class="row">
-    <div class="col-lg-8">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Detail Permohonan {{ $request->request_number }}</h5>
+<x-layouts.app title="Detail {{ $request->request_number }}" :breadcrumbs="['Permohonan BBM' => route('requester-index'), 'Riwayat' => route('requester-history'), $request->request_number => null]">
+    <x-ui.page-header :title="'Permohonan ' . $request->request_number" description="Rincian permohonan, persetujuan, dan laporan pembelian.">
+        <x-slot:actions>
+            <x-bbm.status-badge :status="$request->status" class="text-sm" />
+        </x-slot:actions>
+    </x-ui.page-header>
 
-                <div class="row mb-3">
-                    <div class="col-sm-3">
-                        <h6 class="mb-0">Tanggal Permohonan</h6>
-                    </div>
-                    <div class="col-sm-9 text-secondary">
-                        {{ $request->request_date->locale('id')->translatedFormat('l, d F Y') }}
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-sm-3">
-                        <h6 class="mb-0">Kendaraan</h6>
-                    </div>
-                    <div class="col-sm-9 text-secondary">
-                        {{ $request->vehicle->consumerial_code ?? 'N/A' }} -
-                        {{ $request->vehicle->consumerial_name ?? '' }} ({{ $request->vehicle->consumerial_type ?? '' }})
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-sm-3">
-                        <h6 class="mb-0">Jenis Bahan Bakar</h6>
-                    </div>
-                    <div class="col-sm-9 text-secondary">
-                        {{ $request->gasoline_type }}
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-sm-3">
-                        <h6 class="mb-0">Nominal Permohonan</h6>
-                    </div>
-                    <div class="col-sm-9 text-secondary">
-                        Rp {{ number_format($request->bill_amounts, 0, ',', '.') }}
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-sm-3">
-                        <h6 class="mb-0">Status</h6>
-                    </div>
-                    <div class="col-sm-9 text-secondary">
-                        <span class="badge bg-{{ $request->status === 'pending' ? 'warning' : 'success' }}">
-                            {{ ucfirst($request->status) }}
-                        </span>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-sm-3">
-                        <h6 class="mb-0">Catatan Pemohon </h6>
-                    </div>
-                    <div class="col-sm-9 text-secondary">
-                        {{ $request->requester_notes ?? 'N/A' }}
-                    </div>
-                </div>
-
-                <hr>
-
-                <div class="row mb-3">
-                    <div class="col-sm-3">
-                        <h6 class="mb-0">disetujui oleh :</h6>
-                    </div>
-                    <div class="col-sm-9 text-secondary">
-                        {{ $request->authorizer->username ?? 'N/A' }}
-                    </div>
-                </div>
-
-                <div class="row mb-3">
-                    <div class="col-sm-3">
-                        <h6 class="mb-0">Catatan Admin</h6>
-                    </div>
-                    <div class="col-sm-9 text-secondary">
-                        {{ $request->authorizer_notes ?? 'N/A' }}
-                    </div>
-                </div>
-
-                <hr>
-
-                @if($request->transactionProof)
-                <div class="row mb-3">
-                    <div class="col-sm-3">
-                        <h6 class="mb-0"><i class="bi bi-check2-circle text-success"></i> Laporan Terkirim</h6>
-                    </div>
-                    <div class="col-sm-9 text-secondary">
-                        <span class="badge bg-info">Completed</span>
-                        <div class="mt-1 small">
-                            <div>Tanggal Beli: {{ $request->transactionProof->purchase_datetime->translatedFormat('d M Y H:i') }}</div>
-                            <div>Volume BBM: {{ number_format((float) $request->transactionProof->fuel_volume, 2, ',', '.') }} liter</div>
-                            @if($request->transactionProof->km_terakhir)
-                                <div>KM Akhir: {{ number_format((float) $request->transactionProof->km_terakhir, 0, ',', '.') }} km</div>
-                            @endif
-                            <div class="text-muted">ID Transaksi: {{ $request->transactionProof->transaction_id }}</div>
+    <div class="grid gap-6 lg:grid-cols-3">
+        <div class="grid content-start gap-6 lg:col-span-2">
+            <x-ui.card>
+                <x-ui.card-header title="Permohonan" icon="bi bi-fuel-pump" />
+                <x-ui.card-content>
+                    <dl class="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+                        <div><dt class="text-muted-foreground">Tanggal permohonan</dt><dd class="mt-1">{{ $request->request_date->locale('id')->translatedFormat('l, d F Y') }}</dd></div>
+                        <div>
+                            <dt class="text-muted-foreground">Kendaraan</dt>
+                            <dd class="mt-1">{{ $request->vehicle->consumerial_code ?? 'N/A' }} <span class="text-muted-foreground">{{ $request->vehicle->consumerial_name ?? '' }} ({{ $request->vehicle->consumerial_type ?? '-' }})</span></dd>
                         </div>
-                    </div>
-                </div>
+                        <div><dt class="text-muted-foreground">Jenis BBM</dt><dd class="mt-1">{{ $request->gasoline_type }}</dd></div>
+                        <div><dt class="text-muted-foreground">Nominal</dt><dd class="mt-1 font-medium">Rp {{ number_format($request->bill_amounts, 0, ',', '.') }}</dd></div>
+                        <div class="sm:col-span-2"><dt class="text-muted-foreground">Catatan pemohon</dt><dd class="mt-1">{{ $request->requester_notes ?? '-' }}</dd></div>
+                    </dl>
+                </x-ui.card-content>
+            </x-ui.card>
 
-                <div class="row">
-                    @if($request->transactionProof->struk_bbm_path)
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label small text-muted">Foto Struk BBM</label>
-                        <a href="{{ $request->transactionProof->struk_url }}" target="_blank">
-                            <img src="{{ $request->transactionProof->struk_url }}" alt="Struk BBM"
-                                 style="max-height:180px; max-width:100%; border-radius:6px; object-fit:cover;" class="border">
-                        </a>
-                    </div>
-                    @endif
-                    @if($request->transactionProof->odometer_photo_path)
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label small text-muted">Foto Odometer</label>
-                        <a href="{{ $request->transactionProof->odometer_url }}" target="_blank">
-                            <img src="{{ $request->transactionProof->odometer_url }}" alt="Odometer"
-                                 style="max-height:180px; max-width:100%; border-radius:6px; object-fit:cover;" class="border">
-                        </a>
-                    </div>
-                    @endif
-                </div>
-                @else
-                <div class="row mb-3">
-                    <div class="col-sm-3">
-                        <h6 class="mb-0">Laporan</h6>
-                    </div>
-                    <div class="col-sm-9 text-secondary">
-                        <span class="text-muted">Belum ada laporan yang dikirim untuk permohonan ini.</span>
-                    </div>
-                </div>
-                @endif
+            <x-ui.card>
+                <x-ui.card-header title="Laporan Pembelian" icon="bi bi-receipt" />
+                <x-ui.card-content class="grid gap-4">
+                    @if ($proof)
+                        <dl class="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+                            <div><dt class="text-muted-foreground">Tanggal beli</dt><dd class="mt-1">{{ $proof->purchase_datetime->translatedFormat('d M Y H:i') }}</dd></div>
+                            <div><dt class="text-muted-foreground">Volume BBM</dt><dd class="mt-1">{{ number_format((float) $proof->fuel_volume, 2, ',', '.') }} liter</dd></div>
+                            @if ($proof->km_terakhir)
+                                <div><dt class="text-muted-foreground">KM akhir</dt><dd class="mt-1">{{ number_format((float) $proof->km_terakhir, 0, ',', '.') }} km</dd></div>
+                            @endif
+                            <div><dt class="text-muted-foreground">ID transaksi</dt><dd class="mt-1"><code class="text-xs">{{ $proof->transaction_id }}</code></dd></div>
+                        </dl>
 
-            </div>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            {{-- Foto ada di disk privat; URL dari accessor model (rute media yang memeriksa hak akses). --}}
+                            @foreach (['struk_url' => 'Foto struk BBM', 'odometer_url' => 'Foto odometer'] as $field => $label)
+                                @if ($proof->$field)
+                                    <figure class="grid gap-2">
+                                        <figcaption class="text-xs text-muted-foreground">{{ $label }}</figcaption>
+                                        <a href="{{ $proof->$field }}" target="_blank" class="overflow-hidden rounded-lg border">
+                                            <img src="{{ $proof->$field }}" alt="{{ $label }}" class="h-48 w-full object-cover transition hover:opacity-90">
+                                        </a>
+                                    </figure>
+                                @endif
+                            @endforeach
+                        </div>
+                    @else
+                        <x-ui.empty-state icon="bi bi-receipt" title="Belum ada laporan" description="Laporan pembelian untuk permohonan ini belum dikirim." />
+                    @endif
+                </x-ui.card-content>
+            </x-ui.card>
         </div>
+
+        <x-ui.card class="content-start self-start">
+            <x-ui.card-header title="Persetujuan" icon="bi bi-person-check" />
+            <x-ui.card-content>
+                <dl class="grid gap-4 text-sm">
+                    <div><dt class="text-muted-foreground">Status</dt><dd class="mt-1"><x-bbm.status-badge :status="$request->status" /></dd></div>
+                    <div><dt class="text-muted-foreground">Diproses oleh</dt><dd class="mt-1">{{ $request->authorizer->nama_lengkap ?? $request->authorizer->username ?? '-' }}</dd></div>
+                    <div><dt class="text-muted-foreground">Catatan admin</dt><dd class="mt-1">{{ $request->authorizer_notes ?? '-' }}</dd></div>
+                </dl>
+            </x-ui.card-content>
+        </x-ui.card>
     </div>
-</div>
-@endsection
+</x-layouts.app>
