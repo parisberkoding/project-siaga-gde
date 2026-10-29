@@ -411,6 +411,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function syncHiddenFields(fieldsWrap) {
+        // Look up by id bila tidak diberikan, supaya helper ini aman dipanggil
+        // dari event handler mana pun (termasuk submit handler).
+        fieldsWrap = fieldsWrap || document.getElementById('fileFieldsWrap');
+        if (!fieldsWrap) return;
+
         fieldsWrap.innerHTML = '';
         Object.keys(fileState).sort((a, b) => a - b).forEach(i => {
             const s = fileState[i];
@@ -483,10 +488,24 @@ document.addEventListener('DOMContentLoaded', function() {
             st.el.volWrap.classList.toggle('d-none', !isBbm);
             if (!isBbm) st.volume = '';
             recomputeTotals();
+            // ✅ BUG-BBM-002: salin isian manual ke hidden input yang dikirim.
+            syncHiddenFields();
         });
-        st.el.nominal.addEventListener('input', function() { st.nominal = this.value; recomputeTotals(); });
-        st.el.volume.addEventListener('input', function() { st.volume = this.value; recomputeTotals(); });
-        st.el.tanggal.addEventListener('change', function() { st.tanggal = this.value; recomputeTotals(); });
+        st.el.nominal.addEventListener('input', function() {
+            st.nominal = this.value;
+            recomputeTotals();
+            syncHiddenFields();
+        });
+        st.el.volume.addEventListener('input', function() {
+            st.volume = this.value;
+            recomputeTotals();
+            syncHiddenFields();
+        });
+        st.el.tanggal.addEventListener('change', function() {
+            st.tanggal = this.value;
+            recomputeTotals();
+            syncHiddenFields();
+        });
     }
 
     if (fotoFilesOp) {
@@ -704,6 +723,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const formOperational = document.getElementById('formOperational');
     if (formOperational) {
         formOperational.addEventListener('submit', function(e) {
+            // ✅ BUG-BBM-002: sinkronkan ulang hidden input tepat sebelum kirim,
+            // agar kategori/nominal manual selalu ikut terkirim ke server.
+            syncHiddenFields(document.getElementById('fileFieldsWrap'));
+
             // Blokir submit bila validasi struk vs permohonan gagal.
             if (strukValidationFailed) {
                 e.preventDefault();

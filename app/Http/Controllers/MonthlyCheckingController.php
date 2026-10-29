@@ -13,6 +13,8 @@ use App\Models\VehicleCheckingSchedule;
 use App\Models\VehiclePart;
 use App\Models\VehicleAndToolsConsumers;
 use App\Models\User;
+use App\Services\UnitScope;
+use Illuminate\Validation\ValidationException;
 
 class MonthlyCheckingController extends Controller
 {
@@ -41,6 +43,7 @@ class MonthlyCheckingController extends Controller
         $checkings = $query->paginate(15)->withQueryString();
 
         $vehicles = VehicleAndToolsConsumers::where('is_active', true)
+            ->inUnit(UnitScope::for($request->user())->unitId())
             ->orderBy('consumerial_code')
             ->get();
 
@@ -53,11 +56,15 @@ class MonthlyCheckingController extends Controller
 
     public function create(Request $request)
     {
+        $unitId = UnitScope::for($request->user())->unitId();
+
         $vehicles = VehicleAndToolsConsumers::where('is_active', true)
+            ->inUnit($unitId)
             ->orderBy('consumerial_code')
             ->get();
 
         $drivers = User::where('role', 'requester')
+            ->when($unitId !== null, fn ($query) => $query->where('unit_id', $unitId))
             ->orderBy('nama_lengkap')
             ->get();
 
@@ -94,10 +101,27 @@ class MonthlyCheckingController extends Controller
             'items.*.status.in'          => 'Status item tidak valid.',
         ]);
 
+        $scope = UnitScope::for($request->user());
+
+        $vehicle = VehicleAndToolsConsumers::findOrFail($request->vehicle_id);
+        if (! $vehicle->isVisibleTo($request->user())) {
+            throw ValidationException::withMessages([
+                'vehicle_id' => 'Kendaraan yang dipilih berada di luar unit Anda.',
+            ]);
+        }
+
+        $driver = User::findOrFail($request->current_driver_id);
+        if (! $scope->allowsUnit($driver->unit_id)) {
+            throw ValidationException::withMessages([
+                'current_driver_id' => 'Driver yang dipilih berada di luar unit Anda.',
+            ]);
+        }
+
+        $this->ensureAllMonthlyItemsPresent($request);
+
         try {
             DB::beginTransaction();
 
-            $vehicle = VehicleAndToolsConsumers::findOrFail($request->vehicle_id);
             $now     = Carbon::now();
             $nopol   = $vehicle->consumerial_code;
 
@@ -173,6 +197,33 @@ class MonthlyCheckingController extends Controller
                 ->back()
                 ->withInput()
                 ->with('error', 'Gagal menyimpan pengecekan: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Pastikan seluruh item aktif pengecekan bulanan dikirim dengan status valid.
+     */
+    private function ensureAllMonthlyItemsPresent(Request $request): void
+    {
+        $activeParts = VehiclePart::active()->routine()->monthly()->get(['id', 'name']);
+        $items       = $request->input('items', []);
+        $allowed     = ['ok', 'ng'];
+        $missing     = [];
+
+        foreach ($activeParts as $part) {
+            $item   = $items[$part->id] ?? null;
+            $status = is_array($item) ? ($item['status'] ?? null) : null;
+
+            if (! is_string($status) || ! in_array($status, $allowed, true)) {
+                $missing[] = $part->name;
+            }
+        }
+
+        if ($missing !== []) {
+            throw ValidationException::withMessages([
+                'items' => 'Pengecekan belum lengkap. ' . count($missing)
+                    . ' item aktif belum diisi statusnya: ' . implode(', ', $missing) . '.',
+            ]);
         }
     }
 

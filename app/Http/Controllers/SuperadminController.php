@@ -164,11 +164,11 @@ class SuperadminController extends Controller
      * Get expense over time based on period for line chart.
      * DB-agnostic (MySQL & SQLite) — grouping dilakukan di PHP.
      */
-    private function getExpenseOverTime($period = 'month')
+    private function getExpenseOverTime($period = 'month', ?int $unitId = null)
     {
         $now = Carbon::now();
 
-        $query = Permohonan::whereIn('status', ['completed', 'approved']);
+        $query = Permohonan::whereIn('status', ['completed', 'approved'])->inUnit($unitId);
 
         switch ($period) {
             case 'day':
@@ -216,37 +216,64 @@ class SuperadminController extends Controller
     }
 
     /**
-     * Calculate stats from filtered transactions collection
+     * Label rentang tanggal eksplisit, mis. "1 Jun 2026 – 30 Jun 2026".
+     * Memakai locale id agar nama bulan konsisten berbahasa Indonesia.
      */
-    private function calculateStats($transactions, $period = 'month')
+    private function formatDateRangeLabel(Carbon $startDate, Carbon $endDate): string
     {
-        // Jika tidak ada filter aktif, gunakan getDashboardStatsData biasa
-        if ($transactions->isEmpty()) {
-            return $this->getDashboardStatsData($period);
+        return $startDate->copy()->locale('id')->translatedFormat('d M Y')
+            .' – '
+            .$endDate->copy()->locale('id')->translatedFormat('d M Y');
+    }
+
+    /**
+     * Calculate stats from filtered transactions collection.
+     *
+     * Bila request membawa start_date & end_date eksplisit, kartu ringkasan
+     * dihitung dari koleksi yang sudah ter-filter pada rentang itu — TIDAK
+     * dihitung ulang memakai rolling period ("bulan ini" dst).
+     */
+    private function calculateStats($transactions, $period = 'month', ?Request $request = null, ?int $unitId = null)
+    {
+        $hasExplicitRange = $request instanceof Request
+            && $request->filled('start_date')
+            && $request->filled('end_date');
+
+        // Tanpa rentang eksplisit: pertahankan perilaku lama (period-based)
+        // bila tidak ada transaksi sama sekali.
+        if (! $hasExplicitRange && $transactions->isEmpty()) {
+            return $this->getDashboardStatsData($period, $unitId);
         }
 
-        // Define date range based on period
-        $now = Carbon::now();
-        switch ($period) {
-            case 'day':
-                $startDate = $now->copy()->startOfDay();
-                $endDate = $now->copy()->endOfDay();
-                break;
-            case 'year':
-                $startDate = $now->copy()->startOfYear();
-                $endDate = $now->copy()->endOfYear();
-                break;
-            case 'month':
-            default:
-                $startDate = $now->copy()->startOfMonth();
-                $endDate = $now->copy()->endOfMonth();
-                break;
+        if ($hasExplicitRange) {
+            $startDate = Carbon::parse($request->input('start_date'))->startOfDay();
+            $endDate = Carbon::parse($request->input('end_date'))->endOfDay();
+            $periodLabel = $this->formatDateRangeLabel($startDate, $endDate);
+        } else {
+            // Define date range based on period
+            $now = Carbon::now();
+            switch ($period) {
+                case 'day':
+                    $startDate = $now->copy()->startOfDay();
+                    $endDate = $now->copy()->endOfDay();
+                    break;
+                case 'year':
+                    $startDate = $now->copy()->startOfYear();
+                    $endDate = $now->copy()->endOfYear();
+                    break;
+                case 'month':
+                default:
+                    $startDate = $now->copy()->startOfMonth();
+                    $endDate = $now->copy()->endOfMonth();
+                    break;
+            }
+            $periodLabel = $this->getPeriodLabel($period);
         }
 
         return [
             // Period info
             'period' => $period,
-            'periodLabel' => $this->getPeriodLabel($period),
+            'periodLabel' => $periodLabel,
             'startDate' => $startDate->format('Y-m-d'),
             'endDate' => $endDate->format('Y-m-d'),
 
@@ -600,8 +627,16 @@ class SuperadminController extends Controller
         // data driver lain.
         $currentUser = $request->user();
 
-        if (! $currentUser->hasPermission('dashboard.view')
-            && $currentUser->hasPermission(['bbm.request', 'spd.create', 'lpj.create', 'vehicle.acknowledge'])) {
+        // Driver/requester tidak boleh melihat agregat lintas driver. Route
+        // modul sudah dipersempit lewat permission analytics, tetapi deep link
+        // lama tetap harus ditutup di sini (defence in depth).
+        $isDriverAccount = $currentUser->hasRoleCode(['requester', 'driver'])
+            || $currentUser->hasPermission(['bbm.request', 'spd.create', 'lpj.create', 'vehicle.acknowledge']);
+
+        $hasAnalyticsAccess = $currentUser->hasPermission('dashboard.view')
+            || $currentUser->hasPermission(['bbm.approve', 'bbm.export']);
+
+        if ($isDriverAccount && ! $hasAnalyticsAccess) {
             return redirect()->route('driver.dashboard');
         }
 
@@ -613,9 +648,15 @@ class SuperadminController extends Controller
             : 'Dashboard Bisnis';
         $period = $request->get('period', 'month');
 
+        // ✅ Batas data per unit: null = global (Pusat/developers), selain itu
+        // hanya data unit user. Diterapkan ke SEMUA dataset di halaman ini.
+        $scope = UnitScope::for($currentUser);
+        $unitId = $scope->unitId();
+
         // ✅ Bangun query transaksi + terapkan filter (realtime via query string)
         $query = Permohonan::query()
-            ->with(['requester', 'consumerialTool', 'transactionProof']);
+            ->with(['requester', 'consumerialTool', 'transactionProof'])
+            ->inUnit($unitId);
 
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('request_date', [
@@ -652,32 +693,45 @@ class SuperadminController extends Controller
 
         $transactions = $query->get();
 
-        // ✅ Recalculate statistik berdasarkan data (ter-filter / tidak)
-        $stats = $this->calculateStats($transactions, $period);
+        // ✅ Recalculate statistik berdasarkan data (ter-filter / tidak).
+        // Dengan start_date/end_date eksplisit, kartu dihitung dari koleksi
+        // yang sudah ter-filter (bukan rolling period seperti "bulan ini").
+        $stats = $this->calculateStats($transactions, $period, $request, $unitId);
 
         // Data pendukung (tidak terpengaruh filter utama) — WRAP WITH PAGINATION
         $driverStats = $this->paginateCollection(
-            $this->getDriverStatisticsData(),
+            $this->getDriverStatisticsData($unitId),
             10,
             'driver_page'
         )->appends($request->except(['pivot_page', 'driver_page', 'vehicle_page', 'trip_page', 'page']));
 
         $kmPerformance = $this->paginateCollection(
-            $this->getVehicleKmPerformanceData(),
+            $this->getVehicleKmPerformanceData($unitId),
             10,
             'vehicle_page'
         )->appends($request->except(['pivot_page', 'driver_page', 'vehicle_page', 'trip_page', 'page']));
 
         $pivotData = $this->paginateCollection(
-            $this->getCompletePivotTableData(),
+            $this->getCompletePivotTableData($unitId),
             25,
             'pivot_page'
         )->appends($request->except(['pivot_page', 'driver_page', 'vehicle_page', 'trip_page', 'page']));
 
-        // Opsi filter
-        $vehicles = VehicleAndToolsConsumers::where('is_approved', true)->orderBy('consumerial_code')->get();
-        $drivers = User::where('role', 'requester')->orderBy('nama_lengkap')->get();
-        $approvers = User::whereIn('role', ['superadmin', 'admin'])->orderBy('nama_lengkap')->get();
+        // Opsi filter — hanya yang terlihat oleh user (unit-scoped).
+        $vehicles = VehicleAndToolsConsumers::where('is_approved', true)
+            ->visibleTo($currentUser)
+            ->orderBy('consumerial_code')
+            ->get();
+
+        $drivers = User::where('role', 'requester')
+            ->when($unitId !== null, fn ($q) => $q->where('unit_id', $unitId))
+            ->orderBy('nama_lengkap')
+            ->get();
+
+        $approvers = User::whereIn('role', ['superadmin', 'admin'])
+            ->when($unitId !== null, fn ($q) => $q->where('unit_id', $unitId))
+            ->orderBy('nama_lengkap')
+            ->get();
 
         return view('superadmin.partials.dashboard-bisnis', compact(
             'title', 'stats', 'driverStats',
@@ -687,7 +741,7 @@ class SuperadminController extends Controller
 
     // ==================== DATA METHODS (Internal Use) ====================
 
-    private function getDashboardStatsData($period = 'month')
+    private function getDashboardStatsData($period = 'month', ?int $unitId = null)
     {
         $now = Carbon::now();
         switch ($period) {
@@ -713,20 +767,27 @@ class SuperadminController extends Controller
             'endDate' => $endDate->format('Y-m-d'),
 
             'totalExpense' => Permohonan::whereIn('status', ['completed', 'approved'])
+                ->inUnit($unitId)
                 ->whereBetween('request_date', [$startDate, $endDate])
                 ->sum('bill_amounts'),
 
-            'avgRequestFrequency' => $this->calculateAvgRequestFrequency($period),
+            'avgRequestFrequency' => $this->calculateAvgRequestFrequency($period, $unitId),
 
             'avgRequestValue' => Permohonan::whereIn('status', ['completed', 'approved'])
+                ->inUnit($unitId)
                 ->whereBetween('request_date', [$startDate, $endDate])
                 ->avg('bill_amounts') ?? 0,
 
-            'totalTransactions' => Permohonan::whereBetween('request_date', [$startDate, $endDate])->count(),
-            'total' => Permohonan::whereBetween('request_date', [$startDate, $endDate])->count(),
+            'totalTransactions' => Permohonan::whereBetween('request_date', [$startDate, $endDate])
+                ->inUnit($unitId)
+                ->count(),
+            'total' => Permohonan::whereBetween('request_date', [$startDate, $endDate])
+                ->inUnit($unitId)
+                ->count(),
 
             // ✅ PERBAIKAN: Vehicle Expense dengan nama yang benar
             'vehicleExpense' => Permohonan::with('consumerialTool')
+                ->inUnit($unitId)
                 ->whereIn('status', ['completed', 'approved'])
                 ->whereBetween('request_date', [$startDate, $endDate])
                 ->get()
@@ -750,6 +811,7 @@ class SuperadminController extends Controller
 
             // ✅ PERBAIKAN: Driver Expense dengan nama yang benar
             'driverExpense' => Permohonan::with('requester')
+                ->inUnit($unitId)
                 ->whereIn('status', ['completed', 'approved'])
                 ->whereBetween('request_date', [$startDate, $endDate])
                 ->get()
@@ -772,10 +834,11 @@ class SuperadminController extends Controller
                 ->toArray(),
 
             // Expense over time
-            'expenseOverTime' => $this->getExpenseOverTime($period),
+            'expenseOverTime' => $this->getExpenseOverTime($period, $unitId),
 
             // Gasoline distribution
             'gasolineExpenseDistribution' => Permohonan::whereIn('status', ['completed', 'approved'])
+                ->inUnit($unitId)
                 ->whereBetween('request_date', [$startDate, $endDate])
                 ->selectRaw('gasoline_type, SUM(bill_amounts) as total')
                 ->groupBy('gasoline_type')
@@ -790,7 +853,7 @@ class SuperadminController extends Controller
      * Calculate average request frequency based on period.
      * DB-agnostic (MySQL & SQLite) — grouping dilakukan di PHP.
      */
-    private function calculateAvgRequestFrequency($period = 'month')
+    private function calculateAvgRequestFrequency($period = 'month', ?int $unitId = null)
     {
         $now = Carbon::now();
 
@@ -798,6 +861,7 @@ class SuperadminController extends Controller
             case 'day':
                 // Average per hour in current day
                 $requests = Permohonan::whereDate('request_date', $now->toDateString())
+                    ->inUnit($unitId)
                     ->get(['request_date'])
                     ->groupBy(fn ($t) => $t->request_date->format('H'));
                 $avgPerPeriod = $requests->avg(fn ($g) => $g->count()) ?? 0;
@@ -807,6 +871,7 @@ class SuperadminController extends Controller
             case 'year':
                 // Average per month in current year
                 $requests = Permohonan::whereYear('request_date', $now->year)
+                    ->inUnit($unitId)
                     ->get(['request_date'])
                     ->groupBy(fn ($t) => $t->request_date->format('n'));
                 $avgPerPeriod = $requests->avg(fn ($g) => $g->count()) ?? 0;
@@ -818,6 +883,7 @@ class SuperadminController extends Controller
                 // Average per day in current month
                 $requests = Permohonan::whereYear('request_date', $now->year)
                     ->whereMonth('request_date', $now->month)
+                    ->inUnit($unitId)
                     ->get(['request_date'])
                     ->groupBy(fn ($t) => $t->request_date->toDateString());
                 $avgPerPeriod = $requests->avg(fn ($g) => $g->count()) ?? 0;
@@ -831,9 +897,10 @@ class SuperadminController extends Controller
         ];
     }
 
-    private function getDriverStatisticsData()
+    private function getDriverStatisticsData(?int $unitId = null)
     {
         $stats = Permohonan::with(['requester', 'transactionProof'])
+            ->inUnit($unitId)
             ->get()
             ->groupBy('requester_id')
             ->map(function ($requests, $requesterId) {
@@ -895,9 +962,10 @@ class SuperadminController extends Controller
         return $result;
     }
 
-    private function getVehicleKmPerformanceData(?Request $request = null)
+    private function getVehicleKmPerformanceData(?int $unitId = null)
     {
         $query = Transaction_Proofs::with(['permohonan.consumerialTool'])
+            ->inUnit($unitId)
             ->whereHas('permohonan.consumerialTool', function ($q) {
                 $q->where('consumerial_type', 'KENDARAAN');
             })
@@ -979,7 +1047,7 @@ class SuperadminController extends Controller
         return collect($result);
     }
 
-    private function getCompletePivotTableData(?Request $request = null)
+    private function getCompletePivotTableData(?int $unitId = null)
     {
         $query = Permohonan::with([
             'requester',
@@ -987,7 +1055,8 @@ class SuperadminController extends Controller
             'consumerialTool',
             'transactionProof',
             'approvedRequest',
-        ])->whereIn('status', ['approved', 'completed']);
+        ])->whereIn('status', ['approved', 'completed'])
+            ->inUnit($unitId);
 
         $permohonans = $query->orderBy('request_date', 'desc')->get();
 
@@ -2925,7 +2994,9 @@ class SuperadminController extends Controller
                         'approved_amount' => $permohonan->bill_amounts,
                         'authorizer_id' => Auth::id(),
                         'status' => 'approved',
-                        'approval_notes' => null,
+                        // BUG-BBM-003: catatan approval harus tersimpan di
+                        // voucher (kolom approval_notes), bukan dibuang.
+                        'approval_notes' => $note ? '[SUPERADMIN APPROVAL] '.$note : null,
                         'unit_id' => $permohonan->unit_id,
                     ]);
 

@@ -9,11 +9,17 @@ use App\Models\Transaction_Proofs;
 use App\Models\UserSlotAdjustment;
 use App\Models\VehicleAndToolsConsumers;
 use App\Services\FuelBenchmarkService;
+use App\Services\ImageCompressor;
 use App\Services\UnitScope;
+use App\Services\VoucherExpiryService;
 use Carbon\Carbon;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class RequestManagementController extends Controller
 {
@@ -156,16 +162,6 @@ class RequestManagementController extends Controller
 
         $this->checkAndExpireVouchers();
 
-        // ✅ Validasi: Max slots
-        $maxSlots = $this->calculateUserMaxSlots($user->id);
-        $activeCount = Permohonan::where('requester_id', $user->id)
-            ->whereIn('status', ['pending', 'pending_vehicle_approval', 'approved'])
-            ->count();
-
-        if ($activeCount >= $maxSlots) {
-            return back()->with('error', "Anda sudah memiliki {$maxSlots} permohonan aktif (maksimal untuk saat ini). Selesaikan permohonan terlebih dahulu.");
-        }
-
         // ✅ Validasi nominal berbasis benchmark kendaraan:
         // rentang = benchmark +/- 500.000 (kelipatan 50.000, batas 50.000 - 3.000.000)
         $benchmark = null;
@@ -199,145 +195,184 @@ class RequestManagementController extends Controller
             'requester_notes' => 'nullable|string|max:500',
         ], $messages);
 
+        // ✅ Kunci per user: cek slot + insert diserialisasi, sehingga double
+        // submit (klik ganda / koneksi lambat) tidak membuat dua permohonan.
         try {
-            DB::beginTransaction();
+            return Cache::lock('bbm-request-'.$user->id, 10)->block(5, function () use ($user, $validated) {
+                // ✅ Validasi: Max slots
+                $maxSlots = $this->calculateUserMaxSlots($user->id);
+                $activeCount = Permohonan::where('requester_id', $user->id)
+                    ->whereIn('status', ['pending', 'pending_vehicle_approval', 'approved'])
+                    ->count();
 
-            $vehicleId = null;
-            $needsSuperadminApproval = false;
-            $vehicle = null; // ✅ Initialize variable
-
-            // CASE 1: Pilih kendaraan existing
-            if (! empty($validated['vehicle_id'])) {
-                $vehicle = VehicleAndToolsConsumers::find($validated['vehicle_id']);
-
-                if (! $vehicle) {
-                    DB::rollBack();
-
-                    return back()
-                        ->withInput()
-                        ->with('error', 'Kendaraan tidak ditemukan.');
+                if ($activeCount >= $maxSlots) {
+                    return back()->with('error', "Anda sudah memiliki {$maxSlots} permohonan aktif (maksimal untuk saat ini). Selesaikan permohonan terlebih dahulu.");
                 }
 
-                // Cek apakah kendaraan sudah diapprove
-                if (! $vehicle->is_approved) {
-                    DB::rollBack();
+                try {
+                    DB::beginTransaction();
 
-                    return back()
-                        ->withInput()
-                        ->with('error', 'Kendaraan/Alat yang dipilih belum disetujui oleh Superadmin. Silakan tunggu persetujuan atau pilih kendaraan lain.');
-                }
+                    $vehicleId = null;
+                    $needsSuperadminApproval = false;
+                    $vehicle = null; // ✅ Initialize variable
 
-                // ✅ Cek apakah kendaraan masih aktif
-                if (! $vehicle->is_active) {
-                    DB::rollBack();
+                    // CASE 1: Pilih kendaraan existing
+                    if (! empty($validated['vehicle_id'])) {
+                        $vehicle = VehicleAndToolsConsumers::find($validated['vehicle_id']);
 
-                    return back()
-                        ->withInput()
-                        ->with('error', 'Kendaraan/Alat yang dipilih sudah tidak aktif. Hubungi tim IT untuk aktivasi kembali.');
-                }
+                        if (! $vehicle) {
+                            DB::rollBack();
 
-                // ✅ Scope unit: plat nomor hanya boleh dipakai oleh unit pemiliknya
-                if (! $vehicle->isVisibleTo($user)) {
-                    DB::rollBack();
+                            return back()
+                                ->withInput()
+                                ->with('error', 'Kendaraan tidak ditemukan.');
+                        }
 
-                    return back()
-                        ->withInput()
-                        ->with('error', 'Plat nomor '.$vehicle->consumerial_code.' terdaftar di unit lain ('
-                            .($vehicle->unit?->name ?? 'tanpa unit').'). Silakan pilih kendaraan unit Anda.');
-                }
+                        // Cek apakah kendaraan sudah diapprove
+                        if (! $vehicle->is_approved) {
+                            DB::rollBack();
 
-                $vehicleId = $validated['vehicle_id'];
-            }
-            // CASE 2: Tambah kendaraan baru (rental)
-            elseif (! empty($validated['new_vehicle_code']) && ! empty($validated['new_vehicle_name'])) {
-                // Cek duplikasi kode
-                $existingVehicle = VehicleAndToolsConsumers::where('consumerial_code', $validated['new_vehicle_code'])->first();
+                            return back()
+                                ->withInput()
+                                ->with('error', 'Kendaraan/Alat yang dipilih belum disetujui oleh Superadmin. Silakan tunggu persetujuan atau pilih kendaraan lain.');
+                        }
 
-                if ($existingVehicle) {
-                    // ✅ Cek status active
-                    if (! $existingVehicle->is_active) {
+                        // ✅ Cek apakah kendaraan masih aktif
+                        if (! $vehicle->is_active) {
+                            DB::rollBack();
+
+                            return back()
+                                ->withInput()
+                                ->with('error', 'Kendaraan/Alat yang dipilih sudah tidak aktif. Hubungi tim IT untuk aktivasi kembali.');
+                        }
+
+                        // ✅ Scope unit: plat nomor hanya boleh dipakai oleh unit pemiliknya
+                        if (! $vehicle->isVisibleTo($user)) {
+                            DB::rollBack();
+
+                            return back()
+                                ->withInput()
+                                ->with('error', 'Plat nomor '.$vehicle->consumerial_code.' terdaftar di unit lain ('
+                                    .($vehicle->unit?->name ?? 'tanpa unit').'). Silakan pilih kendaraan unit Anda.');
+                        }
+
+                        $vehicleId = $validated['vehicle_id'];
+                    }
+                    // CASE 2: Tambah kendaraan baru (rental)
+                    elseif (! empty($validated['new_vehicle_code']) && ! empty($validated['new_vehicle_name'])) {
+                        // Cek duplikasi kode
+                        $existingVehicle = VehicleAndToolsConsumers::where('consumerial_code', $validated['new_vehicle_code'])->first();
+
+                        if ($existingVehicle) {
+                            // ✅ Cek status active
+                            if (! $existingVehicle->is_active) {
+                                DB::rollBack();
+
+                                return back()
+                                    ->withInput()
+                                    ->with('error', 'Kendaraan sudah tercatat dengan kode: '.$existingVehicle->consumerial_code.'. Hubungi tim IT untuk melakukan aktivasi kendaraan.');
+                            }
+
+                            // ✅ Plat nomor milik unit lain -> tidak boleh dipakai unit ini
+                            if (! $existingVehicle->isVisibleTo($user)) {
+                                DB::rollBack();
+
+                                return back()
+                                    ->withInput()
+                                    ->with('error', 'Plat nomor '.$existingVehicle->consumerial_code.' sudah terdaftar di unit '
+                                        .($existingVehicle->unit?->name ?? 'lain').'. Hubungi Superadmin unit Anda bila plat ini memang milik unit Anda.');
+                            }
+
+                            DB::rollBack();
+
+                            return back()
+                                ->withInput()
+                                ->with('error', 'Kendaraan dengan kode '.$existingVehicle->consumerial_code.' sudah terdaftar dan aktif. Silakan pilih dari daftar.');
+                        }
+
+                        // Buat kendaraan baru dengan status pending approval
+                        $vehicle = VehicleAndToolsConsumers::create([
+                            'consumerial_type' => $validated['new_vehicle_type'],
+                            'consumerial_code' => strtoupper($validated['new_vehicle_code']),
+                            'consumerial_name' => $validated['new_vehicle_name'],
+                            'consumerial_notes' => $validated['new_vehicle_notes'] ?? null,
+                            'is_approved' => false,
+                            'is_active' => true,
+                            'created_by' => $user->id,
+                            'unit_id' => $user->unit_id,
+                        ]);
+
+                        $vehicleId = $vehicle->id;
+                        $needsSuperadminApproval = true;
+                    } else {
                         DB::rollBack();
 
                         return back()
                             ->withInput()
-                            ->with('error', 'Kendaraan sudah tercatat dengan kode: '.$existingVehicle->consumerial_code.'. Hubungi tim IT untuk melakukan aktivasi kendaraan.');
+                            ->with('error', 'Pilih kendaraan existing atau tambahkan kendaraan baru dengan lengkap.');
                     }
 
-                    // ✅ Plat nomor milik unit lain -> tidak boleh dipakai unit ini
-                    if (! $existingVehicle->isVisibleTo($user)) {
+                    // ✅ Tolak duplikat identik yang dikirim beruntun (< 60 detik).
+                    $duplicate = Permohonan::where('requester_id', $user->id)
+                        ->where('consumerial_tools_id', $vehicleId)
+                        ->where('gasoline_type', $validated['gasoline_type'])
+                        ->where('bill_amounts', $validated['bill_payment'])
+                        ->where('status', 'pending')
+                        ->where('created_at', '>=', now()->subSeconds(60))
+                        ->exists();
+
+                    if ($duplicate) {
                         DB::rollBack();
 
                         return back()
                             ->withInput()
-                            ->with('error', 'Plat nomor '.$existingVehicle->consumerial_code.' sudah terdaftar di unit '
-                                .($existingVehicle->unit?->name ?? 'lain').'. Hubungi Superadmin unit Anda bila plat ini memang milik unit Anda.');
+                            ->with('error', 'Permohonan yang sama baru saja dikirim. Mohon tunggu sebentar sebelum mengirim ulang.');
                     }
 
+                    // Generate request number
+                    $requestNumber = $this->generateRequestNumber();
+
+                    // ✅ Tentukan status permohonan
+                    $status = $needsSuperadminApproval ? 'pending_vehicle_approval' : 'pending';
+
+                    // Create permohonan
+                    $permohonan = Permohonan::create([
+                        'request_number' => $requestNumber,
+                        'requester_id' => $user->id,
+                        'request_date' => now(),
+                        'gasoline_type' => $validated['gasoline_type'],
+                        'bill_amounts' => $validated['bill_payment'],
+                        'status' => $status,
+                        'requester_notes' => ($validated['requester_notes'] ?? null) ?: null,
+                        'consumerial_tools_id' => $vehicleId,
+                        'unit_id' => $user->unit_id,
+                    ]);
+
+                    DB::commit();
+
+                    if ($needsSuperadminApproval) {
+                        return redirect()->route('requester-index')
+                            ->with('success', 'Permohonan BBM berhasil diajukan dengan nomor: '.$requestNumber.'. Menunggu persetujuan kendaraan rental oleh Superadmin.');
+                    }
+
+                    return redirect()->route('requester-index')
+                        ->with('success', 'Permohonan BBM berhasil diajukan dengan nomor: '.$requestNumber);
+
+                } catch (\Exception $e) {
                     DB::rollBack();
+                    \Log::error('Request creation error: '.$e->getMessage());
 
                     return back()
                         ->withInput()
-                        ->with('error', 'Kendaraan dengan kode '.$existingVehicle->consumerial_code.' sudah terdaftar dan aktif. Silakan pilih dari daftar.');
+                        ->with('error', 'Gagal mengajukan permohonan: '.$e->getMessage());
                 }
-
-                // Buat kendaraan baru dengan status pending approval
-                $vehicle = VehicleAndToolsConsumers::create([
-                    'consumerial_type' => $validated['new_vehicle_type'],
-                    'consumerial_code' => strtoupper($validated['new_vehicle_code']),
-                    'consumerial_name' => $validated['new_vehicle_name'],
-                    'consumerial_notes' => $validated['new_vehicle_notes'] ?? null,
-                    'is_approved' => false,
-                    'is_active' => true,
-                    'created_by' => $user->id,
-                    'unit_id' => $user->unit_id,
-                ]);
-
-                $vehicleId = $vehicle->id;
-                $needsSuperadminApproval = true;
-            } else {
-                DB::rollBack();
-
-                return back()
-                    ->withInput()
-                    ->with('error', 'Pilih kendaraan existing atau tambahkan kendaraan baru dengan lengkap.');
-            }
-
-            // Generate request number
-            $requestNumber = $this->generateRequestNumber();
-
-            // ✅ Tentukan status permohonan
-            $status = $needsSuperadminApproval ? 'pending_vehicle_approval' : 'pending';
-
-            // Create permohonan
-            $permohonan = Permohonan::create([
-                'request_number' => $requestNumber,
-                'requester_id' => $user->id,
-                'request_date' => now(),
-                'gasoline_type' => $validated['gasoline_type'],
-                'bill_amounts' => $validated['bill_payment'],
-                'status' => $status,
-                'requester_notes' => $validated['requester_notes'] ? $validated['requester_notes'] : null,
-                'consumerial_tools_id' => $vehicleId,
-                'unit_id' => $user->unit_id,
-            ]);
-
-            DB::commit();
-
-            if ($needsSuperadminApproval) {
-                return redirect()->route('requester-index')
-                    ->with('success', 'Permohonan BBM berhasil diajukan dengan nomor: '.$requestNumber.'. Menunggu persetujuan kendaraan rental oleh Superadmin.');
-            } else {
-                return redirect()->route('requester-index')
-                    ->with('success', 'Permohonan BBM berhasil diajukan dengan nomor: '.$requestNumber);
-            }
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Request creation error: '.$e->getMessage());
+            });
+        } catch (LockTimeoutException $e) {
+            \Log::warning('BBM request lock timeout for user #'.$user->id);
 
             return back()
                 ->withInput()
-                ->with('error', 'Gagal mengajukan permohonan: '.$e->getMessage());
+                ->with('error', 'Permintaan Anda sedang diproses. Silakan tunggu sebentar lalu coba lagi.');
         }
     }
 
@@ -443,47 +478,13 @@ class RequestManagementController extends Controller
      * LAZY CHECK: Check dan expire vouchers yang sudah melewati valid_until
      * Dipanggil setiap user action untuk memastikan data selalu up-to-date
      * PENGGANTI SCHEDULER - WORK DI FTP HOSTING
+     *
+     * Logika dipindahkan ke VoucherExpiryService agar juga bisa dijalankan
+     * oleh scheduler (lihat routes/console.php, `bbm-expire-vouchers`).
      */
     private function checkAndExpireVouchers()
     {
-        $expiredVouchers = Approved_Request::where('status', 'approved')
-            ->where('valid_until', '<', now())
-            ->get();
-
-        foreach ($expiredVouchers as $voucher) {
-            try {
-                DB::beginTransaction();
-
-                $voucher->update(['status' => 'cancelled']);
-
-                $permohonan = Permohonan::find($voucher->permohonan_id);
-                if ($permohonan && $permohonan->status === 'approved') {
-                    $permohonan->update([
-                        'status' => 'cancelled',
-                        'requester_notes' => ($permohonan->requester_notes ?? '')
-                            ."\n\n[SYSTEM AUTO-CANCEL] Voucher expired, tidak digunakan dalam 50 jam.",
-                    ]);
-
-                    // ✅ PENALTY: Kurangi 1 slot untuk 3 bulan
-                    UserSlotAdjustment::create([
-                        'user_id' => $permohonan->requester_id,
-                        'type' => 'penalty',
-                        'reason' => 'voucher_expired',
-                        'related_permohonan_id' => $permohonan->id,
-                        'effective_from' => now(),
-                        'effective_until' => now()->addMonths(3),
-                        'is_active' => true,
-                    ]);
-
-                    \Log::info("❌ Auto-cancelled voucher #{$voucher->id} for request #{$permohonan->id}");
-                }
-
-                DB::commit();
-            } catch (\Exception $e) {
-                DB::rollBack();
-                \Log::error("Failed to expire voucher #{$voucher->id}: ".$e->getMessage());
-            }
-        }
+        return app(VoucherExpiryService::class)->expireStale();
     }
 
     /**
@@ -614,6 +615,22 @@ class RequestManagementController extends Controller
             return back()->with('error', 'Laporan untuk permohonan ini sudah pernah dikirim.');
         }
 
+        // ✅ BUG-BBM-001: voucher wajib ada & belum melewati masa berlaku (50 jam).
+        // Ditolak SEBELUM ada file/data yang disimpan.
+        $approvedRequest = Approved_Request::where('permohonan_id', $permohonan->id)->first();
+
+        if (! $approvedRequest) {
+            return back()
+                ->withInput()
+                ->with('error', 'Voucher tidak ditemukan untuk permohonan ini. Laporan tidak dapat dikirim. Silakan ajukan permohonan baru.');
+        }
+
+        if (! $approvedRequest->valid_until || Carbon::parse($approvedRequest->valid_until)->lt(now())) {
+            return back()
+                ->withInput()
+                ->with('error', 'Voucher sudah kedaluwarsa (masa berlaku 50 jam). Laporan tidak dapat dikirim. Silakan ajukan permohonan baru.');
+        }
+
         // Tentukan apakah ini kendaraan atau alat
         $isVehicle = $permohonan->vehicle && $permohonan->vehicle->consumerial_type === 'Kendaraan';
 
@@ -665,23 +682,21 @@ class RequestManagementController extends Controller
             $dateFormat = now()->format('dmY');
             $requestNumber = $permohonan->request_number;
 
-            // Upload foto struk BBM (wajib untuk semua)
+            // Upload foto struk BBM (wajib untuk semua) — dikompresi seperti
+            // jalur Pelaporan BBM Operasional (ImageCompressor 50%).
             $strukFile = $request->file('foto_struk');
-            $strukExtension = $strukFile->getClientOriginalExtension();
+            $strukExtension = $strukFile->getClientOriginalExtension() ?: 'jpg';
             $strukFileName = "S.OPRS-{$requestNumber}-{$dateFormat}.{$strukExtension}";
-            $strukPath = $strukFile->storeAs('transaction_proofs/struk', $strukFileName, 'public');
+            $strukPath = $this->storeCompressedProofImage($strukFile, 'transaction_proofs/struk', $strukFileName);
 
-            // Upload foto odometer (hanya jika ada)
+            // Upload foto odometer (hanya jika ada) — juga dikompresi.
             $odoPath = null;
             if ($request->hasFile('foto_km')) {
                 $odoFile = $request->file('foto_km');
-                $odoExtension = $odoFile->getClientOriginalExtension();
+                $odoExtension = $odoFile->getClientOriginalExtension() ?: 'jpg';
                 $odoFileName = "S.OPRS-{$requestNumber}-ODO-{$dateFormat}.{$odoExtension}";
-                $odoPath = $odoFile->storeAs('transaction_proofs/odometer', $odoFileName, 'public');
+                $odoPath = $this->storeCompressedProofImage($odoFile, 'transaction_proofs/odometer', $odoFileName);
             }
-
-            // Get voucher code from approved_requests
-            $approvedRequest = Approved_Request::where('permohonan_id', $permohonan->id)->first();
 
             // Generate transaction ID
             $transactionId = 'TRX-'.now()->format('YmdHis').'-'.strtoupper(substr(uniqid(), -6));
@@ -795,6 +810,22 @@ class RequestManagementController extends Controller
             ->where('status', 'approved')
             ->findOrFail($id);
 
+        // ✅ BUG-BBM-001: voucher wajib ada & belum melewati masa berlaku (50 jam).
+        // Ditolak SEBELUM ada file/data yang disimpan.
+        $approvedRequest = Approved_Request::where('permohonan_id', $permohonan->id)->first();
+
+        if (! $approvedRequest) {
+            return back()
+                ->withInput()
+                ->with('error', 'Voucher tidak ditemukan untuk permohonan ini. Laporan tidak dapat dikirim. Silakan ajukan permohonan baru.');
+        }
+
+        if (! $approvedRequest->valid_until || Carbon::parse($approvedRequest->valid_until)->lt(now())) {
+            return back()
+                ->withInput()
+                ->with('error', 'Voucher sudah kedaluwarsa (masa berlaku 50 jam). Laporan tidak dapat dikirim. Silakan ajukan permohonan baru.');
+        }
+
         // Validasi
         $validated = $request->validate([
             'purchase_datetime' => 'required|date',
@@ -813,14 +844,23 @@ class RequestManagementController extends Controller
         try {
             DB::beginTransaction();
 
-            // Upload files
-            $strukPath = $request->file('struk_bbm')->store('transaction_proofs/struk', 'public');
-            $odoPath = $request->hasFile('odometer_photo')
-                ? $request->file('odometer_photo')->store('transaction_proofs/odometer', 'public')
-                : null;
+            // Upload files — dikompresi seperti jalur Pelaporan BBM Operasional
+            // (ImageCompressor 50%), nama file mengikuti skema S.OPRS-...
+            $dateFormat = now()->format('dmY');
+            $requestNumber = $permohonan->request_number;
 
-            // Get voucher code from approved_requests
-            $approvedRequest = Approved_Request::where('permohonan_id', $permohonan->id)->first();
+            $strukFile = $request->file('struk_bbm');
+            $strukExtension = $strukFile->getClientOriginalExtension() ?: 'jpg';
+            $strukFileName = "S.OPRS-{$requestNumber}-{$dateFormat}.{$strukExtension}";
+            $strukPath = $this->storeCompressedProofImage($strukFile, 'transaction_proofs/struk', $strukFileName);
+
+            $odoPath = null;
+            if ($request->hasFile('odometer_photo')) {
+                $odoFile = $request->file('odometer_photo');
+                $odoExtension = $odoFile->getClientOriginalExtension() ?: 'jpg';
+                $odoFileName = "S.OPRS-{$requestNumber}-ODO-{$dateFormat}.{$odoExtension}";
+                $odoPath = $this->storeCompressedProofImage($odoFile, 'transaction_proofs/odometer', $odoFileName);
+            }
 
             // Generate transaction ID
             $transactionId = 'TRX-'.now()->format('YmdHis').'-'.strtoupper(substr(uniqid(), -6));
@@ -1080,11 +1120,16 @@ class RequestManagementController extends Controller
             'status' => 'nullable|in:all,active,expired',
         ]);
 
+        // ✅ BUG-EXP-001: batasi export ke unit user (sama seperti voucherList).
+        // ID milik unit lain otomatis tersaring, bukan bocor ke file.
+        $unitId = UnitScope::for(Auth::user())->unitId();
+
         $query = Approved_Request::with([
             'permohonan.requester',
             'permohonan.vehicle',
             'authorizer',
         ])
+            ->inUnit($unitId)
             ->whereIn('status', ['active', 'approved', 'cancelled', 'completed'])
             ->whereHas('permohonan', fn ($q) => $q->whereNotNull('consumerial_tools_id'))
             ->whereHas('permohonan.vehicle');
@@ -1119,7 +1164,16 @@ class RequestManagementController extends Controller
             'authorizer_notes' => 'nullable|string|max:500',
         ]);
 
-        $permohonan = Permohonan::where('status', 'pending')->findOrFail($id);
+        // ✅ BUG-BBM-004: batasi ke unit user — ID unit lain tidak boleh diproses.
+        $unitId = UnitScope::for(Auth::user())->unitId();
+
+        $permohonan = Permohonan::inUnit($unitId)
+            ->where('status', 'pending')
+            ->find($id);
+
+        if (! $permohonan) {
+            return back()->with('error', 'Permohonan tidak ditemukan atau bukan wewenang unit Anda.');
+        }
 
         try {
             DB::beginTransaction();
@@ -1146,7 +1200,10 @@ class RequestManagementController extends Controller
                     'valid_until' => now()->addHours(50), // Voucher berlaku 50 jam
                     'approved_amount' => $permohonan->bill_amounts,
                     'authorizer_id' => Auth::id(),
-                    'authorizer_notes' => $validated['authorizer_notes'] ? ($newStatus === 'rejected' ? '[ADMIN REJECTION] ' : '[APPROVED] ').$validated['authorizer_notes'] : null,
+                    // ✅ BUG-BBM-003: kolom voucher adalah approval_notes.
+                    'approval_notes' => $validated['authorizer_notes']
+                        ? '[ADMIN APPROVAL] '.$validated['authorizer_notes']
+                        : null,
                     'status' => 'active',
                     'unit_id' => $permohonan->unit_id,
                 ]);
@@ -1202,6 +1259,10 @@ class RequestManagementController extends Controller
             $rejectedCount = 0;
             $skippedCount = 0;
 
+            // ✅ BUG-BBM-004: batasi ke unit user. Keputusan unit lain di-skip
+            // dan dihitung sebagai skipped, tidak pernah di-approve.
+            $unitId = UnitScope::for(Auth::user())->unitId();
+
             foreach ($decisions as $decision) {
                 // Validasi struktur decision
                 if (! isset($decision['request_id']) || ! isset($decision['status'])) {
@@ -1214,12 +1275,14 @@ class RequestManagementController extends Controller
                 $requestId = $decision['request_id'];
                 $status = $decision['status']; // 'approve' or 'reject'
 
-                // Cari permohonan yang masih pending
-                $permohonan = Permohonan::where('status', 'pending')->find($requestId);
+                // Cari permohonan yang masih pending di unit user
+                $permohonan = Permohonan::inUnit($unitId)
+                    ->where('status', 'pending')
+                    ->find($requestId);
 
                 if (! $permohonan) {
                     $skippedCount++;
-                    \Log::warning("Permohonan ID {$requestId} tidak ditemukan atau bukan pending");
+                    \Log::warning("Permohonan ID {$requestId} tidak ditemukan, bukan pending, atau di luar unit user");
 
                     continue;
                 }
@@ -1253,7 +1316,8 @@ class RequestManagementController extends Controller
                         'approved_amount' => $permohonan->bill_amounts,
                         'authorizer_id' => Auth::id(),
                         'status' => 'approved',
-                        'approval_notes' => null,
+                        // ✅ BUG-BBM-003: catatan approval per keputusan.
+                        'approval_notes' => $note ? '[ADMIN APPROVAL] '.$note : null,
                         'unit_id' => $permohonan->unit_id,
                     ]);
 
@@ -1278,7 +1342,7 @@ class RequestManagementController extends Controller
                 $message[] = "{$rejectedCount} permohonan ditolak";
             }
             if ($skippedCount > 0) {
-                $message[] = "{$skippedCount} dilewati (tidak valid/sudah diproses)";
+                $message[] = "{$skippedCount} dilewati (tidak valid, sudah diproses, atau di luar unit)";
             }
 
             $finalMessage = implode(' | ', $message);
@@ -1294,6 +1358,25 @@ class RequestManagementController extends Controller
 
             return back()->with('error', 'Gagal memproses bulk action: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Simpan foto bukti dengan kompresi JPEG 50% (tanpa resize), sama seperti
+     * ReportingController::storeStrukImage(). Bila kompresi gagal, fallback
+     * menyimpan file asli via storeAs.
+     */
+    private function storeCompressedProofImage(UploadedFile $file, string $directory, string $fileName): string
+    {
+        $compressed = ImageCompressor::compressJpeg($file->getRealPath(), 50);
+        $path = $directory.'/'.$fileName;
+
+        if ($compressed !== null) {
+            Storage::disk('public')->put($path, $compressed);
+        } else {
+            $file->storeAs($directory, $fileName, 'public');
+        }
+
+        return $path;
     }
 
     /**

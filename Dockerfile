@@ -19,7 +19,7 @@
 #  Tabel paritas versi + cara ceknya ada di "faris/setup docker.md".
 # ─────────────────────────────────────────────────────────────
 
-ARG PHP_VERSION=8.4
+ARG PHP_VERSION=8.5
 ARG NODE_VERSION=22
 
 # ─────────────────────────────────────────────────────────────

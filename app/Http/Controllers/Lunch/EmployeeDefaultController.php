@@ -320,9 +320,9 @@ class EmployeeDefaultController extends Controller
      * Sinkronkan alias manual dari input dipisah koma.
      * Alias hasil learning tidak ikut dihapus.
      */
-    private function syncAliases(EmployeeDefault $employee, string $rawAliases, bool $keepExisting = false): void
+    private function syncAliases(EmployeeDefault $employee, ?string $rawAliases, bool $keepExisting = false): void
     {
-        $aliases = collect(explode(',', $rawAliases))
+        $aliases = collect(explode(',', (string) $rawAliases))
             ->map(fn ($a) => NameNormalizer::normalize($a))
             ->filter(fn ($a) => $a !== '')
             ->push(NameNormalizer::normalize($employee->employee_name))

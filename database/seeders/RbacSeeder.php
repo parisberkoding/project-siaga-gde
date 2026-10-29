@@ -17,11 +17,16 @@ use Illuminate\Database\Seeder;
  */
 class RbacSeeder extends Seeder
 {
-    // Mapping role lama (kolom User.role) -> code role RBAC
+    // Mapping role lama (kolom User.role) -> code role RBAC.
+    // Nilai role yang SUDAH memakai kode RBAC juga dipetakan ke dirinya
+    // sendiri; tanpa ini user ber-role `general_affairs` / `developers`
+    // jatuh ke fallback `view_only` dan mendapat peran kedua (BUG-RBAC-002).
     private const ROLE_MAP = [
         'superadmin' => 'superadmin',
         'admin' => 'general_affairs',
         'admin_bbm' => 'general_affairs',
+        'general_affairs' => 'general_affairs',
+        'ga' => 'general_affairs',
         'requester' => 'requester',
         'driver' => 'requester',
         'manager' => 'manager',
@@ -29,9 +34,10 @@ class RbacSeeder extends Seeder
         'non_ga_staff' => 'view_only',
         'view_only' => 'view_only',
         'pegawai' => 'pegawai',
-        'pengguna_spd' => 'pegawai',
+        'pengguna_spd' => 'pengguna_spd',
         'vendor' => 'vendor',
-        'developer' => 'superadmin',
+        'developer' => 'developers',
+        'developers' => 'developers',
     ];
 
     public function run(): void
@@ -307,6 +313,13 @@ class RbacSeeder extends Seeder
         $users = User::withTrashed()->get();
 
         foreach ($users as $user) {
+            // Idempoten: user yang SUDAH punya peran tidak disentuh sama sekali.
+            // Seeder boleh dijalankan berulang saat deploy tanpa menambah
+            // peran kedua (BUG-RBAC-002).
+            if ($user->roles()->exists()) {
+                continue;
+            }
+
             $legacy = strtolower($user->role ?? '');
             $rbacCode = self::ROLE_MAP[$legacy] ?? 'view_only';
 
@@ -315,7 +328,7 @@ class RbacSeeder extends Seeder
                 $role = Role::where('code', 'view_only')->first();
             }
 
-            if ($role && ! $user->roles()->where('role_id', $role->id)->exists()) {
+            if ($role) {
                 $user->roles()->attach($role->id, ['is_primary' => true]);
             }
         }

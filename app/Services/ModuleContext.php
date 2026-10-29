@@ -64,6 +64,9 @@ class ModuleContext
         'superadmin.dashboard.bisnis',
         'requester.ajax.dashboard.stats',
         'ajax.superadmin.dashboard.stats',
+        // Absensi QR Lunch Management bersifat PUBLIK: pegawai yang sedang
+        // login di modul lain (mis. BBM) tetap harus bisa scan QR dari HP.
+        'lunch.attendance.*',
     ];
 
     /**

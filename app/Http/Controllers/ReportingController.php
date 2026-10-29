@@ -409,6 +409,26 @@ class ReportingController extends Controller
             ->whereDoesntHave('transactionProof')
             ->findOrFail($request->permohonan_id);
 
+        // ✅ BUG-BBM-001: tolak laporan bila voucher sudah kedaluwarsa, atau
+        // bila permohonan yang sudah punya jejak approval tidak punya voucher.
+        // Ditolak SEBELUM ada file/data yang disimpan.
+        $approvedRequest = $permohonan->approvedRequest;
+
+        if (! $approvedRequest) {
+            // Permohonan lama/tanpa jejak approval (data transisi) tetap dapat
+            // dilaporkan agar data historis tidak terkunci. Permohonan yang
+            // benar-benar disetujui admin wajib memiliki voucher.
+            if ($permohonan->authorizer_id !== null || $permohonan->authorization_date !== null) {
+                return back()
+                    ->withInput()
+                    ->with('error', 'Voucher tidak ditemukan untuk permohonan ini. Laporan tidak dapat dikirim. Silakan ajukan permohonan baru.');
+            }
+        } elseif (! $approvedRequest->valid_until || Carbon::parse($approvedRequest->valid_until)->lt(now())) {
+            return back()
+                ->withInput()
+                ->with('error', 'Voucher sudah kedaluwarsa (masa berlaku 50 jam). Laporan tidak dapat dikirim. Silakan ajukan permohonan baru.');
+        }
+
         $rules = [
             'permohonan_id'    => 'required|exists:permohonans,id',
             'purchase_date'    => 'required|date|before_or_equal:today',
@@ -470,6 +490,18 @@ class ReportingController extends Controller
             }
         }
 
+        // ✅ BUG-BBM-002 (server hardening): payload basi/parsial dari form
+        // (hidden input belum tersinkron) bisa tidak membawa nominal BBM sama
+        // sekali. Bila field nominal utama terisi, pakai nilai itu sebagai
+        // nominal BBM untuk validasi kecocokan — bukan untuk menutupi nominal
+        // yang memang berbeda (nominal > 0 tetap divalidasi apa adanya).
+        if ($totalBbmNominal <= 0) {
+            $mainNominal = $request->input('nominal');
+            if ($mainNominal !== null && $mainNominal !== '' && is_numeric($mainNominal)) {
+                $totalBbmNominal = (float) $mainNominal;
+            }
+        }
+
         $tolerance = $expectedNominal > 0 ? $expectedNominal * 0.01 : 0;
         if ($expectedNominal > 0 && ($totalBbmNominal <= 0 || abs($totalBbmNominal - $expectedNominal) > $tolerance)) {
             return back()->withInput()->with('error',
@@ -492,7 +524,6 @@ class ReportingController extends Controller
             DB::beginTransaction();
 
             $requestNumber = $permohonan->request_number;
-            $approvedRequest = $permohonan->approvedRequest;
             $purchaseDatetime = $validated['purchase_date'] . ' ' . now()->format('H:i:s');
 
             // 1. Kumpulkan semua foto (struk utama + tambahan)

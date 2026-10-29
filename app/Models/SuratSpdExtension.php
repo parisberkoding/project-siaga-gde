@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\Concerns\HasSafeSlugRouteKey;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class SuratSpdExtension extends Model
@@ -178,21 +179,84 @@ class SuratSpdExtension extends Model
     // ============================================================
 
     /**
-     * Approve extension
-     * Juga update status surat extension
+     * Approve extension.
+     *
+     * Selain mengubah status, perpanjangan dipropagasikan ke chain:
+     *   - surat sebelumnya (immediate previous) dan root chain
+     *     (tanggal_kembali, lpj_deadline, total_budget, extension_count);
+     *   - surat extension baru ikut di-approve;
+     *   - penambahan dana dicatat di root bila budget_tambahan > 0.
+     *
+     * Idempotent: pemanggilan kedua tidak menerapkan propagation dua kali.
      */
     public function approve($userId)
     {
-        $this->update([
-            'status' => 'approved',
-            'approved_by' => $userId,
-            'approved_at' => now(),
-        ]);
-
-        // Update surat extension juga
-        if ($this->extensionSurat) {
-            $this->extensionSurat->approve($userId);
+        if ($this->status === 'approved') {
+            return;
         }
+
+        $budgetTambahan = (float) $this->budget_tambahan;
+        $tanggalKembaliBaru = $this->tanggal_kembali_baru
+            ? Carbon::parse($this->tanggal_kembali_baru)
+            : null;
+
+        DB::transaction(function () use ($userId, $budgetTambahan, $tanggalKembaliBaru) {
+            $this->update([
+                'status' => 'approved',
+                'approved_by' => $userId,
+                'approved_at' => now(),
+            ]);
+
+            // Immediate previous surat (fallback ke parent surat extension
+            // untuk record lama yang masih menunjuk root).
+            $extensionSurat = $this->extensionSurat()->first();
+
+            $previous = $this->originalSurat()->first()
+                ?: $extensionSurat?->parentSurat()->first();
+
+            $root = $previous?->getRootSurat();
+
+            $targets = collect([$previous, $root])->filter()->unique('id');
+
+            foreach ($targets as $target) {
+                $totalBudgetLama = (float) $target->total_budget;
+
+                $data = [
+                    'extension_count' => ((int) $target->extension_count) + 1,
+                ];
+
+                if ($tanggalKembaliBaru) {
+                    $target->tanggal_kembali = $tanggalKembaliBaru->toDateString();
+                    $target->calculateLpjDeadline();
+
+                    $data['tanggal_kembali'] = $target->tanggal_kembali;
+                    $data['lpj_deadline'] = $target->lpj_deadline;
+                }
+
+                // Update pertama memicu event `updating` SuratSpd yang
+                // mengkalkulasi ulang total_budget dari budget_per_hari.
+                $target->update($data);
+
+                // Tulis akumulasi budget setelah kalkulasi otomatis selesai,
+                // agar nilai tambahan tidak tertimpa.
+                $target->update([
+                    'total_budget' => $totalBudgetLama + $budgetTambahan,
+                ]);
+            }
+
+            if ($extensionSurat) {
+                $extensionSurat->approve($userId);
+            }
+
+            if ($budgetTambahan > 0 && $root) {
+                SuratSpdFundAddition::create([
+                    'surat_spd_id' => $root->id,
+                    'nominal_tambahan' => $budgetTambahan,
+                    'alasan' => 'Perpanjangan SPD '.$this->nomor_surat_extension,
+                    'created_by' => $userId,
+                ]);
+            }
+        });
     }
 
     /**

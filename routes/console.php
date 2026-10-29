@@ -23,3 +23,12 @@ Schedule::command('lunch:generate-forecast')
  */
 Schedule::command('gasoline:sync')
     ->dailyAt('06:00');
+
+/*
+ * BBM — kedaluwarsakan voucher yang melewati masa berlaku 50 jam.
+ * Dijalankan berkala agar status voucher tetap benar walau tidak ada trafik
+ * pengguna (lazy check di controller tetap dipertahankan).
+ */
+Schedule::call(fn () => app(\App\Services\VoucherExpiryService::class)->expireStale())
+    ->everyTenMinutes()
+    ->name('bbm-expire-vouchers');
