@@ -97,7 +97,7 @@ class SpdController extends Controller
             }
 
             // Create surat SPD TANPA budget & TANPA pemberi tugas
-            $surat = SuratSpd::create([
+            $surat = SuratSpd::createWithNumberedSurat([
                 'user_id' => Auth::id(),
                 'pengemudi_nama' => Auth::user()->nama_lengkap ?? Auth::user()->name,
                 'tempat_tujuan' => $request->tempat_tujuan,
@@ -137,8 +137,13 @@ class SpdController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
+            \Log::error('Gagal mengajukan surat SPD', [
+                'user_id' => Auth::id(),
+                'exception' => $e,
+            ]);
+
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan: '.$e->getMessage())
+                ->with('error', 'Pengajuan gagal diproses, silakan coba lagi atau hubungi admin.')
                 ->withInput();
         }
     }
@@ -268,6 +273,9 @@ class SpdController extends Controller
      */
     public function showSuratSuperadmin(SuratSpd $surat)
     {
+        // BUG-SPD-002: cegah Admin GA unit lain membuka detail surat.
+        // Null unit_id hanya lolos untuk user global (allowsUnit).
+        UnitScope::for(Auth::user())->ensureUnit($surat->unit_id);
 
         $surat = SuratSpd::with([
             'details',
@@ -294,6 +302,9 @@ class SpdController extends Controller
      */
     public function approveSurat(Request $request, SuratSpd $surat)
     {
+        // BUG-SPD-002: validasi unit sebelum status/mutasi apa pun.
+        UnitScope::for(Auth::user())->ensureUnit($surat->unit_id);
+
         if ($surat->status !== 'pending') {
             return redirect()->back()
                 ->with('error', 'Surat ini sudah diproses sebelumnya.');
@@ -358,9 +369,14 @@ class SpdController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            // ✅ Tampilkan error untuk debugging
+            \Log::error('Gagal menyetujui surat SPD', [
+                'surat_id' => $surat->id,
+                'user_id' => Auth::id(),
+                'exception' => $e,
+            ]);
+
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan: '.$e->getMessage());
+                ->with('error', 'Pengajuan gagal diproses, silakan coba lagi atau hubungi admin.');
         }
     }
 
@@ -371,6 +387,9 @@ class SpdController extends Controller
      */
     public function rejectSurat(Request $request, SuratSpd $surat)
     {
+        // BUG-SPD-002: Admin GA unit lain tidak boleh menolak surat unit ini.
+        UnitScope::for(Auth::user())->ensureUnit($surat->unit_id);
+
         $request->validate([
             'rejection_reason' => 'required|string|min:10',
         ]);
@@ -497,7 +516,7 @@ class SpdController extends Controller
 
         DB::beginTransaction();
         try {
-            $surat = SuratSpd::create([
+            $surat = SuratSpd::createWithNumberedSurat([
                 'pemberi_tugas_nama' => $request->pemberi_tugas_nama,
                 'pemberi_tugas_jabatan' => $request->pemberi_tugas_jabatan,
                 'user_id' => $userId,
@@ -551,8 +570,13 @@ class SpdController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
+            \Log::error('Gagal membuat surat SPD shortcut', [
+                'user_id' => Auth::id(),
+                'exception' => $e,
+            ]);
+
             return redirect()->back()
-                ->with('error', 'Gagal membuat surat: '.$e->getMessage())
+                ->with('error', 'Pengajuan gagal diproses, silakan coba lagi atau hubungi admin.')
                 ->withInput();
         }
     }
@@ -601,9 +625,17 @@ class SpdController extends Controller
 
     public function printSurat(SuratSpd $surat)
     {
+        // BUG-EXP-002: SPD yang LPJ-nya sudah approved berstatus `completed`
+        // dan tetap harus bisa dicetak.
         $surat = SuratSpd::with(['details', 'vehicle', 'user.unit', 'user.defaultSite', 'approver', 'budgets'])
-            ->where('status', 'approved')
+            ->whereIn('status', ['approved', 'completed'])
             ->findOrFail($surat->id);
+
+        // BUG-SEC-001: hanya pemilik/penumpang, unit yang sama, atau user global.
+        // Record ada tetapi tidak boleh dilihat -> 404 (bukan 403).
+        if (! $surat->isVisibleToUser(Auth::user())) {
+            abort(404);
+        }
 
         $needsBudget = false; // Budget kini modul terpisah — tidak lagi menjadi syarat cetak
 
@@ -763,7 +795,14 @@ class SpdController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return redirect()->back()->with('error', 'Gagal menyimpan pemberian dana: '.$e->getMessage());
+            \Log::error('Gagal menyimpan pemberian dana SPD', [
+                'surat_id' => $surat->id,
+                'user_id' => Auth::id(),
+                'exception' => $e,
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Pengajuan gagal diproses, silakan coba lagi atau hubungi admin.');
         }
     }
 
@@ -841,8 +880,13 @@ class SpdController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
+            \Log::error('Gagal mengajukan perpanjangan SPD', [
+                'user_id' => Auth::id(),
+                'exception' => $e,
+            ]);
+
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan: '.$e->getMessage())
+                ->with('error', 'Pengajuan gagal diproses, silakan coba lagi atau hubungi admin.')
                 ->withInput();
         }
     }
@@ -935,7 +979,10 @@ class SpdController extends Controller
      */
     public function showPerpanjanganSuperadmin(SuratSpdExtension $perpanjangan)
     {
-        $extension = SuratSpdExtension::with([
+        // Scope unit: detail perpanjangan hanya untuk unitnya (global = semua).
+        $unitId = UnitScope::for(Auth::user())->unitId();
+
+        $extension = SuratSpdExtension::inUnit($unitId)->with([
             'originalSurat.user',
             'originalSurat.vehicle',
             'originalSurat.details',
@@ -964,7 +1011,12 @@ class SpdController extends Controller
      */
     public function approvePerpanjangan(Request $request, SuratSpdExtension $perpanjangan)
     {
-        $extension = SuratSpdExtension::pending()->findOrFail($perpanjangan->id);
+        // Scope unit: hanya perpanjangan milik unit user (global = tanpa batas).
+        $unitId = UnitScope::for(Auth::user())->unitId();
+
+        $extension = SuratSpdExtension::pending()
+            ->inUnit($unitId)
+            ->findOrFail($perpanjangan->id);
 
         DB::beginTransaction();
         try {
@@ -985,8 +1037,14 @@ class SpdController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
+            \Log::error('Gagal menyetujui perpanjangan SPD', [
+                'perpanjangan_id' => $perpanjangan->id,
+                'user_id' => Auth::id(),
+                'exception' => $e,
+            ]);
+
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan: '.$e->getMessage());
+                ->with('error', 'Pengajuan gagal diproses, silakan coba lagi atau hubungi admin.');
         }
     }
 
@@ -1002,7 +1060,9 @@ class SpdController extends Controller
             'alasan' => 'required|string|min:10',
         ]);
 
-        $extension = SuratSpdExtension::pending()->findOrFail($perpanjangan->id);
+        $extension = SuratSpdExtension::pending()
+            ->inUnit(UnitScope::for(Auth::user())->unitId())
+            ->findOrFail($perpanjangan->id);
 
         $extension->reject(Auth::id(), $request->alasan);
 
@@ -1020,6 +1080,7 @@ class SpdController extends Controller
     {
         $extension = SuratSpdExtension::approved()
             ->where('is_acknowledged', false)
+            ->inUnit(UnitScope::for(Auth::user())->unitId())
             ->findOrFail($perpanjangan->id);
 
         $extension->acknowledge(Auth::id(), $request->catatan);
@@ -1205,8 +1266,13 @@ class SpdController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
+            \Log::error('Gagal mengajukan LPJ', [
+                'user_id' => Auth::id(),
+                'exception' => $e,
+            ]);
+
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan: '.$e->getMessage())
+                ->with('error', 'Pengajuan gagal diproses, silakan coba lagi atau hubungi admin.')
                 ->withInput();
         }
     }
@@ -1389,8 +1455,14 @@ class SpdController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
+            \Log::error('Gagal memperbarui LPJ', [
+                'lpj_id' => $laporan->id,
+                'user_id' => Auth::id(),
+                'exception' => $e,
+            ]);
+
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan: '.$e->getMessage())
+                ->with('error', 'Pengajuan gagal diproses, silakan coba lagi atau hubungi admin.')
                 ->withInput();
         }
     }
@@ -1661,8 +1733,14 @@ class SpdController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
+            \Log::error('Gagal menyetujui LPJ', [
+                'lpj_id' => $laporan->id,
+                'user_id' => Auth::id(),
+                'exception' => $e,
+            ]);
+
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan: '.$e->getMessage());
+                ->with('error', 'Pengajuan gagal diproses, silakan coba lagi atau hubungi admin.');
         }
     }
 
@@ -1859,7 +1937,22 @@ class SpdController extends Controller
      */
     public function printLaporan(Request $request, LpjPenggantian $laporan)
     {
-        $laporan = LpjPenggantian::where('status', 'approved')->findOrFail($laporan->id);
+        $laporan = LpjPenggantian::with('suratSpd.details')
+            ->where('status', 'approved')
+            ->findOrFail($laporan->id);
+
+        // BUG-SEC-001: aturan visibilitas sama dengan cetak SPD — pemilik/
+        // penumpang, unit yang sama, atau user global. Record ada tetapi tidak
+        // terlihat -> 404.
+        $surat = $laporan->suratSpd;
+        $user = $request->user();
+
+        $bolehLihat = ($surat !== null && $surat->isVisibleToUser($user))
+            || ($user !== null && (int) $laporan->user_id === (int) $user->id);
+
+        if (! $bolehLihat) {
+            abort(404);
+        }
 
         return app(SpdPrintController::class)->exportLpj($request, $laporan);
     }

@@ -6,6 +6,7 @@ use App\Models\Module;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
 /**
@@ -64,6 +65,9 @@ class ModuleContext
         'superadmin.dashboard.bisnis',
         'requester.ajax.dashboard.stats',
         'ajax.superadmin.dashboard.stats',
+        // Absensi QR Lunch Management bersifat PUBLIK: pegawai yang sedang
+        // login di modul lain (mis. BBM) tetap harus bisa scan QR dari HP.
+        'lunch.attendance.*',
     ];
 
     /**
@@ -191,6 +195,22 @@ class ModuleContext
         'users' => 'modules.dashboard.users',
         'rbac' => 'modules.dashboard.rbac',
         'settings' => 'modules.dashboard.settings',
+    ];
+
+    /**
+     * Halaman pendarat modul KHUSUS driver/requester.
+     *
+     * Dashboard analitik modul berisi agregat seluruh unit — bukan pekerjaan
+     * driver. Tetapi mengarahkan SEMUA modul ke satu dashboard pribadi membuat
+     * pilihan modul di All Modules tidak ada artinya. Jadi tiap modul punya
+     * halaman kerja sendiri; fallback-nya tetap dashboard driver.
+     *
+     * @var array<string, string>
+     */
+    private const DRIVER_HOME_ROUTES = [
+        'bbm' => 'requester-index',
+        'spd' => 'requester.spd.berjalan',
+        'vehicle' => 'requester.checking-acknowledgement.index',
     ];
 
     /**
@@ -450,11 +470,16 @@ class ModuleContext
      */
     public function routeForModule(Module $module, User $user): ?string
     {
-        // Driver tidak memakai dashboard analitik modul: halaman itu berisi
-        // agregat seluruh unit (top pengeluaran, pivot, statistik per driver)
-        // yang bukan pekerjaan driver. Modul apa pun yang dibuka driver
-        // mendarat di dashboard-nya sendiri.
+        // Driver tidak memakai dashboard analitik modul (isinya agregat unit),
+        // tetapi tetap diarahkan ke halaman kerja modul yang dipilihnya agar
+        // pilihan di All Modules bermakna. Fallback: dashboard driver.
         if ($this->isDriver($user)) {
+            $driverRoute = self::DRIVER_HOME_ROUTES[$module->code] ?? null;
+
+            if ($driverRoute && Route::has($driverRoute)) {
+                return route($driverRoute);
+            }
+
             return route('driver.dashboard');
         }
 

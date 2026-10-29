@@ -3,6 +3,24 @@
 @section('title', $title)
 
 @section('content')
+@php
+    // Jangan pernah lompat ke route legacy di luar modul saat periode/filter
+    // berubah — pakai route dashboard yang sedang dibuka.
+    $dashboardUrl = request()->routeIs('modules.dashboard.bbm')
+        ? route('modules.dashboard.bbm')
+        : route('superadmin.dashboard.bisnis');
+
+    $periodUrl = function (string $period) use ($dashboardUrl) {
+        // Pertahankan filter aktif, tetapi buang parameter pagination agar
+        // tidak mendarat di halaman kosong setelah periode berganti.
+        $query = collect(request()->query())
+            ->except(['page', 'driver_page', 'pivot_page', 'vehicle_page', 'trip_page'])
+            ->all();
+        $query['period'] = $period;
+
+        return $dashboardUrl.'?'.http_build_query($query);
+    };
+@endphp
 <style>
     /* ===== INFO CARDS ===== */
     .info-card { padding-bottom: 10px; transition: transform 0.25s ease, box-shadow 0.25s ease; }
@@ -94,9 +112,11 @@
 </div><!-- End Page Title -->
 
 <div class="d-flex justify-content-end flex-wrap gap-2 mb-3">
+    @if(Auth::user()->hasPermission('vehicle.report'))
     <a href="{{ route('superadmin.trip-analysis.index') }}" class="btn btn-outline-secondary shadow-sm">
         <i class="bi bi-signpost-2 me-2"></i>Trip Analysis
     </a>
+    @endif
     @if(Auth::user()->role === 'superadmin')
     <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#printReportModal">
         <i class="bi bi-printer-fill me-2"></i>Cetak Laporan Transaksi BBM
@@ -122,7 +142,7 @@
 
     <div class="collapse show" id="advancedFilter">
         <div class="card-body">
-            <form id="filterForm" method="GET" action="{{ route('superadmin.dashboard.bisnis') }}">
+            <form id="filterForm" method="GET" action="{{ $dashboardUrl }}">
                 <div class="row g-3">
 
                     <div class="col-md-6 col-lg-3">
@@ -272,9 +292,9 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end period-menu">
                         <li><h6 class="dropdown-header">Periode</h6></li>
-                        <li><a class="dropdown-item" href="#" onclick="updatePeriod('day')">Hari Ini</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="updatePeriod('month')">Bulan Ini</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="updatePeriod('year')">Tahun Ini</a></li>
+                        <li><a class="dropdown-item" href="{{ $periodUrl('day') }}">Hari Ini</a></li>
+                        <li><a class="dropdown-item" href="{{ $periodUrl('month') }}">Bulan Ini</a></li>
+                        <li><a class="dropdown-item" href="{{ $periodUrl('year') }}">Tahun Ini</a></li>
                     </ul>
                 </h5>
                 <div class="d-flex align-items-center">
@@ -302,9 +322,9 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end period-menu">
                         <li><h6 class="dropdown-header">Periode</h6></li>
-                        <li><a class="dropdown-item" href="#" onclick="updatePeriod('day')">Hari Ini</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="updatePeriod('month')">Bulan Ini</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="updatePeriod('year')">Tahun Ini</a></li>
+                        <li><a class="dropdown-item" href="{{ $periodUrl('day') }}">Hari Ini</a></li>
+                        <li><a class="dropdown-item" href="{{ $periodUrl('month') }}">Bulan Ini</a></li>
+                        <li><a class="dropdown-item" href="{{ $periodUrl('year') }}">Tahun Ini</a></li>
                     </ul>
                 </h5>
                 <div class="d-flex align-items-center">
@@ -332,9 +352,9 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end period-menu">
                         <li><h6 class="dropdown-header">Periode</h6></li>
-                        <li><a class="dropdown-item" href="#" onclick="updatePeriod('day')">Hari Ini</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="updatePeriod('month')">Bulan Ini</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="updatePeriod('year')">Tahun Ini</a></li>
+                        <li><a class="dropdown-item" href="{{ $periodUrl('day') }}">Hari Ini</a></li>
+                        <li><a class="dropdown-item" href="{{ $periodUrl('month') }}">Bulan Ini</a></li>
+                        <li><a class="dropdown-item" href="{{ $periodUrl('year') }}">Tahun Ini</a></li>
                     </ul>
                 </h5>
                 <div class="d-flex align-items-center">
@@ -362,9 +382,9 @@
             <i class="bi bi-calendar3 me-1"></i>{{ $stats['periodLabel'] }}
         </button>
         <ul class="dropdown-menu dropdown-menu-end period-menu">
-            <li><a class="dropdown-item" href="#" onclick="updatePeriod('day')">Hari Ini</a></li>
-            <li><a class="dropdown-item" href="#" onclick="updatePeriod('month')">Bulan Ini</a></li>
-            <li><a class="dropdown-item" href="#" onclick="updatePeriod('year')">Tahun Ini</a></li>
+            <li><a class="dropdown-item" href="{{ $periodUrl('day') }}">Hari Ini</a></li>
+            <li><a class="dropdown-item" href="{{ $periodUrl('month') }}">Bulan Ini</a></li>
+            <li><a class="dropdown-item" href="{{ $periodUrl('year') }}">Tahun Ini</a></li>
         </ul>
     </div>
 </div>
@@ -445,9 +465,11 @@
         <div class="d-flex gap-2 align-items-center">
             <input type="text" class="form-control form-control-sm" id="pivotSearch"
                    placeholder="Cari..." style="width: 200px;">
+            @if(Auth::user()->hasPermission('bbm.export'))
             <button class="btn btn-success btn-sm" onclick="exportTableToCSV('pivotTable', 'pivot_data.csv')">
                 <i class="bi bi-file-excel me-1"></i>Export CSV
             </button>
+            @endif
         </div>
     </div>
     <div class="card-body p-0">
@@ -1174,13 +1196,23 @@
 
     // ── Expose global helpers ──
     window.switchRanking    = mode => renderRankingChart(mode);
-    window.updatePeriod     = period => window.location.href = `{{ route('superadmin.dashboard.bisnis') }}?period=${period}`;
+    window.updatePeriod     = period => {
+        // Tetap di route/modul yang sedang dibuka, bawa filter lain.
+        const url = new URL(window.location.href);
+        url.searchParams.set('period', period);
+        window.location.href = url.toString();
+    };
     window.resetFilters     = () => {
-        const period = new URLSearchParams(window.location.search).get('period');
-        const qs = period && /^[a-z]+$/.test(period) ? `?period=${period}` : '';
+        // Reset filter tanpa keluar dari modul; pertahankan periode aktif.
+        const url = new URL(window.location.href);
+        const period = url.searchParams.get('period');
+        url.search = '';
+        if (period && /^[a-z]+$/.test(period)) {
+            url.searchParams.set('period', period);
+        }
         const form = document.getElementById('filterForm');
         if (form) form.reset();
-        window.location.href = '{{ route('superadmin.dashboard.bisnis') }}' + qs;
+        window.location.href = url.toString();
     };
     window.toggleAllStatus  = checked => document.querySelectorAll('input[name="status[]"]').forEach(cb => cb.checked = checked);
 

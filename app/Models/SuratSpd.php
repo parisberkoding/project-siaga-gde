@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasSafeSlugRouteKey;
+use App\Services\UnitScope;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Models\Concerns\HasSafeSlugRouteKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\Cache;
 
 class SuratSpd extends Model
 {
@@ -33,6 +36,7 @@ class SuratSpd extends Model
         'total_budget',
         'parent_surat_id',
         'is_extension',
+        'extension_count',
         'lpj_deadline',
         'catatan',
         'tanggal_surat',
@@ -51,6 +55,7 @@ class SuratSpd extends Model
     ];
 
     protected $casts = [
+        'nomor_urut' => 'integer',
         'tanggal_berangkat' => 'date',
         'tanggal_kembali' => 'date',
         'budget_per_hari' => 'decimal:2',
@@ -100,6 +105,56 @@ class SuratSpd extends Model
                 $surat->calculateTotalBudget();
             }
         });
+
+        // Cascade cleanup: hapus surat (soft delete maupun force delete) juga
+        // membersihkan baris turunannya agar tidak ada data yatim. FK cascade
+        // di database TIDAK membantu untuk soft delete.
+        static::deleting(function (SuratSpd $surat) {
+            $surat->cascadeDeleteRelations();
+        });
+
+        static::forceDeleting(function (SuratSpd $surat) {
+            $surat->cascadeDeleteRelations();
+        });
+    }
+
+    /**
+     * Flag agar cascade tidak berjalan dua kali (forceDelete memicu
+     * `forceDeleting` lalu `deleting`).
+     */
+    private bool $cascadeDeleting = false;
+
+    /**
+     * Hapus seluruh relasi turunan surat SPD yang ada.
+     *
+     * Relasi yang sama-sama memakai tabel surat_spd_budgets (budgets &
+     * pencairans) hanya dihapus sekali. LPJ sengaja TIDAK dihapus di sini —
+     * LPJ punya alur audit sendiri dan penghapusannya bukan bagian dari
+     * pembersihan orphan SPD.
+     */
+    public function cascadeDeleteRelations(): void
+    {
+        if ($this->cascadeDeleting) {
+            return;
+        }
+
+        $this->cascadeDeleting = true;
+
+        $relations = [
+            'details',
+            'budgets',          // sekaligus pencairans (tabel sama)
+            'barcodeSignature',
+            'extensionRecords', // log perpanjangan yang memakai surat ini sebagai original
+            'extensionRecord',  // log perpanjangan yang memakai surat ini sebagai extension
+            'dailyReports',
+            'fundAdditions',
+        ];
+
+        foreach ($relations as $relation) {
+            if (method_exists($this, $relation)) {
+                $this->{$relation}()->delete();
+            }
+        }
     }
 
     /**
@@ -136,31 +191,86 @@ class SuratSpd extends Model
     /**
      * Generate nomor surat otomatis
      * Format: [nomer].TGS/[KODE_UNIT]1.30-GDE/[bulan_romawi]/[tahun]
+     *
+     * Nomor urut dihitung NUMERIK (bukan orderBy string) dan berlaku global
+     * per tahun (tidak di-reset per unit). Baris yang sudah soft-deleted tetap
+     * dihitung supaya nomor tidak dipakai ulang (unique index tetap berlaku).
      */
     public function generateNomorSurat()
     {
-        $tahun = date('Y');
-        $bulan = $this->getRomanMonth(date('n'));
+        $tahun = (int) date('Y');
+        $bulan = $this->getRomanMonth((int) date('n'));
 
-        // Get last nomor urut untuk tahun ini
-        $lastSurat = self::whereYear('created_at', $tahun)
-            ->orderBy('nomor_urut', 'desc')
-            ->first();
+        $maxNomorUrut = self::withTrashed()
+            ->whereYear('created_at', $tahun)
+            ->pluck('nomor_urut')
+            ->map(fn ($value) => is_numeric($value) ? (int) $value : 0)
+            ->max() ?? 0;
 
-        $nomorUrut = $lastSurat ? ($lastSurat->nomor_urut + 1) : 1;
-        $this->nomor_urut = $nomorUrut;
+        $nomorUrut = $maxNomorUrut + 1;
 
         // Kode unit untuk nomor surat (fallback 'PTH' agar format lama tidak berubah).
-        $unitCode = $this->resolveUnit()?->code ?: 'PTH';
+        $unitCode = strtoupper($this->resolveUnit()?->code ?: 'PTH');
 
-        // Format: 001.TGS/PTH1.30-GDE/XII/2025
-        $this->nomor_surat = sprintf(
-            '%03d.TGS/%s1.30-GDE/%s/%s',
-            $nomorUrut,
-            strtoupper($unitCode),
-            $bulan,
-            $tahun
-        );
+        // Lewati nomor yang sudah terpakai (mis. data lama dengan nomor_urut
+        // NULL tetapi nomor_surat-nya sudah ada).
+        $batas = $maxNomorUrut + 100;
+        do {
+            $nomorSurat = sprintf(
+                '%03d.TGS/%s1.30-GDE/%s/%s',
+                $nomorUrut,
+                $unitCode,
+                $bulan,
+                $tahun
+            );
+
+            $sudahDipakai = self::withTrashed()
+                ->where('nomor_surat', $nomorSurat)
+                ->exists();
+
+            if (! $sudahDipakai) {
+                break;
+            }
+
+            $nomorUrut++;
+        } while ($nomorUrut <= $batas);
+
+        $this->nomor_urut = $nomorUrut;
+        $this->nomor_surat = $nomorSurat;
+    }
+
+    /**
+     * Buat SuratSpd dengan nomor urut yang aman terhadap race condition.
+     *
+     * Pembuatan dibungkus Cache lock global, dan bila tetap terjadi unique
+     * violation (mis. dua proses berbeda) nomor digenerate ulang lalu dicoba
+     * lagi maksimal 3 kali sebelum exception aslinya dilempar kembali.
+     */
+    public static function createWithNumberedSurat(array $attributes): self
+    {
+        return Cache::lock('spd-nomor-urut', 10)->block(10, function () use ($attributes) {
+            // Nomor selalu digenerate oleh model agar tidak pernah memakai
+            // nomor urut dari pemanggil (sumber duplikat).
+            unset($attributes['nomor_surat'], $attributes['nomor_urut']);
+
+            $lastException = null;
+
+            for ($attempt = 1; $attempt <= 3; $attempt++) {
+                try {
+                    return self::create($attributes);
+                } catch (UniqueConstraintViolationException $e) {
+                    $lastException = $e;
+
+                    if ($attempt < 3) {
+                        // Beri kesempatan transaksi pesaing commit sebelum
+                        // nomor dihitung ulang pada percobaan berikutnya.
+                        usleep(50_000 * $attempt);
+                    }
+                }
+            }
+
+            throw $lastException;
+        });
     }
 
     /**
@@ -208,6 +318,37 @@ class SuratSpd extends Model
     public function calculateTotalBudget()
     {
         $this->total_budget = $this->lama_perjalanan_hari * $this->budget_per_hari;
+    }
+
+    /**
+     * Budget per hari efektif.
+     *
+     * Kolom `budget_per_hari` sudah tidak ada di tabel surat_spds (budget
+     * disimpan di surat_spd_budgets / total_budget). Untuk perpanjangan,
+     * nilai per hari diturunkan dari total_budget dibagi lama perjalanan,
+     * atau dari total baris pemberian dana bila total_budget kosong.
+     */
+    public function getBudgetPerHariEfektifAttribute(): float
+    {
+        $langsung = (float) ($this->attributes['budget_per_hari'] ?? 0);
+
+        if ($langsung > 0) {
+            return $langsung;
+        }
+
+        $lama = (int) $this->lama_perjalanan_hari;
+
+        if ($lama <= 0) {
+            return 0.0;
+        }
+
+        $total = (float) ($this->total_budget ?? 0);
+
+        if ($total <= 0) {
+            $total = (float) $this->budgets()->sum('nominal');
+        }
+
+        return $total > 0 ? $total / $lama : 0.0;
     }
 
     /**
@@ -424,6 +565,52 @@ class SuratSpd extends Model
         $query->where('surat_spds.unit_id', $unitId);
     }
 
+    /**
+     * Apakah user boleh melihat/mencetak surat ini (BUG-SEC-001).
+     *
+     * Aturan:
+     *   - user global (Pusat/superadmin/developers) -> semua surat;
+     *   - pemilik surat (requester) atau penumpang -> boleh;
+     *   - user dengan scope unit -> hanya surat milik unitnya.
+     *
+     * `unit_id` NULL pada surat hanya boleh diakses user global.
+     */
+    public function isVisibleToUser(?User $user): bool
+    {
+        if ($user === null) {
+            return false;
+        }
+
+        $scope = UnitScope::for($user);
+
+        if ($scope->isGlobal()) {
+            return true;
+        }
+
+        if ($this->user_id !== null && (int) $this->user_id === (int) $user->id) {
+            return true;
+        }
+
+        if ($this->details()->where('user_id', $user->id)->exists()) {
+            return true;
+        }
+
+        // Satu unit saja TIDAK cukup: requester lain di unit yang sama tetap
+        // tidak boleh membuka dokumen orang lain (BUG-SEC-001). Akses
+        // unit-wide hanya untuk peran pengelola (Admin GA, Manager, GA
+        // pencairan) — bukan requester/pegawai/dispatcher.
+        $peranPengelola = [
+            'spd.manage', 'spd.approve', 'spd.assign', 'spd.update',
+            'lpj.validate_management', 'lpj.pencairan', 'lpj.export', 'lpj.delete',
+        ];
+
+        if (! $user->hasPermission($peranPengelola)) {
+            return false;
+        }
+
+        return $scope->allowsUnit($this->unit_id);
+    }
+
     // ============================================================
     // HELPER METHODS - EXTENSION
     // ============================================================
@@ -450,55 +637,82 @@ class SuratSpd extends Model
     }
 
     /**
-     * Get semua surat dalam chain (original + semua extension)
-     * Berguna untuk menampilkan dropdown di form LPJ
+     * Get semua surat dalam chain (original + semua extension, rekursif).
+     * Berguna untuk menampilkan dropdown di form LPJ.
+     *
+     * `parent_surat_id` menunjuk ke surat SEBELUMNYA (bukan selalu root),
+     * jadi chain ditelusuri melewati seluruh turunan.
      */
     public function getAllSuratInChain()
     {
-        $result = collect();
+        $root = $this->getRootSurat();
 
-        // Jika ini extension, cari original dulu
-        $original = $this->is_extension ? $this->getOriginalSurat() : $this;
+        $result = collect([$root]);
 
-        // Add original
-        $result->push($original);
+        $queue = [$root->id];
+        $visited = [$root->id => true];
 
-        // Add semua extension yang approved
-        $extensions = SuratSpd::where('parent_surat_id', $original->id)
-            ->where('status', 'approved')
-            ->orderBy('tanggal_berangkat')
-            ->get();
+        while ($queue !== []) {
+            $children = SuratSpd::whereIn('parent_surat_id', $queue)
+                ->where('status', 'approved')
+                ->orderBy('tanggal_berangkat')
+                ->get();
 
-        foreach ($extensions as $ext) {
-            $result->push($ext);
+            $queue = [];
+
+            foreach ($children as $child) {
+                if (isset($visited[$child->id])) {
+                    continue;
+                }
+
+                $visited[$child->id] = true;
+                $result->push($child);
+                $queue[] = $child->id;
+            }
         }
 
         return $result;
     }
 
     /**
-     * Get surat original (jika ini extension)
+     * Get surat original (root dari chain perpanjangan).
      */
     public function getOriginalSurat()
     {
-        if (! $this->is_extension) {
-            return $this;
-        }
-
-        return $this->parentSurat;
+        return $this->getRootSurat();
     }
 
     /**
-     * Get jumlah extension untuk surat ini
+     * Telusuri `parentSurat` sampai root. `parent_surat_id` sendiri menunjuk
+     * ke surat sebelumnya (immediate previous), sehingga root harus dicari
+     * dengan berjalan mundur.
+     */
+    public function getRootSurat(): self
+    {
+        $surat = $this;
+        $dikunjungi = [];
+
+        while ($surat->parent_surat_id && ! isset($dikunjungi[$surat->id])) {
+            $dikunjungi[$surat->id] = true;
+
+            $parent = $surat->parentSurat()->first();
+
+            if (! $parent) {
+                break;
+            }
+
+            $surat = $parent;
+        }
+
+        return $surat;
+    }
+
+    /**
+     * Get jumlah extension untuk surat ini (seluruh chain).
      */
     public function getExtensionCount(): int
     {
-        if ($this->is_extension) {
-            // Jika ini extension, hitung dari original
-            return $this->parentSurat->childExtensions()->count();
-        }
-
-        return $this->childExtensions()->count();
+        return $this->getAllSuratInChain()->where('is_extension', true)->count();
     }
 
     // ============================================================
@@ -678,54 +892,77 @@ class SuratSpd extends Model
         $tanggalKembaliBaru = Carbon::parse($tanggalKembaliBaru);
         $durasiTambahan = Carbon::parse($this->tanggal_kembali)->diffInDays($tanggalKembaliBaru);
 
-        // Create surat extension baru
-        $extensionSurat = self::create([
+        // Unit ikut surat sebelumnya (fallback ke unit user pembuat) supaya
+        // perpanjangan muncul di queue unit yang benar (scopeInUnit).
+        $unitId = $this->unit_id ?: $this->resolveUnit()?->id;
+
+        // Budget per hari diturunkan dari total_budget/lama perjalanan karena
+        // kolom budget_per_hari sudah tidak ada.
+        $budgetPerHari = $this->budget_per_hari_efektif;
+
+        // `parent_surat_id` menunjuk ke surat IMMEDIATE SEBELUMNYA, bukan root,
+        // sehingga perpanjangan #2 terhubung ke perpanjangan #1.
+        $extensionSurat = self::createWithNumberedSurat([
             'pemberi_tugas_nama' => $this->pemberi_tugas_nama,
             'pemberi_tugas_jabatan' => $this->pemberi_tugas_jabatan,
             'user_id' => $this->user_id,
+            'employee_default_id' => $this->employee_default_id,
             'pengemudi_nama' => $this->pengemudi_nama,
             'tempat_tujuan' => $this->tempat_tujuan,
             'melayani_bidang' => $this->melayani_bidang,
             'jumlah_pemakai' => $this->jumlah_pemakai,
             'vehicle_id' => $this->vehicle_id,
+            'unit_id' => $unitId,
+            'jenis_spd' => $this->jenis_spd,
+            'jenis_spd_lainnya' => $this->jenis_spd_lainnya,
+            'kode_gl' => $this->kode_gl,
+            'type' => $this->type,
             // Tanggal berangkat = tanggal kembali surat sebelumnya
             'tanggal_berangkat' => $this->tanggal_kembali,
             'tanggal_kembali' => $tanggalKembaliBaru,
-            'budget_per_hari' => $this->budget_per_hari,
-            'parent_surat_id' => $this->is_extension ? $this->parent_surat_id : $this->id,
+            'parent_surat_id' => $this->id,
             'is_extension' => true,
             'catatan' => 'Perpanjangan dari surat: '.$this->nomor_surat,
-            'status' => $autoApprove ? 'approved' : 'pending',
+            'status' => 'pending',
         ]);
 
-        // Copy details (nama penumpang)
+        // Kolom `budget_per_hari` sudah tidak ada di tabel surat_spds, jadi
+        // total budget extension dihitung langsung lalu disimpan eksplisit
+        // (aman untuk fresh install MySQL maupun SQLite).
+        $extensionSurat->calculateLamaPerjalanan();
+        $extensionSurat->total_budget = $extensionSurat->lama_perjalanan_hari * $budgetPerHari;
+        $extensionSurat->save();
+
+        // Copy details (nama penumpang + akun user bila ada)
         foreach ($this->details as $detail) {
             $extensionSurat->details()->create([
                 'nama_lengkap' => $detail->nama_lengkap,
+                'user_id' => $detail->user_id,
                 'urutan' => $detail->urutan,
             ]);
         }
 
-        // Set LPJ deadline jika auto approve
-        if ($autoApprove) {
-            $extensionSurat->calculateLpjDeadline();
-            $extensionSurat->save();
-        }
-
-        // Create extension record (log)
-        SuratSpdExtension::create([
-            'original_surat_id' => $this->is_extension ? $this->parent_surat_id : $this->id,
+        // Create extension record (log). `original_surat_id` juga menunjuk ke
+        // surat sebelumnya agar chain konsisten; root bisa dicapai lewat
+        // walk `parentSurat`.
+        $extensionRecord = SuratSpdExtension::create([
+            'original_surat_id' => $this->id,
             'extension_surat_id' => $extensionSurat->id,
             'nomor_surat_extension' => $extensionSurat->nomor_surat,
             'tanggal_kembali_original' => $this->tanggal_kembali,
             'tanggal_kembali_baru' => $tanggalKembaliBaru,
             'durasi_tambahan_hari' => $durasiTambahan,
-            'budget_tambahan' => $durasiTambahan * $this->budget_per_hari,
+            'budget_tambahan' => $durasiTambahan * $budgetPerHari,
             'alasan_perpanjangan' => $alasanPerpanjangan,
-            'status' => $autoApprove ? 'approved' : 'pending',
-            'approved_by' => $autoApprove ? auth()->id() : null,
-            'approved_at' => $autoApprove ? now() : null,
+            'status' => 'pending',
         ]);
+
+        // autoApprove tetap melewati approve() agar propagation chain
+        // (tanggal kembali, LPJ deadline, budget, fund addition) ikut jalan.
+        if ($autoApprove) {
+            $extensionRecord->approve(auth()->id());
+            $extensionSurat->refresh();
+        }
 
         return $extensionSurat;
     }

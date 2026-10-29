@@ -1,11 +1,43 @@
 # PROGRESS PROJECT — BBM/SPD/LPJ
 
-Catatan progres pengembangan. Update terakhir: 3 Oktober 2026.
+Catatan progres pengembangan. Update terakhir: 29 Oktober 2026.
 
 ## Status Umum
-- Semua perubahan sudah diverifikasi `php artisan test` → **99 passed (373 assertions)** (branch `llm-assistant`).
+- Patch hasil QA 27–28 Okt diverifikasi `php artisan test` → **457 passed (2.005 assertions)**; 1 test (`SpdDailyReportTest`) memanggil layanan AI sungguhan sehingga flaky bila kuota/jaringan bermasalah. Rincian backlog & status: `docs/qa/PATCH-QA-2026-10-29.md`.
 - Model AI OCR aktif: `gemini-3.1-flash-lite` (diverifikasi HTTP 200 untuk request teks & gambar).
 - AI Assistant chat (Beta) kini memakai **Groq** (inference aktif, `GROQ_CHAT_MODEL`), model default `llama-3.3-70b-versatile`. Kode Gemini disimpan sebagai cadangan (blok `[BACKUP GEMINI]`).
+
+---
+
+## 25. Patch Hasil QA 27–28 Oktober 2026 (prioritas MoM: SPD & BBM)
+
+**Sumber:** `SIAGA - QA Workbook Development.xlsx` (36 bug) + MoM Online Meeting Hasil QA 28 Okt.
+**Prinsip:** backend dulu, UI/template menyusul (porsi Dicky); versi PHP tidak diubah.
+
+**SPD (MoM #5)**
+- Migrasi `2026_10_29_000001_change_nomor_urut_to_integer_on_surat_spds_table` — `nomor_urut` varchar → unsigned integer + backfill portabel MySQL/SQLite.
+- `SuratSpd::generateNomorSurat()` menghitung maksimum numerik (bukan urutan teks) dan melewati nomor terpakai; `createWithNumberedSurat()` memakai `Cache::lock` + retry unique violation, dipakai ketiga jalur pembuatan surat.
+- `createExtension()`: salin `unit_id`/`employee_default_id`/`jenis_spd`, `parent_surat_id` ke surat sebelumnya, `total_budget` dihitung eksplisit (kolom `budget_per_hari` sudah tidak ada).
+- `SuratSpdExtension::approve()` mempropagasi tanggal kembali, `lpj_deadline`, akumulasi budget, `extension_count`, dan mencatat `SuratSpdFundAddition` (idempoten).
+- Unit scope pada detail/approve/reject SPD & antrean perpanjangan; cetak SPD menerima status `completed`; visibilitas cetak/export LPJ: pemilik, penumpang, peran pengelola unit, atau global.
+
+**BBM (MoM #1)**
+- `VoucherExpiryService` baru (idempoten, chunked) + scheduler `bbm-expire-vouchers` tiap 10 menit; laporan pembelian menolak voucher tidak ada/kedaluwarsa sebelum menyimpan data.
+- Pelaporan: isian manual saat AI gagal kini terkirim (hidden field di-sync ulang + fallback nominal di server).
+- Catatan approval tersimpan di `approval_notes` voucher (single, bulk, bulk superadmin).
+- Approve/reject single & bulk dibatasi unit; export voucher dibatasi unit.
+- Double submit dicegah (`Cache::lock` per user + dedup 60 detik); foto laporan cepat dikompres.
+- Dashboard BBM: seluruh dataset & opsi filter per unit, kartu mengikuti filter tanggal, label periode dinamis, link periode tetap di modul, tombol export/trip analysis digate.
+
+**Lain-lain:** validasi item & foto 4 sisi pada checking, opsi kendaraan/driver per unit, `ModuleContext` untuk absensi QR publik, `RbacSeeder` idempoten, alias null pada Master Pekerja, default PHP Docker 8.5.
+
+**Revisi UX (29 Okt, setelah review screenshot):**
+- `PostLoginRedirect` — SEMUA role mendarat di **All Modules** dulu (bila punya >1 modul), bukan langsung ke dashboard peran. Superadmin/GA/Manager/Dispatcher/Driver memilih modul secara sadar.
+- `ModuleContext::DRIVER_HOME_ROUTES` — driver yang membuka modul diarahkan ke halaman kerja modul itu (BBM → Permohonan BBM, SPD → SPD Berjalan, Kendaraan → Acknowledge), bukan selalu dashboard driver. Fallback tetap dashboard driver.
+- Halaman `/pelaporan` — kartu pemilih mode (SPD/BBM) disembunyikan bila mode sudah ditentukan (`?mode=` atau `?permohonan_id=`), jadi di alur pelaporan BBM tidak muncul lagi kartu SPD/BBM.
+- Fallback AI — semua kegagalan analisis (rate limit, respons invalid, error jaringan, hasil parsial) kini membuka **form manual** untuk setiap foto + panel rekap; laporan tetap bisa dikirim (tidak berhenti di pesan error).
+
+**Belum dikerjakan (lihat dokumen QA):** LPJ-001/002/003, SEC-003 (storage privat), sisa SEC-004, RBAC-003, UI-002, VPR-001, EFF-001, refactor form manual MoM #1, UI MoM #2, SDD MoM #3.
 
 ---
 

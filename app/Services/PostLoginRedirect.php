@@ -26,10 +26,9 @@ class PostLoginRedirect
             return route('profile');
         }
 
-        // Superadmin memegang hampir seluruh siklus bisnis sekaligus. Kalau
-        // langsung diarahkan ke dashboard, sidebar-nya berisi puluhan menu dari
-        // modul berbeda. Karena itu superadmin mendarat di All Modules lebih
-        // dulu, lalu memilih satu modul yang ingin dikerjakan.
+        // SEMUA role mendarat di All Modules lebih dulu bila punya lebih dari
+        // satu modul. Tujuannya: user memilih modul secara sadar, bukan masuk
+        // otomatis ke satu halaman yang mungkin bukan pekerjaannya.
         //
         // Syarat `> 1` penting: instalasi yang belum menjalankan ModuleSeeder
         // (tabel modules kosong) atau user yang hanya punya satu modul tetap
@@ -37,7 +36,7 @@ class PostLoginRedirect
         $moduleContext = app(ModuleContext::class);
         $availableModules = $moduleContext->availableModules($user);
 
-        if ($moduleContext->isSuperadmin($user) && $availableModules->count() > 1) {
+        if ($availableModules->count() > 1) {
             return route('modules.index');
         }
 

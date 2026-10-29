@@ -14,6 +14,8 @@ use App\Models\VehiclePart;
 use App\Models\VehicleAndToolsConsumers;
 use App\Models\DamagePhoto;
 use App\Models\User;
+use App\Services\UnitScope;
+use Illuminate\Validation\ValidationException;
 
 class BodyCheckingController extends Controller
 {
@@ -48,6 +50,7 @@ class BodyCheckingController extends Controller
         $checkings = $query->paginate(15)->withQueryString();
 
         $vehicles = VehicleAndToolsConsumers::where('is_active', true)
+            ->inUnit(UnitScope::for($request->user())->unitId())
             ->orderBy('consumerial_code')
             ->get();
 
@@ -64,11 +67,15 @@ class BodyCheckingController extends Controller
      */
     public function create()
     {
+        $unitId = UnitScope::for(Auth::user())->unitId();
+
         $vehicles = VehicleAndToolsConsumers::where('is_active', true)
+            ->inUnit($unitId)
             ->orderBy('consumerial_code')
             ->get();
 
         $drivers = User::where('role', 'requester')
+            ->when($unitId !== null, fn ($query) => $query->where('unit_id', $unitId))
             ->orderBy('nama_lengkap')
             ->get();
 
@@ -110,18 +117,40 @@ class BodyCheckingController extends Controller
             'current_driver_id' => 'required|exists:users,id',
             'items' => 'required|array|min:1',
 'items.*.status' => ['sometimes', 'required_unless:items.*.needs_replacement,1', 'in:baik,cukup,kurang,tidak'],
+            'damage_photos' => 'nullable|array',
+            'damage_photos.*.photo' => 'nullable|file',
+            'damage_photos.*.zone' => 'nullable|string|in:depan,belakang,kiri,kanan,atas,bawah,interior',
         ], [
             'vehicle_id.required' => 'Kendaraan harus dipilih',
             'current_driver_id.required' => 'Driver harus dipilih',
             'items.required' => 'Minimal 1 item harus dicek',
             'items.*.status.required' => 'Status setiap item harus diisi',
+            'damage_photos.*.zone.in' => 'Zona foto tidak valid',
         ]);
+
+        $scope = UnitScope::for($request->user());
+
+        $vehicle = VehicleAndToolsConsumers::findOrFail($request->vehicle_id);
+        if (! $vehicle->isVisibleTo($request->user())) {
+            throw ValidationException::withMessages([
+                'vehicle_id' => 'Kendaraan yang dipilih berada di luar unit Anda.',
+            ]);
+        }
+
+        $driver = User::findOrFail($request->current_driver_id);
+        if (! $scope->allowsUnit($driver->unit_id)) {
+            throw ValidationException::withMessages([
+                'current_driver_id' => 'Driver yang dipilih berada di luar unit Anda.',
+            ]);
+        }
+
+        $this->ensureAllBodyItemsPresent($request);
+        $this->ensureFourSidePhotosPresent($request);
 
         try {
             DB::beginTransaction();
 
             // 1. Cari atau buat header periode bulan ini
-            $vehicle = VehicleAndToolsConsumers::findOrFail($request->vehicle_id);
             $nopol = $vehicle->consumerial_code;
             $now = Carbon::now();
 
@@ -169,7 +198,7 @@ class BodyCheckingController extends Controller
             }
 
             // 4. Simpan damage photos (jika ada)
-            if ($request->hasFile('damage_photos')) {
+            if (! empty($request->file('damage_photos'))) {
                 foreach ($request->file('damage_photos') as $index => $photoData) {
                     if (isset($photoData['photo']) && $photoData['photo']->isValid()) {
                         $path = $photoData['photo']->store('damage-photos/' . $detail->checking_detail_code, 'public');
@@ -212,6 +241,78 @@ class BodyCheckingController extends Controller
                 ->back()
                 ->withInput()
                 ->with('error', 'Gagal menyimpan pengecekan body: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Pastikan seluruh item body aktif dikirim dengan status skala yang valid.
+     */
+    private function ensureAllBodyItemsPresent(Request $request): void
+    {
+        $activeParts = VehiclePart::active()->body()->get(['id', 'name']);
+        $items       = $request->input('items', []);
+        $allowed     = ['baik', 'cukup', 'kurang', 'tidak'];
+        $missing     = [];
+
+        foreach ($activeParts as $part) {
+            $item   = $items[$part->id] ?? null;
+            $status = is_array($item) ? ($item['status'] ?? null) : null;
+
+            if (! is_string($status) || ! in_array($status, $allowed, true)) {
+                $missing[] = $part->name;
+            }
+        }
+
+        if ($missing !== []) {
+            throw ValidationException::withMessages([
+                'items' => 'Pengecekan body belum lengkap. ' . count($missing)
+                    . ' item aktif belum diisi statusnya: ' . implode(', ', $missing) . '.',
+            ]);
+        }
+    }
+
+    /**
+     * Wajibkan foto empat sisi kendaraan: depan, belakang, kiri, kanan.
+     * Memakai field yang sudah ada: damage_photos[<index>][photo] + [zone].
+     */
+    private function ensureFourSidePhotosPresent(Request $request): void
+    {
+        $requiredSides = [
+            'depan'    => 'Depan',
+            'belakang' => 'Belakang',
+            'kiri'     => 'Kiri',
+            'kanan'    => 'Kanan',
+        ];
+
+        $files = $request->file('damage_photos', []);
+        $zones = $request->input('damage_photos', []);
+        $provided = [];
+
+        foreach ($files as $index => $photoData) {
+            $photo = $photoData['photo'] ?? null;
+
+            if (! $photo instanceof \Illuminate\Http\UploadedFile || ! $photo->isValid()) {
+                continue;
+            }
+
+            $zone = strtolower(trim((string) ($zones[$index]['zone'] ?? '')));
+            if (array_key_exists($zone, $requiredSides)) {
+                $provided[$zone] = true;
+            }
+        }
+
+        $missing = [];
+        foreach ($requiredSides as $zone => $label) {
+            if (! isset($provided[$zone])) {
+                $missing[] = $label;
+            }
+        }
+
+        if ($missing !== []) {
+            throw ValidationException::withMessages([
+                'damage_photos' => 'Foto empat sisi kendaraan wajib diunggah. Sisi yang belum diisi: '
+                    . implode(', ', $missing) . '.',
+            ]);
         }
     }
 

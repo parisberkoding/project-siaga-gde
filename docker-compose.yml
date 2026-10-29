@@ -59,7 +59,7 @@ x-app-common: &app-common
     context: .
     dockerfile: Dockerfile
     args:
-      PHP_VERSION: "${PHP_VERSION:-8.4}"      # samakan dengan versi PHP Herd
+      PHP_VERSION: "${PHP_VERSION:-8.5}"      # samakan dengan versi PHP Herd
       NODE_VERSION: "${NODE_VERSION:-22}"
       WITH_IMAGICK: "${WITH_IMAGICK:-true}"   # samakan dengan ekstensi Herd
   image: bbm-project-app

@@ -91,6 +91,7 @@
         padding: 0;
         margin-bottom: 12px;
         overflow: hidden;
+        position: relative;
     }
 
     /* Full-width photo preview */
@@ -137,6 +138,16 @@
 
     /* Hide native file input */
     .camera-input { display: none; }
+
+    /* File input foto sisi wajib: tetap bisa difokuskan browser agar
+       atribut `required` berfungsi, walau tampilannya disembunyikan. */
+    .side-photo-input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
+    }
 
     /* BBM Gauge */
     .bbm-gauge {
@@ -384,16 +395,63 @@
                 <div class="card">
                     <div class="card-body pt-3">
 
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h5 class="card-title mb-0 pb-0">
-                                <i class="bi bi-camera me-1"></i> Dokumentasi Kerusakan
-                                <small class="text-muted fw-normal">(Opsional)</small>
-                            </h5>
+                        <h5 class="card-title mb-0 pb-0">
+                            <i class="bi bi-camera me-1"></i> Foto Empat Sisi Kendaraan
+                            <span class="text-danger">*</span>
+                            <small class="text-muted fw-normal">(Wajib)</small>
+                        </h5>
+
+                        <div class="text-muted small mb-3 mt-2">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Wajib unggah foto sisi <strong>Depan</strong>, <strong>Belakang</strong>,
+                            <strong>Kiri</strong>, dan <strong>Kanan</strong> kendaraan.
                         </div>
 
-                        <div class="text-muted small mb-3">
+                        <div class="row g-3 mb-4">
+                            @foreach ([
+                                ['zone' => 'depan',    'label' => 'Depan'],
+                                ['zone' => 'belakang', 'label' => 'Belakang'],
+                                ['zone' => 'kiri',     'label' => 'Kiri'],
+                                ['zone' => 'kanan',    'label' => 'Kanan'],
+                            ] as $sideIndex => $side)
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <div class="damage-row h-100">
+                                    <div class="damage-photo-preview" id="sidePreview_{{ $sideIndex }}">
+                                        <div class="preview-placeholder">
+                                            <i class="bi bi-camera"></i>
+                                            <span>Tap untuk ambil foto {{ $side['label'] }}</span>
+                                        </div>
+                                        <label for="sideCamera_{{ $sideIndex }}" class="photo-tap-area"></label>
+                                    </div>
+
+                                    <input type="hidden" name="damage_photos[{{ $sideIndex }}][zone]" value="{{ $side['zone'] }}">
+                                    <input type="file" name="damage_photos[{{ $sideIndex }}][photo]"
+                                           id="sideCamera_{{ $sideIndex }}"
+                                           class="side-photo-input side-photo-input-js"
+                                           accept="image/*" capture="environment" required
+                                           data-side-label="{{ $side['label'] }}"
+                                           onchange="previewSidePhoto(this, {{ $sideIndex }}, '{{ $side['label'] }}')">
+
+                                    <div class="damage-body">
+                                        <div class="fw-semibold small">
+                                            Sisi {{ $side['label'] }} <span class="text-danger">* wajib</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+
+                        <div id="sidePhotoError" class="text-danger small mb-3" style="display: none;"></div>
+
+                        <h5 class="card-title mb-0 pb-0">
+                            <i class="bi bi-camera me-1"></i> Dokumentasi Kerusakan Tambahan
+                            <small class="text-muted fw-normal">(Opsional)</small>
+                        </h5>
+
+                        <div class="text-muted small mb-3 mt-2">
                             <i class="bi bi-info-circle me-1"></i>
-                            Foto bagian kendaraan yang rusak atau perlu perhatian. Disarankan jika ada item berstatus <strong>Kurang</strong> atau <strong>Tidak</strong>.
+                            Foto tambahan bagian kendaraan yang rusak atau perlu perhatian. Disarankan jika ada item berstatus <strong>Kurang</strong> atau <strong>Tidak</strong>.
                         </div>
 
                         {{-- Container repeatable cards (responsive grid) --}}
@@ -504,7 +562,8 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
-    let damageRowIndex = 0;
+    // Index 0-3 dipakai empat foto sisi wajib di atas.
+    let damageRowIndex = 4;
 
     // ─── Add Damage Photo Card ───
     window.addDamageRow = function() {
@@ -548,8 +607,81 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    // ─── Preview satu foto sisi wajib (depan/belakang/kiri/kanan) ───
+    window.previewSidePhoto = function(input, index, label) {
+        const preview = document.getElementById('sidePreview_' + index);
+        if (!preview) return;
+
+        if (input.files && input.files[0]) {
+            input.setCustomValidity('');
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.innerHTML =
+                    '<img src="' + e.target.result + '" alt="Foto sisi ' + label + '">' +
+                    '<label for="sideCamera_' + index + '" class="photo-tap-area"></label>';
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+
+        validateSidePhotos(true);
+    };
+
+    // ─── Validasi empat foto sisi wajib ───
+    function validateSidePhotos(quiet) {
+        const inputs = document.querySelectorAll('.side-photo-input-js');
+        const missing = [];
+
+        inputs.forEach(input => {
+            if (!input.files || input.files.length === 0) {
+                missing.push(input.dataset.sideLabel || 'Sisi kendaraan');
+            }
+        });
+
+        const errEl = document.getElementById('sidePhotoError');
+
+        if (missing.length > 0) {
+            const message = 'Foto empat sisi kendaraan wajib diunggah. Sisi yang belum diisi: '
+                + missing.join(', ') + '.';
+
+            if (errEl) {
+                errEl.textContent = message;
+                errEl.style.display = 'block';
+            }
+            if (!quiet) {
+                alert(message);
+                const firstMissing = Array.from(inputs).find(input => !input.files || input.files.length === 0);
+                if (firstMissing) firstMissing.focus();
+            }
+
+            return false;
+        }
+
+        if (errEl) {
+            errEl.textContent = '';
+            errEl.style.display = 'none';
+        }
+
+        return true;
+    }
+
     // ─── Button listeners ───
     document.getElementById('btnAddDamage').addEventListener('click', addDamageRow);
+
+    // Cek foto sisi sebelum validasi bawaan browser agar pesan menyebut sisi yang kurang.
+    document.getElementById('btnSubmit').addEventListener('click', function(e) {
+        if (!validateSidePhotos(false)) {
+            e.preventDefault();
+        }
+    });
+
+    // Pesan validasi bawaan browser (mis. submit via Enter) dalam Bahasa Indonesia.
+    document.querySelectorAll('.side-photo-input-js').forEach(input => {
+        input.addEventListener('invalid', function() {
+            this.setCustomValidity(
+                'Foto sisi ' + (this.dataset.sideLabel || 'kendaraan') + ' wajib diunggah.'
+            );
+        });
+    });
 
     // ─── Ganti checkbox → auto-set Tidak + disable radios ───
     document.querySelectorAll('.replacement-check').forEach(checkbox => {
@@ -618,26 +750,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-<<<<<<< HEAD
-    // ─── Double Submit Prevention ───
-    document.getElementById('bodyCheckForm').addEventListener('submit', function() {
-        const btn = document.getElementById('btnSubmit');
+    // ─── Validation + Double Submit Prevention ───
+    document.getElementById('bodyCheckForm').addEventListener('submit', function(e) {
+        if (!validateSidePhotos(true)) {
+            e.preventDefault();
+            validateSidePhotos(false);
+            return false;
+        }
 
-        // ─── Fix: Ensure all statuses set before submit ───
+        // Re-enable disabled radios first so they get submitted
+        document.querySelectorAll('.scale-toggle:disabled').forEach(r => {
+            r.disabled = false;
+        });
+
+        // ─── Fix: pastikan item yang dicentang "butuh penggantian" punya status NG ───
         document.querySelectorAll('.replacement-check:checked').forEach(cb => {
-            const partId = cb.name.match(/items\\[(\\d+)\\]/)[1];
-            const ngRadio = document.getElementById('tidak_' + partId);
+            const match = cb.name.match(/items\[(\d+)\]/);
+            if (!match) return;
+            const ngRadio = document.getElementById('tidak_' + match[1]);
             if (ngRadio && !ngRadio.checked) {
                 ngRadio.checked = true;
             }
-        });
-=======
-    // ─── Validation + Double Submit Prevention ───
-    document.getElementById('bodyCheckForm').addEventListener('submit', function(e) {
-        // Re-enable disabled radios first so they get submitted
->>>>>>> cf7ec66bad37cdb7beaf8f14d55764c062ddf59e
-        document.querySelectorAll('.scale-toggle:disabled').forEach(r => {
-            r.disabled = false;
         });
 
         // Check all items have a status selected

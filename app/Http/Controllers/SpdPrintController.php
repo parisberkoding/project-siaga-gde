@@ -59,6 +59,18 @@ class SpdPrintController extends Controller
             abort(404, 'Surat SPD tidak ditemukan untuk LPJ ini.');
         }
 
+        // BUG-SEC-001: dokumen hanya boleh dibuka pemilik/penumpang SPD,
+        // user dengan unit yang sama, atau user global. Jika record ada tapi
+        // tidak terlihat, kembalikan 404 (bukan 403).
+        $user = $request->user();
+
+        $bolehLihat = $surat->isVisibleToUser($user)
+            || ($user !== null && (int) $laporan->user_id === (int) $user->id);
+
+        if (! $bolehLihat) {
+            abort(404);
+        }
+
         $spending = $laporan->getSpendingPerKategori();
         $rincian = $laporan->getRincianPerTanggal();
         $grandTotalRincian = $laporan->getGrandTotalRincian();

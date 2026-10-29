@@ -46,7 +46,7 @@
         @if($detail->currentDriver)
             <div>
                 <span class="text-muted">Driver:</span>
-                <span class="fw-semibold">{{ $detail->currentDriver->name }}</span>
+                <span class="fw-semibold">{{ $detail->currentDriver->nama_lengkap ?: $detail->currentDriver->name }}</span>
             </div>
         @endif
     </div>

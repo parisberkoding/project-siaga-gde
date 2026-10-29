@@ -16,7 +16,9 @@ uses(RefreshDatabase::class);
  * Dashboard Driver terpisah dari dashboard analitik milik superadmin/GA.
  *
  * Yang dijaga di sini:
- *  - driver mendarat di dashboard-nya sendiri setelah login,
+ *  - driver mendarat di All Modules setelah login (memilih modul dulu),
+ *  - membuka modul mengarah ke halaman kerja modul itu, bukan selalu
+ *    dashboard driver,
  *  - isinya hanya data milik driver yang login (tidak ada agregat unit),
  *  - driver tidak bisa membuka dashboard analitik BBM (dialihkan),
  *  - role lain tidak bisa membuka dashboard driver.
@@ -36,11 +38,23 @@ beforeEach(function () {
     };
 });
 
-it('mendaratkan driver di dashboard driver setelah login', function () {
+it('mendaratkan driver di All Modules setelah login', function () {
     $driver = ($this->buatUser)('requester', 'requester');
 
     expect(app(PostLoginRedirect::class)->routeFor($driver))
-        ->toBe(route('driver.dashboard'));
+        ->toBe(route('modules.index'));
+});
+
+it('mengarahkan driver ke halaman kerja modul yang dipilih', function () {
+    $driver = ($this->buatUser)('requester', 'requester');
+
+    $this->actingAs($driver)
+        ->post(route('modules.activate', 'bbm'))
+        ->assertRedirect(route('requester-index'));
+
+    $this->actingAs($driver)
+        ->post(route('modules.activate', 'spd'))
+        ->assertRedirect(route('requester.spd.berjalan'));
 });
 
 it('menampilkan hanya permohonan BBM milik driver yang login', function () {
@@ -86,14 +100,15 @@ it('mengalihkan driver yang membuka dashboard analitik BBM ke dashboard driver',
         ->assertForbidden();
 });
 
-it('tetap mendaratkan driver di dashboard driver saat membuka modul dari All Modules', function () {
+it('membuka modul dari All Modules mengarah ke halaman kerja modul itu', function () {
     $driver = ($this->buatUser)('requester', 'requester');
 
     $this->actingAs($driver)
         ->post(route('modules.activate', 'bbm'))
-        ->assertRedirect(route('driver.dashboard'))
+        ->assertRedirect(route('requester-index'))
         ->assertSessionHas('module_context.active', 'bbm');
 
+    // Dashboard driver tetap bisa dibuka langsung (menu sidebar).
     $this->actingAs($driver)
         ->get(route('driver.dashboard'))
         ->assertOk();

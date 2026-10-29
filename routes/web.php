@@ -81,7 +81,10 @@ Route::middleware(['auth'])->group(function () {
     // permission modul agar user dengan hak baca saja tetap bisa melihat
     // ringkasan modulnya (tanpa akses ke dashboard modul lain).
     Route::get('/modules/bbm/dashboard', [SuperadminController::class, 'dashboardBisnis'])
-        ->middleware('permission:bbm.view,bbm.approve,bbm.export,bbm.request,bbm.report,pelaporan.view,pelaporan.create,pelaporan.analyze')
+        // `dashboard.view` = peran read-only (View Only/Manager/GA). Requester
+        // tidak punya, tetapi masih lolos lewat `pelaporan.analyze`; controller
+        // mengalihkannya ke dashboard driver (BUG-RBAC-001).
+        ->middleware('permission:bbm.approve,bbm.export,pelaporan.analyze,dashboard.view')
         ->name('modules.dashboard.bbm');
 
     Route::get('/modules/spd/dashboard', [ModuleDashboardController::class, 'spd'])

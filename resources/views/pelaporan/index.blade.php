@@ -48,7 +48,10 @@
         </div>
     @endif
 
-    {{-- Mode selector --}}
+    {{-- Mode selector — disembunyikan bila mode sudah dipilih (mis. dari kartu
+         modul BBM atau tautan voucher "Lapor"), supaya tidak muncul lagi kartu
+         SPD/BBM di tengah alur pelaporan. --}}
+    @if(!$modeLocked)
     <div class="row g-3 mb-4">
         @if($spdMode)
         <div class="col-md-6">
@@ -81,6 +84,7 @@
             </button>
         </div>
     </div>
+    @endif
 
     @if(!$spdMode)
     <div class="alert alert-warning alert-dismissible fade show" role="alert">
@@ -411,6 +415,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function syncHiddenFields(fieldsWrap) {
+        // Look up by id bila tidak diberikan, supaya helper ini aman dipanggil
+        // dari event handler mana pun (termasuk submit handler).
+        fieldsWrap = fieldsWrap || document.getElementById('fileFieldsWrap');
+        if (!fieldsWrap) return;
+
         fieldsWrap.innerHTML = '';
         Object.keys(fileState).sort((a, b) => a - b).forEach(i => {
             const s = fileState[i];
@@ -441,8 +450,88 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function renderManualInputs(card, idx) {
-        const detailEl = card.querySelector('.file-ai-detail');
+    // ── Fallback manual saat AI gagal ────────────────────────────────────
+    // Satu tempat untuk SEMUA kegagalan (rate limit, respons invalid, error
+    // jaringan, hasil parsial): setiap foto yang belum berhasil dianalisis
+    // diberi form isian manual, panel rekap dibuka, dan laporan tetap bisa
+    // dikirim. Tidak boleh ada jalur yang hanya menampilkan pesan error.
+    function markFileManual(idx, badgeText) {
+        const card = document.getElementById('fileCard' + idx);
+        if (!card) return;
+
+        const prev = fileState[idx];
+
+        // Jangan menimpa hasil AI yang sudah OK.
+        if (prev && prev.status === 'ai_ok') return;
+
+        const sudahAdaForm = !!(prev && prev.el);
+
+        fileState[idx] = {
+            status: 'manual',
+            kategori: prev ? (prev.kategori || '') : '',
+            nominal: prev ? (prev.nominal ?? '') : '',
+            volume: prev ? (prev.volume ?? '') : '',
+            tanggal: prev ? (prev.tanggal || '') : '',
+            platNomor: prev ? (prev.platNomor || '') : '',
+            text: '',
+            el: sudahAdaForm ? prev.el : null,
+        };
+
+        card.classList.remove('border-light');
+        card.classList.add('needs-manual', 'border-warning');
+
+        const badge = card.querySelector('.file-ai-badge');
+        if (badge) {
+            badge.textContent = badgeText || 'Isi Manual';
+            badge.className = 'badge file-ai-badge bg-warning text-dark';
+        }
+
+        if (!sudahAdaForm) {
+            const nominalEl = card.querySelector('.file-ai-nominal');
+            if (nominalEl) nominalEl.textContent = '';
+            const textEl = card.querySelector('.file-ai-text');
+            if (textEl) textEl.textContent = '';
+        }
+
+        const statusEl = card.querySelector('.file-ai-status');
+        if (statusEl) {
+            statusEl.textContent = '⚠';
+            statusEl.className = 'file-ai-status text-warning ms-1';
+        }
+
+        if (!sudahAdaForm) {
+            renderManualInputs(card, idx);
+        }
+    }
+
+    function enableManualEntry(message) {
+        const files = Array.from((fotoFilesOp && fotoFilesOp.files) || []);
+        const indexes = files.length
+            ? files.map((_, i) => i)
+            : Object.keys(fileState).map(Number);
+
+        indexes.forEach(i => markFileManual(i, 'AI Gagal — Isi Manual'));
+
+        const alertEl = document.getElementById('aiLimitAlertOp');
+        if (alertEl) {
+            alertEl.innerHTML = '<strong><i class="bi bi-exclamation-triangle"></i> Analisis AI tidak tersedia.</strong> '
+                + (message ? message + ' ' : '')
+                + 'Lengkapi kategori &amp; nominal tiap foto serta rekap di bawah, lalu kirim laporan seperti biasa.';
+            alertEl.classList.remove('d-none');
+        }
+
+        buildManualRekap();
+        syncHiddenFields(document.getElementById('fileFieldsWrap'));
+        recomputeTotals();
+
+        const status = document.getElementById('aiStatusOp');
+        if (status) {
+            status.textContent = 'Mode manual aktif — isi data struk lalu kirim laporan.';
+            status.className = 'small text-warning';
+        }
+    }
+
+    function renderManualInputs(card, idx) {        const detailEl = card.querySelector('.file-ai-detail');
         detailEl.innerHTML = `
             <div class="row g-1 mt-1">
                 <div class="col-12 col-md-5">
@@ -483,10 +572,24 @@ document.addEventListener('DOMContentLoaded', function() {
             st.el.volWrap.classList.toggle('d-none', !isBbm);
             if (!isBbm) st.volume = '';
             recomputeTotals();
+            // ✅ BUG-BBM-002: salin isian manual ke hidden input yang dikirim.
+            syncHiddenFields();
         });
-        st.el.nominal.addEventListener('input', function() { st.nominal = this.value; recomputeTotals(); });
-        st.el.volume.addEventListener('input', function() { st.volume = this.value; recomputeTotals(); });
-        st.el.tanggal.addEventListener('change', function() { st.tanggal = this.value; recomputeTotals(); });
+        st.el.nominal.addEventListener('input', function() {
+            st.nominal = this.value;
+            recomputeTotals();
+            syncHiddenFields();
+        });
+        st.el.volume.addEventListener('input', function() {
+            st.volume = this.value;
+            recomputeTotals();
+            syncHiddenFields();
+        });
+        st.el.tanggal.addEventListener('change', function() {
+            st.tanggal = this.value;
+            recomputeTotals();
+            syncHiddenFields();
+        });
     }
 
     if (fotoFilesOp) {
@@ -566,8 +669,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const res = await fetch(analyzeUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }, body: fd });
 
                 if (res.status === 429) {
-                    status.textContent = 'Terlalu banyak permintaan analisis (rate limit). Tunggu ±1 menit lalu upload ulang, atau lanjutkan dengan pengisian manual.';
-                    status.className = 'small text-danger';
+                    enableManualEntry('Permintaan analisis sedang dibatasi (rate limit).');
                     return;
                 }
 
@@ -575,14 +677,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 try {
                     data = await res.json();
                 } catch (e) {
-                    status.textContent = 'Respons server tidak valid. Coba lagi.';
-                    status.className = 'small text-danger';
+                    enableManualEntry('Respons server tidak valid.');
                     return;
                 }
 
                 if (!(data.success && data.results)) {
-                    status.textContent = 'Gagal: ' + (data.message || 'analisis tidak tersedia');
-                    status.className = 'small text-danger';
+                    enableManualEntry(data.message || '');
                     return;
                 }
 
@@ -654,6 +754,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
 
+                // Sebagian foto bisa saja tidak punya hasil (mis. server berhenti
+                // di tengah batch). Foto seperti itu WAJIB masuk mode manual.
+                files.forEach((_, idx) => {
+                    if (!fileState[idx]) {
+                        markFileManual(idx, 'Belum dianalisis — Isi Manual');
+                        hasApiError = true;
+                    }
+                });
+
                 syncHiddenFields(fieldsWrap);
                 recomputeTotals();
 
@@ -694,8 +803,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     status.className = 'small text-success';
                 }
             } catch (e) {
-                status.textContent = 'Error koneksi — periksa jaringan lalu coba lagi.';
-                status.className = 'small text-danger';
+                // Jaringan mati / server error / AI down: JANGAN berhenti di
+                // pesan error — buka form manual untuk semua foto.
+                enableManualEntry('Tidak dapat menghubungi layanan AI.');
             }
         });
     }
@@ -704,6 +814,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const formOperational = document.getElementById('formOperational');
     if (formOperational) {
         formOperational.addEventListener('submit', function(e) {
+            // ✅ BUG-BBM-002: sinkronkan ulang hidden input tepat sebelum kirim,
+            // agar kategori/nominal manual selalu ikut terkirim ke server.
+            syncHiddenFields(document.getElementById('fileFieldsWrap'));
+
             // Blokir submit bila validasi struk vs permohonan gagal.
             if (strukValidationFailed) {
                 e.preventDefault();
