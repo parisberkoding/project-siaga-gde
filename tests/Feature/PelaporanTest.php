@@ -367,3 +367,40 @@ it('menggabungkan BBM SPD (struk_items LPJ approved) ke analisis trip', function
     expect((float) $analysis->fuel_efficiency)->toBe(round(400 / 15, 2));
     expect($analysis->system_notes)->toContain('BBM SPD');
 });
+
+/* =========================================================
+ * Halaman pelaporan: kartu mode & fallback manual AI
+ * =======================================================*/
+
+it('menyembunyikan kartu pemilih mode saat mode sudah ditentukan lewat URL', function () {
+    $this->actingAs($this->admin)
+        ->get(route('pelaporan.index', ['mode' => 'operational']))
+        ->assertOk()
+        // Kartu pemilih mode (SPD/BBM) tidak boleh muncul lagi di alur BBM.
+        ->assertDontSee('modeOpCard', false)
+        ->assertDontSee('modeSpdCard', false)
+        ->assertSee('Laporan BBM Operasional');
+});
+
+it('menyembunyikan kartu pemilih mode saat datang dari tautan permohonan', function () {
+    $this->actingAs($this->admin)
+        ->get(route('pelaporan.index', ['permohonan_id' => 999999]))
+        ->assertOk()
+        ->assertDontSee('modeOpCard', false)
+        ->assertDontSee('modeSpdCard', false);
+});
+
+it('tetap menampilkan kartu pemilih mode saat belum ada mode terpilih', function () {
+    $this->actingAs($this->admin)
+        ->get(route('pelaporan.index'))
+        ->assertOk()
+        ->assertSee('modeOpCard', false);
+});
+
+it('menyediakan fallback form manual di halaman pelaporan saat AI gagal', function () {
+    $this->actingAs($this->admin)
+        ->get(route('pelaporan.index', ['mode' => 'operational']))
+        ->assertOk()
+        ->assertSee('enableManualEntry', false)
+        ->assertSee('Mode manual aktif', false);
+});

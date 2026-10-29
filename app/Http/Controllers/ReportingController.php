@@ -44,9 +44,14 @@ class ReportingController extends Controller
     /**
      * GET /pelaporan — single page, branching dua mode.
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
+
+        // Saat user SUDAH memilih mode (lewat kartu modul, link voucher
+        // "Lapor", atau ?mode=), deretan kartu pemilih mode disembunyikan:
+        // di halaman pelaporan BBM tidak boleh muncul lagi kartu SPD/BBM.
+        $modeLocked = $request->filled('mode') || $request->filled('permohonan_id');
 
         // ── Mode SPD: surat approved & belum ada LPJ (tanpa cek tanggal) ──
         $suratList = SuratSpd::forUser($user->id)
@@ -93,7 +98,8 @@ class ReportingController extends Controller
         return view('pelaporan.index', compact(
             'spdMode',
             'suratList',
-            'activePermohonan'
+            'activePermohonan',
+            'modeLocked'
         ));
     }
 

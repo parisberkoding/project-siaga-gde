@@ -3,7 +3,7 @@
 Catatan progres pengembangan. Update terakhir: 29 Oktober 2026.
 
 ## Status Umum
-- Patch hasil QA 27–28 Okt diverifikasi `php artisan test` → **452 passed (1.989 assertions)**; 1 test (`SpdDailyReportTest`) memanggil layanan AI sungguhan sehingga flaky bila kuota/jaringan bermasalah. Rincian backlog & status: `docs/qa/PATCH-QA-2026-10-29.md`.
+- Patch hasil QA 27–28 Okt diverifikasi `php artisan test` → **457 passed (2.005 assertions)**; 1 test (`SpdDailyReportTest`) memanggil layanan AI sungguhan sehingga flaky bila kuota/jaringan bermasalah. Rincian backlog & status: `docs/qa/PATCH-QA-2026-10-29.md`.
 - Model AI OCR aktif: `gemini-3.1-flash-lite` (diverifikasi HTTP 200 untuk request teks & gambar).
 - AI Assistant chat (Beta) kini memakai **Groq** (inference aktif, `GROQ_CHAT_MODEL`), model default `llama-3.3-70b-versatile`. Kode Gemini disimpan sebagai cadangan (blok `[BACKUP GEMINI]`).
 
@@ -30,6 +30,12 @@ Catatan progres pengembangan. Update terakhir: 29 Oktober 2026.
 - Dashboard BBM: seluruh dataset & opsi filter per unit, kartu mengikuti filter tanggal, label periode dinamis, link periode tetap di modul, tombol export/trip analysis digate.
 
 **Lain-lain:** validasi item & foto 4 sisi pada checking, opsi kendaraan/driver per unit, `ModuleContext` untuk absensi QR publik, `RbacSeeder` idempoten, alias null pada Master Pekerja, default PHP Docker 8.5.
+
+**Revisi UX (29 Okt, setelah review screenshot):**
+- `PostLoginRedirect` — SEMUA role mendarat di **All Modules** dulu (bila punya >1 modul), bukan langsung ke dashboard peran. Superadmin/GA/Manager/Dispatcher/Driver memilih modul secara sadar.
+- `ModuleContext::DRIVER_HOME_ROUTES` — driver yang membuka modul diarahkan ke halaman kerja modul itu (BBM → Permohonan BBM, SPD → SPD Berjalan, Kendaraan → Acknowledge), bukan selalu dashboard driver. Fallback tetap dashboard driver.
+- Halaman `/pelaporan` — kartu pemilih mode (SPD/BBM) disembunyikan bila mode sudah ditentukan (`?mode=` atau `?permohonan_id=`), jadi di alur pelaporan BBM tidak muncul lagi kartu SPD/BBM.
+- Fallback AI — semua kegagalan analisis (rate limit, respons invalid, error jaringan, hasil parsial) kini membuka **form manual** untuk setiap foto + panel rekap; laporan tetap bisa dikirim (tidak berhenti di pesan error).
 
 **Belum dikerjakan (lihat dokumen QA):** LPJ-001/002/003, SEC-003 (storage privat), sisa SEC-004, RBAC-003, UI-002, VPR-001, EFF-001, refactor form manual MoM #1, UI MoM #2, SDD MoM #3.
 
