@@ -35,6 +35,15 @@ class AppServiceProvider extends ServiceProvider
     {
         Paginator::useBootstrapFive();
 
+        // BUG-SEC-004 — jaring pengaman: aplikasi yang berjalan di produksi
+        // tidak boleh pernah menampilkan stack trace/SQL ke pengguna, walau
+        // APP_DEBUG tidak sengaja tertinggal `true` di .env server. Detail
+        // error tetap masuk ke log (report()). Lingkungan lain tidak diubah
+        // supaya alur debug lokal tetap nyaman.
+        if ($this->app->environment('production')) {
+            config(['app.debug' => false]);
+        }
+
         // Phase 2 - RBAC: Gate `permission` agar Blade @can('bbm.request')
         // dan Policy dapat menggunakan pengecekan berbasis permission.
         Gate::define('permission', function (User $user, string|array $permission, bool $requireAll = false) {
