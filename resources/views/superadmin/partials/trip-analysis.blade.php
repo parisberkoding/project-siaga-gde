@@ -729,6 +729,7 @@
                                            step="0.1"
                                            min="1"
                                            max="30"
+                                           oninput="syncBaselineReasonRequired(this.form)"
                                            placeholder="Kosongkan untuk patokan standar">
                                     <span class="input-group-text"><strong>km/liter</strong></span>
                                 </div>
@@ -739,13 +740,18 @@
                             </div>
 
                             <div class="mb-2">
-                                <label class="form-label">Keterangan Kondisi</label>
+                                <label class="form-label">
+                                    Alasan Perubahan Patokan <span class="text-danger">*</span>
+                                </label>
                                 <textarea class="form-control"
                                           name="baseline_override_reason"
                                           rows="2"
                                           placeholder="Contoh: Kondisi macet parah, jalan rusak, membawa beban berat, perjalanan pegunungan..."></textarea>
+                                @error('baseline_override_reason')
+                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                @enderror
                                 <small class="text-muted">
-                                    💡 <strong>Tips:</strong> Isi jika ada kondisi khusus yang mempengaruhi pemakaian BBM
+                                    💡 <strong>Wajib diisi</strong> jika patokan efisiensi diubah, agar perubahan punya jejak audit.
                                 </small>
                             </div>
 
@@ -998,7 +1004,27 @@ function showValidationModal(tripId, vehicleCode, distance, fuelType) {
     form.reset();
     document.getElementById('baselineOverride').value = '';
 
+    // BUG-EFF-001: alasan wajib diisi bila patokan efisiensi diubah.
+    syncBaselineReasonRequired(form);
+
     modal.show();
+}
+
+/**
+ * Toggle atribut required pada field alasan sesuai isi patokan BBM.
+ * Validasi server tetap menjadi penentu akhir; ini hanya UX di sisi klien.
+ */
+function syncBaselineReasonRequired(form) {
+    const baselineInput = form.querySelector('#baselineOverride');
+    const reasonInput = form.querySelector('textarea[name="baseline_override_reason"]');
+
+    if (!baselineInput || !reasonInput) {
+        return;
+    }
+
+    const wajib = baselineInput.value.trim() !== '';
+    reasonInput.required = wajib;
+    reasonInput.classList.toggle('border-warning', wajib);
 }
 
 // ==================== BULK VALIDATION ====================

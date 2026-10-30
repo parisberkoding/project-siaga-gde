@@ -63,3 +63,45 @@ it('mengizinkan permohonan berbeda dari user yang sama', function () {
 
     expect(Permohonan::where('requester_id', $this->requester->id)->count())->toBe(2);
 });
+
+it('menolak request kedua dengan idempotency key yang sama', function () {
+    $key = (string) \Illuminate\Support\Str::uuid();
+
+    $this->actingAs($this->requester)
+        ->post(route('requester-create'), array_merge($this->payload, [
+            'idempotency_key' => $key,
+        ]))
+        ->assertSessionHas('success');
+
+    // Payload sengaja dibedakan agar yang menolak adalah idempotency key,
+    // bukan dedup nominal 60 detik.
+    $this->actingAs($this->requester)
+        ->from(route('requester-index'))
+        ->post(route('requester-create'), array_merge($this->payload, [
+            'bill_payment'    => 350000,
+            'requester_notes' => 'Kiriman ulang dengan key sama',
+            'idempotency_key' => $key,
+        ]))
+        ->assertSessionHas('error');
+
+    expect(session('error'))->toContain('sudah atau sedang diproses');
+    expect(Permohonan::where('requester_id', $this->requester->id)->count())->toBe(1);
+});
+
+it('mengizinkan idempotency key berbeda untuk permohonan berbeda', function () {
+    $this->actingAs($this->requester)
+        ->post(route('requester-create'), array_merge($this->payload, [
+            'idempotency_key' => (string) \Illuminate\Support\Str::uuid(),
+        ]))
+        ->assertSessionHas('success');
+
+    $this->actingAs($this->requester)
+        ->post(route('requester-create'), array_merge($this->payload, [
+            'bill_payment'    => 350000,
+            'requester_notes' => 'Key berbeda',
+            'idempotency_key' => (string) \Illuminate\Support\Str::uuid(),
+        ]))
+        ->assertSessionHas('success');
+
+    expect(Permohonan::where('requester_id', $this->requester->id)->count())->toBe(2);
+});

@@ -503,12 +503,12 @@ class SpdDailyReportController extends Controller
                 ];
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('uploadItems: file #' . $index . ' gagal diproses.', [
-                    'error' => $e->getMessage(),
+                    'exception' => $e,
                 ]);
                 $failed[] = [
                     'index'   => $index + 1,
                     'reason'  => ImageAnalysisService::STATUS_API_ERROR,
-                    'message' => 'Gagal memproses file: ' . $e->getMessage(),
+                    'message' => safe_exception_message($e, 'Gagal memproses file. Silakan coba lagi atau hubungi admin.'),
                 ];
             }
         }

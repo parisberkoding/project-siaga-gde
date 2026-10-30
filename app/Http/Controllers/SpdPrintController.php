@@ -71,6 +71,20 @@ class SpdPrintController extends Controller
             abort(404);
         }
 
+        // BUG-RBAC-003: aksi export memakai permission `lpj.export` (bukan
+        // `spd.view`). Pemilik/penumpang dokumen tetap boleh mengekspor
+        // dokumennya sendiri, sedangkan peran read-only tanpa lpj.export dan
+        // tanpa kepemilikan dokumen ditolak 404 (tidak membocorkan keberadaan
+        // dokumen).
+        $pemilikDokumen = $user !== null
+            && ((int) $laporan->user_id === (int) $user->id
+                || $surat->details()->where('user_id', $user->id)->exists());
+        $punyaHakExport = $user !== null && $user->hasPermission('lpj.export');
+
+        if (! $punyaHakExport && ! $pemilikDokumen) {
+            abort(404);
+        }
+
         $spending = $laporan->getSpendingPerKategori();
         $rincian = $laporan->getRincianPerTanggal();
         $grandTotalRincian = $laporan->getGrandTotalRincian();

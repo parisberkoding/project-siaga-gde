@@ -193,12 +193,28 @@ class RequestManagementController extends Controller
             'gasoline_type' => 'required|string',
             'bill_payment' => $billRules,
             'requester_notes' => 'nullable|string|max:500',
+            // BUG-SEC-002: kunci idempotensi dari form, mencegah submit ganda.
+            'idempotency_key' => 'nullable|string|max:100',
         ], $messages);
 
         // ✅ Kunci per user: cek slot + insert diserialisasi, sehingga double
         // submit (klik ganda / koneksi lambat) tidak membuat dua permohonan.
         try {
             return Cache::lock('bbm-request-'.$user->id, 10)->block(5, function () use ($user, $validated) {
+                // ✅ BUG-SEC-002: idempotency key per form. Request kedua dengan
+                // key yang sama (mis. tombol diklik dua kali) ditolak sebelum
+                // menyentuh database, sehingga kuota slot tidak terpakai ganda.
+                $idempotencyKey = $validated['idempotency_key'] ?? null;
+                if ($idempotencyKey !== null && $idempotencyKey !== '') {
+                    $cacheKey = 'bbm-idem:'.$user->id.':'.sha1($idempotencyKey);
+
+                    if (! Cache::add($cacheKey, true, now()->addMinutes(10))) {
+                        return back()
+                            ->withInput()
+                            ->with('error', 'Permohonan ini sudah atau sedang diproses. Mohon tidak mengirim ulang.');
+                    }
+                }
+
                 // ✅ Validasi: Max slots
                 $maxSlots = $this->calculateUserMaxSlots($user->id);
                 $activeCount = Permohonan::where('requester_id', $user->id)
@@ -364,7 +380,7 @@ class RequestManagementController extends Controller
 
                     return back()
                         ->withInput()
-                        ->with('error', 'Gagal mengajukan permohonan: '.$e->getMessage());
+                        ->with('error', safe_exception_message($e, 'Gagal mengajukan permohonan. Silakan coba lagi atau hubungi admin.'));
                 }
             });
         } catch (LockTimeoutException $e) {
@@ -470,7 +486,7 @@ class RequestManagementController extends Controller
             \Log::error('Cancel request error: '.$e->getMessage());
             \Log::error($e->getTraceAsString());
 
-            return back()->with('error', '❌ Gagal membatalkan permohonan: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, '❌ Gagal membatalkan permohonan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -784,7 +800,7 @@ class RequestManagementController extends Controller
 
             return back()
                 ->withInput()
-                ->with('error', 'Gagal mengirim laporan: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal mengirim laporan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -891,7 +907,7 @@ class RequestManagementController extends Controller
 
             return back()
                 ->withInput()
-                ->with('error', 'Gagal upload bukti: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal upload bukti. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -1221,7 +1237,7 @@ class RequestManagementController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return back()->with('error', 'Gagal memproses permohonan: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, 'Gagal memproses permohonan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -1356,7 +1372,7 @@ class RequestManagementController extends Controller
             \Log::error('Bulk process error: '.$e->getMessage());
             \Log::error($e->getTraceAsString());
 
-            return back()->with('error', 'Gagal memproses bulk action: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, 'Gagal memproses bulk action. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -1443,7 +1459,7 @@ class RequestManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error processing print data: '.$e->getMessage(),
+                'message' => safe_exception_message($e, 'Gagal memproses data cetak. Silakan coba lagi atau hubungi admin.'),
             ], 500);
         }
     }

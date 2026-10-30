@@ -148,6 +148,9 @@
                     @else
                     <form action="{{ route('requester-create') }}" method="POST" id="requestForm">
                         @csrf
+                        {{-- BUG-SEC-002: idempotency key unik per form; request
+                             kedua dengan key sama (double click) ditolak server. --}}
+                        <input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
 
                         {{--
                         ============================================================
@@ -484,6 +487,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // ─── Helpers ───────────────────────────────────────────────
     function escapeHtml(str) {
         return String(str ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+    }
+
+    // BUG-SEC-002: nonaktifkan tombol submit begitu form dikirim agar klik
+    // ganda tidak menghasilkan dua pengajuan. Server tetap memvalidasi lewat
+    // mutex lock + idempotency key.
+    const requestForm = document.getElementById('requestForm');
+    if (requestForm) {
+        requestForm.addEventListener('submit', () => {
+            const btn = document.getElementById('submitBtn');
+            if (!btn || btn.disabled) {
+                return;
+            }
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Mengirim...';
+        });
     }
 });
 </script>

@@ -233,7 +233,7 @@ class ReportingController extends Controller
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menganalisis struk: ' . $e->getMessage(),
+                'message' => safe_exception_message($e, 'Gagal menganalisis struk. Silakan coba lagi atau hubungi admin.'),
             ], 500);
         }
     }
@@ -404,7 +404,7 @@ class ReportingController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
+                ->with('error', safe_exception_message($e, 'Terjadi kesalahan. Silakan coba lagi atau hubungi admin.'))
                 ->withInput();
         }
     }
@@ -623,7 +623,7 @@ class ReportingController extends Controller
                 ->with('success', '✅ Laporan BBM operasional berhasil dikirim.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->with('error', 'Gagal mengirim laporan: ' . $e->getMessage());
+            return back()->withInput()->with('error', safe_exception_message($e, 'Gagal mengirim laporan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 

@@ -292,7 +292,7 @@ class VehicleRepairmentDriverController extends Controller
                 Storage::disk('public')->delete($photoPath);
             }
             return redirect()->back()->withInput()
-                ->with('error', 'Gagal menyimpan transaksi: ' . $e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal menyimpan transaksi. Silakan coba lagi atau hubungi admin.'));
         }
     }
 

@@ -130,15 +130,21 @@ Route::middleware(['auth', 'permission:spd.view,spd.manage'])->prefix('spd')->na
     Route::get('/surat/{surat}/print', [SpdController::class, 'printSurat'])->name('surat.print');
     Route::get('/laporan/{laporan}/print', [SpdController::class, 'printLaporan'])->name('laporan.print');
 
-    // Cetak dokumen gabungan Surat SPD + LPJ (tersedia untuk semua role SPD)
-    Route::get('/laporan/{laporan}/export', [SpdPrintController::class, 'exportLpj'])->name('laporan.export');
-
     // Unduh terpisah: Lembar Lampiran Pemberian Dana Perjalanan Dinas.
     // HANYA sisi General Affairs (permission lpj.pencairan) — tidak ikut bundle
     // dokumen gabungan milik role lain.
     Route::get('/laporan/{laporan}/pemberian-dana', [SpdPrintController::class, 'exportPemberianDana'])
         ->middleware('permission:lpj.pencairan')
         ->name('laporan.pemberian-dana');
+});
+
+// BUG-RBAC-003: export dokumen LPJ memakai permission `lpj.export` secara
+// konsisten (bukan `spd.view`/`spd.manage`). Route ini sengaja tetap bisa
+// dijangkau pemilik dokumen (spd.view) dan Manager (lpj.export); keputusan
+// otorisasi akhir ada di SpdPrintController::exportLpj — pemegang lpj.export
+// atau pemilik/penumpang dokumen, selain itu 404.
+Route::middleware(['auth', 'permission:spd.view,spd.manage,lpj.export'])->prefix('spd')->name('spd.')->group(function () {
+    Route::get('/laporan/{laporan}/export', [SpdPrintController::class, 'exportLpj'])->name('laporan.export');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -367,6 +373,9 @@ Route::middleware(['auth', 'permission:vehicle.sparepart'])->group(function () {
             ->name('reject');
         Route::post('/{vprCode}/schedule', [VehicleSparepartRequestRepairController::class, 'schedule'])
             ->name('schedule');
+        // BUG-VPR-001: tombol "Tandai Selesai" + input biaya aktual di detail VPR.
+        Route::post('/{vprCode}/complete', [VehicleSparepartRequestRepairController::class, 'markCompleted'])
+            ->name('complete');
     });
 
     Route::get('/admin/transaction-monitoring', [VehicleSparepartRequestRepairController::class, 'transactionMonitoringIndex'])

@@ -10,6 +10,7 @@ use App\Models\Unit;
 use App\Services\Lunch\NameNormalizer;
 use App\Services\UnitScope;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class EmployeeDefaultController extends Controller
 {
@@ -86,8 +87,13 @@ class EmployeeDefaultController extends Controller
         $validated['source'] = 'admin';
         $validated['created_by'] = $request->user()?->id;
 
-        $employee = EmployeeDefault::create($validated);
-        $this->syncAliases($employee, $request->input('aliases', ''));
+        // BUG-LNC-001: karyawan + alias disimpan atomik. Bila sync alias gagal,
+        // data karyawan tidak tertinggal setengah jadi (memicu data ganda saat
+        // user mengulang input).
+        DB::transaction(function () use ($request, $validated) {
+            $employee = EmployeeDefault::create($validated);
+            $this->syncAliases($employee, $request->input('aliases', ''));
+        });
 
         return back()->with('success', 'Karyawan berhasil ditambahkan.');
     }
@@ -104,8 +110,11 @@ class EmployeeDefaultController extends Controller
         $validated['verification_status'] = 'verified';
         $validated['source'] = $employeeDefault->source === 'scan' ? 'scan' : 'admin';
 
-        $employeeDefault->update($validated);
-        $this->syncAliases($employeeDefault, $request->input('aliases', ''));
+        // BUG-LNC-001: update data + alias dalam satu transaksi.
+        DB::transaction(function () use ($request, $employeeDefault, $validated) {
+            $employeeDefault->update($validated);
+            $this->syncAliases($employeeDefault, $request->input('aliases', ''));
+        });
 
         return back()->with('success', 'Data karyawan berhasil diperbarui.');
     }
