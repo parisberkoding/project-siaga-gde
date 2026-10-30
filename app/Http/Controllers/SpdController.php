@@ -1167,11 +1167,18 @@ class SpdController extends Controller
 
         $totalBudgetFromTable = $budgets->sum();
 
+        // BUG-LPJ-001: plafon harian = total dana / LAMA HARI PERJALANAN,
+        // bukan dibagi jumlah baris pencairan (surat_spd_budgets).
+        $totalDana = (float) $totalBudgetFromTable > 0
+            ? (float) $totalBudgetFromTable
+            : (float) ($surat->total_budget ?? 0);
+        $budgetPerHari = LpjPenggantian::hitungBudgetPerHari($surat, $totalDana);
+
         // ✅ Hitung total pengeluaran
         $totalPengeluaran = collect($request->items)->sum('nominal');
 
         // Budget kini opsional — over budget hanya dihitung bila budget diisi
-        $isOverBudget = $totalBudgetFromTable > 0 && $totalPengeluaran > $totalBudgetFromTable;
+        $isOverBudget = $totalDana > 0 && $totalPengeluaran > $totalDana;
 
         DB::beginTransaction();
         try {
@@ -1190,9 +1197,7 @@ class SpdController extends Controller
                 'uang_dari' => $request->uang_dari ?? 'KAS',
                 'jumlah_diberikan' => $request->jumlah_diberikan ?? 0,
                 'total_pengeluaran' => $totalPengeluaran,
-                'budget_per_hari' => $totalBudgetFromTable > 0
-                    ? round($totalBudgetFromTable / max($budgets->count(), 1))
-                    : 0,
+                'budget_per_hari' => $budgetPerHari,
                 'catatan' => $request->catatan ?? '',
                 'status' => 'pending',
                 'is_late' => $isOverdue,
@@ -1257,7 +1262,7 @@ class SpdController extends Controller
             }
             if ($isOverBudget) {
                 $message .= ' ⚠️ Over budget Rp '.
-                    number_format($totalPengeluaran - $totalBudgetFromTable, 0, ',', '.').'.';
+                    number_format($totalPengeluaran - $totalDana, 0, ',', '.').'.';
             }
 
             return redirect()->route('requester.lpj.index')
@@ -1352,7 +1357,13 @@ class SpdController extends Controller
             ->groupBy('tanggal')
             ->map(fn ($items) => $items->sum('nominal'));
 
-        $isOverBudget = $totalBudgetFromTable > 0 && $totalPengeluaran > $totalBudgetFromTable;
+        // BUG-LPJ-001: plafon harian = total dana / lama hari perjalanan.
+        $totalDana = (float) $totalBudgetFromTable > 0
+            ? (float) $totalBudgetFromTable
+            : (float) ($surat->total_budget ?? 0);
+        $budgetPerHari = LpjPenggantian::hitungBudgetPerHari($surat, $totalDana);
+
+        $isOverBudget = $totalDana > 0 && $totalPengeluaran > $totalDana;
 
         DB::beginTransaction();
         try {
@@ -1366,6 +1377,7 @@ class SpdController extends Controller
                 'odo_after' => $request->odo_after,
                 'kebutuhan_bbm_liter' => $request->kebutuhan_bbm_liter,
                 'total_pengeluaran' => $totalPengeluaran,
+                'budget_per_hari' => $budgetPerHari,
                 'catatan' => $request->catatan ?? '',
                 'status' => 'pending',
                 'rejected_by' => null,
@@ -1718,11 +1730,19 @@ class SpdController extends Controller
      */
     public function approveLaporan(LpjPenggantian $laporan)
     {
+        // BUG-LPJ-003: "setujui semua sekaligus" adalah jalur final. Hanya
+        // Management/superadmin (lpj.validate_management) yang boleh memakainya
+        // agar validasi Admin GA tidak melompati antrean Manager.
+        if (! Auth::user()->hasPermission('lpj.validate_management')) {
+            return redirect()->back()
+                ->with('error', 'Persetujuan final hanya dapat dilakukan Management. Validasi Divisi GA tidak boleh melompati tahap Manager.');
+        }
+
         $laporan = LpjPenggantian::pending()->findOrFail($laporan->id);
 
         DB::beginTransaction();
         try {
-            // Simple approve (superadmin = approve both)
+            // Simple approve (superadmin = approve all)
             $laporan->approve(Auth::id());
 
             DB::commit();

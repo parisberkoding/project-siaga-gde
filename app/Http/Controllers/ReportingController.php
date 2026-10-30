@@ -306,8 +306,16 @@ class ReportingController extends Controller
         $totalPengeluaran = collect($request->items)
             ->where('struk_kategori', '!=', 'Tambahan')
             ->sum('nominal');
+
+        // BUG-LPJ-001: plafon harian = total dana / lama hari perjalanan,
+        // bukan dibagi jumlah baris pencairan.
+        $totalDana = (float) $totalBudgetFromTable > 0
+            ? (float) $totalBudgetFromTable
+            : (float) ($surat->total_budget ?? 0);
+        $budgetPerHari = LpjPenggantian::hitungBudgetPerHari($surat, $totalDana);
+
         // Budget kini opsional — over budget hanya dihitung bila budget diisi
-        $isOverBudget = $totalBudgetFromTable > 0 && $totalPengeluaran > $totalBudgetFromTable;
+        $isOverBudget = $totalDana > 0 && $totalPengeluaran > $totalDana;
         $isOverdue = $surat->isLpjDeadlineOverdue();
 
         DB::beginTransaction();
@@ -327,9 +335,7 @@ class ReportingController extends Controller
                 'uang_dari'         => $request->uang_dari ?? 'KAS',
                 'jumlah_diberikan'  => $request->jumlah_diberikan ?? 0,
                 'total_pengeluaran' => $totalPengeluaran,
-                'budget_per_hari'   => $totalBudgetFromTable > 0
-                    ? round($totalBudgetFromTable / max($budgets->count(), 1))
-                    : 0,
+                'budget_per_hari'   => $budgetPerHari,
                 'catatan'           => $request->catatan ?? '',
                 'status'            => 'pending',
                 'is_late'           => $isOverdue,
