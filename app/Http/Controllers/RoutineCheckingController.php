@@ -214,7 +214,7 @@ class RoutineCheckingController extends Controller
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Gagal menyimpan pengecekan: ' . $e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal menyimpan pengecekan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 

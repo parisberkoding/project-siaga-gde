@@ -240,7 +240,7 @@ class BodyCheckingController extends Controller
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Gagal menyimpan pengecekan body: ' . $e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal menyimpan pengecekan body. Silakan coba lagi atau hubungi admin.'));
         }
     }
 

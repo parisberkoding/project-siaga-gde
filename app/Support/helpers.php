@@ -13,6 +13,34 @@ if (!function_exists('csp_nonce')) {
     }
 }
 
+if (!function_exists('safe_exception_message')) {
+    /**
+     * Pesan exception yang aman ditampilkan ke pengguna (BUG-SEC-004).
+     *
+     * Pesan asli exception bisa memuat nama tabel, kolom, query SQL, path
+     * server, atau detail internal lain. Detail tersebut TIDAK boleh sampai ke
+     * layar pengguna; cukup dicatat ke log internal lewat Log::error (beserta
+     * object exception untuk trace lengkap). Yang dikembalikan hanya pesan
+     * ramah yang diberikan pemanggil.
+     *
+     * @param  \Throwable  $e       Exception asli.
+     * @param  string       $pesan  Pesan ramah untuk pengguna.
+     * @param  array        $context Konteks tambahan untuk log (user_id, dsb).
+     */
+    function safe_exception_message(
+        \Throwable $e,
+        string $pesan = 'Terjadi kesalahan pada sistem. Silakan coba lagi atau hubungi admin.',
+        array $context = []
+    ): string {
+        \Illuminate\Support\Facades\Log::error(
+            $pesan.' ['.class_basename($e).'] '.$e->getMessage(),
+            $context + ['exception' => $e]
+        );
+
+        return $pesan;
+    }
+}
+
 if (!function_exists('feature_is_production')) {
     /**
      * Apakah sebuah fitur sudah production (boleh dilihat user biasa)?

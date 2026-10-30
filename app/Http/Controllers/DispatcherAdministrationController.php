@@ -185,7 +185,7 @@ class DispatcherAdministrationController extends Controller
 
             return redirect()
                 ->route('dispatcher.dispatcher-dashboard')
-                ->with('error', 'Gagal generate periode: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal generate periode. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -243,7 +243,7 @@ class DispatcherAdministrationController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'Gagal memperbarui assignment: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal memperbarui assignment. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -467,7 +467,7 @@ class DispatcherAdministrationController extends Controller
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Gagal mengajukan permohonan: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal mengajukan permohonan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -558,7 +558,7 @@ class DispatcherAdministrationController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'Gagal mengajukan permohonan: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal mengajukan permohonan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 

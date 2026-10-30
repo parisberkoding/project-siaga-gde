@@ -47,7 +47,7 @@ class MasterGasolineController extends Controller
 
             return back()->with($result['failed'] > 0 ? 'error' : 'success', $message);
         } catch (Throwable $e) {
-            return back()->with('error', 'Gagal sinkronisasi harga BBM: ' . $e->getMessage());
+            return back()->with('error', safe_exception_message($e, 'Gagal sinkronisasi harga BBM. Silakan coba lagi atau hubungi admin.'));
         }
     }
 }

@@ -174,10 +174,20 @@
                                            class="btn btn-sm btn-outline-primary" title="Detail">
                                             <i class="bi bi-eye"></i>
                                         </a>
-                                        <a href="{{ route('spd.laporan.export', $lpj) }}"
-                                           class="btn btn-sm btn-outline-primary" target="_blank" title="Cetak SPD + LPJ (1 bundel: tabel, spending, lampiran)">
-                                            <i class="bi bi-file-earmark-pdf"></i>
-                                        </a>
+                                        {{-- BUG-RBAC-003: export = permission lpj.export.
+                                             Pemilik tanpa lpj.export tetap bisa mencetak
+                                             dokumen yang sudah approved lewat route print. --}}
+                                        @if(auth()->user()->hasPermission('lpj.export'))
+                                            <a href="{{ route('spd.laporan.export', $lpj) }}"
+                                               class="btn btn-sm btn-outline-primary" target="_blank" title="Export SPD + LPJ (1 bundel: tabel, spending, lampiran)">
+                                                <i class="bi bi-file-earmark-pdf"></i>
+                                            </a>
+                                        @elseif($lpj->status === 'approved')
+                                            <a href="{{ route('spd.laporan.print', $lpj) }}"
+                                               class="btn btn-sm btn-outline-primary" target="_blank" title="Cetak SPD + LPJ">
+                                                <i class="bi bi-printer"></i>
+                                            </a>
+                                        @endif
                                         @if($lpj->status == 'rejected')
                                             @can('permission', 'lpj.update')
                                             <a href="{{ route('requester.lpj.edit', $lpj) }}"

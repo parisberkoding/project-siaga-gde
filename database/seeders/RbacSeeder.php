@@ -191,7 +191,7 @@ class RbacSeeder extends Seeder
                     'dashboard.view',
                     'bbm.view', 'bbm.approve', 'bbm.export',
                     'spd.manage', 'spd.update',
-                    'lpj.validate', 'lpj.pencairan',
+                    'lpj.validate', 'lpj.pencairan', 'lpj.export',
                     'vehicle.view', 'vehicle.sparepart', 'vehicle.scan',
                     'lunch.view', 'lunch.export', 'lunch.manage',
                     'settings.view',
