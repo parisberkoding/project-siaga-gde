@@ -768,6 +768,9 @@ class SpdController extends Controller
     {
         $surat = SuratSpd::with('budgets')->findOrFail($surat->id);
 
+        // F-03 / BUG-SPD-002: hanya pengelola unit SPD ini (global = semua).
+        UnitScope::for(Auth::user())->ensureUnit($surat->unit_id);
+
         if ($surat->type !== 'mendadak') {
             return redirect()->back()->with('error', 'Hanya SPD mendadak yang bisa input budget saat cetak.');
         }
@@ -1741,6 +1744,13 @@ class SpdController extends Controller
             'rejector',
         ])->findOrFail($laporan->id);
 
+        // F-01 / BUG-SEC-001: detail LPJ hanya untuk pemilik/penumpang,
+        // pengelola unit yang sama, atau user global. Record ada tetapi tidak
+        // boleh dilihat -> 404 (bukan 403) agar keberadaan dokumen tidak bocor.
+        if (! $laporan->isVisibleToUser(Auth::user())) {
+            abort(404);
+        }
+
         return view('superadmin.spd.lpj.detail', compact('laporan'));
     }
 
@@ -1842,6 +1852,12 @@ class SpdController extends Controller
             'rejector',
         ])->findOrFail($laporan->id);
 
+        // F-01 / BUG-SEC-001: halaman validasi hanya untuk pemilik/penumpang,
+        // pengelola unit yang sama, atau user global. Lintas unit -> 404.
+        if (! $laporan->isVisibleToUser(Auth::user())) {
+            abort(404);
+        }
+
         // QR tanda tangan hanya dibuat setelah user (penumpang) memvalidasi.
         $qrSvg = $laporan->approved_by_pengguna ? $this->generateValidationQr($laporan) : null;
 
@@ -1911,6 +1927,9 @@ class SpdController extends Controller
      */
     public function storeFundAddition(Request $request, SuratSpd $surat)
     {
+        // F-03 / BUG-SPD-002: hanya pengelola unit SPD ini (global = semua).
+        UnitScope::for(Auth::user())->ensureUnit($surat->unit_id);
+
         $request->validate([
             'nominal_tambahan' => 'required|numeric|min:0',
             'alasan' => 'required|string|min:5',

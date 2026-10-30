@@ -156,6 +156,18 @@ class SpdPrintController extends Controller
             abort(404, 'Surat SPD tidak ditemukan untuk LPJ ini.');
         }
 
+        // F-01 / BUG-SEC-001: lampiran pemberian dana juga dokumen LPJ —
+        // pemilik, penumpang, pengelola unit yang sama, atau user global.
+        // Unit lain -> 404 agar keberadaan dokumen tidak bocor.
+        $user = request()->user();
+
+        $bolehLihat = $surat->isVisibleToUser($user)
+            || ($user !== null && (int) $laporan->user_id === (int) $user->id);
+
+        if (! $bolehLihat) {
+            abort(404);
+        }
+
         return view('templates.template-surat.template-pemberian-dana', [
             'laporan'     => $laporan,
             'surat'       => $surat,

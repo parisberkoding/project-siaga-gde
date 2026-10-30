@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\Concerns\HasSafeSlugRouteKey;
+use App\Services\UnitScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;  // ✅ ADDED: Missing import
@@ -450,6 +451,50 @@ class LpjPenggantian extends Model
         }
 
         $query->whereHas('suratSpd', fn ($q) => $q->where('surat_spds.unit_id', $unitId));
+    }
+
+    /**
+     * Apakah user boleh membuka detail LPJ ini (F-01 / BUG-SEC-001).
+     *
+     * Aturan:
+     *   - pemilik LPJ (user_id) dan penumpang SPD -> boleh;
+     *   - user global (Pusat/superadmin/developers) -> semua LPJ;
+     *   - pengelola LPJ (GA/Manager/pencairan) -> hanya unitnya sendiri;
+     *   - requester lain di unit yang sama -> tidak boleh (404), konsisten
+     *     dengan cetak/export SPD & LPJ.
+     */
+    public function isVisibleToUser(?User $user): bool
+    {
+        if ($user === null) {
+            return false;
+        }
+
+        if ($this->user_id !== null && (int) $this->user_id === (int) $user->id) {
+            return true;
+        }
+
+        $surat = $this->suratSpd;
+
+        // Penumpang SPD (termasuk lintas unit) & pengelola unit tetap boleh.
+        if ($surat !== null && $surat->isVisibleToUser($user)) {
+            return true;
+        }
+
+        $scope = UnitScope::for($user);
+
+        if ($scope->isGlobal()) {
+            return true;
+        }
+
+        $peranPengelola = [
+            'lpj.validate', 'lpj.validate_management', 'lpj.pencairan', 'lpj.export',
+        ];
+
+        if (! $user->hasPermission($peranPengelola)) {
+            return false;
+        }
+
+        return $scope->allowsUnit($surat?->unit_id);
     }
 
     // ============================================================

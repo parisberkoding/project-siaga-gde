@@ -498,7 +498,10 @@ class SuperadminController extends Controller
                 'approvedRequest',
                 'authorizer',
             ])
-                ->whereBetween('request_date', [$startDate, $endDate]);
+                ->whereBetween('request_date', [$startDate, $endDate])
+                // F-02 / BUG-BBM-005: cetak laporan hanya memuat unit user
+                // (global/Pusat tetap tanpa batas).
+                ->inUnit(UnitScope::for($request->user())->unitId());
 
             // Filter berdasarkan status (dari checkbox modal)
             if ($request->filled('status') && is_array($request->status) && count($request->status) > 0) {
@@ -2704,7 +2707,9 @@ class SuperadminController extends Controller
      */
     public function updatePermohonan(Request $request, $id)
     {
-        $permohonan = Permohonan::findOrFail($id);
+        // F-02 / BUG-BBM-004: unit lain -> 404 (keberadaan data tidak bocor).
+        $permohonan = Permohonan::inUnit(UnitScope::for($request->user())->unitId())
+            ->findOrFail($id);
 
         // ✅ Budget dinamis dari Master Vehicle (nominal_full_tank), bukan hardcoded
         $maxNominal = null;
@@ -2773,10 +2778,12 @@ class SuperadminController extends Controller
             'cancel_reason' => 'nullable|string|max:500',
         ]);
 
+        // F-02 / BUG-BBM-004: unit lain -> 404 sebelum transaksi apa pun.
+        $permohonan = Permohonan::inUnit(UnitScope::for($request->user())->unitId())
+            ->findOrFail($id);
+
         try {
             DB::beginTransaction();
-
-            $permohonan = Permohonan::findOrFail($id);
 
             // Update status
             $permohonan->update([
@@ -2811,10 +2818,12 @@ class SuperadminController extends Controller
      */
     public function deletePermohonan($id)
     {
+        // F-02 / BUG-BBM-004: unit lain -> 404 sebelum transaksi apa pun.
+        $permohonan = Permohonan::inUnit(UnitScope::for(Auth::user())->unitId())
+            ->findOrFail($id);
+
         try {
             DB::beginTransaction();
-
-            $permohonan = Permohonan::findOrFail($id);
 
             // Jangan hapus jika sudah completed
             if ($permohonan->status === 'completed') {
@@ -2853,7 +2862,9 @@ class SuperadminController extends Controller
     {        // Catatan: laporan ini adalah BBM OPERASIONAL (Transaction_Proofs), 1 permohonan = 1 struk.
         // Rincian per-item dengan gambar + kategori + item_code (struk_items) khusus SPD,
         // divisualisasikan pada validasi LPJ (SpdController::showLaporanSuperadmin → superadmin/spd/lpj/*).
-        $laporan = Transaction_Proofs::findOrFail($id);
+        // F-02 / BUG-BBM-005: laporan transaksi unit lain -> 404.
+        $laporan = Transaction_Proofs::inUnit(UnitScope::for($request->user())->unitId())
+            ->findOrFail($id);
 
         $validated = $request->validate([
             'purchase_date' => 'required|date|before_or_equal:today',
@@ -2952,6 +2963,11 @@ class SuperadminController extends Controller
             return back()->with('error', 'Format data tidak valid');
         }
 
+        // F-02 / BUG-BBM-004: keputusan untuk unit lain dihitung sebagai
+        // "dilewati" — bukan menggagalkan seluruh batch, dan TIDAK boleh
+        // membuat voucher untuk permohonan unit lain.
+        $unitId = UnitScope::for($request->user())->unitId();
+
         try {
             DB::beginTransaction();
 
@@ -2966,7 +2982,9 @@ class SuperadminController extends Controller
                     continue;
                 }
 
-                $permohonan = Permohonan::where('status', 'pending')->find($decision['request_id']);
+                $permohonan = Permohonan::where('status', 'pending')
+                    ->inUnit($unitId)
+                    ->find($decision['request_id']);
 
                 if (! $permohonan) {
                     $skippedCount++;
@@ -3037,11 +3055,13 @@ class SuperadminController extends Controller
      */
     public function deleteLaporan($id)
     {
+        // F-02 / BUG-BBM-005: laporan transaksi unit lain -> 404 sebelum
+        // penghapusan file/baris apa pun.
+        $laporan = Transaction_Proofs::inUnit(UnitScope::for(Auth::user())->unitId())
+            ->findOrFail($id);
 
         try {
             DB::beginTransaction();
-
-            $laporan = Transaction_Proofs::findOrFail($id);
 
             // Hapus files (privat maupun legacy publik)
             if ($laporan->struk_bbm_path) {
