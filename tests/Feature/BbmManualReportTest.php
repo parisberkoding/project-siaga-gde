@@ -7,6 +7,7 @@ use App\Models\StrukItem;
 use App\Models\Transaction_Proofs;
 use App\Models\User;
 use App\Models\VehicleAndToolsConsumers;
+use App\Support\MediaStorage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -21,6 +22,7 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     $this->seed(\Database\Seeders\RbacSeeder::class);
 
+    Storage::fake('local');
     Storage::fake('public');
 
     $this->requester = User::factory()->create(['role' => 'requester']);
@@ -160,7 +162,7 @@ it('mengompres foto struk pada laporan cepat voucher', function () {
         ->assertSessionHas('success');
 
     $proof = Transaction_Proofs::where('req_id', $this->permohonan->id)->firstOrFail();
-    $stored = Storage::disk('public')->get($proof->struk_bbm_path);
+    $stored = MediaStorage::get($proof->struk_bbm_path);
 
     expect($stored)->not->toBeEmpty()
         // File tersimpan adalah JPEG hasil kompresi, bukan salinan ukuran penuh.
@@ -168,5 +170,5 @@ it('mengompres foto struk pada laporan cepat voucher', function () {
         ->and(strlen($stored))->toBeLessThan(strlen($original));
 
     $item = StrukItem::latest('id')->firstOrFail();
-    expect(strlen(Storage::disk('public')->get($item->path_image)))->toBeLessThan(strlen($original));
+    expect(strlen((string) MediaStorage::get($item->path_image)))->toBeLessThan(strlen($original));
 });
