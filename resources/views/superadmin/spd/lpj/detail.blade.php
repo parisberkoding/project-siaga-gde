@@ -7,13 +7,20 @@
 --}}
 
 @section('content')
+@php
+    // Halaman detail yang sama dipakai antrean GA dan antrean Management.
+    // Tautan kembali harus mengikuti konteks agar peran Management tanpa
+    // permission `lpj.validate` tidak mendapat 403.
+    $isManagementContext = request()->routeIs('lpj.management.*');
+    $indexRoute = $isManagementContext ? 'lpj.management.index' : 'lpj.superadmin.index';
+@endphp
 <div class="pagetitle">
     <h1>Detail Laporan Pertanggungjawaban</h1>
     <nav>
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{ route('superadmin-dashboard') }}">Home</a></li>
             <li class="breadcrumb-item">SPD</li>
-            <li class="breadcrumb-item"><a href="{{ route('lpj.superadmin.index') }}">Validasi LPJ</a></li>
+            <li class="breadcrumb-item"><a href="{{ route($indexRoute) }}">Validasi LPJ</a></li>
             <li class="breadcrumb-item active">Detail</li>
         </ol>
     </nav>
@@ -328,9 +335,15 @@
                         <h5 class="card-title"><i class="bi bi-clock-history"></i> Riwayat Validasi</h5>
                         <div class="alert {{ $laporan->status == 'approved' ? 'alert-success' : 'alert-danger' }} mb-0">
                             @if($laporan->status == 'approved')
-                                <strong><i class="bi bi-check-circle"></i> Disetujui</strong> oleh
-                                <strong>{{ $laporan->approverPengguna->nama_lengkap ?? $laporan->approverPengguna->name ?? '-' }}</strong><br>
-                                <small>{{ $laporan->approved_pengguna_at ? $laporan->approved_pengguna_at->translatedFormat('d F Y H:i') : '-' }}</small>
+                                <strong><i class="bi bi-check-circle"></i> Disetujui</strong>
+                                @if($laporan->approverManagement)
+                                    oleh <strong>{{ $laporan->approverManagement->nama_lengkap ?? $laporan->approverManagement->name ?? '-' }}</strong> (Management)<br>
+                                    <small>{{ $laporan->approved_management_at ? $laporan->approved_management_at->translatedFormat('d F Y H:i') : '-' }}</small>
+                                @else
+                                    {{-- LPJ lama yang sudah final sebelum alur 3 tahap --}}
+                                    oleh <strong>{{ $laporan->approverPengguna->nama_lengkap ?? $laporan->approverPengguna->name ?? '-' }}</strong><br>
+                                    <small>{{ $laporan->approved_pengguna_at ? $laporan->approved_pengguna_at->translatedFormat('d F Y H:i') : '-' }}</small>
+                                @endif
                             @else
                                 <strong><i class="bi bi-x-circle"></i> Ditolak</strong> oleh
                                 <strong>{{ $laporan->rejector->nama_lengkap ?? $laporan->rejector->name ?? '-' }}</strong><br>
@@ -345,7 +358,7 @@
 
         {{-- Action Panel (Right Column) --}}
         <div class="col-lg-4">
-            {{-- Progress Validasi (2 Tahap) --}}
+            {{-- Progress Validasi (3 Tahap) --}}
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title"><i class="bi bi-diagram-3"></i> Progress Validasi</h6>
@@ -362,10 +375,17 @@
                                 ? '<span class="badge bg-success">Disetujui</span>'
                                 : '<span class="badge bg-secondary">Menunggu</span>' !!}
                         </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span><i class="bi bi-person-badge"></i> Management (Final)</span>
+                            {!! $laporan->approved_by_management
+                                ? '<span class="badge bg-success">Disetujui</span>'
+                                : '<span class="badge bg-secondary">Menunggu</span>' !!}
+                        </li>
                     </ul>
                     <small class="text-muted d-block mt-2">
-                        Dua tanda tangan ini dicatat terpisah. Bila orang yang sama berperan ganda,
-                        tetap divalidasi dua kali untuk akuntabilitas.
+                        Tiga tanda tangan ini dicatat terpisah. LPJ baru berstatus
+                        <strong>Disetujui</strong> setelah User, Divisi GA, dan Management
+                        menyelesaikan validasinya.
                     </small>
                 </div>
             </div>
@@ -413,6 +433,26 @@
                                     <i class="bi bi-shield-check"></i> Validasi sebagai Divisi GA
                                 </button>
                             </form>
+                        @endif
+
+                        {{-- Tahap 3: Management — final, setelah User & Divisi GA --}}
+                        @if(auth()->user()->hasPermission('lpj.validate_management') && !$laporan->approved_by_management)
+                            @if($laporan->approved_by_pengguna && $laporan->approved_by_divisi_ga)
+                                <form action="{{ route('lpj.management.approve', $laporan) }}" method="POST" class="mb-2">
+                                    @csrf
+                                    <button type="submit" class="btn btn-success w-100"
+                                            onclick="return confirm('Menyetujui LPJ sebagai Management (validasi final)? Dokumen akan siap dicetak.');">
+                                        <i class="bi bi-person-badge"></i> Validasi Final sebagai Management
+                                    </button>
+                                </form>
+                            @else
+                                <div class="alert alert-info py-2 mb-2">
+                                    <small>
+                                        <i class="bi bi-info-circle"></i>
+                                        Validasi final Management menunggu validasi User &amp; Divisi GA selesai.
+                                    </small>
+                                </div>
+                            @endif
                         @endif
 
                         {{-- Tolak (Divisi GA) --}}
@@ -479,7 +519,7 @@
             {{-- Back Button --}}
             <div class="card">
                 <div class="card-body">
-                    <a href="{{ route('lpj.superadmin.index') }}" class="btn btn-secondary w-100">
+                    <a href="{{ route($indexRoute) }}" class="btn btn-secondary w-100">
                         <i class="bi bi-arrow-left"></i> Kembali ke Daftar
                     </a>
                 </div>

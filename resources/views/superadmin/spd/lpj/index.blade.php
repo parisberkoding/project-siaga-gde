@@ -6,7 +6,9 @@
     // nyasar ke tahap validasi yang lain.
     $showRoute = request()->routeIs('lpj.pengguna.*')
         ? 'lpj.pengguna.show'
-        : 'lpj.superadmin.show';
+        : (request()->routeIs('lpj.management.*')
+            ? 'lpj.management.show'
+            : 'lpj.superadmin.show');
 @endphp
 
 @section('content')

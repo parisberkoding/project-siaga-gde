@@ -81,3 +81,51 @@ it('menolak export tanpa data voucher', function () {
         ->assertRedirect()
         ->assertSessionHas('error');
 });
+
+it('membatasi export voucher ke unit pengguna (tidak bocor ke unit lain)', function () {
+    $unitA = \App\Models\Unit::create(['code' => 'P2-UA', 'name' => 'Unit A', 'is_active' => true]);
+    $unitB = \App\Models\Unit::create(['code' => 'P2-UB', 'name' => 'Unit B', 'is_active' => true]);
+
+    // Admin GA unit A; voucher pada beforeEach menjadi milik unit A.
+    $this->admin->update(['unit_id' => $unitA->id]);
+    $this->voucher->update(['unit_id' => $unitA->id]);
+    $this->voucher->permohonan->update(['unit_id' => $unitA->id]);
+
+    // Voucher unit B pada tanggal lain.
+    $vehicleB = VehicleAndToolsConsumers::factory()->create(['unit_id' => $unitB->id]);
+    $requesterB = User::factory()->create(['role' => 'requester', 'unit_id' => $unitB->id]);
+    $permohonanB = Permohonan::factory()->create([
+        'requester_id'         => $requesterB->id,
+        'consumerial_tools_id' => $vehicleB->id,
+        'status'               => 'approved',
+        'request_date'         => now()->subDays(2),
+        'unit_id'              => $unitB->id,
+    ]);
+    $voucherB = Approved_Request::create([
+        'permohonan_id'  => $permohonanB->id,
+        'unit_id'        => $unitB->id,
+        'approval_date'  => now()->subDays(2),
+        'voucher_code'   => 'BBMGDE-TEST02-'.now()->format('dmy'),
+        'valid_until'    => now()->addDay(),
+        'approved_amount' => 200000,
+        'authorizer_id'  => $this->admin->id,
+        'status'         => 'approved',
+    ]);
+
+    // Export per-ID milik unit lain → tidak ada data (bukan 200 dengan bocor).
+    $this->actingAs($this->admin)
+        ->post(route('admin.vouchers.export'), ['ids' => [$voucherB->id]])
+        ->assertRedirect()
+        ->assertSessionHas('error');
+
+    // Export per-tanggal yang hanya berisi voucher unit lain → tidak ada data.
+    $this->actingAs($this->admin)
+        ->post(route('admin.vouchers.export'), ['date' => now()->subDays(2)->toDateString()])
+        ->assertRedirect()
+        ->assertSessionHas('error');
+
+    // Voucher unit sendiri tetap bisa diexport.
+    $this->actingAs($this->admin)
+        ->post(route('admin.vouchers.export'), ['ids' => [$this->voucher->id]])
+        ->assertStatus(200);
+});
