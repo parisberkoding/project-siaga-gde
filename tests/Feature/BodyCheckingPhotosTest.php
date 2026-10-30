@@ -139,3 +139,12 @@ it('menampilkan empat input foto sisi wajib pada form body checking', function (
     $response->assertSee('required', false);
     $response->assertSee('wajib');
 });
+
+it('tidak menyisakan penanda konflik git pada view body checking', function () {
+    $source = file_get_contents(resource_path('views/dispatcher/body-check/create.blade.php'));
+
+    expect($source)
+        ->not->toContain('<<<<<<<')
+        ->not->toContain('>>>>>>>')
+        ->not->toContain('cf7ec66');
+});

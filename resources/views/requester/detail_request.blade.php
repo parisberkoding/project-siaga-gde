@@ -103,8 +103,8 @@
                     @if($request->transactionProof->struk_bbm_path)
                     <div class="col-md-6 mb-3">
                         <label class="form-label small text-muted">Foto Struk BBM</label>
-                        <a href="{{ asset('storage/' . $request->transactionProof->struk_bbm_path) }}" target="_blank">
-                            <img src="{{ asset('storage/' . $request->transactionProof->struk_bbm_path) }}" alt="Struk BBM"
+                        <a href="{{ $request->transactionProof->struk_url }}" target="_blank">
+                            <img src="{{ $request->transactionProof->struk_url }}" alt="Struk BBM"
                                  style="max-height:180px; max-width:100%; border-radius:6px; object-fit:cover;" class="border">
                         </a>
                     </div>
@@ -112,8 +112,8 @@
                     @if($request->transactionProof->odometer_photo_path)
                     <div class="col-md-6 mb-3">
                         <label class="form-label small text-muted">Foto Odometer</label>
-                        <a href="{{ asset('storage/' . $request->transactionProof->odometer_photo_path) }}" target="_blank">
-                            <img src="{{ asset('storage/' . $request->transactionProof->odometer_photo_path) }}" alt="Odometer"
+                        <a href="{{ $request->transactionProof->odometer_url }}" target="_blank">
+                            <img src="{{ $request->transactionProof->odometer_url }}" alt="Odometer"
                                  style="max-height:180px; max-width:100%; border-radius:6px; object-fit:cover;" class="border">
                         </a>
                     </div>

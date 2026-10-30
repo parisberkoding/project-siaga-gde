@@ -3,9 +3,11 @@
 use App\Models\Approved_Request;
 use App\Models\Permohonan;
 use App\Models\Role;
+use App\Models\StrukItem;
 use App\Models\Transaction_Proofs;
 use App\Models\User;
 use App\Models\VehicleAndToolsConsumers;
+use App\Support\MediaStorage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -13,12 +15,14 @@ use Illuminate\Support\Facades\Storage;
 /**
  * BUG-BBM-002 — isian manual (tanpa metadata AI) harus sampai ke server dan
  * lolos validasi nominal, baik lewat payload parsial maupun tanpa array hidden.
+ * BUG-BBM-009 — foto struk jalur lapor cepat wajib dikompresi (bukan ukuran penuh).
  */
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->seed(\Database\Seeders\RbacSeeder::class);
 
+    Storage::fake('local');
     Storage::fake('public');
 
     $this->requester = User::factory()->create(['role' => 'requester']);
@@ -122,4 +126,49 @@ it('tetap menolak nominal manual yang tidak sesuai permohonan', function () {
 
     expect($this->permohonan->fresh()->status)->toBe('approved');
     expect(Transaction_Proofs::where('req_id', $this->permohonan->id)->count())->toBe(0);
+});
+
+it('mengompres foto struk pada laporan cepat voucher', function () {
+    if (! function_exists('imagecreatetruecolor')) {
+        $this->markTestSkipped('Ekstensi GD tidak tersedia.');
+    }
+
+    // Gambar besar dengan banyak detail → JPEG kualitas 100 berukuran besar.
+    $width = 1000;
+    $height = 1400;
+    $image = imagecreatetruecolor($width, $height);
+    $background = imagecolorallocate($image, 210, 40, 40);
+    imagefill($image, 0, 0, $background);
+
+    mt_srand(42);
+    for ($i = 0; $i < 2500; $i++) {
+        $color = imagecolorallocate($image, mt_rand(0, 255), mt_rand(0, 255), mt_rand(0, 255));
+        imagefilledellipse($image, mt_rand(0, $width), mt_rand(0, $height), 24, 24, $color);
+    }
+
+    ob_start();
+    imagejpeg($image, null, 100);
+    $original = ob_get_clean();
+    imagedestroy($image);
+
+    $this->actingAs($this->requester)
+        ->post(route('pelaporan.operational.store'), [
+            'permohonan_id' => $this->permohonan->id,
+            'purchase_date' => now()->format('Y-m-d'),
+            'volume_bbm'    => 20,
+            'nominal'       => 300000,
+            'foto_struk'    => UploadedFile::fake()->createWithContent('struk.jpg', $original),
+        ])
+        ->assertSessionHas('success');
+
+    $proof = Transaction_Proofs::where('req_id', $this->permohonan->id)->firstOrFail();
+    $stored = MediaStorage::get($proof->struk_bbm_path);
+
+    expect($stored)->not->toBeEmpty()
+        // File tersimpan adalah JPEG hasil kompresi, bukan salinan ukuran penuh.
+        ->and(bin2hex(substr($stored, 0, 2)))->toBe('ffd8')
+        ->and(strlen($stored))->toBeLessThan(strlen($original));
+
+    $item = StrukItem::latest('id')->firstOrFail();
+    expect(strlen((string) MediaStorage::get($item->path_image)))->toBeLessThan(strlen($original));
 });

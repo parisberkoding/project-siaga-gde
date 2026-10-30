@@ -74,7 +74,7 @@ class RbacController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->withInput()
-                ->with('error', 'Gagal membuat role: ' . $e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal membuat role. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -135,7 +135,7 @@ class RbacController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->withInput()
-                ->with('error', 'Gagal update role: ' . $e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal update role. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -163,7 +163,7 @@ class RbacController extends Controller
 
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Gagal hapus role: ' . $e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal hapus role. Silakan coba lagi atau hubungi admin.'));
         }
     }
 }

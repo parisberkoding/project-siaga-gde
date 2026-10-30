@@ -145,7 +145,7 @@
                                          <td class="text-end">Rp {{ number_format($detail->nominal, 0, ',', '.') }}</td>
                                          <td>
                                              @if($detail->strukItem && $detail->strukItem->path_image)
-                                                 <a href="{{ asset('storage/' . $detail->strukItem->path_image) }}"
+                                                 <a href="{{ $detail->strukItem->path_url }}"
                                                     target="_blank" class="btn btn-sm btn-outline-primary" title="Lihat struk">
                                                      <i class="bi bi-image"></i>
                                                  </a>
@@ -340,9 +340,16 @@
                         <h6 class="mb-0"><i class="bi bi-printer"></i> Cetak Dokumen</h6>
                     </div>
                     <div class="card-body">
-                        <a href="{{ route('spd.laporan.export', $laporan) }}" target="_blank" class="btn btn-primary w-100">
-                            <i class="bi bi-file-earmark-pdf"></i> Cetak SPD + LPJ
-                        </a>
+                        @if(auth()->user()->hasPermission('lpj.export'))
+                            <a href="{{ route('spd.laporan.export', $laporan) }}" target="_blank" class="btn btn-primary w-100">
+                                <i class="bi bi-file-earmark-pdf"></i> Export SPD + LPJ
+                            </a>
+                        @else
+                            {{-- BUG-RBAC-003: tanpa lpj.export, pemilik tetap bisa mencetak. --}}
+                            <a href="{{ route('spd.laporan.print', $laporan) }}" target="_blank" class="btn btn-primary w-100">
+                                <i class="bi bi-printer"></i> Cetak SPD + LPJ
+                            </a>
+                        @endif
                     </div>
                 </div>
             @endif

@@ -49,6 +49,9 @@
     .action-card.schedule { border-color: #0B50A1; }
     .action-card.schedule .action-header { background: #f0f2ff; color: #0B50A1; }
 
+    .action-card.complete { border-color: #4A7A1C; }
+    .action-card.complete .action-header { background: #d1e7dd; color: #4A7A1C; }
+
     /* Status Timeline (compact) */
     .status-flow {
         display: flex;
@@ -452,6 +455,48 @@
                         <div class="text-center py-3 text-muted">
                             <i class="bi bi-clock fs-3"></i>
                             <p class="mt-2 mb-0">Belum ada data transaksi service</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+            @endif
+
+            {{-- ── IN_SERVICE → Tandai Selesai + biaya aktual (BUG-VPR-001) ── --}}
+            @if($replacement->status === 'in_service')
+            <div class="action-card complete mb-3">
+                <div class="action-header">
+                    <i class="bi bi-check2-circle me-1"></i> Tandai Selesai
+                </div>
+                <div class="action-body">
+                    @if($replacement->transaction)
+                    <form action="{{ route('admin.replacement-approval.complete', $replacement->vpr_code) }}" method="POST"
+                          onsubmit="this.querySelector('button[type=submit]').disabled=true; this.querySelector('button[type=submit]').innerHTML='<i class=\'bi bi-hourglass-split me-1\'></i> Memproses...';">
+                        @csrf
+
+                        <div class="mb-3">
+                            <label for="actual_cost" class="form-label fw-semibold">
+                                Biaya Aktual <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">Rp</span>
+                                <input type="number" step="0.01" min="0" name="actual_cost" id="actual_cost"
+                                       class="form-control @error('actual_cost') is-invalid @enderror"
+                                       value="{{ old('actual_cost', $replacement->transaction->total_amount) }}" required>
+                            </div>
+                            @error('actual_cost')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                            <small class="text-muted">Biaya service yang benar-benar dikeluarkan (sesuai nota driver).</small>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-check2-circle me-1"></i> Tandai Selesai
+                        </button>
+                    </form>
+                    @else
+                        <div class="text-center py-2 text-muted">
+                            <i class="bi bi-clock fs-3"></i>
+                            <p class="mt-2 mb-0">Driver belum melaporkan transaksi service, VPR belum bisa ditutup.</p>
                         </div>
                     @endif
                 </div>

@@ -7,13 +7,20 @@
 --}}
 
 @section('content')
+@php
+    // Halaman detail yang sama dipakai antrean GA dan antrean Management.
+    // Tautan kembali harus mengikuti konteks agar peran Management tanpa
+    // permission `lpj.validate` tidak mendapat 403.
+    $isManagementContext = request()->routeIs('lpj.management.*');
+    $indexRoute = $isManagementContext ? 'lpj.management.index' : 'lpj.superadmin.index';
+@endphp
 <div class="pagetitle">
     <h1>Detail Laporan Pertanggungjawaban</h1>
     <nav>
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{ route('superadmin-dashboard') }}">Home</a></li>
             <li class="breadcrumb-item">SPD</li>
-            <li class="breadcrumb-item"><a href="{{ route('lpj.superadmin.index') }}">Validasi LPJ</a></li>
+            <li class="breadcrumb-item"><a href="{{ route($indexRoute) }}">Validasi LPJ</a></li>
             <li class="breadcrumb-item active">Detail</li>
         </ol>
     </nav>
@@ -181,9 +188,9 @@
                                         <td>
                                             @if($detail->strukItem && $detail->strukItem->path_image)
                                                 <div>
-                                                    <a href="{{ asset('storage/' . $detail->strukItem->path_image) }}"
+                                                    <a href="{{ $detail->strukItem->path_url }}"
                                                        target="_blank" title="Klik untuk perbesar">
-                                                        <img src="{{ asset('storage/' . $detail->strukItem->path_image) }}"
+                                                        <img src="{{ $detail->strukItem->path_url }}"
                                                              alt="{{ $detail->strukItem->item_code }}"
                                                              style="height: 60px; width: auto; max-width: 120px; object-fit: cover; border: 1px solid #E4E9F0; border-radius: 6px; cursor: zoom-in;"
                                                              onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
@@ -215,6 +222,21 @@
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title"><i class="bi bi-calculator"></i> Ringkasan Keuangan</h5>
+
+                    @php
+                        // BUG-LPJ-002: tampilkan jumlah efektif (nilai tersimpan,
+                        // atau total pencairan dana SPD bila belum pernah diisi).
+                        $jumlahDiberikanTampil = $laporan->jumlah_diberikan_efektif;
+                        $selisihDiberikan = $jumlahDiberikanTampil - (float) $laporan->total_pengeluaran;
+                        // Bila tidak ada data dana sama sekali, pertahankan nilai
+                        // tersimpan agar tidak menampilkan kekurangan penuh.
+                        $pengembalianTampil = $jumlahDiberikanTampil > 0
+                            ? max(0, $selisihDiberikan)
+                            : (float) $laporan->pengembalian;
+                        $kekuranganTampil = $jumlahDiberikanTampil > 0
+                            ? abs(min(0, $selisihDiberikan))
+                            : (float) $laporan->kekurangan;
+                    @endphp
 
                     <div class="row">
                         <div class="col-md-6">
@@ -249,15 +271,15 @@
                                 </tr>
                                 <tr>
                                     <td>Jumlah Diberikan:</td>
-                                    <td class="text-end">Rp {{ number_format($laporan->jumlah_diberikan, 0, ',', '.') }}</td>
+                                    <td class="text-end">Rp {{ number_format($jumlahDiberikanTampil, 0, ',', '.') }}</td>
                                 </tr>
-                                <tr class="{{ $laporan->pengembalian > 0 ? 'table-success' : '' }}">
+                                <tr class="{{ $pengembalianTampil > 0 ? 'table-success' : '' }}">
                                     <td>Pengembalian:</td>
-                                    <td class="text-end">Rp {{ number_format($laporan->pengembalian, 0, ',', '.') }}</td>
+                                    <td class="text-end">Rp {{ number_format($pengembalianTampil, 0, ',', '.') }}</td>
                                 </tr>
-                                <tr class="{{ $laporan->kekurangan > 0 ? 'table-warning' : '' }}">
+                                <tr class="{{ $kekuranganTampil > 0 ? 'table-warning' : '' }}">
                                     <td>Kekurangan:</td>
-                                    <td class="text-end">Rp {{ number_format($laporan->kekurangan, 0, ',', '.') }}</td>
+                                    <td class="text-end">Rp {{ number_format($kekuranganTampil, 0, ',', '.') }}</td>
                                 </tr>
                             </table>
 
@@ -292,7 +314,17 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small mb-1">Jumlah Diberikan (Rp)</label>
-                            <input type="number" class="form-control form-control-sm" name="jumlah_diberikan" value="{{ (float) $laporan->jumlah_diberikan }}" min="0" step="0.01">
+                            <input type="number" class="form-control form-control-sm" name="jumlah_diberikan" value="{{ (float) $laporan->jumlah_diberikan_efektif }}" min="0" step="0.01">
+                            <small class="text-muted d-block mt-1">
+                                @if((float) $laporan->jumlah_diberikan > 0)
+                                    Total pencairan dana SPD: Rp {{ number_format($laporan->total_pencairan, 0, ',', '.') }}.
+                                @elseif($laporan->total_pencairan > 0)
+                                    <span class="text-success"><i class="bi bi-magic"></i> Terisi otomatis dari total pencairan dana SPD:
+                                        Rp {{ number_format($laporan->total_pencairan, 0, ',', '.') }}. Simpan untuk menerapkan.</span>
+                                @else
+                                    Belum ada pencairan dana SPD untuk surat ini.
+                                @endif
+                            </small>
                         </div>
                         <div class="col-md-4 d-flex align-items-end">
                             <button type="submit" class="btn btn-sm btn-outline-primary w-100">
@@ -328,9 +360,15 @@
                         <h5 class="card-title"><i class="bi bi-clock-history"></i> Riwayat Validasi</h5>
                         <div class="alert {{ $laporan->status == 'approved' ? 'alert-success' : 'alert-danger' }} mb-0">
                             @if($laporan->status == 'approved')
-                                <strong><i class="bi bi-check-circle"></i> Disetujui</strong> oleh
-                                <strong>{{ $laporan->approverPengguna->nama_lengkap ?? $laporan->approverPengguna->name ?? '-' }}</strong><br>
-                                <small>{{ $laporan->approved_pengguna_at ? $laporan->approved_pengguna_at->translatedFormat('d F Y H:i') : '-' }}</small>
+                                <strong><i class="bi bi-check-circle"></i> Disetujui</strong>
+                                @if($laporan->approverManagement)
+                                    oleh <strong>{{ $laporan->approverManagement->nama_lengkap ?? $laporan->approverManagement->name ?? '-' }}</strong> (Management)<br>
+                                    <small>{{ $laporan->approved_management_at ? $laporan->approved_management_at->translatedFormat('d F Y H:i') : '-' }}</small>
+                                @else
+                                    {{-- LPJ lama yang sudah final sebelum alur 3 tahap --}}
+                                    oleh <strong>{{ $laporan->approverPengguna->nama_lengkap ?? $laporan->approverPengguna->name ?? '-' }}</strong><br>
+                                    <small>{{ $laporan->approved_pengguna_at ? $laporan->approved_pengguna_at->translatedFormat('d F Y H:i') : '-' }}</small>
+                                @endif
                             @else
                                 <strong><i class="bi bi-x-circle"></i> Ditolak</strong> oleh
                                 <strong>{{ $laporan->rejector->nama_lengkap ?? $laporan->rejector->name ?? '-' }}</strong><br>
@@ -345,7 +383,7 @@
 
         {{-- Action Panel (Right Column) --}}
         <div class="col-lg-4">
-            {{-- Progress Validasi (2 Tahap) --}}
+            {{-- Progress Validasi (3 Tahap) --}}
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title"><i class="bi bi-diagram-3"></i> Progress Validasi</h6>
@@ -362,10 +400,17 @@
                                 ? '<span class="badge bg-success">Disetujui</span>'
                                 : '<span class="badge bg-secondary">Menunggu</span>' !!}
                         </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span><i class="bi bi-person-badge"></i> Management (Final)</span>
+                            {!! $laporan->approved_by_management
+                                ? '<span class="badge bg-success">Disetujui</span>'
+                                : '<span class="badge bg-secondary">Menunggu</span>' !!}
+                        </li>
                     </ul>
                     <small class="text-muted d-block mt-2">
-                        Dua tanda tangan ini dicatat terpisah. Bila orang yang sama berperan ganda,
-                        tetap divalidasi dua kali untuk akuntabilitas.
+                        Tiga tanda tangan ini dicatat terpisah. LPJ baru berstatus
+                        <strong>Disetujui</strong> setelah User, Divisi GA, dan Management
+                        menyelesaikan validasinya.
                     </small>
                 </div>
             </div>
@@ -413,6 +458,26 @@
                                     <i class="bi bi-shield-check"></i> Validasi sebagai Divisi GA
                                 </button>
                             </form>
+                        @endif
+
+                        {{-- Tahap 3: Management — final, setelah User & Divisi GA --}}
+                        @if(auth()->user()->hasPermission('lpj.validate_management') && !$laporan->approved_by_management)
+                            @if($laporan->approved_by_pengguna && $laporan->approved_by_divisi_ga)
+                                <form action="{{ route('lpj.management.approve', $laporan) }}" method="POST" class="mb-2">
+                                    @csrf
+                                    <button type="submit" class="btn btn-success w-100"
+                                            onclick="return confirm('Menyetujui LPJ sebagai Management (validasi final)? Dokumen akan siap dicetak.');">
+                                        <i class="bi bi-person-badge"></i> Validasi Final sebagai Management
+                                    </button>
+                                </form>
+                            @else
+                                <div class="alert alert-info py-2 mb-2">
+                                    <small>
+                                        <i class="bi bi-info-circle"></i>
+                                        Validasi final Management menunggu validasi User &amp; Divisi GA selesai.
+                                    </small>
+                                </div>
+                            @endif
                         @endif
 
                         {{-- Tolak (Divisi GA) --}}
@@ -479,7 +544,7 @@
             {{-- Back Button --}}
             <div class="card">
                 <div class="card-body">
-                    <a href="{{ route('lpj.superadmin.index') }}" class="btn btn-secondary w-100">
+                    <a href="{{ route($indexRoute) }}" class="btn btn-secondary w-100">
                         <i class="bi bi-arrow-left"></i> Kembali ke Daftar
                     </a>
                 </div>

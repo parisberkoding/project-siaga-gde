@@ -67,7 +67,7 @@ class AiAssistantController extends Controller
         } catch (Throwable $e) {
             return response()->json([
                 'ok'    => false,
-                'error' => 'Terjadi kesalahan saat memproses pertanyaan: ' . $e->getMessage(),
+                'error' => safe_exception_message($e, 'Terjadi kesalahan saat memproses pertanyaan. Silakan coba lagi atau hubungi admin.'),
             ], 422);
         }
     }

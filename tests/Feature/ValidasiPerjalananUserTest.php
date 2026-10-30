@@ -90,7 +90,7 @@ it('sidebar menampilkan menu Validasi Perjalanan untuk user berangkat', function
         ->assertSee('Validasi Perjalanan (User)', false);
 });
 
-it('peran ganda (User + GA) tetap validasi 2x terpisah untuk akuntabilitas', function () {
+it('peran ganda (User + GA) tetap validasi 2x terpisah, lalu final oleh Manager', function () {
     // Satu orang punya dua peran sekaligus.
     $dual = User::factory()->create(['role' => 'requester']);
     $rolePengguna = Role::where('code', 'pengguna_spd')->first();
@@ -129,6 +129,20 @@ it('peran ganda (User + GA) tetap validasi 2x terpisah untuk akuntabilitas', fun
 
     $lpj->refresh();
     expect($lpj->approved_by_divisi_ga)->toBe($dual->id);
+    // BUG-LPJ-003: GA bukan tahap final — masih menunggu Management.
+    expect($lpj->status)->toBe('pending');
+
+    // Tahap 3 — validasi final oleh Management.
+    $manager = User::factory()->create(['role' => 'manager']);
+    $roleManager = Role::where('code', 'manager')->first();
+    $manager->roles()->attach($roleManager->id, ['is_primary' => true]);
+
+    $this->actingAs($manager)
+        ->post(route('lpj.management.approve', $lpj))
+        ->assertRedirect();
+
+    $lpj->refresh();
+    expect($lpj->approved_by_management)->toBe($manager->id);
     expect($lpj->status)->toBe('approved');
 });
 

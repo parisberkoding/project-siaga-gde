@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\VehicleAndToolsConsumers;
 use App\Services\ImageCompressor;
 use App\Services\UnitScope;
+use App\Support\MediaStorage;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -23,7 +24,6 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class SpdController extends Controller
@@ -642,10 +642,13 @@ class SpdController extends Controller
         // Check if barcode already exists in DB
         $barcodeRecord = SpdBarcodeSignature::where('spd_id', $surat->id)->first();
 
-        if ($barcodeRecord && file_exists(storage_path('app/public/'.$barcodeRecord->signature_path))) {
-            // Barcode sudah ada di DB dan file masih ada
-            $qrSvgContent = file_get_contents(storage_path('app/public/'.$barcodeRecord->signature_path));
-        } else {
+        // QR disimpan di disk privat (BUG-SEC-003); MediaStorage membaca
+        // privat dulu lalu fallback ke file lama di disk publik.
+        $qrSvgContent = $barcodeRecord && $barcodeRecord->signature_path
+            ? MediaStorage::get($barcodeRecord->signature_path)
+            : null;
+
+        if ($qrSvgContent === null) {
             // Generate QR baru, simpan file, dan simpan ke DB
             $qrSvgContent = $this->generateAndStoreQr($surat);
         }
@@ -764,6 +767,9 @@ class SpdController extends Controller
     public function saveMendadakBudget(Request $request, SuratSpd $surat)
     {
         $surat = SuratSpd::with('budgets')->findOrFail($surat->id);
+
+        // F-03 / BUG-SPD-002: hanya pengelola unit SPD ini (global = semua).
+        UnitScope::for(Auth::user())->ensureUnit($surat->unit_id);
 
         if ($surat->type !== 'mendadak') {
             return redirect()->back()->with('error', 'Hanya SPD mendadak yang bisa input budget saat cetak.');
@@ -1167,11 +1173,25 @@ class SpdController extends Controller
 
         $totalBudgetFromTable = $budgets->sum();
 
+        // BUG-LPJ-001: plafon harian = total dana / LAMA HARI PERJALANAN,
+        // bukan dibagi jumlah baris pencairan (surat_spd_budgets).
+        $totalDana = (float) $totalBudgetFromTable > 0
+            ? (float) $totalBudgetFromTable
+            : (float) ($surat->total_budget ?? 0);
+        $budgetPerHari = LpjPenggantian::hitungBudgetPerHari($surat, $totalDana);
+
         // ✅ Hitung total pengeluaran
         $totalPengeluaran = collect($request->items)->sum('nominal');
 
         // Budget kini opsional — over budget hanya dihitung bila budget diisi
-        $isOverBudget = $totalBudgetFromTable > 0 && $totalPengeluaran > $totalBudgetFromTable;
+        $isOverBudget = $totalDana > 0 && $totalPengeluaran > $totalDana;
+
+        // BUG-LPJ-002: bila field dikosongkan/0, isi otomatis dari total
+        // pencairan dana SPD yang sudah disetujui. Nilai manual tetap dipakai.
+        $jumlahDiberikan = (float) ($request->jumlah_diberikan ?? 0);
+        if ($jumlahDiberikan <= 0) {
+            $jumlahDiberikan = (float) $surat->pencairans()->sum('nominal');
+        }
 
         DB::beginTransaction();
         try {
@@ -1188,16 +1208,17 @@ class SpdController extends Controller
                 'kebutuhan_bbm_liter' => $request->kebutuhan_bbm_liter,
                 'uraian' => $request->uraian,
                 'uang_dari' => $request->uang_dari ?? 'KAS',
-                'jumlah_diberikan' => $request->jumlah_diberikan ?? 0,
+                'jumlah_diberikan' => $jumlahDiberikan,
                 'total_pengeluaran' => $totalPengeluaran,
-                'budget_per_hari' => $totalBudgetFromTable > 0
-                    ? round($totalBudgetFromTable / max($budgets->count(), 1))
-                    : 0,
+                'budget_per_hari' => $budgetPerHari,
                 'catatan' => $request->catatan ?? '',
                 'status' => 'pending',
                 'is_late' => $isOverdue,
                 'is_over_budget' => $isOverBudget,
             ]);
+
+            // Selisih pengembalian/kekurangan dihitung sejak awal (BUG-LPJ-002).
+            $lpj->calculateKeuangan();
 
             // Create LPJ details (+ struk_items untuk alur baru)
             foreach ($request->items as $index => $item) {
@@ -1257,7 +1278,7 @@ class SpdController extends Controller
             }
             if ($isOverBudget) {
                 $message .= ' ⚠️ Over budget Rp '.
-                    number_format($totalPengeluaran - $totalBudgetFromTable, 0, ',', '.').'.';
+                    number_format($totalPengeluaran - $totalDana, 0, ',', '.').'.';
             }
 
             return redirect()->route('requester.lpj.index')
@@ -1352,7 +1373,19 @@ class SpdController extends Controller
             ->groupBy('tanggal')
             ->map(fn ($items) => $items->sum('nominal'));
 
-        $isOverBudget = $totalBudgetFromTable > 0 && $totalPengeluaran > $totalBudgetFromTable;
+        // BUG-LPJ-001: plafon harian = total dana / lama hari perjalanan.
+        $totalDana = (float) $totalBudgetFromTable > 0
+            ? (float) $totalBudgetFromTable
+            : (float) ($surat->total_budget ?? 0);
+        $budgetPerHari = LpjPenggantian::hitungBudgetPerHari($surat, $totalDana);
+
+        $isOverBudget = $totalDana > 0 && $totalPengeluaran > $totalDana;
+
+        // BUG-LPJ-002: jangan menimpa nilai tersimpan saat edit LPJ lama bila
+        // field tidak dikirim. Nilai awal form sudah memakai total pencairan.
+        $jumlahDiberikan = $request->filled('jumlah_diberikan')
+            ? (float) $request->jumlah_diberikan
+            : (float) $laporan->jumlah_diberikan;
 
         DB::beginTransaction();
         try {
@@ -1361,11 +1394,12 @@ class SpdController extends Controller
                 'jabatan' => $request->jabatan,
                 'uraian' => $request->uraian,
                 'uang_dari' => $request->uang_dari ?? 'KAS',
-                'jumlah_diberikan' => $request->jumlah_diberikan ?? 0,
+                'jumlah_diberikan' => $jumlahDiberikan,
                 'odo_before' => $request->odo_before,
                 'odo_after' => $request->odo_after,
                 'kebutuhan_bbm_liter' => $request->kebutuhan_bbm_liter,
                 'total_pengeluaran' => $totalPengeluaran,
+                'budget_per_hari' => $budgetPerHari,
                 'catatan' => $request->catatan ?? '',
                 'status' => 'pending',
                 'rejected_by' => null,
@@ -1373,6 +1407,9 @@ class SpdController extends Controller
                 'rejection_reason' => null,
                 'is_over_budget' => $isOverBudget,
             ]);
+
+            // Hitung ulang selisih dengan Jumlah Diberikan yang baru.
+            $laporan->calculateKeuangan();
 
             // Simpan struk_items lama (urutannya) supaya bisa di-reuse bila
             // user tidak mengupload ulang gambar pada item yang sama.
@@ -1707,7 +1744,34 @@ class SpdController extends Controller
             'rejector',
         ])->findOrFail($laporan->id);
 
+        // F-01 / BUG-SEC-001: detail LPJ hanya untuk pemilik/penumpang,
+        // pengelola unit yang sama, atau user global. Record ada tetapi tidak
+        // boleh dilihat -> 404 (bukan 403) agar keberadaan dokumen tidak bocor.
+        if (! $laporan->isVisibleToUser(Auth::user())) {
+            abort(404);
+        }
+
         return view('superadmin.spd.lpj.detail', compact('laporan'));
+    }
+
+    /**
+     * R2 / BUG-SEC-001: aksi tulis LPJ hanya untuk pengelola unitnya.
+     * User global tetap boleh; unit lain -> 403 (aksi tulis, bukan baca).
+     */
+    private function ensureLaporanUnit(LpjPenggantian $laporan): void
+    {
+        UnitScope::for(Auth::user())->ensureUnit($laporan->suratSpd?->unit_id);
+    }
+
+    /**
+     * R2 / BUG-SEC-001: validasi pengguna hanya oleh pihak yang berhak atas
+     * dokumen (pemilik/penumpang) atau user global. Unit lain -> 403.
+     */
+    private function ensureLaporanValidator(LpjPenggantian $laporan): void
+    {
+        if (! $laporan->isVisibleToUser(Auth::user())) {
+            abort(403, 'LPJ ini berada di luar kewenangan Anda.');
+        }
     }
 
     /**
@@ -1718,11 +1782,22 @@ class SpdController extends Controller
      */
     public function approveLaporan(LpjPenggantian $laporan)
     {
+        // BUG-LPJ-003: "setujui semua sekaligus" adalah jalur final. Hanya
+        // Management/superadmin (lpj.validate_management) yang boleh memakainya
+        // agar validasi Admin GA tidak melompati antrean Manager.
+        if (! Auth::user()->hasPermission('lpj.validate_management')) {
+            return redirect()->back()
+                ->with('error', 'Persetujuan final hanya dapat dilakukan Management. Validasi Divisi GA tidak boleh melompati tahap Manager.');
+        }
+
+        // R2 / BUG-SEC-001: Manager unit lain tidak boleh approve-final.
+        $this->ensureLaporanUnit($laporan);
+
         $laporan = LpjPenggantian::pending()->findOrFail($laporan->id);
 
         DB::beginTransaction();
         try {
-            // Simple approve (superadmin = approve both)
+            // Simple approve (superadmin = approve all)
             $laporan->approve(Auth::id());
 
             DB::commit();
@@ -1752,6 +1827,9 @@ class SpdController extends Controller
      */
     public function rejectLaporan(Request $request, LpjPenggantian $laporan)
     {
+        // R2 / BUG-SEC-001: unit lain -> 403 sebelum validasi/penolakan.
+        $this->ensureLaporanUnit($laporan);
+
         $request->validate([
             'rejection_reason' => 'required|string|min:10',
         ]);
@@ -1769,6 +1847,10 @@ class SpdController extends Controller
      */
     public function approveLaporanPengguna(Request $request, LpjPenggantian $laporan)
     {
+        // R2 / BUG-SEC-001: hanya pemilik/penumpang dokumen (boleh lintas
+        // unit), pengelola unit yang sama, atau user global.
+        $this->ensureLaporanValidator($laporan);
+
         $request->validate([
             'pernyataan' => 'accepted',
         ], [
@@ -1799,6 +1881,12 @@ class SpdController extends Controller
             'approverManagement',
             'rejector',
         ])->findOrFail($laporan->id);
+
+        // F-01 / BUG-SEC-001: halaman validasi hanya untuk pemilik/penumpang,
+        // pengelola unit yang sama, atau user global. Lintas unit -> 404.
+        if (! $laporan->isVisibleToUser(Auth::user())) {
+            abort(404);
+        }
 
         // QR tanda tangan hanya dibuat setelah user (penumpang) memvalidasi.
         $qrSvg = $laporan->approved_by_pengguna ? $this->generateValidationQr($laporan) : null;
@@ -1836,6 +1924,9 @@ class SpdController extends Controller
      */
     public function approveLaporanDivisiGa(LpjPenggantian $laporan)
     {
+        // R2 / BUG-SEC-001: GA unit lain -> 403.
+        $this->ensureLaporanUnit($laporan);
+
         $laporan = LpjPenggantian::pending()->findOrFail($laporan->id);
 
         // Tidak strict: Divisi GA boleh memvalidasi tanpa menunggu tahap User.
@@ -1851,6 +1942,9 @@ class SpdController extends Controller
      */
     public function approveLaporanManagement(LpjPenggantian $laporan)
     {
+        // R2 / BUG-SEC-001: Manager unit lain -> 403.
+        $this->ensureLaporanUnit($laporan);
+
         $laporan = LpjPenggantian::pending()->findOrFail($laporan->id);
 
         if (! $laporan->approved_by_pengguna || ! $laporan->approved_by_divisi_ga) {
@@ -1869,6 +1963,9 @@ class SpdController extends Controller
      */
     public function storeFundAddition(Request $request, SuratSpd $surat)
     {
+        // F-03 / BUG-SPD-002: hanya pengelola unit SPD ini (global = semua).
+        UnitScope::for(Auth::user())->ensureUnit($surat->unit_id);
+
         $request->validate([
             'nominal_tambahan' => 'required|numeric|min:0',
             'alasan' => 'required|string|min:5',
@@ -1907,15 +2004,24 @@ class SpdController extends Controller
      */
     public function updateKeuanganLaporan(Request $request, LpjPenggantian $laporan)
     {
+        // R2 / BUG-SEC-001: data keuangan LPJ hanya untuk unit yang benar.
+        $this->ensureLaporanUnit($laporan);
+
         $request->validate([
             'uang_dari' => 'nullable|string|max:255',
             'jumlah_diberikan' => 'nullable|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($laporan, $request) {
+        // BUG-LPJ-002: bila field dikosongkan, pakai nilai efektif (nilai
+        // tersimpan atau total pencairan dana SPD).
+        $jumlahDiberikan = $request->filled('jumlah_diberikan')
+            ? (float) $request->jumlah_diberikan
+            : (float) $laporan->jumlah_diberikan_efektif;
+
+        DB::transaction(function () use ($laporan, $request, $jumlahDiberikan) {
             $laporan->update([
                 'uang_dari' => $request->uang_dari ?? 'KAS',
-                'jumlah_diberikan' => $request->jumlah_diberikan ?? 0,
+                'jumlah_diberikan' => $jumlahDiberikan,
             ]);
             $laporan->calculateKeuangan();
         });
@@ -2133,14 +2239,8 @@ class SpdController extends Controller
     private function generateAndStoreQr(SuratSpd $surat): ?string
     {
         try {
-            $storageDir = storage_path('app/public/qr-surat');
-            if (! is_dir($storageDir)) {
-                mkdir($storageDir, 0755, true);
-            }
-
             $filename = 'QR_'.preg_replace('/[^A-Za-z0-9\-]/', '_', $surat->nomor_surat).'.svg';
             $relativePath = 'qr-surat/'.$filename;
-            $fullPath = $storageDir.'/'.$filename;
 
             // Generate QR SVG
             $qrData = json_encode([
@@ -2152,7 +2252,7 @@ class SpdController extends Controller
             ]);
 
             $svgContent = $this->generateQrSvgWithLogo($qrData);
-            file_put_contents($fullPath, $svgContent);
+            MediaStorage::put($relativePath, $svgContent);
 
             // Simpan ke database (update or create)
             SpdBarcodeSignature::updateOrCreate(
@@ -2181,16 +2281,11 @@ class SpdController extends Controller
     private function generateSignatureQr(SuratSpd $surat): ?string
     {
         try {
-            $storageDir = storage_path('app/public/qr-surat');
-            if (! is_dir($storageDir)) {
-                mkdir($storageDir, 0755, true);
-            }
-
             $filename = 'QR_'.preg_replace('/[^A-Za-z0-9\-]/', '_', $surat->nomor_surat).'.svg';
-            $fullPath = $storageDir.'/'.$filename;
+            $relativePath = 'qr-surat/'.$filename;
 
             // Cache — tidak generate ulang jika sudah ada
-            if (! file_exists($fullPath)) {
+            if (! MediaStorage::exists($relativePath)) {
                 $qrData = json_encode([
                     'id' => $surat->id,
                     'nomor_surat' => $surat->nomor_surat,
@@ -2200,11 +2295,15 @@ class SpdController extends Controller
                 ]);
 
                 $svgContent = $this->generateQrSvgWithLogo($qrData);
-                file_put_contents($fullPath, $svgContent);
+                MediaStorage::put($relativePath, $svgContent);
             }
 
             // Return SVG sebagai base64 data URI
-            return 'data:image/svg+xml;base64,'.base64_encode(file_get_contents($fullPath));
+            $svg = MediaStorage::get($relativePath);
+
+            return $svg !== null
+                ? 'data:image/svg+xml;base64,'.base64_encode($svg)
+                : null;
 
         } catch (\Throwable $e) {
             \Log::warning('QR signature gagal: '.$e->getMessage(), [
@@ -2261,7 +2360,7 @@ SVG;
     }
 
     /**
-     * Simpan gambar struk ke storage dengan kompresi 50% (tanpa resize).
+     * Simpan gambar struk ke disk privat dengan kompresi 50% (tanpa resize).
      * Hanya path yang disimpan ke DB — tidak ada base64.
      */
     protected function storeStrukImage($file, string $context): string
@@ -2276,9 +2375,9 @@ SVG;
         $path = 'transaction_proofs/struk/'.$filename;
 
         if ($jpeg !== null) {
-            Storage::disk('public')->put($path, $jpeg);
+            MediaStorage::put($path, $jpeg);
         } else {
-            $file->storeAs('transaction_proofs/struk', $filename, 'public');
+            MediaStorage::storeUploaded($file, 'transaction_proofs/struk', $filename);
         }
 
         return $path;

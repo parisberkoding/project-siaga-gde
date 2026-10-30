@@ -9,6 +9,7 @@ use App\Models\StrukItem;
 use App\Models\SuratSpd;
 use App\Services\ImageAnalysisService;
 use App\Services\ImageCompressor;
+use App\Support\MediaStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -502,12 +503,12 @@ class SpdDailyReportController extends Controller
                 ];
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('uploadItems: file #' . $index . ' gagal diproses.', [
-                    'error' => $e->getMessage(),
+                    'exception' => $e,
                 ]);
                 $failed[] = [
                     'index'   => $index + 1,
                     'reason'  => ImageAnalysisService::STATUS_API_ERROR,
-                    'message' => 'Gagal memproses file: ' . $e->getMessage(),
+                    'message' => safe_exception_message($e, 'Gagal memproses file. Silakan coba lagi atau hubungi admin.'),
                 ];
             }
         }
@@ -782,7 +783,11 @@ class SpdDailyReportController extends Controller
 
         $totalPengeluaran = (float) $financialItems->sum('nominal');
 
-        $lpj = DB::transaction(function () use ($surat, $allItems, $financialItems, $totalPengeluaran, $request) {
+        // BUG-LPJ-002: "Jumlah Diberikan" diisi otomatis dari total pencairan
+        // dana SPD yang sudah disetujui (surat_spd_budgets), bukan 0.
+        $totalPencairan = (float) $surat->pencairans()->sum('nominal');
+
+        $lpj = DB::transaction(function () use ($surat, $allItems, $financialItems, $totalPengeluaran, $totalPencairan, $request) {
             $lpj = LpjPenggantian::create([
                 'surat_spd_id'        => $surat->id,
                 'user_id'             => Auth::id(),
@@ -795,11 +800,16 @@ class SpdDailyReportController extends Controller
                 'kebutuhan_bbm_liter' => $request->kebutuhan_bbm_liter,
                 'uraian'              => $request->uraian ?? '',
                 'uang_dari'           => 'KAS',
-                'jumlah_diberikan'    => 0,
+                'jumlah_diberikan'    => $totalPencairan,
                 'total_pengeluaran'   => $totalPengeluaran,
                 'catatan'             => '',
                 'status'              => 'pending',
             ]);
+
+            // Hitung pengembalian/kekurangan sejak awal agar tidak tampil 0
+            // sampai GA membuka & menyimpan ulang data keuangan. Detail yang
+            // dibuat di bawah juga memicu perhitungan ulang.
+            $lpj->calculateKeuangan();
 
             $urutan = 0;
             foreach ($financialItems as $item) {
@@ -1005,7 +1015,7 @@ class SpdDailyReportController extends Controller
     }
 
     /**
-     * Simpan gambar struk ke storage public (kompresi 50%, tanpa resize).
+     * Simpan gambar struk ke disk privat (kompresi 50%, tanpa resize).
      */
     protected function storeStrukImage($file, string $context): string
     {
@@ -1019,9 +1029,9 @@ class SpdDailyReportController extends Controller
         $path = 'transaction_proofs/struk/' . $filename;
 
         if ($jpeg !== null) {
-            Storage::disk('public')->put($path, $jpeg);
+            MediaStorage::put($path, $jpeg);
         } else {
-            $file->storeAs('transaction_proofs/struk', $filename, 'public');
+            MediaStorage::storeUploaded($file, 'transaction_proofs/struk', $filename);
         }
 
         return $path;

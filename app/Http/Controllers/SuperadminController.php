@@ -19,6 +19,7 @@ use App\Models\VehicleBarcode;
 use App\Models\VehicleDetail;
 use App\Models\VehicleTripAnalysis;
 use App\Services\UnitScope;
+use App\Support\MediaStorage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -27,7 +28,6 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 
 class SuperadminController extends Controller
 {
@@ -155,7 +155,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat dashboard: '.$e->getMessage(),
+                'message' => safe_exception_message($e, 'Gagal memuat dashboard. Silakan coba lagi atau hubungi admin.'),
             ], 500);
         }
     }
@@ -442,12 +442,24 @@ class SuperadminController extends Controller
     }
 
     /**
+     * R2 / BUG-BBM-005: daftar approver pada form cetak hanya unit user.
+     * Global (unitId null) tetap melihat semua approver.
+     */
+    private function approversFor(Request $request)
+    {
+        $unitId = UnitScope::for($request->user())->unitId();
+
+        return User::whereIn('role', ['superadmin', 'admin'])
+            ->when($unitId !== null, fn ($query) => $query->where('unit_id', $unitId));
+    }
+
+    /**
      * Tampilkan halaman form cetak laporan BBM
      */
     public function printReportPage(Request $request)
     {
         $title = 'Cetak Laporan BBM';
-        $approvers = User::whereIn('role', ['superadmin', 'admin'])->orderBy('nama_lengkap')->get();
+        $approvers = $this->approversFor($request)->orderBy('nama_lengkap')->get();
 
         return view('superadmin.print-report', compact('title', 'approvers'));
     }
@@ -460,7 +472,7 @@ class SuperadminController extends Controller
         // Jika tidak ada parameter, tampilkan halaman form
         if (! $request->filled('start_date') && ! $request->filled('end_date')) {
             $title = 'Cetak Laporan BBM';
-            $approvers = User::whereIn('role', ['superadmin', 'admin'])->orderBy('nama_lengkap')->get();
+            $approvers = $this->approversFor($request)->orderBy('nama_lengkap')->get();
 
             return view('superadmin.print-report', compact('title', 'approvers'));
         }
@@ -498,7 +510,10 @@ class SuperadminController extends Controller
                 'approvedRequest',
                 'authorizer',
             ])
-                ->whereBetween('request_date', [$startDate, $endDate]);
+                ->whereBetween('request_date', [$startDate, $endDate])
+                // F-02 / BUG-BBM-005: cetak laporan hanya memuat unit user
+                // (global/Pusat tetap tanpa batas).
+                ->inUnit(UnitScope::for($request->user())->unitId());
 
             // Filter berdasarkan status (dari checkbox modal)
             if ($request->filled('status') && is_array($request->status) && count($request->status) > 0) {
@@ -578,8 +593,12 @@ class SuperadminController extends Controller
                         break;
                     }
 
-                    $path = storage_path('app/public/'.$trx->transactionProof->struk_bbm_path);
-                    $trx->transactionProof->compressed_image = $this->compressToJpeg($path, 65);
+                    // BUG-SEC-003: struk kini di disk privat; absolutePath()
+                    // otomatis fallback ke file lama di disk publik.
+                    $path = MediaStorage::absolutePath($trx->transactionProof->struk_bbm_path);
+                    $trx->transactionProof->compressed_image = $path
+                        ? $this->compressToJpeg($path, 65)
+                        : null;
                 }
             }
 
@@ -613,7 +632,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'Gagal membuat laporan: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal membuat laporan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -1181,7 +1200,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return back()->with('error', 'Gagal menyimpan detail: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, 'Gagal menyimpan detail. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -1245,7 +1264,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return back()->with('error', 'Gagal menyetujui kendaraan: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, 'Gagal menyetujui kendaraan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -1293,7 +1312,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return back()->with('error', 'Gagal menolak kendaraan: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, 'Gagal menolak kendaraan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -1335,7 +1354,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat statistik driver: '.$e->getMessage(),
+                'message' => safe_exception_message($e, 'Gagal memuat statistik driver. Silakan coba lagi atau hubungi admin.'),
             ], 500);
         }
     }
@@ -1405,7 +1424,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat konsumsi BBM: '.$e->getMessage(),
+                'message' => safe_exception_message($e, 'Gagal memuat konsumsi BBM. Silakan coba lagi atau hubungi admin.'),
             ], 500);
         }
     }
@@ -1511,7 +1530,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat performa KM: '.$e->getMessage(),
+                'message' => safe_exception_message($e, 'Gagal memuat performa KM. Silakan coba lagi atau hubungi admin.'),
             ], 500);
         }
     }
@@ -1608,7 +1627,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat tabel pivot: '.$e->getMessage(),
+                'message' => safe_exception_message($e, 'Gagal memuat tabel pivot. Silakan coba lagi atau hubungi admin.'),
             ], 500);
         }
     }
@@ -1675,7 +1694,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat statistik driver: '.$e->getMessage(),
+                'message' => safe_exception_message($e, 'Gagal memuat statistik driver. Silakan coba lagi atau hubungi admin.'),
             ], 500);
         }
     }
@@ -1951,7 +1970,7 @@ class SuperadminController extends Controller
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Gagal menambah user: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal menambah user. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -2046,7 +2065,7 @@ class SuperadminController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'Gagal update user: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal update user. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -2077,7 +2096,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'Gagal hapus user: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal hapus user. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -2108,7 +2127,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'Gagal reset password: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal reset password. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -2201,7 +2220,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'Gagal memulihkan user: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal memulihkan user. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -2517,7 +2536,7 @@ class SuperadminController extends Controller
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Gagal menambahkan: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal menambahkan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -2564,7 +2583,7 @@ class SuperadminController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'Gagal update: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal update. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -2591,7 +2610,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'Gagal hapus: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal hapus. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -2615,7 +2634,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'Gagal memulihkan: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal memulihkan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -2700,7 +2719,9 @@ class SuperadminController extends Controller
      */
     public function updatePermohonan(Request $request, $id)
     {
-        $permohonan = Permohonan::findOrFail($id);
+        // F-02 / BUG-BBM-004: unit lain -> 404 (keberadaan data tidak bocor).
+        $permohonan = Permohonan::inUnit(UnitScope::for($request->user())->unitId())
+            ->findOrFail($id);
 
         // ✅ Budget dinamis dari Master Vehicle (nominal_full_tank), bukan hardcoded
         $maxNominal = null;
@@ -2756,7 +2777,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return back()->with('error', 'Gagal update permohonan: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, 'Gagal update permohonan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -2769,10 +2790,12 @@ class SuperadminController extends Controller
             'cancel_reason' => 'nullable|string|max:500',
         ]);
 
+        // F-02 / BUG-BBM-004: unit lain -> 404 sebelum transaksi apa pun.
+        $permohonan = Permohonan::inUnit(UnitScope::for($request->user())->unitId())
+            ->findOrFail($id);
+
         try {
             DB::beginTransaction();
-
-            $permohonan = Permohonan::findOrFail($id);
 
             // Update status
             $permohonan->update([
@@ -2798,7 +2821,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return back()->with('error', 'Gagal membatalkan permohonan: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, 'Gagal membatalkan permohonan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -2807,10 +2830,12 @@ class SuperadminController extends Controller
      */
     public function deletePermohonan($id)
     {
+        // F-02 / BUG-BBM-004: unit lain -> 404 sebelum transaksi apa pun.
+        $permohonan = Permohonan::inUnit(UnitScope::for(Auth::user())->unitId())
+            ->findOrFail($id);
+
         try {
             DB::beginTransaction();
-
-            $permohonan = Permohonan::findOrFail($id);
 
             // Jangan hapus jika sudah completed
             if ($permohonan->status === 'completed') {
@@ -2838,7 +2863,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return back()->with('error', 'Gagal menghapus permohonan: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, 'Gagal menghapus permohonan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -2849,7 +2874,9 @@ class SuperadminController extends Controller
     {        // Catatan: laporan ini adalah BBM OPERASIONAL (Transaction_Proofs), 1 permohonan = 1 struk.
         // Rincian per-item dengan gambar + kategori + item_code (struk_items) khusus SPD,
         // divisualisasikan pada validasi LPJ (SpdController::showLaporanSuperadmin → superadmin/spd/lpj/*).
-        $laporan = Transaction_Proofs::findOrFail($id);
+        // F-02 / BUG-BBM-005: laporan transaksi unit lain -> 404.
+        $laporan = Transaction_Proofs::inUnit(UnitScope::for($request->user())->unitId())
+            ->findOrFail($id);
 
         $validated = $request->validate([
             'purchase_date' => 'required|date|before_or_equal:today',
@@ -2875,9 +2902,9 @@ class SuperadminController extends Controller
 
             // Upload foto struk baru jika ada
             if ($request->hasFile('foto_struk')) {
-                // Hapus foto lama
-                if ($laporan->struk_bbm_path && Storage::disk('public')->exists($laporan->struk_bbm_path)) {
-                    Storage::disk('public')->delete($laporan->struk_bbm_path);
+                // Hapus foto lama (privat maupun legacy publik)
+                if ($laporan->struk_bbm_path) {
+                    MediaStorage::delete($laporan->struk_bbm_path);
                 }
 
                 $requestNumber = $laporan->permohonan->request_number;
@@ -2886,14 +2913,14 @@ class SuperadminController extends Controller
                 $strukFile = $request->file('foto_struk');
                 $strukExtension = $strukFile->getClientOriginalExtension();
                 $strukFileName = "STRUK-{$requestNumber}-{$dateFormat}.{$strukExtension}";
-                $updateData['struk_bbm_path'] = $strukFile->storeAs('transaction_proofs/struk', $strukFileName, 'public');
+                $updateData['struk_bbm_path'] = MediaStorage::storeUploaded($strukFile, 'transaction_proofs/struk', $strukFileName);
             }
 
             // Upload foto odometer baru jika ada
             if ($request->hasFile('foto_km')) {
-                // Hapus foto lama
-                if ($laporan->odometer_photo_path && Storage::disk('public')->exists($laporan->odometer_photo_path)) {
-                    Storage::disk('public')->delete($laporan->odometer_photo_path);
+                // Hapus foto lama (privat maupun legacy publik)
+                if ($laporan->odometer_photo_path) {
+                    MediaStorage::delete($laporan->odometer_photo_path);
                 }
 
                 $requestNumber = $laporan->permohonan->request_number;
@@ -2902,7 +2929,7 @@ class SuperadminController extends Controller
                 $odoFile = $request->file('foto_km');
                 $odoExtension = $odoFile->getClientOriginalExtension();
                 $odoFileName = "ODO-{$requestNumber}-{$dateFormat}.{$odoExtension}";
-                $updateData['odometer_photo_path'] = $odoFile->storeAs('transaction_proofs/odometer', $odoFileName, 'public');
+                $updateData['odometer_photo_path'] = MediaStorage::storeUploaded($odoFile, 'transaction_proofs/odometer', $odoFileName);
             }
 
             $laporan->update($updateData);
@@ -2916,7 +2943,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return back()->with('error', 'Gagal update laporan: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, 'Gagal update laporan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -2948,6 +2975,11 @@ class SuperadminController extends Controller
             return back()->with('error', 'Format data tidak valid');
         }
 
+        // F-02 / BUG-BBM-004: keputusan untuk unit lain dihitung sebagai
+        // "dilewati" — bukan menggagalkan seluruh batch, dan TIDAK boleh
+        // membuat voucher untuk permohonan unit lain.
+        $unitId = UnitScope::for($request->user())->unitId();
+
         try {
             DB::beginTransaction();
 
@@ -2962,7 +2994,9 @@ class SuperadminController extends Controller
                     continue;
                 }
 
-                $permohonan = Permohonan::where('status', 'pending')->find($decision['request_id']);
+                $permohonan = Permohonan::where('status', 'pending')
+                    ->inUnit($unitId)
+                    ->find($decision['request_id']);
 
                 if (! $permohonan) {
                     $skippedCount++;
@@ -3024,7 +3058,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return back()->with('error', 'Gagal memproses bulk action: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, 'Gagal memproses bulk action. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -3033,19 +3067,21 @@ class SuperadminController extends Controller
      */
     public function deleteLaporan($id)
     {
+        // F-02 / BUG-BBM-005: laporan transaksi unit lain -> 404 sebelum
+        // penghapusan file/baris apa pun.
+        $laporan = Transaction_Proofs::inUnit(UnitScope::for(Auth::user())->unitId())
+            ->findOrFail($id);
 
         try {
             DB::beginTransaction();
 
-            $laporan = Transaction_Proofs::findOrFail($id);
-
-            // Hapus files
-            if ($laporan->struk_bbm_path && Storage::disk('public')->exists($laporan->struk_bbm_path)) {
-                Storage::disk('public')->delete($laporan->struk_bbm_path);
+            // Hapus files (privat maupun legacy publik)
+            if ($laporan->struk_bbm_path) {
+                MediaStorage::delete($laporan->struk_bbm_path);
             }
 
-            if ($laporan->odometer_photo_path && Storage::disk('public')->exists($laporan->odometer_photo_path)) {
-                Storage::disk('public')->delete($laporan->odometer_photo_path);
+            if ($laporan->odometer_photo_path) {
+                MediaStorage::delete($laporan->odometer_photo_path);
             }
 
             // Update status permohonan kembali ke approved
@@ -3064,7 +3100,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return back()->with('error', 'Gagal menghapus laporan: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, 'Gagal menghapus laporan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -3238,7 +3274,7 @@ class SuperadminController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'Gagal generate trip analysis: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal generate trip analysis. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -3390,12 +3426,15 @@ class SuperadminController extends Controller
 
             // ✅ NEW: Baseline override fields
             'baseline_override' => 'nullable|numeric|min:1|max:30',
-            'baseline_override_reason' => 'nullable|string|max:500',
+            // BUG-EFF-001: mengubah patokan efisiensi WAJIB disertai alasan
+            // agar perubahan punya jejak audit (reason + siapa + kapan).
+            'baseline_override_reason' => 'required_with:baseline_override|nullable|string|max:500',
         ], [
             'is_long_trip.required' => 'Jenis perjalanan harus dipilih',
             'baseline_override.numeric' => 'Patokan BBM harus berupa angka',
             'baseline_override.min' => 'Patokan BBM minimal 1 km/L',
             'baseline_override.max' => 'Patokan BBM maksimal 30 km/L',
+            'baseline_override_reason.required_with' => 'Alasan perubahan patokan BBM wajib diisi.',
         ]);
 
         try {
@@ -3404,7 +3443,7 @@ class SuperadminController extends Controller
             // Update validation data
             $updateData = [
                 'is_long_trip' => $validated['is_long_trip'],
-                'long_trip_notes' => $validated['long_trip_notes'],
+                'long_trip_notes' => $validated['long_trip_notes'] ?? null,
                 'validated_by' => Auth::id(),
                 'validated_at' => now(),
             ];
@@ -3424,7 +3463,8 @@ class SuperadminController extends Controller
 
             $message = 'Trip berhasil divalidasi';
             if ($request->filled('baseline_override')) {
-                $message .= ' dengan patokan BBM disesuaikan: '.$validated['baseline_override'].' km/L';
+                $message .= ' dengan patokan BBM disesuaikan: '.$validated['baseline_override'].' km/L.';
+                $message .= ' Alasan perubahan tercatat: '.$validated['baseline_override_reason'].'.';
             }
 
             return redirect()
@@ -3434,7 +3474,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'Gagal validasi trip: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal validasi trip. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -3459,7 +3499,7 @@ class SuperadminController extends Controller
                 if ($tripValidation) {
                     $tripValidation->update([
                         'is_long_trip' => $validated['is_long_trip'],
-                        'long_trip_notes' => $validated['long_trip_notes'],
+                        'long_trip_notes' => $validated['long_trip_notes'] ?? null,
                         'validated_by' => Auth::id(),
                         'validated_at' => now(),
                     ]);
@@ -3481,7 +3521,7 @@ class SuperadminController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'Gagal bulk validasi: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal bulk validasi. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -3679,7 +3719,7 @@ class SuperadminController extends Controller
             return back()->with('success', "✅ {$vehicle->consumerial_type} {$vehicle->consumerial_code} berhasil diaktifkan.");
 
         } catch (\Exception $e) {
-            return back()->with('error', 'Gagal mengaktifkan: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, 'Gagal mengaktifkan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -3726,7 +3766,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return back()->with('error', 'Gagal menonaktifkan: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, 'Gagal menonaktifkan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -3761,7 +3801,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return back()->with('error', 'Gagal bulk activate: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, 'Gagal bulk activate. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -3824,7 +3864,7 @@ class SuperadminController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return back()->with('error', 'Gagal bulk deactivate: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, 'Gagal bulk deactivate. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -3935,7 +3975,7 @@ class SuperadminController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'Gagal recalculate metrics: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal recalculate metrics. Silakan coba lagi atau hubungi admin.'));
         }
     }
 

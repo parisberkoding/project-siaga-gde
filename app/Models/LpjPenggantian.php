@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\Concerns\HasSafeSlugRouteKey;
+use App\Services\UnitScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;  // ✅ ADDED: Missing import
@@ -134,8 +135,11 @@ class LpjPenggantian extends Model
             }
 
             if ($lpj->suratSpd) {
-                if (is_null($lpj->budget_per_hari)) {
-                    $lpj->budget_per_hari = $lpj->suratSpd->budget_per_hari ?? 0;
+                // BUG-LPJ-001: budget harian = total dana / lama hari perjalanan.
+                // Fallback ini dipakai jalur yang tidak mengirim budget_per_hari
+                // eksplisit (mis. submit LPJ dari laporan harian).
+                if (is_null($lpj->budget_per_hari) || (float) $lpj->budget_per_hari <= 0) {
+                    $lpj->budget_per_hari = static::hitungBudgetPerHari($lpj->suratSpd);
                 }
 
                 $lpj->setDueDateFromSurat();
@@ -267,6 +271,39 @@ class LpjPenggantian extends Model
     }
 
     /**
+     * Budget harian LPJ = TOTAL DANA dibagi LAMA HARI PERJALANAN.
+     *
+     * BUG-LPJ-001: rumus lama membagi total dana dengan jumlah baris pencairan
+     * (surat_spd_budgets). Satu kali pencairan untuk perjalanan beberapa hari
+     * membuat budget harian terlalu besar sehingga status Over Budget tidak
+     * pernah aktif meskipun pengeluaran melebihi plafon.
+     *
+     * @param  float|null  $totalDana  Total dana yang diberikan; null = hitung
+     *                                 dari baris pencairan surat (fallback
+     *                                 total_budget bila baris pencairan kosong).
+     */
+    public static function hitungBudgetPerHari(?SuratSpd $surat, ?float $totalDana = null): float
+    {
+        if (! $surat) {
+            return 0.0;
+        }
+
+        $lamaHari = (int) $surat->lama_perjalanan_hari;
+
+        if ($lamaHari <= 0) {
+            return 0.0;
+        }
+
+        $total = $totalDana ?? (float) $surat->pencairans()->sum('nominal');
+
+        if ($total <= 0) {
+            $total = (float) ($surat->total_budget ?? 0);
+        }
+
+        return $total > 0 ? $total / $lamaHari : 0.0;
+    }
+
+    /**
      * Validate budget per hari
      */
     public function validateBudget()
@@ -275,12 +312,24 @@ class LpjPenggantian extends Model
             return;
         }
 
+        $budgetPerHari = (float) $this->budget_per_hari;
+
+        // Budget opsional: bila belum ada dana/budget, jangan menandai
+        // Over Budget (rata-rata > 0 tidak boleh dibandingkan dengan plafon 0).
+        if ($budgetPerHari <= 0) {
+            $this->is_over_budget = false;
+            $this->over_budget_reason = null;
+            $this->save();
+
+            return;
+        }
+
         // Hitung rata-rata pengeluaran per hari
-        $jumlahHari = $this->suratSpd->lama_perjalanan_hari;
-        $rataRataPerHari = $jumlahHari > 0 ? $this->total_pengeluaran / $jumlahHari : 0;
+        $jumlahHari = (int) $this->suratSpd->lama_perjalanan_hari;
+        $rataRataPerHari = $jumlahHari > 0 ? (float) $this->total_pengeluaran / $jumlahHari : 0;
 
         // Check if over budget
-        if ($rataRataPerHari > $this->budget_per_hari) {
+        if ($rataRataPerHari > $budgetPerHari) {
             $this->is_over_budget = true;
         } else {
             $this->is_over_budget = false;
@@ -404,6 +453,50 @@ class LpjPenggantian extends Model
         $query->whereHas('suratSpd', fn ($q) => $q->where('surat_spds.unit_id', $unitId));
     }
 
+    /**
+     * Apakah user boleh membuka detail LPJ ini (F-01 / BUG-SEC-001).
+     *
+     * Aturan:
+     *   - pemilik LPJ (user_id) dan penumpang SPD -> boleh;
+     *   - user global (Pusat/superadmin/developers) -> semua LPJ;
+     *   - pengelola LPJ (GA/Manager/pencairan) -> hanya unitnya sendiri;
+     *   - requester lain di unit yang sama -> tidak boleh (404), konsisten
+     *     dengan cetak/export SPD & LPJ.
+     */
+    public function isVisibleToUser(?User $user): bool
+    {
+        if ($user === null) {
+            return false;
+        }
+
+        if ($this->user_id !== null && (int) $this->user_id === (int) $user->id) {
+            return true;
+        }
+
+        $surat = $this->suratSpd;
+
+        // Penumpang SPD (termasuk lintas unit) & pengelola unit tetap boleh.
+        if ($surat !== null && $surat->isVisibleToUser($user)) {
+            return true;
+        }
+
+        $scope = UnitScope::for($user);
+
+        if ($scope->isGlobal()) {
+            return true;
+        }
+
+        $peranPengelola = [
+            'lpj.validate', 'lpj.validate_management', 'lpj.pencairan', 'lpj.export',
+        ];
+
+        if (! $user->hasPermission($peranPengelola)) {
+            return false;
+        }
+
+        return $scope->allowsUnit($surat?->unit_id);
+    }
+
     // ============================================================
     // APPROVAL METHODS
     // ============================================================
@@ -451,13 +544,22 @@ class LpjPenggantian extends Model
     }
 
     /**
-     * Check if fully approved — 2 tahap: User (penumpang) + Divisi GA.
-     * Keduanya wajib terisi (boleh oleh orang yang sama, tetap dicatat terpisah
-     * untuk akuntabilitas).
+     * Check if fully approved — 3 tahap: User (penumpang), Divisi GA, dan
+     * Management. Ketiganya wajib terisi (boleh oleh orang yang sama, tetap
+     * dicatat terpisah untuk akuntabilitas).
+     *
+     * BUG-LPJ-003: sebelumnya status `approved` langsung di-set setelah User +
+     * Divisi GA, sehingga antrean validasi final Management terlewati. Sekarang
+     * LPJ tetap `pending` sampai Management menyetujui.
+     *
+     * Catatan kompatibilitas: LPJ lama yang sudah `approved` tidak dihitung
+     * ulang dan tidak "mundur" — pengecekan hanya berjalan saat aksi approval.
      */
     private function checkFullApproval()
     {
-        if ($this->approved_by_pengguna && $this->approved_by_divisi_ga) {
+        if ($this->approved_by_pengguna
+            && $this->approved_by_divisi_ga
+            && $this->approved_by_management) {
             $this->update(['status' => 'approved']);
 
             // Mark surat as completed
@@ -753,6 +855,29 @@ class LpjPenggantian extends Model
         }
 
         return $surat->pencairans;
+    }
+
+    /**
+     * Total pencairan dana SPD (akumulasi baris surat_spd_budgets).
+     * Menjadi sumber nilai "Jumlah Diberikan" pada LPJ.
+     */
+    public function getTotalPencairanAttribute(): float
+    {
+        return (float) $this->getPencairanRows()->sum('nominal');
+    }
+
+    /**
+     * Nilai "Jumlah Diberikan" untuk form/tampilan.
+     *
+     * Nilai tersimpan diutamakan bila sudah diisi (> 0) agar edit LPJ lama
+     * tidak menimpa nilai hasil koreksi GA. Bila masih 0 (belum diisi), nilai
+     * awal diambil dari total pencairan dana SPD yang sudah disetujui.
+     */
+    public function getJumlahDiberikanEfektifAttribute(): float
+    {
+        $tersimpan = (float) $this->jumlah_diberikan;
+
+        return $tersimpan > 0 ? $tersimpan : $this->total_pencairan;
     }
 
     /**

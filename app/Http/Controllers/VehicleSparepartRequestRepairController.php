@@ -269,20 +269,36 @@ public function schedule(Request $request, $vprCode)
     // ════════════════════════════════════════════════════════════════
     //  MARK COMPLETED - POST
     // ════════════════════════════════════════════════════════════════
-    public function markCompleted($vprCode)
+    public function markCompleted(Request $request, $vprCode)
     {
+        // BUG-VPR-001: Admin GA menutup VPR lewat UI beserta biaya aktual
+        // hasil service. Biaya aktual disimpan ke total_amount transaksi
+        // (satu-satunya kolom biaya aktual pada skema VPR).
+        $validated = $request->validate([
+            'actual_cost' => 'nullable|numeric|min:0|max:9999999999999',
+        ], [
+            'actual_cost.numeric' => 'Biaya aktual harus berupa angka.',
+            'actual_cost.min'     => 'Biaya aktual tidak boleh negatif.',
+        ]);
+
         $replacement = VehiclePartsReplacement::where('vpr_code', $vprCode)
             ->whereIn('status', ['in_service', 'scheduled'])
             ->firstOrFail();
 
-        if (!$replacement->transaction) {
+        $transaction = $replacement->transaction;
+
+        if (! $transaction) {
             return redirect()->back()->with('error', 'Driver belum melaporkan transaksi service.');
+        }
+
+        if ($request->filled('actual_cost')) {
+            $transaction->update(['total_amount' => $validated['actual_cost']]);
         }
 
         $replacement->markCompleted();
 
         return redirect()
-            ->route('admin.sparepart-request.show', $vprCode)
+            ->route('admin.replacement-approval.show', $vprCode)
             ->with('success', "VPR {$vprCode} ditandai selesai.");
     }
 }

@@ -12,6 +12,7 @@ use App\Services\FuelBenchmarkService;
 use App\Services\ImageCompressor;
 use App\Services\UnitScope;
 use App\Services\VoucherExpiryService;
+use App\Support\MediaStorage;
 use Carbon\Carbon;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
@@ -19,7 +20,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class RequestManagementController extends Controller
 {
@@ -193,12 +193,28 @@ class RequestManagementController extends Controller
             'gasoline_type' => 'required|string',
             'bill_payment' => $billRules,
             'requester_notes' => 'nullable|string|max:500',
+            // BUG-SEC-002: kunci idempotensi dari form, mencegah submit ganda.
+            'idempotency_key' => 'nullable|string|max:100',
         ], $messages);
 
         // ✅ Kunci per user: cek slot + insert diserialisasi, sehingga double
         // submit (klik ganda / koneksi lambat) tidak membuat dua permohonan.
         try {
             return Cache::lock('bbm-request-'.$user->id, 10)->block(5, function () use ($user, $validated) {
+                // ✅ BUG-SEC-002: idempotency key per form. Request kedua dengan
+                // key yang sama (mis. tombol diklik dua kali) ditolak sebelum
+                // menyentuh database, sehingga kuota slot tidak terpakai ganda.
+                $idempotencyKey = $validated['idempotency_key'] ?? null;
+                if ($idempotencyKey !== null && $idempotencyKey !== '') {
+                    $cacheKey = 'bbm-idem:'.$user->id.':'.sha1($idempotencyKey);
+
+                    if (! Cache::add($cacheKey, true, now()->addMinutes(10))) {
+                        return back()
+                            ->withInput()
+                            ->with('error', 'Permohonan ini sudah atau sedang diproses. Mohon tidak mengirim ulang.');
+                    }
+                }
+
                 // ✅ Validasi: Max slots
                 $maxSlots = $this->calculateUserMaxSlots($user->id);
                 $activeCount = Permohonan::where('requester_id', $user->id)
@@ -364,7 +380,7 @@ class RequestManagementController extends Controller
 
                     return back()
                         ->withInput()
-                        ->with('error', 'Gagal mengajukan permohonan: '.$e->getMessage());
+                        ->with('error', safe_exception_message($e, 'Gagal mengajukan permohonan. Silakan coba lagi atau hubungi admin.'));
                 }
             });
         } catch (LockTimeoutException $e) {
@@ -470,7 +486,7 @@ class RequestManagementController extends Controller
             \Log::error('Cancel request error: '.$e->getMessage());
             \Log::error($e->getTraceAsString());
 
-            return back()->with('error', '❌ Gagal membatalkan permohonan: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, '❌ Gagal membatalkan permohonan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -775,16 +791,16 @@ class RequestManagementController extends Controller
             DB::rollBack();
 
             // Hapus file yang sudah terupload jika ada error
-            if (isset($strukPath) && Storage::disk('public')->exists($strukPath)) {
-                Storage::disk('public')->delete($strukPath);
+            if (isset($strukPath)) {
+                MediaStorage::delete($strukPath);
             }
-            if (isset($odoPath) && Storage::disk('public')->exists($odoPath)) {
-                Storage::disk('public')->delete($odoPath);
+            if (isset($odoPath) && $odoPath) {
+                MediaStorage::delete($odoPath);
             }
 
             return back()
                 ->withInput()
-                ->with('error', 'Gagal mengirim laporan: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal mengirim laporan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -891,7 +907,7 @@ class RequestManagementController extends Controller
 
             return back()
                 ->withInput()
-                ->with('error', 'Gagal upload bukti: '.$e->getMessage());
+                ->with('error', safe_exception_message($e, 'Gagal upload bukti. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -1221,7 +1237,7 @@ class RequestManagementController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return back()->with('error', 'Gagal memproses permohonan: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, 'Gagal memproses permohonan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -1356,7 +1372,7 @@ class RequestManagementController extends Controller
             \Log::error('Bulk process error: '.$e->getMessage());
             \Log::error($e->getTraceAsString());
 
-            return back()->with('error', 'Gagal memproses bulk action: '.$e->getMessage());
+            return back()->with('error', safe_exception_message($e, 'Gagal memproses bulk action. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -1364,6 +1380,8 @@ class RequestManagementController extends Controller
      * Simpan foto bukti dengan kompresi JPEG 50% (tanpa resize), sama seperti
      * ReportingController::storeStrukImage(). Bila kompresi gagal, fallback
      * menyimpan file asli via storeAs.
+     *
+     * BUG-SEC-003: struk & odometer ditulis ke disk privat.
      */
     private function storeCompressedProofImage(UploadedFile $file, string $directory, string $fileName): string
     {
@@ -1371,9 +1389,9 @@ class RequestManagementController extends Controller
         $path = $directory.'/'.$fileName;
 
         if ($compressed !== null) {
-            Storage::disk('public')->put($path, $compressed);
+            MediaStorage::put($path, $compressed);
         } else {
-            $file->storeAs($directory, $fileName, 'public');
+            MediaStorage::storeUploaded($file, $directory, $fileName);
         }
 
         return $path;
@@ -1441,20 +1459,21 @@ class RequestManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error processing print data: '.$e->getMessage(),
+                'message' => safe_exception_message($e, 'Gagal memproses data cetak. Silakan coba lagi atau hubungi admin.'),
             ], 500);
         }
     }
 
-    public function getTransactionPhoto($reportId, $type)
+    public function getTransactionPhoto(Request $request, $reportId, $type)
     {
         // Validasi type
         if (! in_array($type, ['struk', 'odometer'])) {
             return response()->json(['error' => 'Invalid photo type'], 400);
         }
 
-        // Cari transaction proof
-        $report = Transaction_Proofs::findOrFail($reportId);
+        // BUG-SEC-003/BUG-BBM-005: bukti transaksi dibatasi unit user.
+        $report = Transaction_Proofs::inUnit(UnitScope::for($request->user())->unitId())
+            ->findOrFail($reportId);
 
         // Tentukan path berdasarkan type
         $photoPath = null;
@@ -1464,28 +1483,18 @@ class RequestManagementController extends Controller
             $photoPath = $report->odometer_photo_path;
         }
 
-        // Cek apakah foto ada
-        if (! $photoPath || ! Storage::disk('public')->exists($photoPath)) {
+        // Baca dari disk privat (fallback otomatis ke file lama di disk publik).
+        $imageData = $photoPath ? MediaStorage::get($photoPath) : null;
+
+        if ($imageData === null) {
             return response()->json(['error' => 'Photo not found'], 404);
         }
 
-        // Get full path
-        $fullPath = storage_path('app/public/'.$photoPath);
-
-        // Read image
-        $imageData = file_get_contents($fullPath);
-
-        // Detect mime type
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mimeType = finfo_file($finfo, $fullPath);
-        finfo_close($finfo);
-
-        // Convert to base64
-        $base64 = base64_encode($imageData);
+        $mimeType = MediaStorage::mimeType($photoPath) ?: 'image/jpeg';
 
         return response()->json([
             'success' => true,
-            'base64' => "data:{$mimeType};base64,{$base64}",
+            'base64' => "data:{$mimeType};base64,".base64_encode($imageData),
             'filename' => basename($photoPath),
         ]);
     }

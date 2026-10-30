@@ -12,6 +12,7 @@ use App\Models\Transaction_Proofs;
 use App\Models\VehicleAndToolsConsumers;
 use App\Services\ImageAnalysisService;
 use App\Services\ImageCompressor;
+use App\Support\MediaStorage;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -232,7 +233,7 @@ class ReportingController extends Controller
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menganalisis struk: ' . $e->getMessage(),
+                'message' => safe_exception_message($e, 'Gagal menganalisis struk. Silakan coba lagi atau hubungi admin.'),
             ], 500);
         }
     }
@@ -306,9 +307,24 @@ class ReportingController extends Controller
         $totalPengeluaran = collect($request->items)
             ->where('struk_kategori', '!=', 'Tambahan')
             ->sum('nominal');
+
+        // BUG-LPJ-001: plafon harian = total dana / lama hari perjalanan,
+        // bukan dibagi jumlah baris pencairan.
+        $totalDana = (float) $totalBudgetFromTable > 0
+            ? (float) $totalBudgetFromTable
+            : (float) ($surat->total_budget ?? 0);
+        $budgetPerHari = LpjPenggantian::hitungBudgetPerHari($surat, $totalDana);
+
         // Budget kini opsional — over budget hanya dihitung bila budget diisi
-        $isOverBudget = $totalBudgetFromTable > 0 && $totalPengeluaran > $totalBudgetFromTable;
+        $isOverBudget = $totalDana > 0 && $totalPengeluaran > $totalDana;
         $isOverdue = $surat->isLpjDeadlineOverdue();
+
+        // BUG-LPJ-002: isi otomatis dari total pencairan dana SPD bila field
+        // kosong/0; nilai manual yang diisi user tetap dipakai.
+        $jumlahDiberikan = (float) ($request->jumlah_diberikan ?? 0);
+        if ($jumlahDiberikan <= 0) {
+            $jumlahDiberikan = (float) $surat->pencairans()->sum('nominal');
+        }
 
         DB::beginTransaction();
         try {
@@ -325,16 +341,17 @@ class ReportingController extends Controller
                 'kebutuhan_bbm_liter' => $request->kebutuhan_bbm_liter,
                 'uraian'            => $request->uraian,
                 'uang_dari'         => $request->uang_dari ?? 'KAS',
-                'jumlah_diberikan'  => $request->jumlah_diberikan ?? 0,
+                'jumlah_diberikan'  => $jumlahDiberikan,
                 'total_pengeluaran' => $totalPengeluaran,
-                'budget_per_hari'   => $totalBudgetFromTable > 0
-                    ? round($totalBudgetFromTable / max($budgets->count(), 1))
-                    : 0,
+                'budget_per_hari'   => $budgetPerHari,
                 'catatan'           => $request->catatan ?? '',
                 'status'            => 'pending',
                 'is_late'           => $isOverdue,
                 'is_over_budget'    => $isOverBudget,
             ]);
+
+            // Selisih pengembalian/kekurangan dihitung sejak awal (BUG-LPJ-002).
+            $lpj->calculateKeuangan();
 
             // 2. Detail + struk_items per item.
             //    'Tambahan' = dokumentasi (bukan pengeluaran) → hanya struk_item
@@ -397,7 +414,7 @@ class ReportingController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
+                ->with('error', safe_exception_message($e, 'Terjadi kesalahan. Silakan coba lagi atau hubungi admin.'))
                 ->withInput();
         }
     }
@@ -616,7 +633,7 @@ class ReportingController extends Controller
                 ->with('success', '✅ Laporan BBM operasional berhasil dikirim.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->with('error', 'Gagal mengirim laporan: ' . $e->getMessage());
+            return back()->withInput()->with('error', safe_exception_message($e, 'Gagal mengirim laporan. Silakan coba lagi atau hubungi admin.'));
         }
     }
 
@@ -701,8 +718,11 @@ class ReportingController extends Controller
     }
 
     /**
-     * Simpan gambar struk ke storage dengan kompresi 50% (tanpa resize).
+     * Simpan gambar struk ke disk privat dengan kompresi 50% (tanpa resize).
      * Hanya path yang disimpan ke DB — tidak ada base64.
+     *
+     * BUG-SEC-003: struk berisi data sensitif (lokasi SPBU, plat nomor) →
+     * disk `local` (storage/app/private), bukan disk publik.
      */
     protected function storeStrukImage($file, string $context): string
     {
@@ -716,19 +736,19 @@ class ReportingController extends Controller
         $path = 'transaction_proofs/struk/' . $filename;
 
         if ($jpeg !== null) {
-            Storage::disk('public')->put($path, $jpeg);
+            MediaStorage::put($path, $jpeg);
         } else {
-            $file->storeAs('transaction_proofs/struk', $filename, 'public');
+            MediaStorage::storeUploaded($file, 'transaction_proofs/struk', $filename);
         }
 
         return $path;
     }
 
     /**
-     * Simpan file lain (tanpa kompresi) ke disk public.
+     * Simpan file lain (tanpa kompresi) ke disk privat.
      */
     protected function storeUploaded($file, string $dir, string $filename): string
     {
-        return $file->storeAs($dir, $filename, 'public');
+        return MediaStorage::storeUploaded($file, $dir, $filename);
     }
 }

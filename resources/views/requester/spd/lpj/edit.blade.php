@@ -180,7 +180,10 @@
                                 <div class="input-group">
                                     <span class="input-group-text">Rp</span>
                                     <input type="number" class="form-control" name="jumlah_diberikan"
-                                           id="jumlahDiberikan" value="{{ old('jumlah_diberikan', $laporan->jumlah_diberikan ?? 0) }}" min="0">
+                                           id="jumlahDiberikan" value="{{ old('jumlah_diberikan', $laporan->jumlah_diberikan_efektif) }}" min="0">
+                                    <small class="text-muted d-block mt-1" style="font-size:11px;">
+                                        Terisi otomatis dari pencairan dana SPD bila belum pernah diisi.
+                                    </small>
                                 </div>
                             </div>
                         </div>
