@@ -1,208 +1,87 @@
-@extends('templates.main')
+@php
+    $rp = fn ($value) => 'Rp ' . number_format((float) $value, 0, ',', '.');
+@endphp
 
-@section('content')
-<div class="pagetitle">
-    <h1>Laporan SPD</h1>
-    <nav>
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('superadmin-dashboard') }}">Home</a></li>
-            <li class="breadcrumb-item">SPD</li>
-            <li class="breadcrumb-item active">Laporan SPD</li>
-        </ol>
-    </nav>
-</div>
+<x-layouts.app title="Laporan SPD" :breadcrumbs="['Laporan SPD' => null]">
+    <x-ui.page-header kicker="Admin SPD" title="Laporan SPD" description="Anggaran dan realisasi seluruh surat tugas beserta status LPJ-nya." />
 
-<section class="section dashboard">
-    {{-- Stats --}}
-    <div class="row mb-4">
-        <div class="col-xxl-3 col-md-6">
-            <div class="card info-card sales-card">
-                <div class="card-body">
-                    <h5 class="card-title">Total Surat Disetujui</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-file-earmark-check"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ $totalApproved }}</h6>
-                            <span class="text-muted small pt-2">Surat SPD</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xxl-3 col-md-6">
-            <div class="card info-card revenue-card">
-                <div class="card-body">
-                    <h5 class="card-title">Total Budget</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-cash-stack"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>Rp {{ number_format($totalBudget, 0, ',', '.') }}</h6>
-                            <span class="text-muted small pt-2">Anggaran</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xxl-3 col-md-6">
-            <div class="card info-card success-card">
-                <div class="card-body">
-                    <h5 class="card-title">Total Realisasi</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-currency-dollar"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>Rp {{ number_format($totalSpending, 0, ',', '.') }}</h6>
-                            <span class="text-muted small pt-2">LPJ Disetujui</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xxl-3 col-md-6">
-            <div class="card info-card <?= $totalBudget > 0 && $totalSpending > $totalBudget ? 'danger-card' : 'info-card' ?>">
-                <div class="card-body">
-                    <h5 class="card-title">LPJ Disetujui</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-receipt"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ $totalLpj }}</h6>
-                            <span class="text-muted small pt-2">Laporan</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xxl-3 col-md-6">
-            <div class="card info-card <?= $totalMenungguLpjOverdue > 0 ? 'danger-card' : 'info-card' ?>">
-                <div class="card-body">
-                    <h5 class="card-title">Menunggu LPJ</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-hourglass-split"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ $totalMenungguLpj }}</h6>
-                            <span class="text-muted small pt-2">
-                                surat · <span class="<?= $totalMenungguLpjOverdue > 0 ? 'text-danger fw-bold' : '' ?>">
-                                    {{ $totalMenungguLpjOverdue }} lewat batas 3 hari
-                                </span>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <x-ui.stat-card label="Surat Disetujui" :value="$totalApproved" icon="bi bi-file-earmark-check" hint="Surat SPD" />
+        <x-ui.stat-card label="Total Budget" :value="$rp($totalBudget)" icon="bi bi-cash-stack" tone="muted" hint="Anggaran" />
+        <x-ui.stat-card label="Total Realisasi" :value="$rp($totalSpending)" icon="bi bi-wallet2" :tone="$totalBudget > 0 && $totalSpending > $totalBudget ? 'danger' : 'success'" hint="LPJ disetujui" />
+        <x-ui.stat-card label="LPJ Disetujui" :value="$totalLpj" icon="bi bi-receipt" tone="success" hint="Laporan" />
+        <x-ui.stat-card label="Menunggu LPJ" :value="$totalMenungguLpj" icon="bi bi-hourglass-split" :tone="$totalMenungguLpjOverdue > 0 ? 'danger' : 'warning'"
+            :hint="$totalMenungguLpjOverdue . ' lewat batas 3 hari'" />
     </div>
 
-    @if($totalMenungguLpjOverdue > 0)
-        <div class="alert alert-danger d-flex align-items-start gap-2">
-            <i class="bi bi-exclamation-triangle fs-4"></i>
-            <div>
-                <strong>{{ $totalMenungguLpjOverdue }} surat sudah lewat batas submit LPJ (3 hari setelah SPD selesai).</strong>
-                <div class="small mt-1">
-                    Form LPJ driver <strong>tidak ditutup</strong> — LPJ tetap bisa masuk kapan saja dan akan tercatat
-                    terlambat. Daftar di bawah sudah ditandai <span class="badge bg-danger">LPJ Terlambat</span>.
-                </div>
-            </div>
-        </div>
+    @if ($totalMenungguLpjOverdue > 0)
+        <x-ui.alert variant="destructive" :title="$totalMenungguLpjOverdue . ' surat sudah lewat batas submit LPJ (3 hari setelah SPD selesai).'">
+            Form LPJ driver <strong>tidak ditutup</strong>, LPJ tetap bisa masuk kapan saja dan akan tercatat terlambat. Daftar di bawah sudah ditandai LPJ Terlambat.
+        </x-ui.alert>
     @endif
 
-    {{-- Tabel Surat --}}
-    <div class="card">
-        <div class="card-body">
-            <h5 class="card-title"><i class="bi bi-file-earmark-text"></i> Daftar Surat SPD</h5>
-
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
+    <x-ui.card>
+        <x-ui.card-header title="Daftar Surat SPD" icon="bi bi-file-earmark-text" />
+        <x-ui.card-content class="grid gap-4">
+            <x-ui.table>
+                <thead>
+                    <tr>
+                        <th>No. Surat</th>
+                        <th>Driver</th>
+                        <th>Tujuan</th>
+                        <th>Tanggal</th>
+                        <th class="text-right">Budget</th>
+                        <th class="text-right">Realisasi</th>
+                        <th>Status</th>
+                        <th class="w-20 text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($suratList as $surat)
+                        @php
+                            $budgetTotal = $surat->total_budget ?? 0;
+                            $realisasi = $surat->lpjPenggantian?->total_pengeluaran ?? 0;
+                        @endphp
                         <tr>
-                            <th>No. Surat</th>
-                            <th>Driver</th>
-                            <th>Tujuan</th>
-                            <th>Tanggal</th>
-                            <th class="text-end">Budget</th>
-                            <th class="text-end">Realisasi</th>
-                            <th>Status</th>
-                            <th class="text-center">Aksi</th>
+                            <td>
+                                <span class="font-medium">{{ $surat->nomor_surat }}</span>
+                                @if ($surat->is_extension)<x-ui.badge variant="info" class="mt-1 flex">Perpanjangan</x-ui.badge>@endif
+                            </td>
+                            <td class="whitespace-nowrap">{{ $surat->pengemudi_nama }}</td>
+                            <td class="max-w-48 truncate text-muted-foreground" title="{{ $surat->tempat_tujuan }}">{{ $surat->tempat_tujuan }}</td>
+                            <td class="whitespace-nowrap">{{ $surat->tanggal_berangkat->format('d/m') }} - {{ $surat->tanggal_kembali->format('d/m/y') }}</td>
+                            <td class="whitespace-nowrap text-right tabular-nums">{{ $rp($budgetTotal) }}</td>
+                            <td @class(['whitespace-nowrap text-right tabular-nums', 'font-semibold text-destructive' => $budgetTotal > 0 && $realisasi > $budgetTotal])>{{ $rp($realisasi) }}</td>
+                            <td>
+                                <div class="grid justify-items-start gap-1">
+                                    <x-spd.status-badge :status="$surat->status" />
+                                    @if ($surat->status === 'approved')
+                                        <x-spd.lpj-deadline :surat="$surat" compact />
+                                    @endif
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <x-ui.dropdown-menu :id="'aksi-laporan-' . $surat->id" label="Aksi laporan">
+                                    <div class="px-2.5 pb-1.5 pt-1 text-xs text-muted-foreground"><code>{{ $surat->nomor_surat }}</code></div>
+                                    <x-ui.dropdown-item icon="bi bi-eye" :href="route('surat.superadmin.show', $surat)">Lihat detail</x-ui.dropdown-item>
+                                    @if ($surat->status === 'approved')
+                                        <x-ui.dropdown-item icon="bi bi-printer" :href="route('surat.superadmin.print', $surat)" target="_blank">Cetak surat tugas</x-ui.dropdown-item>
+                                    @endif
+                                    @if ($surat->lpjPenggantian)
+                                        <x-ui.dropdown-separator />
+                                        <x-ui.dropdown-item icon="bi bi-receipt" :href="route('lpj.superadmin.show', $surat->lpjPenggantian)">Buka LPJ</x-ui.dropdown-item>
+                                        <x-ui.dropdown-item icon="bi bi-file-earmark-pdf" :href="route('spd.laporan.export', $surat->lpjPenggantian)" target="_blank">Cetak SPD + LPJ</x-ui.dropdown-item>
+                                    @endif
+                                </x-ui.dropdown-menu>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($suratList as $surat)
-                            @php
-                                $budgetTotal = $surat->total_budget ?? 0;
-                                $realisasi = $surat->lpjPenggantian ? $surat->lpjPenggantian->total_pengeluaran : 0;
-                            @endphp
-                            <tr>
-                                <td>
-                                    <span class="fw-semibold">{{ $surat->nomor_surat }}</span>
-                                    @if($surat->is_extension)
-                                        <br><span class="badge bg-info">Perpanjangan</span>
-                                    @endif
-                                </td>
-                                <td>{{ $surat->pengemudi_nama }}</td>
-                                <td>{{ Str::limit($surat->tempat_tujuan, 20) }}</td>
-                                <td>{{ $surat->tanggal_berangkat->format('d/m') }} - {{ $surat->tanggal_kembali->format('d/m/y') }}</td>
-                                <td class="text-end">Rp {{ number_format($budgetTotal, 0, ',', '.') }}</td>
-                                <td class="text-end">Rp {{ number_format($realisasi, 0, ',', '.') }}</td>
-                                <td>
-                                    @if($surat->status == 'pending')
-                                        <span class="badge bg-warning text-dark">Pending</span>
-                                    @elseif($surat->status == 'approved')
-                                        <span class="badge bg-success">Disetujui</span>
-                                        @if($surat->menunggu_lpj)
-                                            <div class="mt-1">
-                                                @include('partials.lpj-deadline-badge', ['surat' => $surat, 'compact' => true])
-                                            </div>
-                                        @endif
-                                    @elseif($surat->status == 'completed')
-                                        <span class="badge bg-primary">Selesai</span>
-                                    @else
-                                        <span class="badge bg-danger">Ditolak</span>
-                                    @endif
-                                </td>
-                                <td class="text-center">
-                                    <a href="{{ route('surat.superadmin.show', $surat) }}"
-                                       class="btn btn-sm btn-outline-primary" title="Detail">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                    @if($surat->status == 'approved')
-                                        <a href="{{ route('surat.superadmin.print', $surat) }}"
-                                           class="btn btn-sm btn-outline-success" target="_blank" title="Cetak">
-                                            <i class="bi bi-printer"></i>
-                                        </a>
-                                    @endif
-                                    @if($surat->lpjPenggantian)
-                                        <a href="{{ route('spd.laporan.export', $surat->lpjPenggantian) }}"
-                                           class="btn btn-sm btn-outline-primary" target="_blank" title="Cetak SPD + LPJ (1 bundel: tabel, spending, lampiran)">
-                                            <i class="bi bi-file-earmark-pdf"></i>
-                                        </a>
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="8" class="text-center text-muted py-4">Belum ada data SPD</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                    @empty
+                        <tr><td colspan="8" class="py-10 text-center text-muted-foreground">Belum ada data SPD.</td></tr>
+                    @endforelse
+                </tbody>
+            </x-ui.table>
 
-            <div class="d-flex justify-content-center mt-3">
-                {{ $suratList->links() }}
-            </div>
-        </div>
-    </div>
-</section>
-@endsection
+            {{ $suratList->links('vendor.pagination.shadcn') }}
+        </x-ui.card-content>
+    </x-ui.card>
+</x-layouts.app>

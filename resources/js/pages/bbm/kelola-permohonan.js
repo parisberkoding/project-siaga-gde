@@ -3,8 +3,8 @@ import { openDialog } from '../../ui/dialog';
 import { rupiah } from '../../lib/format';
 import { initDecisions } from '../../lib/decisions';
 
-// Komentar massal dipakai untuk permohonan yang komentarnya kosong.
-initDecisions({ fallbackNote: () => document.getElementById('bulkNoteInput')?.value.trim() });
+// Setujui/Tolak lewat dialog (satu per satu atau massal).
+initDecisions();
 
 const MAX_NOMINAL = 850000;
 const NOMINAL_STEP = 50000;

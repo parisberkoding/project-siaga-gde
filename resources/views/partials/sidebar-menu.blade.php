@@ -29,7 +29,12 @@
     // lagi whitelist role yang membuat role bawaan melihat menu di luar hak
     // aksesnya. User custom yang dibuat superadmin akan otomatis melihat
     // seluruh menu sesuai permission yang diberikan, dan tidak lebih.
+    // hideIfPerms: sembunyikan item bila user punya salah satu permission ini (mis. form surat driver
+    // tidak perlu tampil untuk admin yang punya form penerbitan sendiri). Rute tetap bisa diakses.
     $showItem = function ($item) use ($pcodes) {
+        if (!empty($item['hideIfPerms']) && !empty(array_intersect($item['hideIfPerms'], $pcodes))) {
+            return false;
+        }
         if (empty($item['perms'])) {
             return true;
         }
@@ -115,10 +120,10 @@
 
         // ── BBM / Permohonan ──
         ['label' => 'Permohonan BBM', 'icon' => 'bi bi-fuel-pump', 'id' => 'bbm-nav', 'module' => 'bbm', 'active' => ['requester-index', 'requester-history', 'admin-dashboard', 'superadmin.permohonan*'], 'children' => [
-            ['label' => 'Permohonan Baru', 'icon' => 'bi bi-circle', 'route' => 'requester-index', 'active' => ['requester-index'], 'perms' => ['bbm.request']],
-            ['label' => 'Riwayat Permohonan', 'icon' => 'bi bi-circle', 'route' => 'requester-history', 'active' => ['requester-history'], 'perms' => ['bbm.view', 'bbm.report']],
-            ['label' => 'Approval BBM', 'icon' => 'bi bi-circle', 'route' => 'admin-dashboard', 'active' => ['admin-dashboard'], 'perms' => ['bbm.approve']],
-            ['label' => 'Kelola Permohonan', 'icon' => 'bi bi-circle', 'route' => 'superadmin.permohonan', 'active' => ['superadmin.permohonan*'], 'perms' => ['bbm.approve']],
+            ['label' => 'Permohonan Baru', 'icon' => 'bi bi-plus-circle', 'section' => 'Permohonan', 'route' => 'requester-index', 'active' => ['requester-index'], 'perms' => ['bbm.request']],
+            ['label' => 'Riwayat Permohonan', 'icon' => 'bi bi-clock-history', 'section' => 'Permohonan', 'route' => 'requester-history', 'active' => ['requester-history'], 'perms' => ['bbm.view', 'bbm.report']],
+            ['label' => 'Approval BBM', 'icon' => 'bi bi-check2-square', 'section' => 'Admin', 'route' => 'admin-dashboard', 'active' => ['admin-dashboard'], 'perms' => ['bbm.approve']],
+            ['label' => 'Kelola Permohonan', 'icon' => 'bi bi-pencil-square', 'section' => 'Admin', 'route' => 'superadmin.permohonan', 'active' => ['superadmin.permohonan*'], 'perms' => ['bbm.approve']],
         ]],
 
         // ── Pelaporan BBM & SPD (SEMENTARA DISEMBUNYIKAN dari navigasi) ──
@@ -130,18 +135,18 @@
         // ── SPD Management (anak di-filter per permission) ──
         ['label' => 'SPD Management', 'icon' => 'bi bi-envelope-paper', 'id' => 'spd-nav', 'module' => 'spd', 'active' => ['requester.surat.*', 'requester.spd.berjalan', 'requester.lpj.*', 'surat.superadmin.*', 'perpanjangan.superadmin.*', 'lpj.superadmin.*', 'lpj.pengguna.*'], 'children' => [
             // Driver / Requester
-            ['label' => 'Buat Surat Tugas', 'icon' => 'bi bi-circle', 'route' => 'requester.surat.create', 'active' => ['requester.surat.create'], 'perms' => ['spd.create']],
-            ['label' => 'Daftar Surat Tugas', 'icon' => 'bi bi-circle', 'route' => 'requester.surat.index', 'active' => ['requester.surat.index', 'requester.surat.show'], 'perms' => ['spd.view']],
-            ['label' => 'SPD Berjalan', 'icon' => 'bi bi-circle', 'route' => 'requester.spd.berjalan', 'active' => ['requester.spd.berjalan'], 'perms' => ['lpj.create', 'spd.view']],
-            ['label' => 'Laporan SPD (LPJ)', 'icon' => 'bi bi-circle', 'route' => 'requester.lpj.index', 'active' => ['requester.lpj.*'], 'perms' => ['lpj.create', 'lpj.view']],
+            ['label' => 'Buat Surat Tugas', 'icon' => 'bi bi-plus-circle', 'section' => 'Perjalanan Saya', 'route' => 'requester.surat.create', 'active' => ['requester.surat.create'], 'perms' => ['spd.create'], 'hideIfPerms' => ['spd.manage']],
+            ['label' => 'Daftar Surat Tugas', 'icon' => 'bi bi-file-earmark-text', 'section' => 'Perjalanan Saya', 'route' => 'requester.surat.index', 'active' => ['requester.surat.index', 'requester.surat.show'], 'perms' => ['spd.view']],
+            ['label' => 'SPD Berjalan', 'icon' => 'bi bi-car-front', 'section' => 'Perjalanan Saya', 'route' => 'requester.spd.berjalan', 'active' => ['requester.spd.berjalan'], 'perms' => ['lpj.create', 'spd.view']],
+            ['label' => 'Laporan SPD (LPJ)', 'icon' => 'bi bi-receipt', 'section' => 'Perjalanan Saya', 'route' => 'requester.lpj.index', 'active' => ['requester.lpj.*'], 'perms' => ['lpj.create', 'lpj.view']],
             // User yang berangkat (penumpang)
-            ['label' => 'Validasi Perjalanan (User)', 'icon' => 'bi bi-circle', 'route' => 'lpj.pengguna.index', 'active' => ['lpj.pengguna.*'], 'perms' => ['spd.validate_trip']],
+            ['label' => 'Validasi Perjalanan (User)', 'icon' => 'bi bi-person-check', 'section' => 'Validasi', 'route' => 'lpj.pengguna.index', 'active' => ['lpj.pengguna.*'], 'perms' => ['spd.validate_trip']],
             // Admin / Superadmin
-            ['label' => 'Buat Surat (Shortcut)', 'icon' => 'bi bi-circle', 'route' => 'surat.superadmin.create-shortcut', 'active' => ['surat.superadmin.create-shortcut', 'surat.superadmin.store-shortcut'], 'perms' => ['spd.manage']],
-            ['label' => 'Validasi Surat Tugas', 'icon' => 'bi bi-circle', 'route' => 'surat.superadmin.index', 'active' => ['surat.superadmin.index', 'surat.superadmin.show'], 'perms' => ['spd.manage']],
-            ['label' => 'Perpanjangan (ETD)', 'icon' => 'bi bi-circle', 'route' => 'perpanjangan.superadmin.index', 'active' => ['perpanjangan.superadmin.*'], 'perms' => ['spd.update']],
-            ['label' => 'Validasi Laporan', 'icon' => 'bi bi-circle', 'route' => 'lpj.superadmin.index', 'active' => ['lpj.superadmin.*'], 'perms' => ['lpj.validate']],
-            ['label' => 'Laporan SPD', 'icon' => 'bi bi-circle', 'route' => 'surat.superadmin.report', 'active' => ['surat.superadmin.report'], 'perms' => ['spd.manage']],
+            ['label' => 'Buat Surat Tugas', 'icon' => 'bi bi-lightning-charge', 'section' => 'Admin', 'route' => 'surat.superadmin.create-shortcut', 'active' => ['surat.superadmin.create-shortcut', 'surat.superadmin.store-shortcut'], 'perms' => ['spd.manage']],
+            ['label' => 'Validasi Surat Tugas', 'icon' => 'bi bi-envelope-check', 'section' => 'Validasi', 'route' => 'surat.superadmin.index', 'active' => ['surat.superadmin.index', 'surat.superadmin.show'], 'perms' => ['spd.manage']],
+            ['label' => 'Perpanjangan (ETD)', 'icon' => 'bi bi-calendar-plus', 'section' => 'Validasi', 'route' => 'perpanjangan.superadmin.index', 'active' => ['perpanjangan.superadmin.*'], 'perms' => ['spd.update']],
+            ['label' => 'Validasi Laporan', 'icon' => 'bi bi-clipboard-check', 'section' => 'Validasi', 'route' => 'lpj.superadmin.index', 'active' => ['lpj.superadmin.*'], 'perms' => ['lpj.validate']],
+            ['label' => 'Laporan SPD', 'icon' => 'bi bi-bar-chart-line', 'section' => 'Admin', 'route' => 'surat.superadmin.report', 'active' => ['surat.superadmin.report'], 'perms' => ['spd.manage']],
         ]],
 
         // ── Master Data - Kendaraan & Alat ──
@@ -228,7 +233,7 @@
         ]],
 
         // ── Cetak Laporan BBM (admin/superadmin) ──
-        ['label' => 'Cetak Laporan BBM', 'icon' => 'bi bi-printer', 'module' => 'bbm', 'route' => 'superadmin.print-report', 'active' => ['superadmin.print-report*'], 'perms' => ['bbm.export']],
+        ['label' => 'Cetak Laporan BBM', 'icon' => 'bi bi-printer', 'section' => 'Admin', 'module' => 'bbm', 'route' => 'superadmin.print-report', 'active' => ['superadmin.print-report*'], 'perms' => ['bbm.export']],
 
         // ── Laporan & Analisis (superadmin) ──
         ['label' => 'Laporan & Analisis', 'icon' => 'bi bi-graph-up-arrow', 'id' => 'laporan-nav', 'module' => 'vehicle', 'active' => ['trip-analysis*', 'superadmin.financial-report.*', 'superadmin.transaction-report.*', 'superadmin.vehicle-health.*'], 'children' => [

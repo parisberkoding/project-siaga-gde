@@ -1,5 +1,5 @@
 <x-layouts.app title="Riwayat Permohonan BBM" :breadcrumbs="['Permohonan BBM' => route('requester-index'), 'Riwayat' => null]">
-    <x-ui.page-header title="Riwayat Permohonan" description="Semua permohonan BBM yang pernah Anda ajukan." />
+    <x-ui.page-header kicker="Permohonan BBM" title="Riwayat Permohonan" description="Semua permohonan BBM yang pernah Anda ajukan." />
 
     <x-ui.card class="gap-4">
         <x-ui.card-content class="grid gap-4">

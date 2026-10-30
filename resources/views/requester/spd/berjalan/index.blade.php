@@ -1,61 +1,28 @@
-@extends('templates.main')
+@php
+    $jumlahTerlambat = $suratList->where('lpj_terlambat', true)->count();
+@endphp
 
-@section('content')
-<div class="pagetitle">
-    <h1>SPD Berjalan</h1>
-    <nav>
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('requester-index') }}">Home</a></li>
-            <li class="breadcrumb-item">SPD</li>
-            <li class="breadcrumb-item active">SPD Berjalan</li>
-        </ol>
-    </nav>
-</div>
+<x-layouts.app title="SPD Berjalan" :breadcrumbs="['SPD Berjalan' => null]">
+    <x-ui.page-header kicker="Pelaporan" title="SPD Berjalan" description="Surat tugas yang sudah disetujui dan belum dibuat laporannya." />
 
-<section class="section dashboard">
-    {{-- Alert Messages --}}
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+    <x-ui.alert variant="info">
+        Klik <strong>Lapor &amp; Validasi SPD</strong> pada surat yang bersangkutan untuk mengunggah struk dan menyelesaikan LPJ.
+    </x-ui.alert>
+
+    @if ($jumlahTerlambat > 0)
+        <x-ui.alert variant="destructive" :title="$jumlahTerlambat . ' surat sudah melewati batas submit LPJ (3 hari setelah SPD selesai).'">
+            Form LPJ <strong>tidak ditutup</strong>, silakan tetap submit. LPJ yang masuk setelah batas akan ditandai
+            <em>terlambat</em> dan terlihat oleh Divisi GA &amp; pengguna yang berangkat.
+        </x-ui.alert>
     @endif
 
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    <div class="card">
-        <div class="card-body">
-            <h5 class="card-title"><i class="bi bi-car-front"></i> Surat Tugas yang Harus Dilaporkan</h5>
-
-            <div class="alert alert-info py-2">
-                <i class="bi bi-info-circle me-1"></i>
-                <small>
-                    Daftar di bawah ini adalah surat tugas yang <strong>sudah disetujui</strong> dan
-                    <strong>belum dibuat laporannya</strong>. Klik <strong>Lapor &amp; Validasi SPD</strong> pada
-                    surat yang bersangkutan untuk mengunggah struk dan menyelesaikan LPJ.
-                </small>
-            </div>
-
-            @php $jumlahTerlambat = $suratList->where('lpj_terlambat', true)->count(); @endphp
-
-            @if($jumlahTerlambat > 0)
-                <div class="alert alert-danger">
-                    <i class="bi bi-exclamation-triangle me-1"></i>
-                    <strong>{{ $jumlahTerlambat }} surat sudah melewati batas submit LPJ (3 hari setelah SPD selesai).</strong>
-                    <div class="small mt-1">
-                        Form LPJ <strong>tidak ditutup</strong> — silakan tetap submit. LPJ yang masuk setelah batas
-                        akan ditandai <em>terlambat</em> dan terlihat oleh Divisi GA &amp; pengguna yang berangkat.
-                    </div>
-                </div>
-            @endif
-
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
+    <x-ui.card>
+        <x-ui.card-header title="Surat Tugas yang Harus Dilaporkan" icon="bi bi-car-front" description="{{ $suratList->count() }} surat menunggu laporan" />
+        <x-ui.card-content>
+            @if ($suratList->isEmpty())
+                <x-ui.empty-state icon="bi bi-check2-circle" title="Semua sudah dilaporkan" description="Tidak ada surat SPD yang perlu dilaporkan." />
+            @else
+                <x-ui.table>
                     <thead>
                         <tr>
                             <th>Surat Tugas</th>
@@ -63,59 +30,46 @@
                             <th>Kendaraan</th>
                             <th>Batas Submit LPJ</th>
                             <th>Laporan Harian</th>
-                            <th>Aksi</th>
+                            <th class="text-right">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($suratList as $surat)
-                        <tr class="{{ $surat->lpj_terlambat ? 'table-danger' : '' }}">
-                            <td>
-                                <strong>{{ $surat->nomor_surat }}</strong>
-                                @if($surat->is_extension)
-                                    <span class="badge bg-secondary">Perpanjangan</span>
-                                @endif
-                                <br>
-                                <small class="text-muted">{{ $surat->tempat_tujuan }}</small>
-                            </td>
-                            <td>
-                                <small>
+                        @foreach ($suratList as $surat)
+                            <tr @class(['bg-destructive-soft/60' => $surat->lpj_terlambat])>
+                                <td>
+                                    <span class="font-medium">{{ $surat->nomor_surat }}</span>
+                                    @if ($surat->is_extension)
+                                        <x-ui.badge variant="info"><i class="bi bi-arrow-repeat"></i> Perpanjangan</x-ui.badge>
+                                    @endif
+                                    <span class="block max-w-64 truncate text-xs text-muted-foreground" title="{{ $surat->tempat_tujuan }}">{{ $surat->tempat_tujuan }}</span>
+                                </td>
+                                <td class="whitespace-nowrap text-xs">
                                     {{ $surat->tanggal_berangkat->translatedFormat('l, d F Y') }} s/d<br>
                                     {{ $surat->tanggal_kembali->translatedFormat('l, d F Y') }}
-                                </small>
-                            </td>
-                            <td><small>{{ $surat->vehicle?->consumerial_code ?? '-' }}</small></td>
-                            <td>
-                                @include('partials.lpj-deadline-badge', ['surat' => $surat])
-                            </td>
-                            <td>
-                                @if($surat->daily_reports_available)
-                                    <span class="badge bg-success">{{ $surat->daily_submitted_count }} hari terkirim</span>
-                                    <small class="text-muted d-block">· {{ $surat->daily_item_count }} item</small>
-                                    @if($surat->has_draft_daily)
-                                        <span class="badge bg-warning text-dark">ada draft</span>
+                                </td>
+                                <td>{{ $surat->vehicle?->consumerial_code ?? '-' }}</td>
+                                <td><x-spd.lpj-deadline :surat="$surat" /></td>
+                                <td>
+                                    @if ($surat->daily_reports_available)
+                                        <div class="grid justify-items-start gap-1">
+                                            <x-ui.badge variant="success">{{ $surat->daily_submitted_count }} hari terkirim</x-ui.badge>
+                                            <span class="text-xs text-muted-foreground">{{ $surat->daily_item_count }} item</span>
+                                            @if ($surat->has_draft_daily)
+                                                <x-ui.badge variant="warning">ada draft</x-ui.badge>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <x-ui.badge variant="muted">belum ada</x-ui.badge>
                                     @endif
-                                @else
-                                    <span class="badge bg-light text-muted">belum ada</span>
-                                @endif
-                            </td>
-                            <td>
-                                <a href="{{ route('pelaporan.spd.validasi', $surat) }}" class="btn btn-sm btn-outline-primary mb-1">
-                                    <i class="bi bi-calendar3"></i> Lapor &amp; Validasi SPD
-                                </a>
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="6" class="text-center text-muted py-4">
-                                <i class="bi bi-check2-circle" style="font-size:2rem;"></i><br>
-                                Tidak ada surat SPD yang perlu dilaporkan.
-                            </td>
-                        </tr>
-                        @endforelse
+                                </td>
+                                <td class="text-right">
+                                    <x-ui.button size="sm" :href="route('pelaporan.spd.validasi', $surat)"><i class="bi bi-calendar3"></i> Lapor &amp; Validasi SPD</x-ui.button>
+                                </td>
+                            </tr>
+                        @endforeach
                     </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</section>
-@endsection
+                </x-ui.table>
+            @endif
+        </x-ui.card-content>
+    </x-ui.card>
+</x-layouts.app>

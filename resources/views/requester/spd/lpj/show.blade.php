@@ -1,368 +1,206 @@
-@extends('templates.main')
+@php
+    $surat = $laporan->suratSpd;
+    $rp = fn ($value) => 'Rp ' . number_format((float) $value, 0, ',', '.');
+@endphp
 
-@section('content')
-<div class="pagetitle">
-    <h1>Detail Laporan Pertanggungjawaban</h1>
-    <nav>
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="">Home</a></li>
-            <li class="breadcrumb-item">SPD</li>
-            <li class="breadcrumb-item"><a href="{{ route('requester.lpj.index') }}">Laporan LPJ</a></li>
-            <li class="breadcrumb-item active">Detail</li>
-        </ol>
-    </nav>
-</div>
+<x-layouts.app title="Detail LPJ" :breadcrumbs="['Laporan LPJ' => route('requester.lpj.index'), 'Detail' => null]">
+    <x-ui.page-header kicker="Laporan Pertanggungjawaban" :title="$surat->nomor_surat ?? 'Detail LPJ'" description="Rincian pengeluaran dan status validasi LPJ.">
+        <x-slot:actions>
+            <x-spd.status-badge :status="$laporan->status" class="px-3 py-1 text-sm" />
+            @if ($laporan->is_late)
+                <x-ui.badge variant="danger" class="px-3 py-1 text-sm"><i class="bi bi-clock"></i> Terlambat {{ $laporan->days_late }} hari</x-ui.badge>
+            @endif
+            @if ($laporan->is_over_budget)
+                <x-ui.badge variant="warning" class="px-3 py-1 text-sm"><i class="bi bi-exclamation-triangle"></i> Over Budget</x-ui.badge>
+            @endif
+            <x-ui.button variant="outline" :href="route('requester.lpj.index')"><i class="bi bi-arrow-left"></i> Kembali</x-ui.button>
+        </x-slot:actions>
+    </x-ui.page-header>
 
-<section class="section">
-    <div class="row">
-        {{-- Detail LPJ --}}
-        <div class="col-lg-8">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title d-flex justify-content-between align-items-center">
-                        <span>Laporan Pertanggungjawaban BBM</span>
-                        @if($laporan->status == 'pending')
-                            <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Menunggu Validasi</span>
-                        @elseif($laporan->status == 'approved')
-                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Disetujui</span>
-                        @else
-                            <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Ditolak</span>
-                        @endif
-                    </h5>
+    <div class="grid items-start gap-6 lg:grid-cols-3">
+        <div class="grid gap-6 lg:col-span-2">
+            <div class="grid gap-6 md:grid-cols-2">
+                <x-ui.card>
+                    <x-ui.card-header title="Surat Tugas" icon="bi bi-file-earmark-text" />
+                    <x-ui.card-content>
+                        <dl class="divide-y">
+                            <x-ui.detail-row label="Nomor">
+                                <span class="font-medium">{{ $surat->nomor_surat ?? '-' }}</span>
+                                @if ($surat?->is_extension)
+                                    <x-ui.badge variant="info">Perpanjangan</x-ui.badge>
+                                @endif
+                            </x-ui.detail-row>
+                            <x-ui.detail-row label="Tujuan">{{ $surat->tempat_tujuan ?? '-' }}</x-ui.detail-row>
+                            <x-ui.detail-row label="Tanggal">
+                                @if ($surat)
+                                    {{ $surat->tanggal_berangkat->translatedFormat('d M Y') }} - {{ $surat->tanggal_kembali->translatedFormat('d M Y') }}
+                                    <span class="block text-xs text-muted-foreground">{{ $surat->lama_perjalanan_hari }} hari</span>
+                                @else
+                                    -
+                                @endif
+                            </x-ui.detail-row>
+                        </dl>
+                    </x-ui.card-content>
+                </x-ui.card>
 
-                    {{-- Warning Badges --}}
-                    @if($laporan->is_late || $laporan->is_over_budget)
-                        <div class="mb-3">
-                            @if($laporan->is_late)
-                                <span class="badge bg-danger me-1">
-                                    <i class="bi bi-clock"></i> Terlambat {{ $laporan->days_late }} hari
-                                </span>
-                            @endif
-                            @if($laporan->is_over_budget)
-                                <span class="badge bg-warning text-dark">
-                                    <i class="bi bi-exclamation-triangle"></i> Over Budget
-                                </span>
-                            @endif
-                        </div>
-                    @endif
-
-                    <hr>
-
-                    {{-- Info Surat Tugas --}}
-                    <h6 class="text-primary mb-3"><i class="bi bi-file-earmark-text"></i> Informasi Surat Tugas</h6>
-                    <div class="row mb-2">
-                        <div class="col-4">Nomor Surat:</div>
-                        <div class="col-8">
-                            <strong>{{ $laporan->suratSpd->nomor_surat ?? '-' }}</strong>
-                            @if($laporan->suratSpd && $laporan->suratSpd->is_extension)
-                                <span class="badge bg-info ms-1">Perpanjangan</span>
-                            @endif
-                        </div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-4">Tujuan:</div>
-                        <div class="col-8">{{ $laporan->suratSpd->tempat_tujuan ?? '-' }}</div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-4">Tanggal Perjalanan:</div>
-                        <div class="col-8">
-                            @if($laporan->suratSpd)
-                                {{ $laporan->suratSpd->tanggal_berangkat->translatedFormat('d M Y') }} -
-                                {{ $laporan->suratSpd->tanggal_kembali->translatedFormat('d M Y') }}
-                                <span class="badge bg-secondary">{{ $laporan->suratSpd->lama_perjalanan_hari }} hari</span>
-                            @else
-                                -
-                            @endif
-                        </div>
-                    </div>
-
-                    <hr>
-
-                    {{-- Info Pelapor --}}
-                    <h6 class="text-success mb-3"><i class="bi bi-person"></i> Informasi Pelapor</h6>
-                    <div class="row mb-2">
-                        <div class="col-4">Nama:</div>
-                        <div class="col-8"><strong>{{ $laporan->nama }}</strong></div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-4">Jabatan:</div>
-                        <div class="col-8">{{ $laporan->jabatan }}</div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-4">Kendaraan:</div>
-                        <div class="col-8">
-                            <span class="badge bg-dark">{{ $laporan->nomor_polisi }}</span>
-                            {{ $laporan->vehicle->consumerial_name ?? '' }}
-                        </div>
-                    </div>
-
-                    <hr>
-
-                    {{-- Uraian --}}
-                    <h6 class="text-info mb-3"><i class="bi bi-journal-text"></i> Uraian Perjalanan</h6>
-                    <p>{{ $laporan->uraian }}</p>
-                </div>
+                <x-ui.card>
+                    <x-ui.card-header title="Pelapor" icon="bi bi-person" />
+                    <x-ui.card-content>
+                        <dl class="divide-y">
+                            <x-ui.detail-row label="Nama"><span class="font-medium">{{ $laporan->nama }}</span></x-ui.detail-row>
+                            <x-ui.detail-row label="Jabatan">{{ $laporan->jabatan }}</x-ui.detail-row>
+                            <x-ui.detail-row label="Kendaraan">
+                                <x-ui.badge variant="outline"><i class="bi bi-truck"></i> {{ $laporan->nomor_polisi }}</x-ui.badge>
+                                <span class="block text-xs text-muted-foreground">{{ $laporan->vehicle->consumerial_name ?? '' }}</span>
+                            </x-ui.detail-row>
+                        </dl>
+                    </x-ui.card-content>
+                </x-ui.card>
             </div>
 
-            {{-- Detail Pengeluaran --}}
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="bi bi-list-check"></i> Rincian Pengeluaran</h5>
+            @if ($laporan->uraian)
+                <x-ui.card>
+                    <x-ui.card-header title="Uraian Perjalanan" icon="bi bi-journal-text" />
+                    <x-ui.card-content><p class="whitespace-pre-line text-sm">{{ $laporan->uraian }}</p></x-ui.card-content>
+                </x-ui.card>
+            @endif
 
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <thead class="table-light">
-                                 <tr>
-                                     <th style="width: 50px;">No</th>
-                                     <th>Tanggal</th>
-                                     <th>Tipe</th>
-                                     <th class="text-end">Nominal</th>
-                                     <th>Struk</th>
-                                     <th>Keterangan</th>
-                                 </tr>
-                             </thead>
-                             <tbody>
-                                 @forelse($laporan->details as $index => $detail)
-                                     <tr>
-                                         <td class="text-center">{{ $index + 1 }}</td>
-                                         <td>{{ $detail->tanggal ? $detail->tanggal->translatedFormat('d M Y') : '-' }}</td>
-                                         <td>
-                                             @php
-                                                 $badgeClass = match($detail->tipe_penggunaan) {
-                                                     'BBM' => 'bg-primary',
-                                                     'Tol' => 'bg-info',
-                                                     'Portir' => 'bg-warning text-dark',
-                                                     default => 'bg-secondary'
-                                                 };
-                                             @endphp
-                                             <span class="badge {{ $badgeClass }}">{{ $detail->tipe_penggunaan }}</span>
-                                             @if($detail->strukItem && $detail->strukItem->kategori_source === 'ai')
-                                                 <span class="badge bg-info-subtle text-info" title="Dianalisis AI/OCR">
-                                                     <i class="bi bi-stars"></i> AI
-                                                 </span>
-                                             @endif
-                                         </td>
-                                         <td class="text-end">Rp {{ number_format($detail->nominal, 0, ',', '.') }}</td>
-                                         <td>
-                                             @if($detail->strukItem && $detail->strukItem->path_image)
-                                                 <a href="{{ $detail->strukItem->path_url }}"
-                                                    target="_blank" class="btn btn-sm btn-outline-primary" title="Lihat struk">
-                                                     <i class="bi bi-image"></i>
-                                                 </a>
-                                             @else
-                                                 <span class="text-muted">-</span>
-                                             @endif
-                                         </td>
-                                         <td>{{ $detail->keterangan ?? '-' }}</td>
-                                     </tr>
-                                 @empty
-                                     <tr>
-                                         <td colspan="6" class="text-center text-muted">Tidak ada data pengeluaran</td>
-                                     </tr>
-                                 @endforelse
-                             </tbody>
-                             <tfoot class="table-dark">
-                                 <tr>
-                                     <th colspan="3" class="text-end">Total Pengeluaran:</th>
-                                     <th class="text-end">Rp {{ number_format($laporan->total_pengeluaran, 0, ',', '.') }}</th>
-                                     <th colspan="2"></th>
-                                 </tr>
-                             </tfoot>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Ringkasan Keuangan --}}
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="bi bi-calculator"></i> Ringkasan Keuangan</h5>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <table class="table table-sm">
+            <x-ui.card>
+                <x-ui.card-header title="Rincian Pengeluaran" icon="bi bi-list-check" :description="$laporan->details->count() . ' item'" />
+                <x-ui.card-content>
+                    <x-ui.table>
+                        <thead>
+                            <tr>
+                                <th class="w-12">No</th>
+                                <th>Tanggal</th>
+                                <th>Tipe</th>
+                                <th class="text-right">Nominal</th>
+                                <th>Struk</th>
+                                <th>Keterangan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($laporan->details as $index => $detail)
                                 <tr>
-                                    <td>Biaya BBM:</td>
-                                    <td class="text-end">Rp {{ number_format($laporan->total_biaya_bbm, 0, ',', '.') }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Biaya Tol:</td>
-                                    <td class="text-end">Rp {{ number_format($laporan->total_biaya_tol, 0, ',', '.') }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Biaya Portir:</td>
-                                    <td class="text-end">Rp {{ number_format($laporan->total_biaya_portir, 0, ',', '.') }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Biaya Lain-lain:</td>
-                                    <td class="text-end">Rp {{ number_format($laporan->total_biaya_lain, 0, ',', '.') }}</td>
-                                </tr>
-                                <tr class="table-dark">
-                                    <td><strong>Total:</strong></td>
-                                    <td class="text-end"><strong>Rp {{ number_format($laporan->total_pengeluaran, 0, ',', '.') }}</strong></td>
-                                </tr>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <table class="table table-sm">
-                                <tr>
-                                    <td>Uang Dari:</td>
-                                    <td class="text-end">{{ $laporan->uang_dari ?? 'KAS' }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Jumlah Diberikan:</td>
-                                    <td class="text-end">Rp {{ number_format($laporan->jumlah_diberikan, 0, ',', '.') }}</td>
-                                </tr>
-                                <tr class="{{ $laporan->pengembalian > 0 ? 'table-success' : '' }}">
-                                    <td>Pengembalian:</td>
-                                    <td class="text-end">Rp {{ number_format($laporan->pengembalian, 0, ',', '.') }}</td>
-                                </tr>
-                                <tr class="{{ $laporan->kekurangan > 0 ? 'table-warning' : '' }}">
-                                    <td>Kekurangan:</td>
-                                    <td class="text-end">Rp {{ number_format($laporan->kekurangan, 0, ',', '.') }}</td>
-                                </tr>
-                            </table>
-
-                            {{-- Budget comparison --}}
-                            @if($laporan->suratSpd)
-                                <div class="alert {{ $laporan->is_over_budget ? 'alert-warning' : 'alert-info' }} py-2 mb-0">
-                                    <small>
-                                        <strong>Budget:</strong> Rp {{ number_format($laporan->suratSpd->total_budget, 0, ',', '.') }}<br>
-                                        <strong>Terpakai:</strong> Rp {{ number_format($laporan->total_pengeluaran, 0, ',', '.') }}
-                                        @if($laporan->is_over_budget)
-                                            <span class="badge bg-warning text-dark">Over Budget</span>
+                                    <td class="text-muted-foreground">{{ $index + 1 }}</td>
+                                    <td class="whitespace-nowrap">{{ $detail->tanggal?->translatedFormat('d M Y') ?? '-' }}</td>
+                                    <td>
+                                        <div class="flex flex-wrap gap-1">
+                                            <x-spd.tipe-badge :tipe="$detail->tipe_penggunaan" />
+                                            @if ($detail->strukItem?->kategori_source === 'ai')
+                                                <x-ui.badge variant="info" title="Dianalisis AI/OCR"><i class="bi bi-stars"></i> AI</x-ui.badge>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="whitespace-nowrap text-right tabular-nums">{{ $rp($detail->nominal) }}</td>
+                                    <td>
+                                        @if ($detail->strukItem?->path_image)
+                                            <x-ui.button variant="ghost" size="icon-sm" :href="$detail->strukItem->path_url" target="_blank" title="Lihat struk" aria-label="Lihat struk"><i class="bi bi-image"></i></x-ui.button>
+                                        @else
+                                            <span class="text-muted-foreground">-</span>
                                         @endif
-                                    </small>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </div>
+                                    </td>
+                                    <td class="text-muted-foreground">{{ $detail->keterangan ?? '-' }}</td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="6" class="py-8 text-center text-muted-foreground">Tidak ada data pengeluaran.</td></tr>
+                            @endforelse
+                        </tbody>
+                        <tfoot>
+                            <tr class="border-t bg-muted/50 font-semibold">
+                                <td colspan="3" class="text-right">Total Pengeluaran</td>
+                                <td class="whitespace-nowrap text-right tabular-nums">{{ $rp($laporan->total_pengeluaran) }}</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </x-ui.table>
+                </x-ui.card-content>
+            </x-ui.card>
 
-            {{-- Riwayat Validasi --}}
-            @if($laporan->status != 'pending')
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-clock-history"></i> Riwayat Validasi</h5>
-                        <div class="alert {{ $laporan->status == 'approved' ? 'alert-success' : 'alert-danger' }} mb-0">
-                            @if($laporan->status == 'approved')
-                                <strong><i class="bi bi-check-circle"></i> Laporan Disetujui</strong><br>
-                                <small>Oleh: {{ $laporan->approverPengguna->nama_lengkap ?? $laporan->approverPengguna->name ?? '-' }}</small><br>
-                                <small>Pada: {{ $laporan->approved_pengguna_at ? $laporan->approved_pengguna_at->translatedFormat('d F Y H:i') : '-' }}</small>
-                            @else
-                                <strong><i class="bi bi-x-circle"></i> Laporan Ditolak</strong><br>
-                                <small>Oleh: {{ $laporan->rejector->nama_lengkap ?? $laporan->rejector->name ?? '-' }}</small><br>
-                                <small>Pada: {{ $laporan->rejected_at ? $laporan->rejected_at->translatedFormat('d F Y H:i') : '-' }}</small><br>
-                                <strong>Alasan:</strong> {{ $laporan->rejection_reason }}
-                            @endif
-                        </div>
+            <x-ui.card>
+                <x-ui.card-header title="Ringkasan Keuangan" icon="bi bi-calculator" />
+                <x-ui.card-content class="grid gap-6 md:grid-cols-2">
+                    <dl class="divide-y">
+                        <x-ui.detail-row label="Biaya BBM" numeric><span class="tabular-nums">{{ $rp($laporan->total_biaya_bbm) }}</span></x-ui.detail-row>
+                        <x-ui.detail-row label="Biaya Tol" numeric><span class="tabular-nums">{{ $rp($laporan->total_biaya_tol) }}</span></x-ui.detail-row>
+                        <x-ui.detail-row label="Biaya Portir" numeric><span class="tabular-nums">{{ $rp($laporan->total_biaya_portir) }}</span></x-ui.detail-row>
+                        <x-ui.detail-row label="Biaya Lain-lain" numeric><span class="tabular-nums">{{ $rp($laporan->total_biaya_lain) }}</span></x-ui.detail-row>
+                        <x-ui.detail-row label="Total" numeric><span class="font-bold tabular-nums">{{ $rp($laporan->total_pengeluaran) }}</span></x-ui.detail-row>
+                    </dl>
+                    <div class="grid content-start gap-4">
+                        <dl class="divide-y">
+                            <x-ui.detail-row label="Uang dari" numeric>{{ $laporan->uang_dari ?? 'KAS' }}</x-ui.detail-row>
+                            <x-ui.detail-row label="Jumlah diberikan" numeric><span class="tabular-nums">{{ $rp($laporan->jumlah_diberikan_efektif) }}</span></x-ui.detail-row>
+                            <x-ui.detail-row label="Pengembalian" numeric><span @class(['tabular-nums', 'font-semibold text-success' => $laporan->pengembalian > 0])>{{ $rp($laporan->pengembalian) }}</span></x-ui.detail-row>
+                            <x-ui.detail-row label="Kekurangan" numeric><span @class(['tabular-nums', 'font-semibold text-warning' => $laporan->kekurangan > 0])>{{ $rp($laporan->kekurangan) }}</span></x-ui.detail-row>
+                        </dl>
+                        @if ($surat)
+                            <x-ui.alert :variant="$laporan->is_over_budget ? 'warning' : 'info'">
+                                <p>Budget <strong>{{ $rp($surat->total_budget) }}</strong>, terpakai <strong>{{ $rp($laporan->total_pengeluaran) }}</strong>@if ($laporan->is_over_budget) (over budget)@endif.</p>
+                            </x-ui.alert>
+                        @endif
                     </div>
-                </div>
+                </x-ui.card-content>
+            </x-ui.card>
+
+            @if ($laporan->status !== 'pending')
+                @if ($laporan->status === 'approved')
+                    <x-ui.alert variant="success" title="Laporan disetujui">
+                        Oleh {{ $laporan->approverPengguna->nama_lengkap ?? $laporan->approverPengguna->name ?? '-' }}
+                        pada {{ $laporan->approved_pengguna_at?->translatedFormat('d F Y H:i') ?? '-' }}.
+                    </x-ui.alert>
+                @else
+                    <x-ui.alert variant="destructive" title="Laporan ditolak">
+                        <p>Oleh {{ $laporan->rejector->nama_lengkap ?? $laporan->rejector->name ?? '-' }} pada {{ $laporan->rejected_at?->translatedFormat('d F Y H:i') ?? '-' }}.</p>
+                        <p><strong>Alasan:</strong> {{ $laporan->rejection_reason }}</p>
+                    </x-ui.alert>
+                @endif
             @endif
         </div>
 
-        {{-- Sidebar --}}
-        <div class="col-lg-4">
-            {{-- Status --}}
-            <div class="card">
-                <div class="card-body">
-                    <h6 class="card-title"><i class="bi bi-info-circle"></i> Status Laporan</h6>
-
-                    @if($laporan->status == 'pending')
-                        <div class="alert alert-warning py-2 mb-0">
-                            <i class="bi bi-hourglass-split"></i> Menunggu validasi dari Superadmin
-                        </div>
-                    @elseif($laporan->status == 'approved')
-                        <div class="alert alert-success py-2 mb-0">
-                            <i class="bi bi-check-circle"></i> Laporan telah disetujui
-                        </div>
-                    @else
-                        <div class="alert alert-danger py-2 mb-0">
-                            <i class="bi bi-x-circle"></i> Laporan ditolak
-                            <br><small>{{ $laporan->rejection_reason }}</small>
-                        </div>
-                        @can('permission', 'lpj.update')
-                        <a href="{{ route('requester.lpj.edit', $laporan) }}" class="btn btn-warning w-100 mt-2">
-                            <i class="bi bi-pencil"></i> Revisi LPJ
-                        </a>
-                        @endcan
-                    @endif
-                </div>
-            </div>
-
-            {{-- Info Pengajuan --}}
-            <div class="card">
-                <div class="card-body">
-                    <h6 class="card-title"><i class="bi bi-calendar"></i> Informasi Pengajuan</h6>
-
-                    <div class="mb-2">
-                        <small class="text-muted">Tanggal LPJ:</small><br>
-                        <strong>{{ $laporan->tanggal_lpj ? $laporan->tanggal_lpj->translatedFormat('d M Y') : '-' }}</strong>
-                    </div>
-
-                    <div class="mb-2">
-                        <small class="text-muted">Deadline:</small><br>
-                        <strong class="{{ $laporan->is_late ? 'text-danger' : '' }}">
-                            {{ $laporan->due_date ? $laporan->due_date->translatedFormat('d M Y') : '-' }}
-                        </strong>
-                        @if($laporan->is_late)
-                            <span class="badge bg-danger">Terlambat</span>
-                        @endif
-                    </div>
-
-                    <div class="mb-2">
-                        <small class="text-muted">Diajukan pada:</small><br>
-                        <strong>{{ $laporan->created_at->translatedFormat('d F Y H:i') }}</strong>
-                    </div>
-
-                    <div class="mb-0">
-                        <small class="text-muted">Terakhir diupdate:</small><br>
-                        <strong>{{ $laporan->updated_at->translatedFormat('d F Y H:i') }}</strong>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Catatan --}}
-            @if($laporan->catatan)
-                <div class="card">
-                    <div class="card-body">
-                        <h6 class="card-title"><i class="bi bi-journal-text"></i> Catatan</h6>
-                        <p class="mb-0">{{ $laporan->catatan }}</p>
-                    </div>
-                </div>
-            @endif
-
-            {{-- Cetak Dokumen --}}
-            @if($laporan->status == 'approved')
-                <div class="card border-success">
-                    <div class="card-header bg-success text-white">
-                        <h6 class="mb-0"><i class="bi bi-printer"></i> Cetak Dokumen</h6>
-                    </div>
-                    <div class="card-body">
-                        @if(auth()->user()->hasPermission('lpj.export'))
-                            <a href="{{ route('spd.laporan.export', $laporan) }}" target="_blank" class="btn btn-primary w-100">
-                                <i class="bi bi-file-earmark-pdf"></i> Export SPD + LPJ
-                            </a>
+        <div class="grid gap-6">
+            <x-ui.card class="gap-4">
+                <x-ui.card-header title="Status Laporan" icon="bi bi-info-circle" />
+                <x-ui.card-content class="grid gap-3">
+                    @if ($laporan->status === 'pending')
+                        <x-ui.alert variant="warning">Menunggu validasi.</x-ui.alert>
+                    @elseif ($laporan->status === 'approved')
+                        <x-ui.alert variant="success">Laporan telah disetujui.</x-ui.alert>
+                        @if (Auth::user()->hasPermission('lpj.export'))
+                            <x-ui.button :href="route('spd.laporan.export', $laporan)" target="_blank"><i class="bi bi-file-earmark-pdf"></i> Export SPD + LPJ</x-ui.button>
                         @else
                             {{-- BUG-RBAC-003: tanpa lpj.export, pemilik tetap bisa mencetak. --}}
-                            <a href="{{ route('spd.laporan.print', $laporan) }}" target="_blank" class="btn btn-primary w-100">
-                                <i class="bi bi-printer"></i> Cetak SPD + LPJ
-                            </a>
+                            <x-ui.button :href="route('spd.laporan.print', $laporan)" target="_blank"><i class="bi bi-printer"></i> Cetak SPD + LPJ</x-ui.button>
                         @endif
-                    </div>
-                </div>
-            @endif
+                    @else
+                        <x-ui.alert variant="destructive" title="Laporan ditolak">{{ $laporan->rejection_reason }}</x-ui.alert>
+                        @can('permission', 'lpj.update')
+                            <x-ui.button :href="route('requester.lpj.edit', $laporan)"><i class="bi bi-pencil"></i> Revisi LPJ</x-ui.button>
+                        @endcan
+                    @endif
+                </x-ui.card-content>
+            </x-ui.card>
 
-            {{-- Back Button --}}
-            <div class="card">
-                <div class="card-body">
-                    <a href="{{ route('requester.lpj.index') }}" class="btn btn-secondary w-100">
-                        <i class="bi bi-arrow-left"></i> Kembali ke Daftar
-                    </a>
-                </div>
-            </div>
+            <x-ui.card class="gap-4">
+                <x-ui.card-header title="Informasi Pengajuan" icon="bi bi-calendar" />
+                <x-ui.card-content>
+                    <dl class="divide-y">
+                        <x-ui.detail-row label="Tanggal LPJ">{{ $laporan->tanggal_lpj?->translatedFormat('d M Y') ?? '-' }}</x-ui.detail-row>
+                        <x-ui.detail-row label="Batas">
+                            <span @class(['text-destructive font-medium' => $laporan->is_late])>{{ $laporan->due_date?->translatedFormat('d M Y') ?? '-' }}</span>
+                        </x-ui.detail-row>
+                        <x-ui.detail-row label="Diajukan">{{ $laporan->created_at->translatedFormat('d M Y H:i') }}</x-ui.detail-row>
+                        <x-ui.detail-row label="Diperbarui">{{ $laporan->updated_at->translatedFormat('d M Y H:i') }}</x-ui.detail-row>
+                    </dl>
+                </x-ui.card-content>
+            </x-ui.card>
+
+            @if ($laporan->catatan)
+                <x-ui.card class="gap-4">
+                    <x-ui.card-header title="Catatan" icon="bi bi-journal-text" />
+                    <x-ui.card-content><p class="whitespace-pre-line text-sm">{{ $laporan->catatan }}</p></x-ui.card-content>
+                </x-ui.card>
+            @endif
         </div>
     </div>
-</section>
-@endsection
+</x-layouts.app>

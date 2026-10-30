@@ -1,1006 +1,265 @@
-@extends('templates.main')
-
-{{-- ═══════════════════════════════════════════════════════════════════════
-     FLOW BARU: SATU HALAMAN PELAPORAN SPD.
-     Sebelumnya (FLOW LAMA) halaman ini hanya menampilkan laporan harian yang
-     sudah "submitted" untuk divalidasi di akhir periode SPD.
-     Sekarang halaman ini menjadi satu-satunya view pelaporan SPD:
-       - Input struk secara BULK (maks 5 gambar per kirim, kirim lagi 5 dst).
-       - Item di-SEGMENTASI:
-           ▶ DRAFT  : input saat periode SPD berjalan / belum difinalisasi.
-           ▶ FINAL  : dari laporan harian submitted (flow lama) — siap digabung.
-       - Edit / hapus item + form "Submit sebagai LPJ" tanpa perlu form tambahan.
-     ───────────────────────────────────────────────────────────────────────
-     SEMUA item (draft + submitted) akan digabung saat finalize.
+{{--
+  SATU HALAMAN PELAPORAN SPD (driver):
+    - Input struk BULK (maks 5 gambar per kirim, kirim lagi 5 dst), dianalisis AI.
+    - Item tersegmentasi: DRAFT (masih bisa diubah) dan TERKIRIM (laporan harian flow lama).
+    - Edit / hapus item (autosave) + "Submit sebagai LPJ" yang menggabungkan semuanya.
+  Interaksi di resources/js/pages/spd/validasi.js.
 --}}
-@section('title', 'Pelaporan & Validasi SPD')
+@php
+    $draftGrouped = $draftItems->groupBy(fn ($i) => $i->tanggal ? $i->tanggal->format('Y-m-d') : 'tanpa-tanggal');
+    $rp = fn ($value) => 'Rp ' . number_format((float) $value, 0, ',', '.');
+    $updateItemUrlBase = rtrim(str_replace('/__SLUG__', '', route('pelaporan.spd.daily.update-item', ['surat' => $surat, 'item' => '__SLUG__'])), '/');
+@endphp
 
-@section('content')
-<div class="pagetitle">
-    <h1><i class="bi bi-check2-square"></i> Validasi Seluruh Laporan untuk Membuat LPJ</h1>
-    <nav>
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('pelaporan.index') }}">Pelaporan</a></li>
-            <li class="breadcrumb-item active">Validasi Seluruh Laporan untuk Membuat LPJ</li>
-        </ol>
-    </nav>
-</div>
+<x-layouts.app title="Pelaporan & Validasi SPD" :breadcrumbs="['SPD Berjalan' => route('requester.spd.berjalan'), 'Pelaporan & Validasi' => null]">
+    <x-ui.page-header kicker="Pelaporan SPD" title="Validasi Laporan untuk Membuat LPJ" description="Upload struk, periksa hasil AI, lalu gabungkan menjadi satu LPJ." />
 
-@if($surat->lpj_terlambat)
-    {{-- Lewat batas 3 hari BUKAN alasan menutup form: driver tetap boleh
-         menyelesaikan LPJ, hanya ditandai terlambat & terlihat GA/User. --}}
-    <div class="alert alert-danger d-flex align-items-start gap-2">
-        <i class="bi bi-exclamation-triangle fs-4"></i>
-        <div>
-            <strong>LPJ sudah melewati batas submit {{ $surat->lpj_overdue_days }} hari.</strong>
-            <div class="small mt-1">
-                Batas submit: <strong>{{ $surat->lpj_deadline_efektif?->translatedFormat('d F Y') }}</strong>.
-                Form ini <strong>tetap terbuka</strong> — silakan lanjutkan submit. LPJ yang masuk akan tercatat
-                <em>terlambat</em> dan statusnya terlihat oleh Divisi GA serta pengguna yang berangkat.
-            </div>
-        </div>
-    </div>
-@elseif($surat->menunggu_lpj && $surat->lpj_deadline_efektif)
-    <div class="alert alert-warning py-2">
-        <i class="bi bi-clock-history me-1"></i>
-        <small>
-            Batas submit LPJ: <strong>{{ $surat->lpj_deadline_efektif->translatedFormat('d F Y') }}</strong>
-            ({{ $surat->getDaysUntilLpjDeadline() }} hari lagi). Laporan otomatis tersimpan sebagai draft.
-        </small>
-    </div>
-@endif
-
-<section class="section">
-    @if(session('info'))
-        <div class="alert alert-info alert-dismissible fade show" role="alert">
-            <i class="bi bi-info-circle me-2"></i>{{ session('info') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-    @if($errors->any())
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <strong>Terjadi kesalahan:</strong>
-            <ul class="mb-0 mt-2">
-                @foreach($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
+    @if ($surat->lpj_terlambat)
+        {{-- Lewat batas 3 hari BUKAN alasan menutup form: driver tetap boleh menyelesaikan LPJ. --}}
+        <x-ui.alert variant="destructive" :title="'LPJ sudah melewati batas submit ' . $surat->lpj_overdue_days . ' hari.'">
+            Batas submit <strong>{{ $surat->lpj_deadline_efektif?->translatedFormat('d F Y') }}</strong>. Form ini <strong>tetap terbuka</strong>, silakan lanjutkan submit.
+            LPJ yang masuk akan tercatat <em>terlambat</em> dan terlihat oleh Divisi GA serta pengguna yang berangkat.
+        </x-ui.alert>
+    @elseif ($surat->menunggu_lpj && $surat->lpj_deadline_efektif)
+        <x-ui.alert variant="warning" icon="bi bi-clock-history">
+            Batas submit LPJ <strong>{{ $surat->lpj_deadline_efektif->translatedFormat('d F Y') }}</strong> ({{ $surat->getDaysUntilLpjDeadline() }} hari lagi). Laporan otomatis tersimpan sebagai draft.
+        </x-ui.alert>
     @endif
 
-    {{-- Info surat --}}
-    <div class="card mb-3">
-        <div class="card-body py-3">
-            <div class="row g-3 align-items-center">
-                <div class="col-md">
-                    <div class="d-flex align-items-start gap-2">
-                        <i class="bi bi-file-earmark-text text-primary" style="font-size:1.4rem; line-height:1.2;"></i>
-                        <div>
-                            <h5 class="card-title mb-0 fw-bold" style="word-break:break-word;">{{ $surat->nomor_surat }}</h5>
-                            <div class="text-muted small">
-                                <i class="bi bi-geo-alt me-1"></i>{{ $surat->tempat_tujuan }}
-                                @if($surat->is_extension) <span class="badge bg-secondary ms-1">Perpanjangan</span> @endif
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-auto">
-                    <div class="d-flex flex-wrap gap-2 justify-content-md-end">
-                        <span class="badge text-bg-light border py-2">
-                            <i class="bi bi-calendar3 me-1"></i>
-                            {{ $surat->tanggal_berangkat->translatedFormat('d F Y') }} s/d
-                            {{ $surat->tanggal_kembali->translatedFormat('d F Y') }}
-                        </span>
-                        <span class="badge text-bg-light border py-2">
-                            <i class="bi bi-truck me-1"></i>{{ $surat->vehicle?->consumerial_code ?? '-' }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="alert {{ $spdActive ? 'alert-primary' : 'alert-success' }} py-2">
-        <i class="bi {{ $spdActive ? 'bi-clock-history' : 'bi-check2-circle' }} me-1"></i>
-        @if($spdActive)
-            <strong>Periode SPD masih berjalan.</strong>
-            <small>Semua struk yang di-upload tersimpan sebagai <strong>DRAFT</strong> (belum tervalidasi / belum finalisasi).
-                Finalisasi menjadi LPJ baru bisa dilakukan setelah tanggal kembali lewat.</small>
-        @else
-            <strong>SPD sudah selesai.</strong>
-            <small>Bulk-upload struk sisa (maks 5 gambar per kirim, bisa 5 lagi 5 lagi dst), lalu
-                <strong>"Submit sebagai LPJ"</strong> untuk langsung finalisasi. Bila belum mau final, biarkan sebagai draft.</small>
-        @endif
-    </div>
-
-    <div class="row">
-        <div class="col-lg-8">
-            {{-- ═══════════ INPUT STRUK (FLOW BARU: BULK, MAKS 5/KIRIM) ═══════════ --}}
-            <div class="card border-primary mb-3">
-                <div class="card-header bg-primary text-white">
-                    <h6 class="mb-0"><i class="bi bi-cloud-upload"></i> Input Struk / Bukti Pengeluaran</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row g-2">
-                        <div class="col-12">
-                            <label class="form-label small text-muted mb-1">Pilih gambar struk (maksimal <strong>5</strong> per kirim)</label>
-                            <input type="file" class="form-control form-control-sm" id="bulkFile" multiple
-                                   accept="image/jpeg,image/png,image/webp">
-                            <div class="form-text small">Setiap foto dianalisis AI — kategori, nominal, <strong>dan tanggal transaksi dibaca otomatis dari struk</strong>,
-                                lalu item dikelompokkan sesuai tanggalnya (seamless, tanpa pilih tanggal manual). Tersimpan sebagai <strong>draft</strong> —
-                                aman dari refresh. Bila lebih dari 5, kirim lagi batch berikutnya.</div>
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-center gap-2 mt-3">
-                        <button type="button" class="btn btn-primary btn-sm" id="btnBulkUpload">
-                            <i class="bi bi-upload"></i> Upload Struk
-                        </button>
-                        <span id="bulkFileCount" class="small text-muted"></span>
-                        <div id="uploadStatus" class="small ms-auto"></div>
-                    </div>
-
-                    {{-- Foto gagal dianalisis AI (mis. kuota Gemini habis) → isi manual --}}
-                    <div id="manualPendingWrap" class="mt-3 d-none">
-                        <div class="alert alert-warning py-2 small mb-2">
-                            <strong><i class="bi bi-exclamation-triangle"></i> Beberapa foto gagal dianalisis AI.</strong>
-                            Lengkapi datanya secara manual di bawah, lalu klik <em>Simpan Manual</em> — foto tetap masuk draft.
-                        </div>
-                        <div id="manualPendingList" class="d-flex flex-column gap-2"></div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- ═══════════ SEGMENTASI DRAFT (belum final) ═══════════ --}}
-            <div class="card border-warning mb-3">
-                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <strong><i class="bi bi-pencil-square"></i> Draft — disimpan sementara, belum final</strong>
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="small" id="draftSummary"></span>
-                        @if($draftItems->isNotEmpty())
-                            {{-- Hasil OCR bisa salah (terutama tanggal). Tombol ini membuka
-                                 form lengkap untuk SEMUA item sekaligus lalu simpan sekali jalan. --}}
-                            <button type="button" class="btn btn-sm btn-dark" id="btnBulkEdit"
-                                    title="Buka form lengkap untuk semua item (tanggal, kategori, nominal, keterangan)">
-                                <i class="bi bi-pencil-square"></i> Ubah Semua Isian
-                            </button>
-                        @endif
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-light border py-2 small d-none" id="bulkEditHint">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Mode ubah semua aktif — perbaiki <strong>tanggal</strong>, kategori, nominal, dan keterangan
-                        tiap item, lalu tekan <strong>Simpan Semua Perubahan</strong>. Item otomatis dikelompokkan ulang
-                        berdasarkan tanggal barunya.
-                    </div>
-                    {{-- Draft dikelompokkan otomatis berdasarkan tanggal dari AI --}}
-                    <div id="draftItemsContainer" class="d-flex flex-column gap-3">
-                        @php
-                            $draftGrouped = $draftItems->groupBy(fn ($i) => $i->tanggal ? $i->tanggal->format('Y-m-d') : 'tanpa-tanggal');
-                        @endphp
-                        @foreach($draftGrouped as $dateKey => $groupItems)
-                            @php
-                                $groupFinancial = $groupItems->where('struk_kategori', '!=', 'Tambahan');
-                            @endphp
-                            <div class="border rounded p-2" data-date-group="{{ $dateKey }}">
-                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                                    <strong><i class="bi bi-calendar3 me-1"></i>
-                                        @if($dateKey === 'tanpa-tanggal')
-                                            Tanpa tanggal
-                                        @else
-                                            {{ \Illuminate\Support\Carbon::parse($dateKey)->translatedFormat('l, d F Y') }}
-                                        @endif
-                                    </strong>
-                                    <span class="small text-muted group-meta">
-                                        {{ $groupItems->count() }} item · Total Rp {{ number_format($groupFinancial->sum('nominal'), 0, ',', '.') }}
-                                    </span>
-                                </div>
-                                <div class="row g-2">
-                                    @foreach($groupItems as $item)
-                                    <div class="col-12">
-                                        @include('pelaporan.spd.partials.struk-item-card', ['item' => $item])
-                                    </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-
-                    {{-- Bar aksi mode "Ubah Semua Isian" --}}
-                    <div class="gde-bulk-edit-bar d-none" id="bulkEditBar">
-                        <div class="small">
-                            <i class="bi bi-pencil-square me-1"></i>
-                            <span id="bulkEditCount">0</span> item akan disimpan sekaligus.
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnBulkCancel">
-                                Batal
-                            </button>
-                            <button type="button" class="btn btn-sm btn-success" id="btnBulkSave">
-                                <i class="bi bi-check2-all"></i> Simpan Semua Perubahan
-                            </button>
-                        </div>
-                    </div>
-
-                    <div id="draftEmpty" class="text-center text-muted py-4 {{ $draftItems->isNotEmpty() ? 'd-none' : '' }}">
-                        <i class="bi bi-inbox" style="font-size:2rem;"></i>
-                        <p class="mb-0 mt-2 small">Belum ada item draft. Upload struk di atas — item langsung tersimpan sebagai draft.</p>
-                    </div>
-                </div>
-            </div>
-
-            {{-- ═══════════ SEGMENTASI FINAL / Submitted (flow lama) ═══════════ --}}
-            @if($submitted->isNotEmpty())
-            <div class="card border-success mb-3">
-                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                    <strong><i class="bi bi-check2-all"></i> Terkirim — siap digabung menjadi LPJ</strong>
-                    <span class="small">{{ $submittedItems->count() }} item</span>
-                </div>
-                <div class="card-body">
-                    @foreach($submitted as $report)
-                    <div class="card mb-3 bg-light" id="reportCard-{{ $report->slug }}">
-                        <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
-                            <strong><i class="bi bi-calendar3"></i> {{ $report->tanggal->translatedFormat('l, d F Y') }}</strong>
-                            <span class="small text-muted">
-                                {{ $report->item_count }} item · Total <strong id="totalReport-{{ $report->slug }}">Rp {{ number_format($report->total_nominal, 0, ',', '.') }}</strong>
-                            </span>
-                        </div>
-                        <div class="card-body">
-                            <div class="row g-2">
-                                @foreach($report->strukItems as $item)
-                                <div class="col-12">
-                                    @include('pelaporan.spd.partials.struk-item-card', ['item' => $item])
-                                </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
-                    @endforeach
-                </div>
-            </div>
-            @endif
-        </div>
-
-        <div class="col-lg-4">
-            {{-- ═══════════ FORM FINALISASI LPJ ═══════════ --}}
-            @if(! $spdActive)
-            <form action="{{ route('pelaporan.spd.finalize', $surat) }}" method="POST" id="formFinalize"
-                  class="card border-success sticky-top" style="top:1rem;">
-                @csrf
-                <div class="card-header bg-success text-white">
-                    <h6 class="mb-0"><i class="bi bi-journal-text"></i> Finalisasi LPJ</h6>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-light border small py-2">
-                        <i class="bi bi-info-circle"></i> Semua item <strong>draft</strong> dan <strong>terkirim</strong> di
-                        atas akan digabung menjadi satu LPJ dan dikunci untuk direview admin GA.
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Nama Pelapor <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="nama"
-                               value="{{ old('nama', Auth::user()->nama_lengkap ?? Auth::user()->name) }}" required>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Jabatan</label>
-                        <input type="text" class="form-control" name="jabatan" value="{{ old('jabatan', 'Pengemudi') }}">
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Uraian Perjalanan</label>
-                        <textarea class="form-control" name="uraian" rows="2" placeholder="Ringkasan keseluruhan perjalanan dinas...">{{ old('uraian') }}</textarea>
-                    </div>
-
-                    <div class="alert alert-light border py-2 mb-2">
-                        <small class="text-muted"><i class="bi bi-speedometer2"></i> Data tempuh kendaraan untuk dokumen cetak LPJ (opsional, boleh diisi admin GA nanti).</small>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Odometer sebelum SPD (km)</label>
-                        <input type="number" class="form-control" name="odo_before" value="{{ old('odo_before') }}" min="0" step="0.01">
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Odometer setelah SPD (km)</label>
-                        <input type="number" class="form-control" name="odo_after" value="{{ old('odo_after') }}" min="0" step="0.01">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Kebutuhan BBM (liter)</label>
-                        <input type="number" class="form-control" name="kebutuhan_bbm_liter" value="{{ old('kebutuhan_bbm_liter') }}" min="0" step="0.01">
-                    </div>
-
-                    <div class="d-flex flex-column gap-2">
-                        <span class="text-muted">Total LPJ: <strong class="text-success fs-5" id="totalFinal">Rp 0</strong></span>
-                        <button type="submit" class="btn btn-success w-100" id="btnSubmitLpj"
-                                onclick="return confirm('Yakin submit sebagai LPJ? Seluruh item (draft + terkirim) akan digabung & dikunci.')">
-                            <i class="bi bi-check2-circle"></i> Submit sebagai LPJ
-                        </button>
-                    </div>
-                </div>
-            </form>
-            @else
-            <div class="card border-secondary">
-                <div class="card-header bg-secondary text-white">
-                    <h6 class="mb-0"><i class="bi bi-lock"></i> Finalisasi LPJ</h6>
-                </div>
-                <div class="card-body text-center text-muted py-4">
-                    <i class="bi bi-clock-history" style="font-size:2.5rem;"></i>
-                    <p class="mt-2 mb-0">SPD masih berjalan.<br>
-                        <small>Laporan otomatis tersimpan sebagai draft. Finalisasi menjadi LPJ menunggu setelah <strong>{{ $surat->tanggal_kembali->translatedFormat('d M Y') }}</strong>.</small>
+    <x-ui.card class="py-4">
+        <x-ui.card-content class="flex flex-wrap items-center justify-between gap-3 px-4">
+            <div class="flex min-w-0 items-start gap-3">
+                <span class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-module-spd/10 text-lg text-module-spd"><i class="bi bi-file-earmark-text"></i></span>
+                <div class="min-w-0">
+                    <p class="break-words font-semibold">{{ $surat->nomor_surat }}</p>
+                    <p class="text-sm text-muted-foreground">
+                        <i class="bi bi-geo-alt"></i> {{ $surat->tempat_tujuan }}
+                        @if ($surat->is_extension) <x-ui.badge variant="info">Perpanjangan</x-ui.badge> @endif
                     </p>
                 </div>
             </div>
+            <div class="flex flex-wrap gap-2">
+                <x-ui.badge variant="outline" class="py-1"><i class="bi bi-calendar3"></i> {{ $surat->tanggal_berangkat->translatedFormat('d F Y') }} s/d {{ $surat->tanggal_kembali->translatedFormat('d F Y') }}</x-ui.badge>
+                <x-ui.badge variant="outline" class="py-1"><i class="bi bi-truck"></i> {{ $surat->vehicle?->consumerial_code ?? '-' }}</x-ui.badge>
+            </div>
+        </x-ui.card-content>
+    </x-ui.card>
+
+    @if ($spdActive)
+        <x-ui.alert variant="info" icon="bi bi-clock-history" title="Periode SPD masih berjalan.">
+            Semua struk yang di-upload tersimpan sebagai <strong>draft</strong>. Finalisasi menjadi LPJ baru bisa dilakukan setelah tanggal kembali lewat.
+        </x-ui.alert>
+    @else
+        <x-ui.alert variant="success" icon="bi bi-check2-circle" title="SPD sudah selesai.">
+            Upload struk sisa (maks 5 gambar per kirim), lalu <strong>Submit sebagai LPJ</strong> untuk finalisasi. Bila belum mau final, biarkan sebagai draft.
+        </x-ui.alert>
+    @endif
+
+    <div class="grid items-start gap-6 lg:grid-cols-3">
+        <div class="grid min-w-0 gap-6 lg:col-span-2">
+            {{-- Input struk: bulk, maks 5 per kirim --}}
+            <x-ui.card class="overflow-hidden pt-0">
+                <div class="bg-primary px-6 py-4 text-primary-foreground">
+                    <p class="flex items-center gap-2 font-semibold"><i class="bi bi-cloud-upload"></i> Input Struk / Bukti Pengeluaran</p>
+                </div>
+                <x-ui.card-content class="grid gap-3">
+                    <x-ui.field label="Pilih gambar struk (maksimal 5 per kirim)" for="bulkFile"
+                        hint="Setiap foto dianalisis AI: kategori, nominal, dan tanggal transaksi dibaca otomatis lalu dikelompokkan per tanggal. Tersimpan sebagai draft, aman dari refresh.">
+                        <x-ui.input type="file" id="bulkFile" multiple accept="image/jpeg,image/png,image/webp" />
+                    </x-ui.field>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <x-ui.button id="btnBulkUpload"><i class="bi bi-upload"></i> Upload Struk</x-ui.button>
+                        <span id="bulkFileCount" class="text-sm text-muted-foreground"></span>
+                        <span id="uploadStatus" class="text-sm sm:ml-auto"></span>
+                    </div>
+
+                    {{-- Foto gagal dianalisis AI (mis. kuota Gemini habis): isi manual --}}
+                    <div id="manualPendingWrap" hidden class="grid gap-2">
+                        <x-ui.alert variant="warning" title="Beberapa foto gagal dianalisis AI.">
+                            Lengkapi datanya secara manual di bawah lalu klik <em>Simpan Manual</em>, foto tetap masuk draft.
+                        </x-ui.alert>
+                        <div id="manualPendingList" class="grid gap-2"></div>
+                    </div>
+                </x-ui.card-content>
+            </x-ui.card>
+
+            {{-- Draft: belum final --}}
+            <x-ui.card class="border-t-4 border-t-warning">
+                <x-ui.card-header title="Draft" icon="bi bi-pencil-square" description="Disimpan sementara, belum final.">
+                    <x-slot:action>
+                        <div class="flex flex-wrap items-center justify-end gap-2">
+                            <span class="text-sm text-muted-foreground" id="draftSummary"></span>
+                            @if ($draftItems->isNotEmpty())
+                                {{-- Hasil OCR bisa salah (terutama tanggal): buka form lengkap untuk semua item sekaligus. --}}
+                                <x-ui.button variant="outline" size="sm" id="btnBulkEdit" title="Ubah tanggal, kategori, nominal, keterangan semua item"><i class="bi bi-pencil-square"></i> Ubah Semua Isian</x-ui.button>
+                            @endif
+                        </div>
+                    </x-slot:action>
+                </x-ui.card-header>
+                <x-ui.card-content class="grid gap-4">
+                    <x-ui.alert variant="info" id="bulkEditHint" hidden>
+                        Mode ubah semua aktif. Perbaiki <strong>tanggal</strong>, kategori, nominal, dan keterangan tiap item, lalu tekan <strong>Simpan Semua Perubahan</strong>.
+                        Item otomatis dikelompokkan ulang berdasarkan tanggal barunya.
+                    </x-ui.alert>
+
+                    <div id="draftItemsContainer" class="grid gap-4">
+                        @foreach ($draftGrouped as $dateKey => $groupItems)
+                            <section data-date-group="{{ $dateKey }}" class="grid gap-3 rounded-lg border bg-muted/30 p-3">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <span class="flex items-center gap-2 text-sm font-semibold"><i class="bi bi-calendar3 text-muted-foreground"></i>
+                                        {{ $dateKey === 'tanpa-tanggal' ? 'Tanpa tanggal' : \Illuminate\Support\Carbon::parse($dateKey)->translatedFormat('l, d F Y') }}
+                                    </span>
+                                    <span data-group-meta class="text-xs text-muted-foreground">
+                                        {{ $groupItems->count() }} item &middot; Total {{ $rp($groupItems->where('struk_kategori', '!=', 'Tambahan')->sum('nominal')) }}
+                                    </span>
+                                </div>
+                                <div data-group-items class="grid gap-3">
+                                    @foreach ($groupItems as $item)
+                                        <x-spd.struk-card :item="$item" />
+                                    @endforeach
+                                </div>
+                            </section>
+                        @endforeach
+                    </div>
+
+                    <div id="bulkEditBar" hidden class="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary bg-card p-3 shadow-lg">
+                        <span class="text-sm"><i class="bi bi-pencil-square"></i> <span id="bulkEditCount">0</span> item akan disimpan sekaligus.</span>
+                        <div class="flex gap-2">
+                            <x-ui.button variant="outline" size="sm" id="btnBulkCancel">Batal</x-ui.button>
+                            <x-ui.button variant="success" size="sm" id="btnBulkSave"><i class="bi bi-check2-all"></i> Simpan Semua Perubahan</x-ui.button>
+                        </div>
+                    </div>
+
+                    <x-ui.empty-state id="draftEmpty" icon="bi bi-inbox" title="Belum ada item draft" description="Upload struk di atas, item langsung tersimpan sebagai draft." :hidden="$draftItems->isNotEmpty()" />
+                </x-ui.card-content>
+            </x-ui.card>
+
+            {{-- Terkirim: laporan harian flow lama, siap digabung --}}
+            @if ($submitted->isNotEmpty())
+                <x-ui.card class="border-t-4 border-t-success">
+                    <x-ui.card-header title="Terkirim" icon="bi bi-check2-all" description="Siap digabung menjadi LPJ.">
+                        <x-slot:action><x-ui.badge variant="success">{{ $submittedItems->count() }} item</x-ui.badge></x-slot:action>
+                    </x-ui.card-header>
+                    <x-ui.card-content class="grid gap-4">
+                        @foreach ($submitted as $report)
+                            <section data-report class="grid gap-3 rounded-lg border bg-muted/30 p-3">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <span class="flex items-center gap-2 text-sm font-semibold"><i class="bi bi-calendar3 text-muted-foreground"></i> {{ $report->tanggal->translatedFormat('l, d F Y') }}</span>
+                                    <span class="text-xs text-muted-foreground">{{ $report->item_count }} item &middot; Total <strong data-report-total>{{ $rp($report->total_nominal) }}</strong></span>
+                                </div>
+                                <div class="grid gap-3">
+                                    @foreach ($report->strukItems as $item)
+                                        <x-spd.struk-card :item="$item" />
+                                    @endforeach
+                                </div>
+                            </section>
+                        @endforeach
+                    </x-ui.card-content>
+                </x-ui.card>
+            @endif
+        </div>
+
+        <div>
+            @if (! $spdActive)
+                <form action="{{ route('pelaporan.spd.finalize', $surat) }}" method="POST" id="formFinalize" data-loading
+                      data-confirm="Seluruh item (draft dan terkirim) akan digabung menjadi satu LPJ dan dikunci." data-confirm-title="Submit sebagai LPJ?" data-confirm-text="Ya, submit LPJ" data-confirm-variant="success">
+                    @csrf
+                    <x-ui.card class="overflow-hidden pt-0">
+                        <div class="bg-success px-6 py-4 text-white">
+                            <p class="flex items-center gap-2 font-semibold"><i class="bi bi-journal-text"></i> Finalisasi LPJ</p>
+                        </div>
+                        <x-ui.card-content class="grid gap-4">
+                            <p class="text-sm text-muted-foreground">Semua item <strong class="text-foreground">draft</strong> dan <strong class="text-foreground">terkirim</strong> akan digabung menjadi satu LPJ dan dikunci untuk direview admin GA.</p>
+                            <x-ui.field label="Nama Pelapor" for="nama" required>
+                                <x-ui.input id="nama" name="nama" :value="old('nama', Auth::user()->nama_lengkap ?? Auth::user()->name)" required />
+                            </x-ui.field>
+                            <x-ui.field label="Jabatan" for="jabatan">
+                                <x-ui.input id="jabatan" name="jabatan" :value="old('jabatan', 'Pengemudi')" />
+                            </x-ui.field>
+                            <x-ui.field label="Uraian Perjalanan" for="uraian">
+                                <x-ui.textarea id="uraian" name="uraian" rows="2" placeholder="Ringkasan keseluruhan perjalanan dinas">{{ old('uraian') }}</x-ui.textarea>
+                            </x-ui.field>
+
+                            <div class="grid gap-3 rounded-lg border bg-muted/30 p-3">
+                                <p class="text-xs text-muted-foreground"><i class="bi bi-speedometer2"></i> Data tempuh kendaraan untuk dokumen cetak LPJ (opsional, boleh diisi admin GA nanti).</p>
+                                <x-ui.field label="Odometer sebelum SPD (km)" for="odo_before">
+                                    <x-ui.input type="number" id="odo_before" name="odo_before" :value="old('odo_before')" min="0" step="0.01" />
+                                </x-ui.field>
+                                <x-ui.field label="Odometer setelah SPD (km)" for="odo_after">
+                                    <x-ui.input type="number" id="odo_after" name="odo_after" :value="old('odo_after')" min="0" step="0.01" />
+                                </x-ui.field>
+                                <x-ui.field label="Kebutuhan BBM (liter)" for="kebutuhan_bbm_liter">
+                                    <x-ui.input type="number" id="kebutuhan_bbm_liter" name="kebutuhan_bbm_liter" :value="old('kebutuhan_bbm_liter')" min="0" step="0.01" />
+                                </x-ui.field>
+                            </div>
+
+                            <div class="flex items-center justify-between border-t pt-4">
+                                <span class="text-sm text-muted-foreground">Total LPJ</span>
+                                <strong class="text-xl tabular-nums text-success" id="totalFinal">Rp 0</strong>
+                            </div>
+                            <x-ui.button type="submit" variant="success" id="btnSubmitLpj"><i class="bi bi-check2-circle"></i> Submit sebagai LPJ</x-ui.button>
+                        </x-ui.card-content>
+                    </x-ui.card>
+                </form>
+            @else
+                <x-ui.card>
+                    <x-ui.card-content>
+                        <x-ui.empty-state icon="bi bi-lock" title="Finalisasi LPJ terkunci"
+                            :description="'SPD masih berjalan. Laporan otomatis tersimpan sebagai draft, finalisasi bisa dilakukan setelah ' . $surat->tanggal_kembali->translatedFormat('d M Y') . '.'" />
+                    </x-ui.card-content>
+                </x-ui.card>
             @endif
         </div>
     </div>
-</section>
 
-<script>
-    @php
-        $updateItemUrlBase = rtrim(str_replace('/__SLUG__', '', route('pelaporan.spd.daily.update-item', ['surat' => $surat, 'item' => '__SLUG__'])), '/');
-    @endphp
-    const bulkUploadUrl = @json(route('pelaporan.spd.daily.upload-items', $surat));
-    const bulkUpdateUrl = @json(route('pelaporan.spd.daily.update-items', $surat));
-    const updateItemUrlBase = @json($updateItemUrlBase);
-    const csrfToken = @json(csrf_token());
-    const maxBulkUpload = {{ \App\Http\Controllers\SpdDailyReportController::MAX_BULK_UPLOAD }};
+    <template id="strukCardTemplate"><x-spd.struk-card /></template>
 
-    function formatRupiah(num) {
-        return 'Rp ' + new Intl.NumberFormat('id-ID').format(num || 0);
-    }
+    <template id="dateGroupTemplate">
+        <section data-date-group class="grid gap-3 rounded-lg border bg-muted/30 p-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <span class="flex items-center gap-2 text-sm font-semibold"><i class="bi bi-calendar3 text-muted-foreground"></i> <span data-group-label></span></span>
+                <span data-group-meta class="text-xs text-muted-foreground"></span>
+            </div>
+            <div data-group-items class="grid gap-3"></div>
+        </section>
+    </template>
 
-    const kategoriBadges = { 'BBM': 'bg-danger', 'Tol': 'bg-primary', 'Parkir': 'bg-info', 'Makan': 'bg-success', 'Hotel': 'bg-dark', 'Lainnya': 'bg-secondary', 'Tambahan': 'bg-warning text-dark' };
-    const kategoriOptions = ['BBM', 'Tol', 'Parkir', 'Makan', 'Hotel', 'Lainnya', 'Tambahan'];
-
-    // Badge hasil perbandingan plat struk vs plat kendaraan SPD (dari DB).
-    function renderPlateBadge(item) {
-        if (item.plat_cocok === undefined || item.plat_cocok === null) return '';
-        if (item.plat_cocok === true) {
-            return `<span class="badge text-bg-success" title="Plat kendaraan SPD tercocokkan dengan struk.">
-                        <i class="bi bi-shield-check"></i> Plat cocok ${(item.plat_nomor || '').toUpperCase()}</span>`;
-        }
-        if (item.plat_cocok === false) {
-            return `<span class="badge text-bg-danger" title="Plat pada struk berbeda dari plat kendaraan SPD (${(item.plat_kendaraan || '')}).">
-                        <i class="bi bi-shield-exclamation"></i> Plat beda</span>`;
-        }
-        return `<span class="badge text-bg-light border text-muted" title="Nomor polisi tidak terbaca pada struk / tidak dapat dibandingkan.">
-                    <i class="bi bi-shield"></i> Plat tidak terbaca</span>`;
-    }
-
-    /**
-     * Badge peringatan tanggal: hasil OCR jatuh di luar periode SPD, atau
-     * tahunnya berbeda dari tahun periode (gejala khas salah baca 2025 vs 2026).
-     * Murni penanda — driver memperbaikinya lewat field "Tanggal Struk".
-     */
-    function renderTanggalWarning(item) {
-        if (!item.tanggal_di_luar_periode && !item.tanggal_tahun_beda) return '';
-
-        const mentah = item.tanggal_mentah ? ` Terbaca di struk: "${item.tanggal_mentah}".` : '';
-        const periode = item.tanggal_periode_spd ? ` Periode SPD: ${item.tanggal_periode_spd}.` : '';
-        const pesan = `Tanggal hasil OCR di luar periode perjalanan dinas.${periode}${mentah} Periksa & perbaiki pada kolom Tanggal Struk.`;
-
-        return `<span class="badge text-bg-warning" title="${pesan}">
-                    <i class="bi bi-calendar-x"></i> Tanggal perlu dicek
-                </span>`;
-    }
-
-    function recalcTotals() {
-        let grand = 0;
-        document.querySelectorAll('.card[data-slug]').forEach(card => {
-            const nominal = parseFloat(card.querySelector('.item-nominal').value) || 0;
-            const kategori = card.querySelector('.item-kategori').value;
-            if (kategori !== 'Tambahan') grand += nominal;
-        });
-        // Draft dikelompokkan per tanggal (dari AI) — perbarui count & total tiap grup
-        document.querySelectorAll('[data-date-group]').forEach(group => {
-            const items = Array.from(group.querySelectorAll('.card[data-slug]'));
-            let groupTotal = 0;
-            items.forEach(card => {
-                const nominal = parseFloat(card.querySelector('.item-nominal').value) || 0;
-                const kategori = card.querySelector('.item-kategori').value;
-                if (kategori !== 'Tambahan') groupTotal += nominal;
-            });
-            const meta = group.querySelector('.group-meta');
-            if (meta) meta.textContent = items.length + ' item · Total ' + formatRupiah(groupTotal);
-        });
-        document.querySelectorAll('.card[id^="reportCard-"]').forEach(reportCard => {
-            let reportTotal = 0;
-            reportCard.querySelectorAll('.card[data-slug]').forEach(card => {
-                const nominal = parseFloat(card.querySelector('.item-nominal').value) || 0;
-                const kategori = card.querySelector('.item-kategori').value;
-                if (kategori !== 'Tambahan') reportTotal += nominal;
-            });
-            const slug = reportCard.id.replace('reportCard-', '');
-            const el = document.getElementById('totalReport-' + slug);
-            if (el) el.textContent = 'Rp ' + new Intl.NumberFormat('id-ID').format(reportTotal);
-        });
-        const totalEl = document.getElementById('totalFinal');
-        if (totalEl) totalEl.textContent = formatRupiah(grand);
-        updateDraftSummary();
-    }
-
-    function updateDraftSummary() {
-        const count = document.querySelectorAll('#draftItemsContainer .card[data-slug]').length;
-        let total = 0;
-        document.querySelectorAll('#draftItemsContainer .card[data-slug]').forEach(card => {
-            const nominal = parseFloat(card.querySelector('.item-nominal').value) || 0;
-            const kategori = card.querySelector('.item-kategori').value;
-            if (kategori !== 'Tambahan') total += nominal;
-        });
-        const el = document.getElementById('draftSummary');
-        if (el) el.textContent = count + ' item · Rp ' + new Intl.NumberFormat('id-ID').format(total);
-        const empty = document.getElementById('draftEmpty');
-        if (empty) empty.classList.toggle('d-none', count > 0);
-    }
-
-    async function saveItem(card) {
-        const slug = card.dataset.slug;
-        const nominal = card.querySelector('.item-nominal').value;
-        const kategori = card.querySelector('.item-kategori').value;
-        const keterangan = card.querySelector('.item-keterangan').value;
-        const tanggalEl = card.querySelector('.item-tanggal');
-        const tanggal = tanggalEl ? tanggalEl.value : null;
-        try {
-            const res = await fetch(updateItemUrlBase + '/' + slug, {
-                method: 'PATCH',
-                headers: { 'X-CSRF-TOKEN': csrfToken, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify({ nominal: nominal, struk_kategori: kategori, keterangan: keterangan, tanggal: tanggal })
-            });
-            const data = await res.json();
-            if (!data.success) {
-                alert(data.message || 'Gagal menyimpan perubahan.');
-                return false;
-            }
-            // Tanggal berubah → pindahkan kartu ke kelompok tanggal yang baru
-            // supaya pengelompokan di layar ikut benar (tanpa reload).
-            if (data.groupKey && card.dataset.groupKey !== data.groupKey) {
-                moveCardToGroup(card, data.groupKey);
-            }
-            syncCardSummary(card);
-            flashAutosave(card);
-            recalcTotals();
-            return true;
-        } catch (e) {
-            alert('Error koneksi.');
-            return false;
-        }
-    }
-
-    /**
-     * Pindahkan kartu ke kelompok tanggal tertentu (dipakai setelah tanggal
-     * struk diubah manual maupun setelah AI membaca tanggal baru).
-     */
-    function moveCardToGroup(card, groupKey) {
-        const col = card.closest('.col-12') || card;
-        const row = ensureDateGroup(groupKey);
-        row.appendChild(col);
-        card.dataset.groupKey = groupKey;
-        pruneEmptyDateGroups();
-    }
-
-    /** Hapus kelompok tanggal yang sudah tidak punya item. */
-    function pruneEmptyDateGroups() {
-        document.querySelectorAll('#draftItemsContainer > [data-date-group]').forEach(group => {
-            if (!group.querySelector('.card[data-slug]')) group.remove();
-        });
-    }
-
-    /**
-     * Sinkronkan ringkasan di kepala kartu (badge kategori, nominal, tanggal,
-     * keterangan) dengan isi form — supaya layar tidak menampilkan data lama
-     * sebelum halaman di-refresh.
-     */
-    function syncCardSummary(card) {
-        const nominal = parseFloat(card.querySelector('.item-nominal').value) || 0;
-        const kategori = card.querySelector('.item-kategori').value;
-        const keterangan = card.querySelector('.item-keterangan').value;
-        const tanggalEl = card.querySelector('.item-tanggal');
-
-        const badgeEl = card.querySelector('.gde-struk__summary .badge');
-        if (badgeEl) {
-            badgeEl.className = 'badge ' + (kategoriBadges[kategori] || 'bg-secondary');
-            badgeEl.textContent = kategori;
-        }
-
-        const nominalEl = card.querySelector('.gde-struk__nominal');
-        if (nominalEl) nominalEl.textContent = formatRupiah(nominal);
-
-        const dateEl = card.querySelector('.gde-struk__date');
-        if (dateEl) {
-            if (tanggalEl && tanggalEl.value) {
-                const label = new Date(tanggalEl.value + 'T00:00:00')
-                    .toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-                dateEl.innerHTML = '<i class="bi bi-calendar3"></i> ' + label;
-                dateEl.classList.remove('d-none');
-            } else {
-                dateEl.classList.add('d-none');
-            }
-        }
-
-        const ketEl = card.querySelector('.gde-struk__ket');
-        if (ketEl) {
-            ketEl.textContent = keterangan || '';
-            ketEl.classList.toggle('d-none', !keterangan);
-        }
-    }
-
-    // Auto-save: perubahan nominal/keterangan disimpan otomatis (debounce) agar
-    // TIDAK HILANG saat refresh — tanpa harus menekan tombol simpan.
-    const saveDebounceMap = {};
-    function saveItemDebounced(card) {
-        const slug = card.dataset.slug;
-        clearTimeout(saveDebounceMap[slug]);
-        saveDebounceMap[slug] = setTimeout(() => saveItem(card), 900);
-    }
-
-    function flashAutosave(card) {
-        const el = card.querySelector('.autosave-status');
-        if (!el) return;
-        el.classList.remove('d-none');
-        clearTimeout(el._autosaveTimer);
-        el._autosaveTimer = setTimeout(() => el.classList.add('d-none'), 1600);
-    }
-
-    async function deleteItem(card) {
-        if (!confirm('Hapus file ini dari laporan?')) return;
-        const slug = card.dataset.slug;
-        try {
-            const res = await fetch(updateItemUrlBase + '/' + slug, {
-                method: 'DELETE',
-                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
-            });
-            const data = await res.json();
-            if (data.success) {
-                const col = card.closest('.col-12');
-                if (col) col.remove();
-                else card.remove();
-                pruneEmptyDateGroups();
-                recalcTotals();
-            } else {
-                alert(data.message || 'Gagal menghapus item.');
-            }
-        } catch (e) {
-            alert('Error koneksi.');
-        }
-    }
-
-    function bindItemCard(card) {
-        if (!card) return;
-        card.querySelector('.btn-save-item').addEventListener('click', () => saveItem(card));
-        card.querySelector('.btn-del-item').addEventListener('click', () => deleteItem(card));
-        card.querySelector('.item-nominal').addEventListener('input', () => saveItemDebounced(card));
-        card.querySelector('.item-kategori').addEventListener('change', () => saveItem(card));
-        card.querySelector('.item-keterangan').addEventListener('input', () => saveItemDebounced(card));
-        card.querySelector('.item-tanggal')?.addEventListener('change', () => saveItem(card));
-    }
-
-    function buildItemCardHtml(item) {
-        const badge = kategoriBadges[item.kategori] || 'bg-secondary';
-        const options = kategoriOptions.map(k =>
-            `<option value="${k}" ${k === item.kategori ? 'selected' : ''}>${k}</option>`).join('');
-        const tanggal = item.tanggal ? item.tanggal.split('T')[0] : null;
-        const tanggalLabel = tanggal
-            ? new Date(tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
-            : '';
-        return `
-            <div class="card border-0 gde-struk" data-slug="${item.slug}" data-group-key="${dateGroupKeyOf(item)}">
-                <button type="button" class="btn btn-sm btn-outline-danger gde-struk__del btn-del-item" title="Hapus file" aria-label="Hapus">
-                    <i class="bi bi-trash"></i>
-                </button>
-                <a href="${item.url}" target="_blank" rel="noopener" class="gde-struk__thumb" title="Lihat struk">
-                    <img src="${item.url}" alt="Struk ${item.item_code}" loading="lazy">
-                </a>
-                <div class="gde-struk__summary">
-                    <div class="gde-struk__row">
-                        <span class="badge ${badge}">${item.kategori}</span>
-                        <span class="gde-struk__nominal">${formatRupiah(item.nominal)}</span>
-                    </div>
-                    <div class="gde-struk__row mt-2">
-                        <span class="gde-struk__code" title="${item.item_code}">${item.item_code}</span>
-                        ${tanggalLabel ? `<span class="gde-struk__date"><i class="bi bi-calendar3"></i> ${tanggalLabel}</span>` : ''}
-                        ${renderPlateBadge(item)}
-                        ${renderTanggalWarning(item)}
-                    </div>
-                    ${item.keterangan ? `<div class="gde-struk__ket mt-2" title="${item.keterangan}">${item.keterangan}</div>` : ''}
+    <template id="manualEntryTemplate">
+        <div class="flex gap-3 rounded-lg border border-warning/40 bg-card p-3 shadow-xs">
+            <img data-mp-preview alt="Pratinjau" class="h-20 w-24 shrink-0 rounded-md bg-muted object-cover">
+            <div class="grid min-w-0 flex-1 gap-2 text-sm">
+                <div class="flex flex-wrap items-center gap-2">
+                    <x-ui.badge variant="warning" data-mp-reason></x-ui.badge>
+                    <span data-mp-message class="text-xs text-muted-foreground"></span>
                 </div>
-                <div class="gde-struk__edit">
-                    <div class="gde-struk__edit-grid">
-                        <div>
-                            <label class="form-label">Tanggal Struk</label>
-                            <input type="date" class="form-control form-control-sm item-tanggal" value="${tanggal || ''}">
-                        </div>
-                        <div>
-                            <label class="form-label">Nominal (Rp)</label>
-                            <input type="number" class="form-control form-control-sm item-nominal" value="${item.nominal}" min="0" step="0.01" inputmode="decimal">
-                        </div>
-                        <div>
-                            <label class="form-label">Kategori</label>
-                            <select class="form-select form-select-sm item-kategori">${options}</select>
-                        </div>
-                        <button type="button" class="btn btn-primary btn-sm gde-btn--block btn-save-item" title="Simpan perubahan">
-                            <i class="bi bi-check2"></i> Simpan
-                        </button>
-                    </div>
-                    <div>
-                        <label class="form-label">Keterangan</label>
-                        <input type="text" class="form-control form-control-sm item-keterangan" value="${item.keterangan || ''}" maxlength="500" placeholder="cth: pengisian BBM di Patuha">
-                    </div>
-                    <div class="gde-struk__autosave autosave-status d-none">
-                        <i class="bi bi-check-circle"></i> Tersimpan otomatis
-                    </div>
+                <div class="grid gap-2 sm:grid-cols-4">
+                    <x-ui.select data-mp="kategori">
+                        <option value="">Kategori</option>
+                        @foreach (\App\Models\StrukItem::KATEGORI as $k)
+                            <option value="{{ $k }}">{{ $k }}</option>
+                        @endforeach
+                    </x-ui.select>
+                    <x-ui.input type="number" min="0" step="1" data-mp="nominal" placeholder="Nominal (Rp)" />
+                    <x-ui.input type="date" data-mp="tanggal" />
+                    <x-ui.input maxlength="500" data-mp="keterangan" placeholder="Keterangan (opsional)" />
                 </div>
-            </div>`;
-    }
-
-    // ── Draft dikelompokkan otomatis per tanggal hasil AI (seamless) ──
-    function dateGroupKeyOf(item) {
-        return item.tanggal ? item.tanggal.split('T')[0] : 'tanpa-tanggal';
-    }
-
-    function formatDateLabel(key) {
-        if (key === 'tanpa-tanggal') return 'Tanpa tanggal';
-        const d = new Date(key + 'T00:00:00');
-        return d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    }
-
-    function ensureDateGroup(key) {
-        const container = document.getElementById('draftItemsContainer');
-        let group = container.querySelector('[data-date-group="' + key + '"]');
-        if (!group) {
-            group = document.createElement('div');
-            group.className = 'border rounded p-2';
-            group.dataset.dateGroup = key;
-            group.innerHTML = `
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                    <strong><i class="bi bi-calendar3 me-1"></i> ${formatDateLabel(key)}</strong>
-                    <span class="small text-muted group-meta">0 item · Total ${formatRupiah(0)}</span>
+                <div class="flex flex-wrap gap-2">
+                    <x-ui.button size="sm" data-mp-save><i class="bi bi-check2"></i> Simpan Manual</x-ui.button>
+                    <x-ui.button variant="outline" size="sm" data-mp-retry><i class="bi bi-arrow-clockwise"></i> Coba Analisis Ulang</x-ui.button>
+                    <x-ui.button variant="ghost" size="sm" data-mp-discard>Buang</x-ui.button>
                 </div>
-                <div class="row g-2"></div>`;
-            let inserted = false;
-            container.querySelectorAll(':scope > [data-date-group]').forEach(existing => {
-                if (!inserted && existing.dataset.dateGroup > key) {
-                    container.insertBefore(group, existing);
-                    inserted = true;
-                }
-            });
-            if (!inserted) container.appendChild(group);
-        }
-        return group.querySelector('.row.g-2');
-    }
+            </div>
+        </div>
+    </template>
 
-    function appendItemCard(item) {
-        const row = ensureDateGroup(dateGroupKeyOf(item));
-        const col = document.createElement('div');
-        col.className = 'col-12';
-        col.innerHTML = buildItemCardHtml(item);
-        row.appendChild(col);
-        bindItemCard(col.querySelector('.card[data-slug]'));
-        flashAutosave(col.querySelector('.card[data-slug]'));
-        recalcTotals();
-    }
-
-    // ── Bulk upload: pisahkan file menjadi batch maksimal 5 per kirim ──
-    const bulkFile = document.getElementById('bulkFile');
-    const btnBulkUpload = document.getElementById('btnBulkUpload');
-    const uploadStatus = document.getElementById('uploadStatus');
-
-    if (bulkFile) {
-        bulkFile.addEventListener('change', () => {
-            const count = bulkFile.files.length;
-            document.getElementById('bulkFileCount').textContent = count
-                ? count + ' file dipilih (' + Math.ceil(count / maxBulkUpload) + '× kirim @' + maxBulkUpload + ')'
-                : '';
-            if (count > maxBulkUpload) {
-                uploadStatus.textContent = 'Terlalu banyak dalam 1 kirim — akan dikirim per ' + maxBulkUpload + ' gambar.';
-                uploadStatus.className = 'small text-warning';
-            } else {
-                uploadStatus.textContent = '';
-            }
-        });
-
-    // ── Foto gagal analisis AI → kartu isi-manual (tetap tersimpan sbg draft) ──
-    let manualSeq = 0;
-
-    async function postStrukBatch(formData) {
-        const res = await fetch(bulkUploadUrl, {
-            method: 'POST',
-            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-            body: formData
-        });
-        if (res.status === 429) return { error: 'Terlalu banyak permintaan — tunggu ±1 menit lalu coba lagi.' };
-        try { return await res.json(); } catch (e) { return { error: 'Respons server tidak valid.' }; }
-    }
-
-    function refreshManualWrap() {
-        const wrap = document.getElementById('manualPendingWrap');
-        const list = document.getElementById('manualPendingList');
-        if (wrap && list && !list.children.length) wrap.classList.add('d-none');
-    }
-
-    function queueManualEntry(file, detail) {
-        const wrap = document.getElementById('manualPendingWrap');
-        const list = document.getElementById('manualPendingList');
-        if (!wrap || !list) return;
-        wrap.classList.remove('d-none');
-
-        const card = document.createElement('div');
-        card.className = 'card border-warning shadow-sm';
-        const reasonBadge = detail.reason === 'api_limit' ? 'AI Limit — Isi Manual' : 'Gagal Analisis — Isi Manual';
-        card.innerHTML = `
-            <div class="card-body p-2 d-flex gap-2">
-                <div class="flex-shrink-0">
-                    <img class="mp-preview" alt="Preview" style="max-height:70px; max-width:90px; border-radius:4px; object-fit:cover; background:#F8FAFC;">
-                </div>
-                <div class="flex-grow-1 small">
-                    <span class="badge bg-warning text-dark">${reasonBadge}</span>
-                    <span class="text-muted" style="font-size:0.7rem;">${detail.message || ''}</span>
-                    <div class="row g-1 mt-1">
-                        <div class="col-6 col-md-3">
-                            <select class="form-select form-select-sm mp-kategori">
-                                <option value="">-- Kategori --</option>
-                                ${kategoriOptions.map(k => `<option value="${k}">${k}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <input type="number" min="0" step="1" class="form-control form-control-sm mp-nominal" placeholder="Nominal (Rp)">
-                        </div>
-                        <div class="col-6 col-md-2">
-                            <input type="date" class="form-control form-control-sm mp-tanggal">
-                        </div>
-                        <div class="col-6 col-md-4">
-                            <input type="text" maxlength="500" class="form-control form-control-sm mp-keterangan" placeholder="Keterangan (opsional)">
-                        </div>
-                    </div>
-                    <div class="d-flex gap-1 mt-2 flex-wrap">
-                        <button type="button" class="btn btn-sm btn-warning mp-save"><i class="bi bi-check2"></i> Simpan Manual</button>
-                        <button type="button" class="btn btn-sm btn-outline-primary mp-retry"><i class="bi bi-arrow-clockwise"></i> Coba Analisis Ulang</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary mp-discard">Buang</button>
-                    </div>
-                </div>
-            </div>`;
-        list.appendChild(card);
-
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = e => { const im = card.querySelector('.mp-preview'); if (im) im.src = e.target.result; };
-            reader.readAsDataURL(file);
-        }
-
-        card.querySelector('.mp-save').addEventListener('click', async () => {
-            if (!file) { alert('File tidak tersedia untuk dikirim ulang.'); return; }
-            const kategori = card.querySelector('.mp-kategori').value;
-            const nominalEl = card.querySelector('.mp-nominal');
-            if (!kategori) { alert('Pilih kategori terlebih dahulu.'); return; }
-            if (kategori !== 'Tambahan' && nominalEl.value === '') { alert('Isi nominal terlebih dahulu.'); return; }
-
-            const fd = new FormData();
-            fd.append('images[]', file);
-            fd.append('manual_data[0][kategori]', kategori);
-            if (nominalEl.value !== '') fd.append('manual_data[0][nominal]', nominalEl.value);
-            const tgl = card.querySelector('.mp-tanggal').value;
-            if (tgl) fd.append('manual_data[0][tanggal]', tgl);
-            const ket = card.querySelector('.mp-keterangan').value.trim();
-            if (ket) fd.append('manual_data[0][keterangan]', ket);
-
-            card.querySelector('.mp-save').disabled = true;
-            const data = await postStrukBatch(fd);
-            card.querySelector('.mp-save').disabled = false;
-
-            if (data.error) { alert(data.error); return; }
-            if (data.items && data.items.length) {
-                (data.items || []).forEach(item => appendItemCard(item));
-                card.remove();
-                refreshManualWrap();
-                uploadStatus.textContent = '✓ Foto disimpan manual sebagai draft.';
-                uploadStatus.className = 'small text-success';
-            } else {
-                alert(data.message || 'Gagal menyimpan. Coba lagi.');
-            }
-        });
-
-        card.querySelector('.mp-retry').addEventListener('click', async () => {
-            if (!file) { alert('File tidak tersedia.'); return; }
-            const fd = new FormData();
-            fd.append('images[]', file);
-
-            const btn = card.querySelector('.mp-retry');
-            btn.disabled = true;
-            uploadStatus.textContent = 'Menganalisis ulang 1 foto...';
-            uploadStatus.className = 'small text-primary';
-
-            const data = await postStrukBatch(fd);
-            btn.disabled = false;
-
-            if (data.error) { uploadStatus.textContent = data.error; uploadStatus.className = 'small text-danger'; return; }
-            if (data.items && data.items.length) {
-                (data.items || []).forEach(item => appendItemCard(item));
-                card.remove();
-                refreshManualWrap();
-                uploadStatus.textContent = '✓ Analisis ulang berhasil.';
-                uploadStatus.className = 'small text-success';
-            } else {
-                uploadStatus.textContent = 'Analisis masih gagal — silakan isi manual.';
-                uploadStatus.className = 'small text-warning';
-            }
-        });
-
-        card.querySelector('.mp-discard').addEventListener('click', () => {
-            card.remove();
-            refreshManualWrap();
-        });
-    }
-
-    btnBulkUpload.addEventListener('click', async () => {
-        const files = Array.from(bulkFile.files);
-        if (!files.length) {
-            alert('Pilih minimal 1 gambar struk terlebih dahulu.');
-            return;
-        }
-
-        // Tanggal transaksi dibaca otomatis oleh AI — tidak dikirim manual lagi.
-        const batches = [];
-        for (let i = 0; i < files.length; i += maxBulkUpload) {
-            batches.push(files.slice(i, i + maxBulkUpload));
-        }
-
-        btnBulkUpload.disabled = true;
-        for (let b = 0; b < batches.length; b++) {
-            const batch = batches[b];
-            const fd = new FormData();
-            batch.forEach((f, i) => fd.append('images[]', f));
-
-            uploadStatus.textContent = 'Mengupload batch ' + (b + 1) + '/' + batches.length + ' & menganalisis ' + batch.length + ' foto...';
-            uploadStatus.className = 'small text-primary';
-
-            try {
-                const res = await fetch(bulkUploadUrl, {
-                    method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-                    body: fd
-                });
-
-                if (res.status === 429) {
-                    uploadStatus.textContent = 'Terlalu banyak permintaan (rate limit). Tunggu ±1 menit lalu kirim ulang batch ini.';
-                    uploadStatus.className = 'small text-danger';
-                    break;
-                }
-
-                let data;
-                try { data = await res.json(); } catch (e) { data = null; }
-
-                if (!data) {
-                    uploadStatus.textContent = 'Batch ' + (b + 1) + ': respons server tidak valid.';
-                    uploadStatus.className = 'small text-danger';
-                    break;
-                }
-
-                (data.items || []).forEach(item => appendItemCard(item));
-
-                const failedDetails = data.failed_details || [];
-                failedDetails.forEach(det => {
-                    const fileIdx = (det.index || 1) - 1;
-                    queueManualEntry(batch[fileIdx] || null, det);
-                });
-
-                if (data.has_api_limit) {
-                    uploadStatus.textContent = '⚠ Kuota AI (Gemini) habis sementara — lengkapi foto yang gagal lewat form manual di atas.';
-                    uploadStatus.className = 'small text-warning';
-                } else if (data.success) {
-                    uploadStatus.textContent = '✓ ' + (data.message || ('Batch ' + (b + 1) + ' berhasil.'));
-                    uploadStatus.className = 'small ' + ((data.failed || []).length ? 'text-warning' : 'text-success');
-                } else {
-                    uploadStatus.textContent = 'Batch ' + (b + 1) + ' gagal: ' + (data.message || 'terjadi kesalahan.');
-                    uploadStatus.className = 'small text-danger';
-                    break;
-                }
-            } catch (e) {
-                uploadStatus.textContent = 'Error koneksi saat batch ' + (b + 1) + '.';
-                uploadStatus.className = 'small text-danger';
-                break;
-            }
-        }
-        btnBulkUpload.disabled = false;
-        bulkFile.value = '';
-        document.getElementById('bulkFileCount').textContent = '';
-    });
-    }
-
-    // Bind handler edit/hapus utk item yang sudah dirender server
-    document.querySelectorAll('.card[data-slug]').forEach(card => bindItemCard(card));
-
-    // ─────────────────────────────────────────────────────────────────────
-    // MODE "UBAH SEMUA ISIAN"
-    // Hasil OCR sering salah (khususnya tanggal). Tombol ini membuka form
-    // lengkap untuk SEMUA item lalu menyimpannya sekali jalan lewat satu
-    // endpoint bulk, sehingga driver tidak perlu menyimpan satu per satu.
-    // ─────────────────────────────────────────────────────────────────────
-    const btnBulkEdit = document.getElementById('btnBulkEdit');
-    const btnBulkSave = document.getElementById('btnBulkSave');
-    const btnBulkCancel = document.getElementById('btnBulkCancel');
-    const bulkEditBar = document.getElementById('bulkEditBar');
-    const bulkEditHint = document.getElementById('bulkEditHint');
-
-    function bulkEditAktif() {
-        return document.body.classList.contains('is-bulk-edit');
-    }
-
-    function setBulkEdit(aktif) {
-        document.body.classList.toggle('is-bulk-edit', aktif);
-
-        document.querySelectorAll('#draftItemsContainer .card[data-slug]').forEach(card => {
-            card.classList.toggle('gde-struk--bulk-edit', aktif);
-        });
-
-        bulkEditBar?.classList.toggle('d-none', !aktif);
-        bulkEditHint?.classList.toggle('d-none', !aktif);
-
-        if (btnBulkEdit) {
-            btnBulkEdit.innerHTML = aktif
-                ? '<i class="bi bi-x-circle"></i> Selesai'
-                : '<i class="bi bi-pencil-square"></i> Ubah Semua Isian';
-        }
-
-        if (aktif) {
-            const jumlah = document.querySelectorAll('#draftItemsContainer .card[data-slug]').length;
-            const el = document.getElementById('bulkEditCount');
-            if (el) el.textContent = jumlah;
-            // Fokuskan tanggal item pertama — bagian yang paling sering salah OCR.
-            document.querySelector('#draftItemsContainer .item-tanggal')?.focus();
-        }
-    }
-
-    btnBulkEdit?.addEventListener('click', () => setBulkEdit(!bulkEditAktif()));
-    btnBulkCancel?.addEventListener('click', () => setBulkEdit(false));
-
-    btnBulkSave?.addEventListener('click', async () => {
-        const cards = Array.from(document.querySelectorAll('#draftItemsContainer .card[data-slug]'));
-        if (cards.length === 0) return;
-
-        const items = {};
-        cards.forEach(card => {
-            items[card.dataset.slug] = {
-                tanggal: card.querySelector('.item-tanggal')?.value || null,
-                nominal: card.querySelector('.item-nominal')?.value || 0,
-                struk_kategori: card.querySelector('.item-kategori')?.value || 'Lainnya',
-                keterangan: card.querySelector('.item-keterangan')?.value || '',
-            };
-        });
-
-        btnBulkSave.disabled = true;
-        const labelAsli = btnBulkSave.innerHTML;
-        btnBulkSave.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Menyimpan...';
-
-        try {
-            const res = await fetch(bulkUpdateUrl, {
-                method: 'PATCH',
-                headers: { 'X-CSRF-TOKEN': csrfToken, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify({ items: items })
-            });
-            const data = await res.json();
-
-            if (!data.success) {
-                alert(data.message || 'Gagal menyimpan perubahan.');
-                return;
-            }
-
-            // Muat ulang supaya pengelompokan per tanggal dihitung ulang server.
-            window.location.reload();
-        } catch (e) {
-            alert('Error koneksi saat menyimpan.');
-        } finally {
-            btnBulkSave.disabled = false;
-            btnBulkSave.innerHTML = labelAsli;
-        }
-    });
-
-    recalcTotals();
-</script>
-@endsection
+    @push('scripts')
+        <script type="application/json" id="page-data">@json([
+            'bulkUploadUrl' => route('pelaporan.spd.daily.upload-items', $surat),
+            'bulkUpdateUrl' => route('pelaporan.spd.daily.update-items', $surat),
+            'updateItemUrlBase' => $updateItemUrlBase,
+            'csrfToken' => csrf_token(),
+            'maxBulkUpload' => \App\Http\Controllers\SpdDailyReportController::MAX_BULK_UPLOAD,
+        ])</script>
+        @vite('resources/js/pages/spd/validasi.js')
+    @endpush
+</x-layouts.app>

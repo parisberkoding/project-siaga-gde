@@ -1,60 +1,79 @@
 // Dashboard BBM: grafik (Chart.js), pencarian & export tabel, layar tunggu cetak PDF.
-import Chart from 'chart.js/auto';
-import { rupiah, pageData } from '../../lib/format';
+import Chart, { compact, chartEmptyState as emptyState } from '../../lib/chart';
+import { rupiah, pageData, isoDate } from '../../lib/format';
 
-const { stats = {} } = pageData();
+const { stats = {}, chart: range = {} } = pageData();
 
-// Palet mengikuti warna GDE (biru, hijau, oranye BBM, ungu, merah).
-const palette = ['#0b50a1', '#71a62f', '#ff771d', '#9747ff', '#ed1b2f', '#4154f1'];
-const millions = (value) => `Rp ${(value / 1_000_000).toFixed(1)} jt`;
+const primary = '#0b50a1';
 
-Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
-Chart.defaults.color = '#5b6b80';
-Chart.defaults.borderColor = '#e4e9f0';
-
-function emptyState(canvas) {
-    canvas.parentElement.innerHTML =
-        '<p class="flex h-full items-center justify-center text-sm text-muted-foreground"><i class="bi bi-inbox mr-2"></i>Tidak ada data</p>';
+// Sumbu lengkap untuk rentang terpilih: hari tanpa transaksi tetap tampil (nilai 0), bukan dilewati.
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+function expenseSeries(data) {
+    const keys = Object.keys(data);
+    let axis;
+    if (range.period === 'day') {
+        axis = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}:00`);
+    } else if (range.period === 'year') {
+        // Hanya bulan di dalam rentang (bulan yang belum lewat tidak ditampilkan kosong).
+        const sameYear = range.start && range.end && range.start.slice(0, 4) === range.end.slice(0, 4);
+        axis = sameYear ? MONTHS.slice(Number(range.start.slice(5, 7)) - 1, Number(range.end.slice(5, 7))) : MONTHS;
+    } else {
+        const sorted = [...keys].sort();
+        const from = new Date(range.start || sorted[0]);
+        const to = new Date(range.end || sorted[sorted.length - 1]);
+        axis = [];
+        // ponytail: rentang "Semua waktu" yang sangat panjang tetap per hari; ganti ke per bulan bila datanya bertahun-tahun.
+        for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) axis.push(isoDate(d));
+    }
+    // Kunci yang tidak cocok dengan sumbu (mis. format bulan berbeda) tetap ditampilkan di akhir.
+    const extra = keys.filter((k) => !axis.includes(k));
+    const labels = [...axis, ...extra];
+    const label = (key) => (/^\d{4}-\d{2}-\d{2}$/.test(key)
+        ? new Date(`${key}T00:00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+        : key);
+    return { labels: labels.map(label), values: labels.map((k) => data[k] ?? 0) };
 }
 
 const expense = stats.expenseOverTime ?? {};
-const lineCanvas = document.getElementById('expenseLineChart');
-if (Object.keys(expense).length) {
-    new Chart(lineCanvas, {
-        type: 'line',
+const expenseCanvas = document.getElementById('expenseChart');
+if (Object.values(expense).some((v) => v > 0)) {
+    const { labels, values } = expenseSeries(expense);
+    new Chart(expenseCanvas, {
+        type: 'bar',
         data: {
-            labels: Object.keys(expense),
+            labels,
             datasets: [{
-                label: 'Pengeluaran',
-                data: Object.values(expense),
-                fill: true,
-                backgroundColor: 'rgb(11 80 161 / 0.1)',
-                borderColor: palette[0],
-                tension: 0.35,
-                pointRadius: 3,
+                data: values,
+                backgroundColor: 'rgb(11 80 161 / 0.85)',
+                hoverBackgroundColor: primary,
+                borderRadius: 4,
+                maxBarThickness: 32,
             }],
         },
         options: {
             maintainAspectRatio: false,
             plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => rupiah(ctx.parsed.y) } } },
-            scales: { y: { beginAtZero: true, ticks: { callback: millions } } },
+            scales: {
+                x: { grid: { display: false }, ticks: { autoSkip: true, maxRotation: 0, autoSkipPadding: 12 } },
+                y: { beginAtZero: true, border: { display: false }, ticks: { callback: compact, maxTicksLimit: 6 } },
+            },
         },
     });
 } else {
-    emptyState(lineCanvas);
+    emptyState(expenseCanvas);
 }
 
 const gasoline = stats.gasolineExpenseDistribution ?? {};
-const pieCanvas = document.getElementById('gasolinePieChart');
+const gasolineCanvas = document.getElementById('gasolineChart');
 if (Object.keys(gasoline).length) {
-    new Chart(pieCanvas, {
+    new Chart(gasolineCanvas, {
         type: 'doughnut',
         data: {
             labels: Object.keys(gasoline),
-            datasets: [{ data: Object.values(gasoline), backgroundColor: palette, borderWidth: 2, borderColor: '#fff' }],
+            datasets: [{ data: Object.values(gasoline), backgroundColor: range.colors, borderWidth: 3, borderColor: '#fff', hoverOffset: 6 }],
         },
         options: {
-            maintainAspectRatio: false,
+            cutout: '72%',
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -68,46 +87,8 @@ if (Object.keys(gasoline).length) {
             },
         },
     });
-    document.querySelectorAll('[data-legend]').forEach((dot) => {
-        dot.style.backgroundColor = palette[dot.dataset.legend % palette.length];
-    });
 } else {
-    emptyState(pieCanvas);
-}
-
-// Top 10 per kendaraan atau per driver.
-const rankingCanvas = document.getElementById('rankingChart');
-let rankingChart = null;
-
-function renderRanking(mode) {
-    document.querySelectorAll('[data-ranking]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.ranking === mode));
-    const source = (mode === 'vehicle' ? stats.vehicleExpense : stats.driverExpense) ?? {};
-    const top = Object.entries(source).sort((a, b) => b[1] - a[1]).slice(0, 10);
-
-    rankingChart?.destroy();
-    rankingChart = new Chart(rankingCanvas, {
-        type: 'bar',
-        data: {
-            labels: top.map(([label]) => label),
-            datasets: [{ data: top.map(([, value]) => value), backgroundColor: mode === 'vehicle' ? palette[2] : palette[3], borderRadius: 4 }],
-        },
-        options: {
-            indexAxis: 'y',
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => rupiah(ctx.parsed.x) } } },
-            scales: { x: { beginAtZero: true, ticks: { callback: millions } } },
-        },
-    });
-}
-
-if (Object.keys(stats.vehicleExpense ?? {}).length || Object.keys(stats.driverExpense ?? {}).length) {
-    renderRanking('vehicle');
-    document.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-ranking]');
-        if (button) renderRanking(button.dataset.ranking);
-    });
-} else {
-    emptyState(rankingCanvas);
+    emptyState(gasolineCanvas, 'Belum ada data');
 }
 
 // Pencarian baris pada halaman tabel yang sedang tampil.
@@ -175,3 +156,16 @@ printForm?.addEventListener('submit', () => {
     }, 500);
     const fallback = setTimeout(finish, 60000);
 });
+
+// Rentang kustom: "period" hanya mengatur pengelompokan grafik di controller (per jam / hari / bulan),
+// jadi pilih sesuai panjang rentang.
+const customRange = document.querySelector('[data-custom-range]');
+if (customRange) {
+    const from = customRange.elements.start_date;
+    const to = customRange.elements.end_date;
+    from.addEventListener('change', () => { to.min = from.value; });
+    customRange.addEventListener('submit', () => {
+        const days = (new Date(to.value) - new Date(from.value)) / 86_400_000;
+        customRange.elements.period.value = days < 1 ? 'day' : days <= 62 ? 'month' : 'year';
+    });
+}

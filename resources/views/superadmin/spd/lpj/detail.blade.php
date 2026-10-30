@@ -1,622 +1,334 @@
-@extends('templates.main')
-
-{{--
-
-
-
---}}
-
-@section('content')
 @php
-    // Halaman detail yang sama dipakai antrean GA dan antrean Management.
-    // Tautan kembali harus mengikuti konteks agar peran Management tanpa
-    // permission `lpj.validate` tidak mendapat 403.
-    $isManagementContext = request()->routeIs('lpj.management.*');
-    $indexRoute = $isManagementContext ? 'lpj.management.index' : 'lpj.superadmin.index';
+    $surat = $laporan->suratSpd;
+    $user = Auth::user();
+    $rp = fn ($value) => 'Rp ' . number_format((float) $value, 0, ',', '.');
+    $canValidate = $user->hasPermission('lpj.validate');
+    $canPencairan = $user->hasPermission('lpj.pencairan');
+    // Halaman ini dipakai antrean GA dan antrean Management; tautan kembali mengikuti konteks
+    // supaya Management tanpa permission lpj.validate tidak mendapat 403.
+    $indexRoute = request()->routeIs('lpj.management.*') ? 'lpj.management.index' : 'lpj.superadmin.index';
+    // BUG-LPJ-002: jumlah efektif = nilai tersimpan, atau total pencairan dana SPD bila belum diisi.
+    // Tanpa data dana sama sekali, pakai nilai tersimpan supaya tidak tampil kekurangan penuh.
+    $jumlahDiberikan = $laporan->jumlah_diberikan_efektif;
+    $selisih = $jumlahDiberikan - (float) $laporan->total_pengeluaran;
+    $pengembalian = $jumlahDiberikan > 0 ? max(0, $selisih) : (float) $laporan->pengembalian;
+    $kekurangan = $jumlahDiberikan > 0 ? abs(min(0, $selisih)) : (float) $laporan->kekurangan;
 @endphp
-<div class="pagetitle">
-    <h1>Detail Laporan Pertanggungjawaban</h1>
-    <nav>
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('superadmin-dashboard') }}">Home</a></li>
-            <li class="breadcrumb-item">SPD</li>
-            <li class="breadcrumb-item"><a href="{{ route($indexRoute) }}">Validasi LPJ</a></li>
-            <li class="breadcrumb-item active">Detail</li>
-        </ol>
-    </nav>
-</div>
 
-<section class="section">
-    <div class="row">
-        {{-- Detail LPJ (Left Column) --}}
-        <div class="col-lg-8">
-            {{-- Header Card --}}
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title d-flex justify-content-between align-items-center">
-                        <span>Laporan Pertanggungjawaban BBM</span>
-                        {{-- Status Badge --}}
-                        @if($laporan->status == 'pending')
-                            <span class="badge bg-warning text-dark fs-6">
-                                <i class="bi bi-clock-history"></i> Menunggu Validasi
-                            </span>
-                        @elseif($laporan->status == 'approved')
-                            <span class="badge bg-success fs-6">
-                                <i class="bi bi-check-circle"></i> Disetujui
-                            </span>
-                        @else
-                            <span class="badge bg-danger fs-6">
-                                <i class="bi bi-x-circle"></i> Ditolak
-                            </span>
-                        @endif
-                    </h5>
+<x-layouts.app title="Detail LPJ" :breadcrumbs="['Validasi Laporan' => route($indexRoute), 'Detail' => null]">
+    <x-ui.page-header kicker="Laporan Pertanggungjawaban" :title="$surat->nomor_surat ?? 'Detail LPJ'" :description="$laporan->nama . ' · ' . ($surat->tempat_tujuan ?? '-')">
+        <x-slot:actions>
+            <x-spd.status-badge :status="$laporan->status" class="px-3 py-1 text-sm" />
+            @if ($laporan->is_late)<x-ui.badge variant="danger" class="px-3 py-1 text-sm"><i class="bi bi-clock"></i> Terlambat {{ $laporan->days_late }} hari</x-ui.badge>@endif
+            @if ($laporan->is_over_budget)<x-ui.badge variant="warning" class="px-3 py-1 text-sm"><i class="bi bi-exclamation-triangle"></i> Over Budget</x-ui.badge>@endif
+            @if ($surat?->is_extension)<x-ui.badge variant="info" class="px-3 py-1 text-sm"><i class="bi bi-diagram-3"></i> Perpanjangan</x-ui.badge>@endif
+            <x-ui.button variant="outline" :href="route($indexRoute)"><i class="bi bi-arrow-left"></i> Kembali</x-ui.button>
+        </x-slot:actions>
+    </x-ui.page-header>
 
-                    {{-- Badges untuk status khusus --}}
-                    <div class="mb-3">
-                        @if($laporan->is_late)
-                            <span class="badge bg-danger me-1">
-                                <i class="bi bi-clock"></i> Terlambat {{ $laporan->days_late }} hari
-                            </span>
-                        @endif
-                        @if($laporan->is_over_budget)
-                            <span class="badge bg-warning text-dark me-1">
-                                <i class="bi bi-exclamation-triangle"></i> Over Budget
-                            </span>
-                        @endif
-                        @if($laporan->suratSpd && $laporan->suratSpd->is_extension)
-                            <span class="badge bg-info">
-                                <i class="bi bi-diagram-3"></i> Perpanjangan
-                            </span>
-                        @endif
-                    </div>
-
-                    <hr>
-
-                    {{-- Info Surat Tugas --}}
-                    <h6 class="text-primary mb-3"><i class="bi bi-file-earmark-text"></i> Informasi Surat Tugas</h6>
-                    <div class="row mb-2">
-                        <div class="col-md-4">Nomor Surat:</div>
-                        <div class="col-md-8">
-                            <strong>{{ $laporan->suratSpd->nomor_surat ?? '-' }}</strong>
-                            @if($laporan->suratSpd && $laporan->suratSpd->is_extension && $laporan->suratSpd->parentSurat)
-                                <br><small class="text-muted">Perpanjangan dari: {{ $laporan->suratSpd->parentSurat->nomor_surat }}</small>
-                            @endif
-                        </div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-md-4">Tujuan:</div>
-                        <div class="col-md-8">{{ $laporan->suratSpd->tempat_tujuan ?? '-' }}</div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-md-4">Tanggal Perjalanan:</div>
-                        <div class="col-md-8">
-                            @if($laporan->suratSpd)
-                                {{ $laporan->suratSpd->tanggal_berangkat->translatedFormat('d M Y') }} -
-                                {{ $laporan->suratSpd->tanggal_kembali->translatedFormat('d M Y') }}
-                                <span class="badge bg-secondary">{{ $laporan->suratSpd->lama_perjalanan_hari }} hari</span>
-                            @else
-                                -
-                            @endif
-                        </div>
-                    </div>
-
-                    <hr>
-
-                    {{-- Info Pelapor --}}
-                    <h6 class="text-success mb-3"><i class="bi bi-person"></i> Informasi Pelapor</h6>
-                    <div class="row mb-2">
-                        <div class="col-md-4">Nama:</div>
-                        <div class="col-md-8"><strong>{{ $laporan->nama }}</strong></div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-md-4">Jabatan:</div>
-                        <div class="col-md-8">{{ $laporan->jabatan }}</div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-md-4">Kendaraan:</div>
-                        <div class="col-md-8">
-                            <span class="badge bg-dark">{{ $laporan->nomor_polisi }}</span>
-                            {{ $laporan->vehicle->consumerial_name ?? '' }}
-                        </div>
-                    </div>
-
-                    <hr>
-
-                    {{-- Uraian --}}
-                    <h6 class="text-info mb-3"><i class="bi bi-journal-text"></i> Uraian Perjalanan</h6>
-                    <p>{{ $laporan->uraian }}</p>
-
-                    <hr>
-
-                    {{-- Tanggal & Deadline --}}
-                    <h6 class="text-warning mb-3"><i class="bi bi-calendar"></i> Tanggal Pengajuan</h6>
-                    <div class="row mb-2">
-                        <div class="col-md-4">Tanggal LPJ:</div>
-                        <div class="col-md-8">{{ $laporan->tanggal_lpj ? $laporan->tanggal_lpj->translatedFormat('d M Y') : '-' }}</div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-md-4">Deadline:</div>
-                        <div class="col-md-8">
-                            @if($laporan->due_date)
-                                <span class="{{ $laporan->is_late ? 'text-danger' : '' }}">
-                                    {{ $laporan->due_date->translatedFormat('d M Y') }}
-                                </span>
-                                @if($laporan->is_late)
-                                    <span class="badge bg-danger">Terlambat {{ $laporan->days_late }} hari</span>
+    <div class="grid items-start gap-6 lg:grid-cols-3">
+        <div class="grid min-w-0 gap-6 lg:col-span-2">
+            <div class="grid gap-6 md:grid-cols-2">
+                <x-ui.card>
+                    <x-ui.card-header title="Surat Tugas" icon="bi bi-file-earmark-text" />
+                    <x-ui.card-content>
+                        <dl class="divide-y">
+                            <x-ui.detail-row label="Nomor">
+                                <span class="font-medium">{{ $surat->nomor_surat ?? '-' }}</span>
+                                @if ($surat?->is_extension && $surat->parentSurat)
+                                    <span class="block text-xs text-muted-foreground">Perpanjangan dari {{ $surat->parentSurat->nomor_surat }}</span>
                                 @endif
-                            @else
-                                -
-                            @endif
-                        </div>
-                    </div>
-                </div>
+                            </x-ui.detail-row>
+                            <x-ui.detail-row label="Tujuan">{{ $surat->tempat_tujuan ?? '-' }}</x-ui.detail-row>
+                            <x-ui.detail-row label="Tanggal">
+                                @if ($surat)
+                                    {{ $surat->tanggal_berangkat->translatedFormat('d M Y') }} - {{ $surat->tanggal_kembali->translatedFormat('d M Y') }}
+                                    <span class="block text-xs text-muted-foreground">{{ $surat->lama_perjalanan_hari }} hari</span>
+                                @else
+                                    -
+                                @endif
+                            </x-ui.detail-row>
+                        </dl>
+                    </x-ui.card-content>
+                </x-ui.card>
+
+                <x-ui.card>
+                    <x-ui.card-header title="Pelapor & Tanggal" icon="bi bi-person" />
+                    <x-ui.card-content>
+                        <dl class="divide-y">
+                            <x-ui.detail-row label="Nama">
+                                <span class="font-medium">{{ $laporan->nama }}</span>
+                                <span class="block text-xs text-muted-foreground">{{ $laporan->jabatan }}</span>
+                            </x-ui.detail-row>
+                            <x-ui.detail-row label="Kendaraan">
+                                <x-ui.badge variant="outline"><i class="bi bi-truck"></i> {{ $laporan->nomor_polisi }}</x-ui.badge>
+                                <span class="block text-xs text-muted-foreground">{{ $laporan->vehicle->consumerial_name ?? '' }}</span>
+                            </x-ui.detail-row>
+                            <x-ui.detail-row label="Tanggal LPJ">{{ $laporan->tanggal_lpj?->translatedFormat('d M Y') ?? '-' }}</x-ui.detail-row>
+                            <x-ui.detail-row label="Batas">
+                                @if ($laporan->due_date)
+                                    <span @class(['font-medium text-destructive' => $laporan->is_late])>{{ $laporan->due_date->translatedFormat('d M Y') }}</span>
+                                @else
+                                    -
+                                @endif
+                            </x-ui.detail-row>
+                        </dl>
+                    </x-ui.card-content>
+                </x-ui.card>
             </div>
 
-            {{-- Detail Pengeluaran --}}
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="bi bi-list-check"></i> Rincian Pengeluaran</h5>
+            @if ($laporan->uraian)
+                <x-ui.card>
+                    <x-ui.card-header title="Uraian Perjalanan" icon="bi bi-journal-text" />
+                    <x-ui.card-content><p class="whitespace-pre-line text-sm">{{ $laporan->uraian }}</p></x-ui.card-content>
+                </x-ui.card>
+            @endif
 
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <thead class="table-light">
+            <x-ui.card>
+                <x-ui.card-header title="Rincian Pengeluaran" icon="bi bi-list-check" :description="$laporan->details->count() . ' item'" />
+                <x-ui.card-content>
+                    <x-ui.table>
+                        <thead>
+                            <tr><th class="w-12">No</th><th>Tanggal</th><th>Tipe</th><th class="text-right">Nominal</th><th>Struk</th><th>Keterangan</th></tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($laporan->details as $index => $detail)
+                                @php $struk = $detail->strukItem; @endphp
                                 <tr>
-                                    <th style="width: 50px;">No</th>
-                                    <th>Tanggal</th>
-                                    <th>Tipe</th>
-                                    <th class="text-end">Nominal</th>
-                                    <th>Struk</th>
-                                    <th>Keterangan</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($laporan->details as $index => $detail)
-                                    <tr>
-                                        <td class="text-center">{{ $index + 1 }}</td>
-                                        <td>{{ $detail->tanggal ? $detail->tanggal->translatedFormat('d M Y') : '-' }}</td>
-                                        <td>
-                                            <span class="badge {{ $detail->getTipeBadgeClass() }}">
-                                                {{ $detail->tipe_penggunaan }}
-                                            </span>
-                                            @if($detail->strukItem && $detail->strukItem->kategori_source === 'ai')
-                                                <span class="badge bg-info-subtle text-info" title="Dianalisis AI/OCR">
-                                                    <i class="bi bi-stars"></i> AI
-                                                </span>
+                                    <td class="text-muted-foreground">{{ $index + 1 }}</td>
+                                    <td class="whitespace-nowrap">{{ $detail->tanggal?->translatedFormat('d M Y') ?? '-' }}</td>
+                                    <td>
+                                        <div class="flex flex-wrap gap-1">
+                                            <x-spd.tipe-badge :tipe="$detail->tipe_penggunaan" />
+                                            @if ($struk?->kategori_source === 'ai')
+                                                <x-ui.badge variant="info" title="Dianalisis AI/OCR"><i class="bi bi-stars"></i> AI</x-ui.badge>
                                             @endif
-                                        </td>
-                                        <td class="text-end">Rp {{ number_format($detail->nominal, 0, ',', '.') }}</td>
-                                        <td>
-                                            @if($detail->strukItem && $detail->strukItem->path_image)
-                                                <div>
-                                                    <a href="{{ $detail->strukItem->path_url }}"
-                                                       target="_blank" title="Klik untuk perbesar">
-                                                        <img src="{{ $detail->strukItem->path_url }}"
-                                                             alt="{{ $detail->strukItem->item_code }}"
-                                                             style="height: 60px; width: auto; max-width: 120px; object-fit: cover; border: 1px solid #E4E9F0; border-radius: 6px; cursor: zoom-in;"
-                                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
-                                                        <span class="d-none btn btn-sm btn-outline-primary">
-                                                            <i class="bi bi-image"></i> Lihat struk
-                                                        </span>
-                                                    </a>
-                                                    <small class="d-block text-muted font-monospace mt-1"
-                                                           style="font-size: 0.7rem;">{{ $detail->strukItem->item_code }}</small>
-                                                </div>
-                                            @else
-                                                <span class="text-muted">-</span>
-                                            @endif
-                                        </td>
-                                        <td>{{ $detail->keterangan ?? '-' }}</td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="6" class="text-center text-muted">Tidak ada data pengeluaran</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Ringkasan Keuangan --}}
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="bi bi-calculator"></i> Ringkasan Keuangan</h5>
-
-                    @php
-                        // BUG-LPJ-002: tampilkan jumlah efektif (nilai tersimpan,
-                        // atau total pencairan dana SPD bila belum pernah diisi).
-                        $jumlahDiberikanTampil = $laporan->jumlah_diberikan_efektif;
-                        $selisihDiberikan = $jumlahDiberikanTampil - (float) $laporan->total_pengeluaran;
-                        // Bila tidak ada data dana sama sekali, pertahankan nilai
-                        // tersimpan agar tidak menampilkan kekurangan penuh.
-                        $pengembalianTampil = $jumlahDiberikanTampil > 0
-                            ? max(0, $selisihDiberikan)
-                            : (float) $laporan->pengembalian;
-                        $kekuranganTampil = $jumlahDiberikanTampil > 0
-                            ? abs(min(0, $selisihDiberikan))
-                            : (float) $laporan->kekurangan;
-                    @endphp
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <table class="table table-sm">
-                                <tr>
-                                    <td>Biaya BBM:</td>
-                                    <td class="text-end">Rp {{ number_format($laporan->total_biaya_bbm, 0, ',', '.') }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Biaya Tol:</td>
-                                    <td class="text-end">Rp {{ number_format($laporan->total_biaya_tol, 0, ',', '.') }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Biaya Portir:</td>
-                                    <td class="text-end">Rp {{ number_format($laporan->total_biaya_portir, 0, ',', '.') }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Biaya Lain-lain:</td>
-                                    <td class="text-end">Rp {{ number_format($laporan->total_biaya_lain, 0, ',', '.') }}</td>
-                                </tr>
-                                <tr class="table-dark">
-                                    <td><strong>Total Pengeluaran:</strong></td>
-                                    <td class="text-end"><strong>Rp {{ number_format($laporan->total_pengeluaran, 0, ',', '.') }}</strong></td>
-                                </tr>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <table class="table table-sm">
-                                <tr>
-                                    <td>Uang Dari:</td>
-                                    <td class="text-end">{{ $laporan->uang_dari ?? 'KAS' }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Jumlah Diberikan:</td>
-                                    <td class="text-end">Rp {{ number_format($jumlahDiberikanTampil, 0, ',', '.') }}</td>
-                                </tr>
-                                <tr class="{{ $pengembalianTampil > 0 ? 'table-success' : '' }}">
-                                    <td>Pengembalian:</td>
-                                    <td class="text-end">Rp {{ number_format($pengembalianTampil, 0, ',', '.') }}</td>
-                                </tr>
-                                <tr class="{{ $kekuranganTampil > 0 ? 'table-warning' : '' }}">
-                                    <td>Kekurangan:</td>
-                                    <td class="text-end">Rp {{ number_format($kekuranganTampil, 0, ',', '.') }}</td>
-                                </tr>
-                            </table>
-
-                            {{-- Budget Analysis --}}
-                            @if($laporan->suratSpd)
-                                <div class="alert {{ $laporan->is_over_budget ? 'alert-warning' : 'alert-info' }} py-2 mb-0">
-                                    <small>
-                                        <strong>Budget per hari:</strong> Rp {{ number_format($laporan->budget_per_hari, 0, ',', '.') }}<br>
-                                        <strong>Rata-rata per hari:</strong>
-                                        Rp {{ number_format($laporan->total_pengeluaran / $laporan->suratSpd->lama_perjalanan_hari, 0, ',', '.') }}
-                                        @if($laporan->is_over_budget)
-                                            <span class="badge bg-warning text-dark">Over Budget</span>
+                                        </div>
+                                    </td>
+                                    <td class="whitespace-nowrap text-right tabular-nums">{{ $rp($detail->nominal) }}</td>
+                                    <td>
+                                        @if ($struk?->path_image)
+                                            <a href="{{ $struk->path_url }}" target="_blank" title="Klik untuk perbesar" class="grid w-fit gap-1">
+                                                <img src="{{ $struk->path_url }}" alt="{{ $struk->item_code }}"
+                                                     class="h-14 w-auto max-w-28 cursor-zoom-in rounded-md border object-cover"
+                                                     onerror="this.hidden = true; this.nextElementSibling.hidden = false;">
+                                                <span hidden class="inline-flex items-center gap-1 text-xs text-primary"><i class="bi bi-image"></i> Lihat struk</span>
+                                            </a>
+                                            <code class="mt-1 block max-w-32 truncate text-[10px] text-muted-foreground" title="{{ $struk->item_code }}">{{ $struk->item_code }}</code>
+                                        @else
+                                            <span class="text-muted-foreground">-</span>
                                         @endif
-                                    </small>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </div>
+                                    </td>
+                                    <td class="text-muted-foreground">{{ $detail->keterangan ?? '-' }}</td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="6" class="py-8 text-center text-muted-foreground">Tidak ada data pengeluaran.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </x-ui.table>
+                </x-ui.card-content>
+            </x-ui.card>
 
-            {{-- Edit Data Keuangan (admin GA / keuangan) --}}
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="bi bi-pencil-square"></i> Data Keuangan (untuk orang keuangan / GA)</h5>
-                    <form action="{{ route('lpj.superadmin.keuangan', $laporan) }}" method="POST" class="row g-2">
+            <x-ui.card>
+                <x-ui.card-header title="Ringkasan Keuangan" icon="bi bi-calculator" />
+                <x-ui.card-content class="grid gap-6 md:grid-cols-2">
+                    <dl class="divide-y">
+                        <x-ui.detail-row label="Biaya BBM" numeric><span class="tabular-nums">{{ $rp($laporan->total_biaya_bbm) }}</span></x-ui.detail-row>
+                        <x-ui.detail-row label="Biaya Tol" numeric><span class="tabular-nums">{{ $rp($laporan->total_biaya_tol) }}</span></x-ui.detail-row>
+                        <x-ui.detail-row label="Biaya Portir" numeric><span class="tabular-nums">{{ $rp($laporan->total_biaya_portir) }}</span></x-ui.detail-row>
+                        <x-ui.detail-row label="Biaya Lain-lain" numeric><span class="tabular-nums">{{ $rp($laporan->total_biaya_lain) }}</span></x-ui.detail-row>
+                        <x-ui.detail-row label="Total" numeric><span class="font-bold tabular-nums">{{ $rp($laporan->total_pengeluaran) }}</span></x-ui.detail-row>
+                    </dl>
+                    <div class="grid content-start gap-4">
+                        <dl class="divide-y">
+                            <x-ui.detail-row label="Uang dari" numeric>{{ $laporan->uang_dari ?? 'KAS' }}</x-ui.detail-row>
+                            <x-ui.detail-row label="Jumlah diberikan" numeric><span class="tabular-nums">{{ $rp($jumlahDiberikan) }}</span></x-ui.detail-row>
+                            <x-ui.detail-row label="Pengembalian" numeric><span @class(['tabular-nums', 'font-semibold text-success' => $pengembalian > 0])>{{ $rp($pengembalian) }}</span></x-ui.detail-row>
+                            <x-ui.detail-row label="Kekurangan" numeric><span @class(['tabular-nums', 'font-semibold text-warning' => $kekurangan > 0])>{{ $rp($kekurangan) }}</span></x-ui.detail-row>
+                        </dl>
+                        @if ($surat)
+                            <x-ui.alert :variant="$laporan->is_over_budget ? 'warning' : 'info'">
+                                <p>Budget per hari <strong>{{ $rp($laporan->budget_per_hari) }}</strong>, rata-rata per hari <strong>{{ $rp($laporan->total_pengeluaran / max(1, $surat->lama_perjalanan_hari)) }}</strong>@if ($laporan->is_over_budget) (over budget)@endif.</p>
+                            </x-ui.alert>
+                        @endif
+                    </div>
+                </x-ui.card-content>
+            </x-ui.card>
+
+            {{-- Data keuangan: diubah oleh admin GA / keuangan --}}
+            <x-ui.card>
+                <x-ui.card-header title="Data Keuangan" icon="bi bi-pencil-square" description="Untuk keuangan / GA. Pengembalian dan kekurangan dihitung otomatis dari jumlah diberikan dikurangi total pengeluaran." />
+                <x-ui.card-content class="grid gap-4">
+                    <form action="{{ route('lpj.superadmin.keuangan', $laporan) }}" method="POST" data-loading class="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
                         @csrf
                         @method('PUT')
-                        <div class="col-md-4">
-                            <label class="form-label small mb-1">Uang Dari</label>
-                            <input type="text" class="form-control form-control-sm" name="uang_dari" value="{{ $laporan->uang_dari ?? 'KAS' }}">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small mb-1">Jumlah Diberikan (Rp)</label>
-                            <input type="number" class="form-control form-control-sm" name="jumlah_diberikan" value="{{ (float) $laporan->jumlah_diberikan_efektif }}" min="0" step="0.01">
-                            <small class="text-muted d-block mt-1">
-                                @if((float) $laporan->jumlah_diberikan > 0)
-                                    Total pencairan dana SPD: Rp {{ number_format($laporan->total_pencairan, 0, ',', '.') }}.
-                                @elseif($laporan->total_pencairan > 0)
-                                    <span class="text-success"><i class="bi bi-magic"></i> Terisi otomatis dari total pencairan dana SPD:
-                                        Rp {{ number_format($laporan->total_pencairan, 0, ',', '.') }}. Simpan untuk menerapkan.</span>
-                                @else
-                                    Belum ada pencairan dana SPD untuk surat ini.
-                                @endif
-                            </small>
-                        </div>
-                        <div class="col-md-4 d-flex align-items-end">
-                            <button type="submit" class="btn btn-sm btn-outline-primary w-100">
-                                <i class="bi bi-check2"></i> Simpan Data Keuangan
-                            </button>
-                        </div>
-                        <div class="col-12">
-                            <small class="text-muted">Pengembalian/kekurangan dihitung otomatis dari jumlah yang diberikan dikurangi total pengeluaran.</small>
-                        </div>
+                        <x-ui.field label="Uang Dari" for="uang_dari">
+                            <x-ui.input id="uang_dari" name="uang_dari" :value="$laporan->uang_dari ?? 'KAS'" />
+                        </x-ui.field>
+                        <x-ui.field label="Jumlah Diberikan (Rp)" for="jumlah_diberikan"
+                            :hint="(float) $laporan->jumlah_diberikan > 0
+                                ? 'Total pencairan dana SPD: ' . $rp($laporan->total_pencairan) . '.'
+                                : ($laporan->total_pencairan > 0
+                                    ? 'Terisi otomatis dari total pencairan dana SPD (' . $rp($laporan->total_pencairan) . '). Simpan untuk menerapkan.'
+                                    : 'Belum ada pencairan dana SPD untuk surat ini.')">
+                            <x-ui.input type="number" id="jumlah_diberikan" name="jumlah_diberikan" :value="$jumlahDiberikan" min="0" step="0.01" />
+                        </x-ui.field>
+                        <x-ui.button type="submit" variant="outline"><i class="bi bi-check2"></i> Simpan</x-ui.button>
                     </form>
 
-                    @can('permission', 'lpj.pencairan')
-                        <hr>
-                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                            <div>
-                                <strong class="small">Pencairan Dana (Tunai / Transfer)</strong><br>
-                                <small class="text-muted">
-                                    Kelola rincian pencairan &mdash; totalnya otomatis menjadi Jumlah Diberikan.
-                                </small>
+                    @if ($canPencairan)
+                        <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/40 p-3">
+                            <div class="text-sm">
+                                <p class="font-medium">Pencairan Dana (Tunai / Transfer)</p>
+                                <p class="text-muted-foreground">Kelola rincian pencairan, totalnya otomatis menjadi Jumlah Diberikan.</p>
                             </div>
-                            <a href="{{ route('lpj.superadmin.pencairan.index', $laporan) }}" class="btn btn-sm btn-primary">
-                                <i class="bi bi-cash-stack"></i> Kelola Pencairan
-                            </a>
+                            <x-ui.button size="sm" :href="route('lpj.superadmin.pencairan.index', $laporan)"><i class="bi bi-cash-stack"></i> Kelola Pencairan</x-ui.button>
                         </div>
-                    @endcan
-                </div>
-            </div>
+                    @endif
+                </x-ui.card-content>
+            </x-ui.card>
 
-            {{-- Riwayat Validasi --}}
-            @if($laporan->status != 'pending')
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-clock-history"></i> Riwayat Validasi</h5>
-                        <div class="alert {{ $laporan->status == 'approved' ? 'alert-success' : 'alert-danger' }} mb-0">
-                            @if($laporan->status == 'approved')
-                                <strong><i class="bi bi-check-circle"></i> Disetujui</strong>
-                                @if($laporan->approverManagement)
-                                    oleh <strong>{{ $laporan->approverManagement->nama_lengkap ?? $laporan->approverManagement->name ?? '-' }}</strong> (Management)<br>
-                                    <small>{{ $laporan->approved_management_at ? $laporan->approved_management_at->translatedFormat('d F Y H:i') : '-' }}</small>
-                                @else
-                                    {{-- LPJ lama yang sudah final sebelum alur 3 tahap --}}
-                                    oleh <strong>{{ $laporan->approverPengguna->nama_lengkap ?? $laporan->approverPengguna->name ?? '-' }}</strong><br>
-                                    <small>{{ $laporan->approved_pengguna_at ? $laporan->approved_pengguna_at->translatedFormat('d F Y H:i') : '-' }}</small>
-                                @endif
-                            @else
-                                <strong><i class="bi bi-x-circle"></i> Ditolak</strong> oleh
-                                <strong>{{ $laporan->rejector->nama_lengkap ?? $laporan->rejector->name ?? '-' }}</strong><br>
-                                <small>{{ $laporan->rejected_at ? $laporan->rejected_at->translatedFormat('d F Y H:i') : '-' }}</small><br>
-                                <strong>Alasan:</strong> {{ $laporan->rejection_reason }}
-                            @endif
-                        </div>
-                    </div>
-                </div>
+            @if ($laporan->status === 'approved' && $laporan->approverManagement)
+                <x-ui.alert variant="success" title="Disetujui oleh {{ $laporan->approverManagement->nama_lengkap ?? $laporan->approverManagement->name ?? '-' }} (Management)">
+                    {{ $laporan->approved_management_at?->translatedFormat('d F Y H:i') ?? '-' }}
+                </x-ui.alert>
+            @elseif ($laporan->status === 'approved')
+                {{-- LPJ lama yang sudah final sebelum alur 3 tahap --}}
+                <x-ui.alert variant="success" title="Disetujui oleh {{ $laporan->approverPengguna->nama_lengkap ?? $laporan->approverPengguna->name ?? '-' }}">
+                    {{ $laporan->approved_pengguna_at?->translatedFormat('d F Y H:i') ?? '-' }}
+                </x-ui.alert>
+            @elseif ($laporan->status === 'rejected')
+                <x-ui.alert variant="destructive" title="Ditolak oleh {{ $laporan->rejector->nama_lengkap ?? $laporan->rejector->name ?? '-' }}">
+                    <p>{{ $laporan->rejected_at?->translatedFormat('d F Y H:i') ?? '-' }}</p>
+                    <p><strong>Alasan:</strong> {{ $laporan->rejection_reason }}</p>
+                </x-ui.alert>
             @endif
         </div>
 
-        {{-- Action Panel (Right Column) --}}
-        <div class="col-lg-4">
-            {{-- Progress Validasi (3 Tahap) --}}
-            <div class="card">
-                <div class="card-body">
-                    <h6 class="card-title"><i class="bi bi-diagram-3"></i> Progress Validasi</h6>
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                            <span><i class="bi bi-person-check"></i> User (Penumpang)</span>
-                            {!! $laporan->approved_by_pengguna
-                                ? '<span class="badge bg-success">Disetujui</span>'
-                                : '<span class="badge bg-secondary">Menunggu</span>' !!}
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                            <span><i class="bi bi-shield-check"></i> Divisi GA</span>
-                            {!! $laporan->approved_by_divisi_ga
-                                ? '<span class="badge bg-success">Disetujui</span>'
-                                : '<span class="badge bg-secondary">Menunggu</span>' !!}
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                            <span><i class="bi bi-person-badge"></i> Management (Final)</span>
-                            {!! $laporan->approved_by_management
-                                ? '<span class="badge bg-success">Disetujui</span>'
-                                : '<span class="badge bg-secondary">Menunggu</span>' !!}
-                        </li>
-                    </ul>
-                    <small class="text-muted d-block mt-2">
-                        Tiga tanda tangan ini dicatat terpisah. LPJ baru berstatus
-                        <strong>Disetujui</strong> setelah User, Divisi GA, dan Management
-                        menyelesaikan validasinya.
-                    </small>
-                </div>
-            </div>
+        <div class="grid gap-6">
+            {{-- Tiga tanda tangan dicatat terpisah. User dan GA tidak harus berurutan; Management final setelah keduanya. --}}
+            <x-ui.card class="gap-4">
+                <x-ui.card-header title="Progress Validasi" icon="bi bi-diagram-3" />
+                <x-ui.card-content class="grid gap-3">
+                    <ol class="grid gap-2">
+                        @foreach ([
+                            ['User (Penumpang)', 'bi-person-check', $laporan->approved_by_pengguna],
+                            ['Divisi GA', 'bi-shield-check', $laporan->approved_by_divisi_ga],
+                            ['Management (Final)', 'bi-person-badge', $laporan->approved_by_management],
+                        ] as [$label, $icon, $done])
+                            <li class="flex items-center gap-3 rounded-lg border p-2.5 text-sm">
+                                <span @class(['flex size-8 items-center justify-center rounded-full', 'bg-success-soft text-success' => $done, 'bg-muted text-muted-foreground' => ! $done])><i class="bi {{ $done ? 'bi-check-lg' : $icon }}"></i></span>
+                                <span class="flex-1 font-medium">{{ $label }}</span>
+                                <x-ui.badge :variant="$done ? 'success' : 'muted'">{{ $done ? 'Disetujui' : 'Menunggu' }}</x-ui.badge>
+                            </li>
+                        @endforeach
+                    </ol>
+                    <p class="text-xs text-muted-foreground">LPJ baru berstatus Disetujui setelah User, Divisi GA, dan Management menyelesaikan validasinya.</p>
+                </x-ui.card-content>
+            </x-ui.card>
 
-            {{-- Validasi Actions --}}
-            @if($laporan->status == 'pending')
-                <div class="card border-primary">
-                    <div class="card-header bg-primary text-white">
-                        <h6 class="mb-0"><i class="bi bi-shield-check"></i> Aksi Validasi</h6>
+            @if ($laporan->status === 'pending')
+                <x-ui.card class="overflow-hidden pt-0">
+                    <div class="bg-primary px-6 py-4 text-primary-foreground">
+                        <p class="flex items-center gap-2 font-semibold"><i class="bi bi-shield-check"></i> Aksi Validasi</p>
                     </div>
-                    <div class="card-body">
-                        {{-- Warning for late/over budget --}}
-                        @if($laporan->is_late || $laporan->is_over_budget)
-                            <div class="alert alert-warning py-2 mb-3">
-                                <small>
-                                    <i class="bi bi-exclamation-triangle"></i> Perhatian:
-                                    @if($laporan->is_late)
-                                        <br>• LPJ diajukan terlambat {{ $laporan->days_late }} hari
-                                    @endif
-                                    @if($laporan->is_over_budget)
-                                        <br>• Pengeluaran melebihi budget harian
-                                    @endif
-                                </small>
-                            </div>
+                    <x-ui.card-content class="grid gap-2">
+                        @if ($laporan->is_late || $laporan->is_over_budget)
+                            <x-ui.alert variant="warning" title="Perhatian" class="mb-1">
+                                <ul class="list-inside list-disc">
+                                    @if ($laporan->is_late)<li>LPJ diajukan terlambat {{ $laporan->days_late }} hari</li>@endif
+                                    @if ($laporan->is_over_budget)<li>Pengeluaran melebihi budget harian</li>@endif
+                                </ul>
+                            </x-ui.alert>
                         @endif
 
-                        {{-- Tahap 1: User (penumpang) — tidak strict, tidak menunggu tahap lain --}}
-                        @if(auth()->user()->hasPermission('spd.validate_trip') && !$laporan->approved_by_pengguna)
-                            <form action="{{ route('lpj.pengguna.approve', $laporan) }}" method="POST" class="mb-2">
+                        {{-- Tahap User (penumpang): tidak menunggu tahap lain --}}
+                        @if ($user->hasPermission('spd.validate_trip') && ! $laporan->approved_by_pengguna)
+                            <form action="{{ route('lpj.pengguna.approve', $laporan) }}" method="POST" class="grid"
+                                  data-confirm="Saya mengetahui bahwa perjalanan dinas ini benar adanya." data-confirm-title="Validasi sebagai User (penumpang)?" data-confirm-text="Ya, validasi" data-confirm-variant="success">
                                 @csrf
                                 <input type="hidden" name="pernyataan" value="1">
-                                <button type="submit" class="btn btn-success w-100"
-                                        onclick="return confirm('Saya mengetahui bahwa perjalanan dinas ini benar adanya. Validasi sebagai User (penumpang)?');">
-                                    <i class="bi bi-person-check"></i> Validasi sebagai User (Penumpang)
-                                </button>
+                                <x-ui.button type="submit" variant="success"><i class="bi bi-person-check"></i> Validasi sebagai User</x-ui.button>
                             </form>
                         @endif
 
-                        {{-- Tahap 2: Divisi GA — tidak strict (boleh lebih dulu) --}}
-                        @if(auth()->user()->hasPermission('lpj.validate') && !$laporan->approved_by_divisi_ga)
-                            <form action="{{ route('lpj.superadmin.approve-ga', $laporan) }}" method="POST" class="mb-2">
+                        {{-- Tahap Divisi GA: boleh lebih dulu --}}
+                        @if ($canValidate && ! $laporan->approved_by_divisi_ga)
+                            <form action="{{ route('lpj.superadmin.approve-ga', $laporan) }}" method="POST" class="grid"
+                                  data-confirm="Validasi LPJ ini sebagai Divisi GA (admin/supervisor/manager)." data-confirm-title="Validasi sebagai Divisi GA?" data-confirm-text="Ya, validasi">
                                 @csrf
-                                <button type="submit" class="btn btn-primary w-100"
-                                        onclick="return confirm('Validasi sebagai Divisi GA (admin/supervisor/manager)?');">
-                                    <i class="bi bi-shield-check"></i> Validasi sebagai Divisi GA
-                                </button>
+                                <x-ui.button type="submit"><i class="bi bi-shield-check"></i> Validasi sebagai Divisi GA</x-ui.button>
                             </form>
                         @endif
 
-                        {{-- Tahap 3: Management — final, setelah User & Divisi GA --}}
-                        @if(auth()->user()->hasPermission('lpj.validate_management') && !$laporan->approved_by_management)
-                            @if($laporan->approved_by_pengguna && $laporan->approved_by_divisi_ga)
-                                <form action="{{ route('lpj.management.approve', $laporan) }}" method="POST" class="mb-2">
+                        {{-- Tahap Management: final, setelah User & Divisi GA --}}
+                        @if ($user->hasPermission('lpj.validate_management') && ! $laporan->approved_by_management)
+                            @if ($laporan->approved_by_pengguna && $laporan->approved_by_divisi_ga)
+                                <form action="{{ route('lpj.management.approve', $laporan) }}" method="POST" class="grid"
+                                      data-confirm="Dokumen akan siap dicetak setelah validasi final ini." data-confirm-title="Validasi final sebagai Management?" data-confirm-text="Ya, validasi" data-confirm-variant="success">
                                     @csrf
-                                    <button type="submit" class="btn btn-success w-100"
-                                            onclick="return confirm('Menyetujui LPJ sebagai Management (validasi final)? Dokumen akan siap dicetak.');">
-                                        <i class="bi bi-person-badge"></i> Validasi Final sebagai Management
-                                    </button>
+                                    <x-ui.button type="submit" variant="success"><i class="bi bi-person-badge"></i> Validasi Final sebagai Management</x-ui.button>
                                 </form>
                             @else
-                                <div class="alert alert-info py-2 mb-2">
-                                    <small>
-                                        <i class="bi bi-info-circle"></i>
-                                        Validasi final Management menunggu validasi User &amp; Divisi GA selesai.
-                                    </small>
-                                </div>
+                                <x-ui.alert variant="info">Validasi final Management menunggu validasi User dan Divisi GA selesai.</x-ui.alert>
                             @endif
                         @endif
 
-                        {{-- Tolak (Divisi GA) --}}
-                        @if(auth()->user()->hasPermission('lpj.validate'))
-                            <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#rejectModal">
-                                <i class="bi bi-x-circle"></i> Tolak LPJ
-                            </button>
+                        @if ($canValidate)
+                            <x-ui.button variant="outline" class="text-destructive hover:bg-destructive-soft hover:text-destructive" data-dialog-open="rejectModal"><i class="bi bi-x-circle"></i> Tolak LPJ</x-ui.button>
                         @endif
-                    </div>
-                </div>
+                    </x-ui.card-content>
+                </x-ui.card>
             @endif
 
-            {{-- Print Button --}}
-            @if($laporan->status == 'approved')
-                <div class="card border-success">
-                    <div class="card-header bg-success text-white">
-                        <h6 class="mb-0"><i class="bi bi-printer"></i> Cetak Dokumen</h6>
-                    </div>
-                    <div class="card-body">
-                        <a href="{{ route('spd.laporan.export', $laporan) }}" target="_blank" class="btn btn-primary w-100">
-                            <i class="bi bi-file-earmark-pdf"></i> Cetak SPD + LPJ
-                        </a>
-                        @can('permission', 'lpj.pencairan')
-                            <a href="{{ route('spd.laporan.pemberian-dana', $laporan) }}" target="_blank" class="btn btn-outline-primary w-100 mt-2">
-                                <i class="bi bi-cash-stack"></i> Cetak Lembar Pemberian Dana (GA)
-                            </a>
-                        @endcan
-                    </div>
-                </div>
+            @if ($laporan->status === 'approved')
+                <x-ui.card class="gap-4">
+                    <x-ui.card-header title="Cetak Dokumen" icon="bi bi-printer" />
+                    <x-ui.card-content class="grid gap-2">
+                        <x-ui.button :href="route('spd.laporan.export', $laporan)" target="_blank"><i class="bi bi-file-earmark-pdf"></i> Cetak SPD + LPJ</x-ui.button>
+                        @if ($canPencairan)
+                            <x-ui.button variant="outline" :href="route('spd.laporan.pemberian-dana', $laporan)" target="_blank"><i class="bi bi-cash-stack"></i> Cetak Lembar Pemberian Dana (GA)</x-ui.button>
+                        @endif
+                    </x-ui.card-content>
+                </x-ui.card>
             @endif
 
-            {{-- Info Pengajuan --}}
-            <div class="card">
-                <div class="card-body">
-                    <h6 class="card-title"><i class="bi bi-info-circle"></i> Informasi Pengajuan</h6>
+            <x-ui.card class="gap-4">
+                <x-ui.card-header title="Informasi Pengajuan" icon="bi bi-info-circle" />
+                <x-ui.card-content>
+                    <dl class="divide-y">
+                        <x-ui.detail-row label="Diajukan oleh">{{ $laporan->user->nama_lengkap ?? $laporan->user->name ?? '-' }}</x-ui.detail-row>
+                        <x-ui.detail-row label="Tanggal">{{ $laporan->created_at->translatedFormat('d M Y H:i') }}</x-ui.detail-row>
+                        <x-ui.detail-row label="Diperbarui">{{ $laporan->updated_at->translatedFormat('d M Y H:i') }}</x-ui.detail-row>
+                    </dl>
+                </x-ui.card-content>
+            </x-ui.card>
 
-                    <div class="mb-2">
-                        <small class="text-muted">Diajukan oleh:</small><br>
-                        <strong>{{ $laporan->user->nama_lengkap ?? $laporan->user->name ?? '-' }}</strong>
-                    </div>
-
-                    <div class="mb-2">
-                        <small class="text-muted">Tanggal Pengajuan:</small><br>
-                        <strong>{{ $laporan->created_at->translatedFormat('d F Y H:i') }}</strong>
-                    </div>
-
-                    <div class="mb-0">
-                        <small class="text-muted">Terakhir Update:</small><br>
-                        <strong>{{ $laporan->updated_at->translatedFormat('d F Y H:i') }}</strong>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Catatan --}}
-            @if($laporan->catatan)
-                <div class="card">
-                    <div class="card-body">
-                        <h6 class="card-title"><i class="bi bi-journal-text"></i> Catatan</h6>
-                        <p class="mb-0">{{ $laporan->catatan }}</p>
-                    </div>
-                </div>
+            @if ($laporan->catatan)
+                <x-ui.card class="gap-4">
+                    <x-ui.card-header title="Catatan" icon="bi bi-journal-text" />
+                    <x-ui.card-content><p class="whitespace-pre-line text-sm">{{ $laporan->catatan }}</p></x-ui.card-content>
+                </x-ui.card>
             @endif
-
-            {{-- Back Button --}}
-            <div class="card">
-                <div class="card-body">
-                    <a href="{{ route($indexRoute) }}" class="btn btn-secondary w-100">
-                        <i class="bi bi-arrow-left"></i> Kembali ke Daftar
-                    </a>
-                </div>
-            </div>
         </div>
     </div>
-</section>
 
-{{-- Approve Modal --}}
-<div class="modal fade" id="approveModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="bi bi-check-circle"></i> Setujui LPJ</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form action="{{ route('lpj.superadmin.approve', $laporan) }}" method="POST">
+    @if ($canValidate)
+        <x-ui.dialog id="rejectModal" title="Tolak LPJ" description="LPJ yang ditolak dikembalikan ke driver untuk direvisi.">
+            <form action="{{ route('lpj.superadmin.reject', $laporan) }}" method="POST" data-loading class="grid gap-4">
                 @csrf
-                <div class="modal-body">
-                    <p>Anda yakin ingin menyetujui LPJ ini?</p>
-                    <div class="alert alert-light border mb-3">
-                        <strong>{{ $laporan->suratSpd->nomor_surat ?? '-' }}</strong><br>
-                        <small class="text-muted">{{ $laporan->nama }} - Rp {{ number_format($laporan->total_pengeluaran, 0, ',', '.') }}</small>
-                    </div>
-                    <div class="alert alert-info py-2 mb-0">
-                        <small><i class="bi bi-info-circle"></i> Surat tugas akan otomatis ditandai <strong>Selesai</strong>.</small>
-                    </div>
+                <div class="rounded-lg border bg-muted/40 p-3 text-sm">
+                    <p class="font-medium">{{ $surat->nomor_surat ?? '-' }}</p>
+                    <p class="text-muted-foreground">{{ $laporan->nama }} &middot; {{ $rp($laporan->total_pengeluaran) }}</p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-check-circle"></i> Ya, Setujui LPJ
-                    </button>
+                <x-ui.field label="Alasan Penolakan" for="rejection_reason" required hint="Minimal 10 karakter">
+                    <x-ui.textarea id="rejection_reason" name="rejection_reason" rows="4" required minlength="10" placeholder="Jelaskan alasan penolakan" />
+                </x-ui.field>
+                <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <x-ui.button variant="outline" data-dialog-close>Batal</x-ui.button>
+                    <x-ui.button type="submit" variant="destructive"><i class="bi bi-x-circle"></i> Ya, Tolak LPJ</x-ui.button>
                 </div>
             </form>
-        </div>
-    </div>
-</div>
-
-{{-- Reject Modal --}}
-<div class="modal fade" id="rejectModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title"><i class="bi bi-x-circle"></i> Tolak LPJ</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form action="{{ route('lpj.superadmin.reject', $laporan) }}" method="POST">
-                @csrf
-                <div class="modal-body">
-                    <p>Anda yakin ingin menolak LPJ ini?</p>
-                    <div class="alert alert-light border mb-3">
-                        <strong>{{ $laporan->suratSpd->nomor_surat ?? '-' }}</strong><br>
-                        <small class="text-muted">{{ $laporan->nama }} - Rp {{ number_format($laporan->total_pengeluaran, 0, ',', '.') }}</small>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Alasan Penolakan <span class="text-danger">*</span></label>
-                        <textarea class="form-control" name="rejection_reason" rows="4"
-                                  placeholder="Jelaskan alasan penolakan..." required minlength="10"></textarea>
-                        <div class="form-text">Minimal 10 karakter</div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-x-circle"></i> Ya, Tolak LPJ
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-
-@endsection
+        </x-ui.dialog>
+    @endif
+</x-layouts.app>

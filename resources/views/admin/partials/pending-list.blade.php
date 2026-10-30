@@ -1,53 +1,122 @@
 {{--
-  Daftar permohonan menunggu dengan keputusan massal. Pilih Setujui/Tolak per baris,
-  isi komentar bila perlu, lalu Simpan Keputusan (resources/js/pages/bbm/admin-approval.js).
+  Permohonan menunggu persetujuan. Setujui/Tolak membuka dialog berisi ringkasan + komentar admin;
+  centang Pilih (atau Pilih semua) untuk keputusan massal (resources/js/lib/decisions.js).
 --}}
-<form method="POST" action="{{ route('admin-bulk-process') }}" id="bulkApprovalForm" class="grid gap-3">
+@php
+    $rp = fn ($value) => 'Rp ' . number_format((float) $value, 0, ',', '.');
+    $initials = fn ($name) => collect(explode(' ', trim($name ?? '')))->filter()->take(2)->map(fn ($p) => mb_strtoupper(mb_substr($p, 0, 1)))->join('') ?: '?';
+@endphp
+
+<form method="POST" action="{{ route('admin-bulk-process') }}" id="bulkApprovalForm" class="grid gap-4">
     @csrf
     <input type="hidden" name="decisions" id="decisionsInput">
 
-    @forelse ($pendingRequests as $req)
-        <div class="grid items-center gap-4 rounded-lg border bg-card p-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto]" data-request-row="{{ $req->id }}">
-            <div class="grid gap-1 text-sm">
-                <div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <code>{{ $req->request_number }}</code>
-                    <span>{{ $req->request_date->format('d/m/Y H:i') }}</span>
-                    <x-ui.badge variant="secondary">{{ $req->gasoline_type }}</x-ui.badge>
-                </div>
-                <p class="font-medium">{{ $req->requester->nama_lengkap }}</p>
-                <p class="text-muted-foreground">{{ $req->vehicle->consumerial_code }} · {{ $req->vehicle->consumerial_name }}</p>
-                <p class="font-semibold text-primary">Rp {{ number_format($req->bill_amounts, 0, ',', '.') }}</p>
-                @if ($req->requester_notes)
-                    <p class="text-xs text-muted-foreground"><i class="bi bi-chat-dots"></i> {{ $req->requester_notes }}</p>
-                @endif
-            </div>
-
-            <x-ui.field label="Komentar admin" for="catatan_admin_{{ $req->id }}">
-                <x-ui.input id="catatan_admin_{{ $req->id }}" data-note="{{ $req->id }}" autocomplete="off" placeholder="Opsional" />
-            </x-ui.field>
-
-            <div class="flex gap-2 lg:justify-end" role="group" aria-label="Keputusan">
-                <x-ui.button variant="outline" size="sm" aria-pressed="false" data-decision="approve" data-id="{{ $req->id }}"
-                             class="aria-pressed:border-success aria-pressed:bg-success aria-pressed:text-white">
-                    <i class="bi bi-check-circle"></i> Setujui
-                </x-ui.button>
-                <x-ui.button variant="outline" size="sm" aria-pressed="false" data-decision="reject" data-id="{{ $req->id }}"
-                             class="aria-pressed:border-destructive aria-pressed:bg-destructive aria-pressed:text-white">
-                    <i class="bi bi-x-circle"></i> Tolak
-                </x-ui.button>
-            </div>
+    @if ($pendingRequests->isEmpty())
+        <x-ui.empty-state icon="bi bi-check2-all" title="Tidak ada permohonan menunggu" description="Semua permohonan sudah diproses." class="bg-card" />
+    @else
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 shadow-xs">
+            <label class="inline-flex cursor-pointer items-center gap-2.5 text-sm font-medium">
+                <x-ui.checkbox data-select-all class="size-[18px]" aria-label="Pilih semua permohonan" /> Pilih semua
+            </label>
+            <span class="flex items-center gap-2 text-sm text-muted-foreground">
+                <i class="bi bi-info-circle"></i> Centang Pilih pada kartu untuk memutuskan beberapa permohonan sekaligus. Terlama di atas.
+            </span>
         </div>
-    @empty
-        <x-ui.empty-state icon="bi bi-inbox" title="Tidak ada permohonan menunggu" description="Semua permohonan sudah diproses." />
-    @endforelse
 
-    {{-- Bar keputusan, muncul setelah ada pilihan --}}
+        <div class="grid gap-4 xl:grid-cols-2">
+            @foreach ($pendingRequests->sortBy('request_date') as $req)
+                @php
+                    $vehicleCode = $req->vehicle->consumerial_code ?? '-';
+                    $vehicleName = $req->vehicle->consumerial_name ?? '';
+                    $summary = ['number' => $req->request_number, 'name' => $req->requester->nama_lengkap, 'vehicle' => trim("$vehicleCode · $vehicleName", ' ·'), 'amount' => $rp($req->bill_amounts)];
+                    $waitingDays = $req->request_date->diffInDays(now());
+                @endphp
+                <article data-decision-item="{{ $req->id }}" data-summary="{{ json_encode($summary) }}"
+                         class="ornament-corner flex flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:translate-y-0 has-[[data-select]:checked]:border-primary has-[[data-select]:checked]:shadow-md has-[[data-select]:checked]:ring-2 has-[[data-select]:checked]:ring-primary/30">
+                    <div class="grid flex-1 content-start gap-4 p-4">
+                        {{-- Kepala: pemohon, status, waktu tunggu, pilih --}}
+                        <div class="flex items-start gap-3">
+                            <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-primary to-module-spd text-sm font-semibold text-white shadow-sm ring-4 ring-card">
+                                {{ $initials($req->requester->nama_lengkap) }}
+                            </span>
+                            <div class="grid min-w-0 flex-1 gap-1">
+                                <p class="truncate text-base font-semibold leading-tight">{{ $req->requester->nama_lengkap }}</p>
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-warning-soft px-2 py-0.5 font-semibold text-warning">
+                                        <span class="relative flex size-1.5"><span class="absolute inline-flex size-full animate-ping rounded-full bg-warning opacity-60 motion-reduce:animate-none"></span><span class="relative inline-flex size-1.5 rounded-full bg-warning"></span></span>
+                                        Menunggu
+                                    </span>
+                                    <span @class(['inline-flex items-center gap-1', 'font-semibold text-destructive' => $waitingDays >= 2, 'text-muted-foreground' => $waitingDays < 2])
+                                          title="Diajukan {{ $req->request_date->format('d/m/Y H:i') }}">
+                                        <i class="bi bi-clock-history"></i> {{ $req->request_date->diffForHumans() }}
+                                    </span>
+                                </div>
+                            </div>
+                            {{-- Pilih untuk keputusan massal --}}
+                            <label class="flex shrink-0 cursor-pointer items-center gap-2 rounded-md border bg-card/80 px-2.5 py-1.5 text-xs font-medium text-muted-foreground shadow-xs backdrop-blur transition-colors hover:border-primary/50 hover:text-foreground has-checked:border-primary has-checked:bg-primary/10 has-checked:text-primary">
+                                <x-ui.checkbox data-select aria-label="Pilih permohonan {{ $req->request_number }}" />
+                                Pilih
+                            </label>
+                        </div>
+
+                        {{-- Rincian ringkas + nominal --}}
+                        <div class="flex items-stretch justify-between gap-4">
+                            <div class="grid min-w-0 gap-1.5 text-sm">
+                                <p class="flex min-w-0 items-center gap-2">
+                                    <i class="bi bi-truck text-muted-foreground"></i>
+                                    <span class="truncate"><span class="font-semibold">{{ $vehicleCode }}</span> <span class="text-muted-foreground">{{ $vehicleName }}</span></span>
+                                </p>
+                                <p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
+                                    <span class="inline-flex items-center gap-1.5"><i class="bi bi-fuel-pump"></i> <span class="text-foreground">{{ $req->gasoline_type }}</span></span>
+                                    <span class="size-1 rounded-full bg-border"></span>
+                                    <span class="inline-flex items-center gap-1.5"><i class="bi bi-calendar3"></i> {{ $req->request_date->translatedFormat('d M Y, H:i') }}</span>
+                                </p>
+                                <p class="font-mono text-xs text-muted-foreground">{{ $req->request_number }}</p>
+                            </div>
+                            <div class="grid min-w-36 shrink-0 content-center gap-1.5 rounded-xl bg-primary/5 px-4 py-3 text-right ring-1 ring-primary/10">
+                                <p class="text-[10px] font-semibold uppercase leading-none tracking-wider text-muted-foreground">Nominal</p>
+                                <p class="whitespace-nowrap text-xl leading-none font-bold tracking-tight tabular-nums text-primary"><span class="mr-0.5 text-sm font-semibold text-primary/70">Rp</span>{{ number_format((float) $req->bill_amounts, 0, ",", ".") }}</p>
+                            </div>
+                        </div>
+
+                        @if ($req->requester_notes)
+                            <blockquote class="relative rounded-lg bg-muted/60 py-2 pl-9 pr-3 text-sm text-foreground/80">
+                                <i class="bi bi-quote absolute left-3 top-1.5 text-lg text-primary/40"></i>
+                                {{ $req->requester_notes }}
+                            </blockquote>
+                        @endif
+                    </div>
+
+                    {{-- Aksi --}}
+                    <div class="mx-4 flex items-center justify-between gap-3 border-t py-3">
+                        <span class="text-xs text-muted-foreground">Keputusan akan dikonfirmasi lewat dialog.</span>
+                        <div class="flex gap-2">
+                            <x-ui.button variant="outline" size="sm" data-decide="reject" class="text-destructive hover:bg-destructive-soft hover:text-destructive">
+                                <i class="bi bi-x-circle"></i> Tolak
+                            </x-ui.button>
+                            <x-ui.button variant="success" size="sm" data-decide="approve">
+                                <i class="bi bi-check-circle"></i> Setujui
+                            </x-ui.button>
+                        </div>
+                    </div>
+                </article>
+            @endforeach
+        </div>
+    @endif
+
+    {{-- Bar keputusan massal, muncul setelah ada kartu yang dipilih --}}
     <div id="bulkActionBar" hidden
-         class="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-3 shadow-lg">
-        <p class="text-sm">
-            <strong id="selectedCount">0</strong> permohonan dipilih
-            <span class="text-muted-foreground">(<span id="approveCount" class="text-success">0</span> disetujui, <span id="rejectCount" class="text-destructive">0</span> ditolak)</span>
+         class="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-card/95 p-3 pl-4 shadow-xl backdrop-blur">
+        <p class="flex items-center gap-2 text-sm">
+            <span class="flex h-7 min-w-7 items-center justify-center rounded-full bg-primary px-2 text-xs font-semibold text-primary-foreground" id="selectedCount">0</span>
+            <span class="font-medium">permohonan dipilih</span>
+            <button type="button" data-clear-selection class="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Batal pilih</button>
         </p>
-        <x-ui.button id="saveDecisions"><i class="bi bi-save"></i> Simpan Keputusan</x-ui.button>
+        <div class="flex gap-2">
+            <x-ui.button variant="outline" data-decide-selected="reject" class="text-destructive hover:bg-destructive-soft hover:text-destructive"><i class="bi bi-x-circle"></i> Tolak terpilih</x-ui.button>
+            <x-ui.button variant="success" data-decide-selected="approve"><i class="bi bi-check-circle"></i> Setujui terpilih</x-ui.button>
+        </div>
     </div>
 </form>
+
+<x-bbm.decision-dialog />
