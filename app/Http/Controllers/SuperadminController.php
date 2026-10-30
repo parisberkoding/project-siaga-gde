@@ -442,12 +442,24 @@ class SuperadminController extends Controller
     }
 
     /**
+     * R2 / BUG-BBM-005: daftar approver pada form cetak hanya unit user.
+     * Global (unitId null) tetap melihat semua approver.
+     */
+    private function approversFor(Request $request)
+    {
+        $unitId = UnitScope::for($request->user())->unitId();
+
+        return User::whereIn('role', ['superadmin', 'admin'])
+            ->when($unitId !== null, fn ($query) => $query->where('unit_id', $unitId));
+    }
+
+    /**
      * Tampilkan halaman form cetak laporan BBM
      */
     public function printReportPage(Request $request)
     {
         $title = 'Cetak Laporan BBM';
-        $approvers = User::whereIn('role', ['superadmin', 'admin'])->orderBy('nama_lengkap')->get();
+        $approvers = $this->approversFor($request)->orderBy('nama_lengkap')->get();
 
         return view('superadmin.print-report', compact('title', 'approvers'));
     }
@@ -460,7 +472,7 @@ class SuperadminController extends Controller
         // Jika tidak ada parameter, tampilkan halaman form
         if (! $request->filled('start_date') && ! $request->filled('end_date')) {
             $title = 'Cetak Laporan BBM';
-            $approvers = User::whereIn('role', ['superadmin', 'admin'])->orderBy('nama_lengkap')->get();
+            $approvers = $this->approversFor($request)->orderBy('nama_lengkap')->get();
 
             return view('superadmin.print-report', compact('title', 'approvers'));
         }

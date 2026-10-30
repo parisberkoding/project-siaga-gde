@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\LpjPenggantian;
 use App\Models\SuratSpdBudget;
+use App\Services\UnitScope;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -51,6 +53,26 @@ class SpdPencairanController extends Controller
     }
 
     /**
+     * R2 / BUG-SPD-002: halaman baca pencairan hanya untuk unit LPJ.
+     * Unit lain -> 404 (keberadaan dokumen tidak bocor).
+     */
+    private function ensureUnitRead(LpjPenggantian $laporan): void
+    {
+        if (! UnitScope::for(Auth::user())->allowsUnit($laporan->suratSpd?->unit_id)) {
+            abort(404, 'LPJ ini berada di luar unit Anda.');
+        }
+    }
+
+    /**
+     * R2 / BUG-SPD-002: aksi tulis pencairan hanya untuk unit LPJ.
+     * Unit lain -> 403; user global tetap boleh.
+     */
+    private function ensureUnitWrite(LpjPenggantian $laporan): void
+    {
+        UnitScope::for(Auth::user())->ensureUnit($laporan->suratSpd?->unit_id);
+    }
+
+    /**
      * Pastikan baris pencairan memang milik surat SPD dari LPJ ini.
      */
     private function assertOwned(LpjPenggantian $laporan, SuratSpdBudget $pencairan): void
@@ -76,6 +98,8 @@ class SpdPencairanController extends Controller
      */
     public function store(Request $request, LpjPenggantian $laporan)
     {
+        $this->ensureUnitWrite($laporan);
+
         $data = $request->validate($this->rules(), $this->messages());
 
         DB::transaction(function () use ($data, $laporan) {
@@ -103,6 +127,7 @@ class SpdPencairanController extends Controller
      */
     public function update(Request $request, LpjPenggantian $laporan, SuratSpdBudget $pencairan)
     {
+        $this->ensureUnitWrite($laporan);
         $this->assertOwned($laporan, $pencairan);
 
         $data = $request->validate($this->rules(), $this->messages());
@@ -128,6 +153,7 @@ class SpdPencairanController extends Controller
      */
     public function destroy(LpjPenggantian $laporan, SuratSpdBudget $pencairan)
     {
+        $this->ensureUnitWrite($laporan);
         $this->assertOwned($laporan, $pencairan);
 
         DB::transaction(function () use ($laporan, $pencairan) {
@@ -143,6 +169,8 @@ class SpdPencairanController extends Controller
      */
     public function index(LpjPenggantian $laporan)
     {
+        $this->ensureUnitRead($laporan);
+
         $laporan->load(['suratSpd.vehicle', 'suratSpd.pencairans']);
 
         $pencairans = $laporan->suratSpd?->pencairans ?? collect();

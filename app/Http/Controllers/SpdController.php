@@ -1755,6 +1755,26 @@ class SpdController extends Controller
     }
 
     /**
+     * R2 / BUG-SEC-001: aksi tulis LPJ hanya untuk pengelola unitnya.
+     * User global tetap boleh; unit lain -> 403 (aksi tulis, bukan baca).
+     */
+    private function ensureLaporanUnit(LpjPenggantian $laporan): void
+    {
+        UnitScope::for(Auth::user())->ensureUnit($laporan->suratSpd?->unit_id);
+    }
+
+    /**
+     * R2 / BUG-SEC-001: validasi pengguna hanya oleh pihak yang berhak atas
+     * dokumen (pemilik/penumpang) atau user global. Unit lain -> 403.
+     */
+    private function ensureLaporanValidator(LpjPenggantian $laporan): void
+    {
+        if (! $laporan->isVisibleToUser(Auth::user())) {
+            abort(403, 'LPJ ini berada di luar kewenangan Anda.');
+        }
+    }
+
+    /**
      * Approve LPJ
      *
      * @param  int  $id
@@ -1769,6 +1789,9 @@ class SpdController extends Controller
             return redirect()->back()
                 ->with('error', 'Persetujuan final hanya dapat dilakukan Management. Validasi Divisi GA tidak boleh melompati tahap Manager.');
         }
+
+        // R2 / BUG-SEC-001: Manager unit lain tidak boleh approve-final.
+        $this->ensureLaporanUnit($laporan);
 
         $laporan = LpjPenggantian::pending()->findOrFail($laporan->id);
 
@@ -1804,6 +1827,9 @@ class SpdController extends Controller
      */
     public function rejectLaporan(Request $request, LpjPenggantian $laporan)
     {
+        // R2 / BUG-SEC-001: unit lain -> 403 sebelum validasi/penolakan.
+        $this->ensureLaporanUnit($laporan);
+
         $request->validate([
             'rejection_reason' => 'required|string|min:10',
         ]);
@@ -1821,6 +1847,10 @@ class SpdController extends Controller
      */
     public function approveLaporanPengguna(Request $request, LpjPenggantian $laporan)
     {
+        // R2 / BUG-SEC-001: hanya pemilik/penumpang dokumen (boleh lintas
+        // unit), pengelola unit yang sama, atau user global.
+        $this->ensureLaporanValidator($laporan);
+
         $request->validate([
             'pernyataan' => 'accepted',
         ], [
@@ -1894,6 +1924,9 @@ class SpdController extends Controller
      */
     public function approveLaporanDivisiGa(LpjPenggantian $laporan)
     {
+        // R2 / BUG-SEC-001: GA unit lain -> 403.
+        $this->ensureLaporanUnit($laporan);
+
         $laporan = LpjPenggantian::pending()->findOrFail($laporan->id);
 
         // Tidak strict: Divisi GA boleh memvalidasi tanpa menunggu tahap User.
@@ -1909,6 +1942,9 @@ class SpdController extends Controller
      */
     public function approveLaporanManagement(LpjPenggantian $laporan)
     {
+        // R2 / BUG-SEC-001: Manager unit lain -> 403.
+        $this->ensureLaporanUnit($laporan);
+
         $laporan = LpjPenggantian::pending()->findOrFail($laporan->id);
 
         if (! $laporan->approved_by_pengguna || ! $laporan->approved_by_divisi_ga) {
@@ -1968,6 +2004,9 @@ class SpdController extends Controller
      */
     public function updateKeuanganLaporan(Request $request, LpjPenggantian $laporan)
     {
+        // R2 / BUG-SEC-001: data keuangan LPJ hanya untuk unit yang benar.
+        $this->ensureLaporanUnit($laporan);
+
         $request->validate([
             'uang_dari' => 'nullable|string|max:255',
             'jumlah_diberikan' => 'nullable|numeric|min:0',
