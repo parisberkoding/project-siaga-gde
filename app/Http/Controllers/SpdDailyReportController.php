@@ -783,7 +783,11 @@ class SpdDailyReportController extends Controller
 
         $totalPengeluaran = (float) $financialItems->sum('nominal');
 
-        $lpj = DB::transaction(function () use ($surat, $allItems, $financialItems, $totalPengeluaran, $request) {
+        // BUG-LPJ-002: "Jumlah Diberikan" diisi otomatis dari total pencairan
+        // dana SPD yang sudah disetujui (surat_spd_budgets), bukan 0.
+        $totalPencairan = (float) $surat->pencairans()->sum('nominal');
+
+        $lpj = DB::transaction(function () use ($surat, $allItems, $financialItems, $totalPengeluaran, $totalPencairan, $request) {
             $lpj = LpjPenggantian::create([
                 'surat_spd_id'        => $surat->id,
                 'user_id'             => Auth::id(),
@@ -796,11 +800,16 @@ class SpdDailyReportController extends Controller
                 'kebutuhan_bbm_liter' => $request->kebutuhan_bbm_liter,
                 'uraian'              => $request->uraian ?? '',
                 'uang_dari'           => 'KAS',
-                'jumlah_diberikan'    => 0,
+                'jumlah_diberikan'    => $totalPencairan,
                 'total_pengeluaran'   => $totalPengeluaran,
                 'catatan'             => '',
                 'status'              => 'pending',
             ]);
+
+            // Hitung pengembalian/kekurangan sejak awal agar tidak tampil 0
+            // sampai GA membuka & menyimpan ulang data keuangan. Detail yang
+            // dibuat di bawah juga memicu perhitungan ulang.
+            $lpj->calculateKeuangan();
 
             $urutan = 0;
             foreach ($financialItems as $item) {

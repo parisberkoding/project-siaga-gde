@@ -319,6 +319,13 @@ class ReportingController extends Controller
         $isOverBudget = $totalDana > 0 && $totalPengeluaran > $totalDana;
         $isOverdue = $surat->isLpjDeadlineOverdue();
 
+        // BUG-LPJ-002: isi otomatis dari total pencairan dana SPD bila field
+        // kosong/0; nilai manual yang diisi user tetap dipakai.
+        $jumlahDiberikan = (float) ($request->jumlah_diberikan ?? 0);
+        if ($jumlahDiberikan <= 0) {
+            $jumlahDiberikan = (float) $surat->pencairans()->sum('nominal');
+        }
+
         DB::beginTransaction();
         try {
             // 1. Header LPJ (mengikuti pola SpdController::storeLaporan)
@@ -334,7 +341,7 @@ class ReportingController extends Controller
                 'kebutuhan_bbm_liter' => $request->kebutuhan_bbm_liter,
                 'uraian'            => $request->uraian,
                 'uang_dari'         => $request->uang_dari ?? 'KAS',
-                'jumlah_diberikan'  => $request->jumlah_diberikan ?? 0,
+                'jumlah_diberikan'  => $jumlahDiberikan,
                 'total_pengeluaran' => $totalPengeluaran,
                 'budget_per_hari'   => $budgetPerHari,
                 'catatan'           => $request->catatan ?? '',
@@ -342,6 +349,9 @@ class ReportingController extends Controller
                 'is_late'           => $isOverdue,
                 'is_over_budget'    => $isOverBudget,
             ]);
+
+            // Selisih pengembalian/kekurangan dihitung sejak awal (BUG-LPJ-002).
+            $lpj->calculateKeuangan();
 
             // 2. Detail + struk_items per item.
             //    'Tambahan' = dokumentasi (bukan pengeluaran) → hanya struk_item

@@ -339,6 +339,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const suggestions   = document.getElementById('vehicleSuggestions');
     const billPayment   = document.getElementById('bill_payment');
 
+    // Saat slot permohonan penuh, form tidak dirender sehingga elemen di atas
+    // null. Hentikan binding sebelum addEventListener melempar TypeError.
+    if (!vehicleSearch || !vehicleId || !suggestions || !billPayment) return;
+
     const fallbackOptions = @json($fallbackOptions);
 
     // Data kendaraan siap guna untuk pencarian & isi ulang
