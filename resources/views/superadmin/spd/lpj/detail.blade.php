@@ -216,6 +216,21 @@
                 <div class="card-body">
                     <h5 class="card-title"><i class="bi bi-calculator"></i> Ringkasan Keuangan</h5>
 
+                    @php
+                        // BUG-LPJ-002: tampilkan jumlah efektif (nilai tersimpan,
+                        // atau total pencairan dana SPD bila belum pernah diisi).
+                        $jumlahDiberikanTampil = $laporan->jumlah_diberikan_efektif;
+                        $selisihDiberikan = $jumlahDiberikanTampil - (float) $laporan->total_pengeluaran;
+                        // Bila tidak ada data dana sama sekali, pertahankan nilai
+                        // tersimpan agar tidak menampilkan kekurangan penuh.
+                        $pengembalianTampil = $jumlahDiberikanTampil > 0
+                            ? max(0, $selisihDiberikan)
+                            : (float) $laporan->pengembalian;
+                        $kekuranganTampil = $jumlahDiberikanTampil > 0
+                            ? abs(min(0, $selisihDiberikan))
+                            : (float) $laporan->kekurangan;
+                    @endphp
+
                     <div class="row">
                         <div class="col-md-6">
                             <table class="table table-sm">
@@ -249,15 +264,15 @@
                                 </tr>
                                 <tr>
                                     <td>Jumlah Diberikan:</td>
-                                    <td class="text-end">Rp {{ number_format($laporan->jumlah_diberikan, 0, ',', '.') }}</td>
+                                    <td class="text-end">Rp {{ number_format($jumlahDiberikanTampil, 0, ',', '.') }}</td>
                                 </tr>
-                                <tr class="{{ $laporan->pengembalian > 0 ? 'table-success' : '' }}">
+                                <tr class="{{ $pengembalianTampil > 0 ? 'table-success' : '' }}">
                                     <td>Pengembalian:</td>
-                                    <td class="text-end">Rp {{ number_format($laporan->pengembalian, 0, ',', '.') }}</td>
+                                    <td class="text-end">Rp {{ number_format($pengembalianTampil, 0, ',', '.') }}</td>
                                 </tr>
-                                <tr class="{{ $laporan->kekurangan > 0 ? 'table-warning' : '' }}">
+                                <tr class="{{ $kekuranganTampil > 0 ? 'table-warning' : '' }}">
                                     <td>Kekurangan:</td>
-                                    <td class="text-end">Rp {{ number_format($laporan->kekurangan, 0, ',', '.') }}</td>
+                                    <td class="text-end">Rp {{ number_format($kekuranganTampil, 0, ',', '.') }}</td>
                                 </tr>
                             </table>
 
@@ -292,7 +307,17 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small mb-1">Jumlah Diberikan (Rp)</label>
-                            <input type="number" class="form-control form-control-sm" name="jumlah_diberikan" value="{{ (float) $laporan->jumlah_diberikan }}" min="0" step="0.01">
+                            <input type="number" class="form-control form-control-sm" name="jumlah_diberikan" value="{{ (float) $laporan->jumlah_diberikan_efektif }}" min="0" step="0.01">
+                            <small class="text-muted d-block mt-1">
+                                @if((float) $laporan->jumlah_diberikan > 0)
+                                    Total pencairan dana SPD: Rp {{ number_format($laporan->total_pencairan, 0, ',', '.') }}.
+                                @elseif($laporan->total_pencairan > 0)
+                                    <span class="text-success"><i class="bi bi-magic"></i> Terisi otomatis dari total pencairan dana SPD:
+                                        Rp {{ number_format($laporan->total_pencairan, 0, ',', '.') }}. Simpan untuk menerapkan.</span>
+                                @else
+                                    Belum ada pencairan dana SPD untuk surat ini.
+                                @endif
+                            </small>
                         </div>
                         <div class="col-md-4 d-flex align-items-end">
                             <button type="submit" class="btn btn-sm btn-outline-primary w-100">

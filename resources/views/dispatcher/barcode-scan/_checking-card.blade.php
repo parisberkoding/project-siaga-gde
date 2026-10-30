@@ -40,13 +40,13 @@
         @if($detail->dispatcher)
             <div>
                 <span class="text-muted">Dispatcher:</span>
-                <span class="fw-semibold">{{ $detail->dispatcher->name }}</span>
+                <span class="fw-semibold">{{ $detail->dispatcher->nama_lengkap ?? '-' }}</span>
             </div>
         @endif
         @if($detail->currentDriver)
             <div>
                 <span class="text-muted">Driver:</span>
-                <span class="fw-semibold">{{ $detail->currentDriver->nama_lengkap ?: $detail->currentDriver->name }}</span>
+                <span class="fw-semibold">{{ $detail->currentDriver->nama_lengkap ?? '-' }}</span>
             </div>
         @endif
     </div>

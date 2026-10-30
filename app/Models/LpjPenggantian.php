@@ -756,6 +756,29 @@ class LpjPenggantian extends Model
     }
 
     /**
+     * Total pencairan dana SPD (akumulasi baris surat_spd_budgets).
+     * Menjadi sumber nilai "Jumlah Diberikan" pada LPJ.
+     */
+    public function getTotalPencairanAttribute(): float
+    {
+        return (float) $this->getPencairanRows()->sum('nominal');
+    }
+
+    /**
+     * Nilai "Jumlah Diberikan" untuk form/tampilan.
+     *
+     * Nilai tersimpan diutamakan bila sudah diisi (> 0) agar edit LPJ lama
+     * tidak menimpa nilai hasil koreksi GA. Bila masih 0 (belum diisi), nilai
+     * awal diambil dari total pencairan dana SPD yang sudah disetujui.
+     */
+    public function getJumlahDiberikanEfektifAttribute(): float
+    {
+        $tersimpan = (float) $this->jumlah_diberikan;
+
+        return $tersimpan > 0 ? $tersimpan : $this->total_pencairan;
+    }
+
+    /**
      * Balance Awal — total dana yang sudah ditransferkan/diberikan.
      *
      * Diambil dari akumulasi baris pencairan (surat_spd_budgets). Bila surat

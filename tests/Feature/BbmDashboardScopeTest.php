@@ -193,3 +193,16 @@ it('menyembunyikan Export CSV dan Trip Analysis saat user tidak punya permission
         ->assertDontSee('Export CSV')
         ->assertDontSee('Trip Analysis');
 });
+
+it('menampilkan Trip Analysis saat user punya permission vehicle.report', function () {
+    $superadmin = ($this->buatUser)('superadmin', null, [
+        'nama_lengkap' => 'Superadmin Berhak',
+    ]);
+
+    expect($superadmin->hasPermission('vehicle.report'))->toBeTrue();
+
+    $this->actingAs($superadmin)
+        ->get(route('modules.dashboard.bbm'))
+        ->assertOk()
+        ->assertSee('Trip Analysis');
+});

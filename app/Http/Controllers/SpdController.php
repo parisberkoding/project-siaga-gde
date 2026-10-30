@@ -1173,6 +1173,13 @@ class SpdController extends Controller
         // Budget kini opsional — over budget hanya dihitung bila budget diisi
         $isOverBudget = $totalBudgetFromTable > 0 && $totalPengeluaran > $totalBudgetFromTable;
 
+        // BUG-LPJ-002: bila field dikosongkan/0, isi otomatis dari total
+        // pencairan dana SPD yang sudah disetujui. Nilai manual tetap dipakai.
+        $jumlahDiberikan = (float) ($request->jumlah_diberikan ?? 0);
+        if ($jumlahDiberikan <= 0) {
+            $jumlahDiberikan = (float) $surat->pencairans()->sum('nominal');
+        }
+
         DB::beginTransaction();
         try {
             // ✅ Create LPJ
@@ -1188,7 +1195,7 @@ class SpdController extends Controller
                 'kebutuhan_bbm_liter' => $request->kebutuhan_bbm_liter,
                 'uraian' => $request->uraian,
                 'uang_dari' => $request->uang_dari ?? 'KAS',
-                'jumlah_diberikan' => $request->jumlah_diberikan ?? 0,
+                'jumlah_diberikan' => $jumlahDiberikan,
                 'total_pengeluaran' => $totalPengeluaran,
                 'budget_per_hari' => $totalBudgetFromTable > 0
                     ? round($totalBudgetFromTable / max($budgets->count(), 1))
@@ -1198,6 +1205,9 @@ class SpdController extends Controller
                 'is_late' => $isOverdue,
                 'is_over_budget' => $isOverBudget,
             ]);
+
+            // Selisih pengembalian/kekurangan dihitung sejak awal (BUG-LPJ-002).
+            $lpj->calculateKeuangan();
 
             // Create LPJ details (+ struk_items untuk alur baru)
             foreach ($request->items as $index => $item) {
@@ -1354,6 +1364,12 @@ class SpdController extends Controller
 
         $isOverBudget = $totalBudgetFromTable > 0 && $totalPengeluaran > $totalBudgetFromTable;
 
+        // BUG-LPJ-002: jangan menimpa nilai tersimpan saat edit LPJ lama bila
+        // field tidak dikirim. Nilai awal form sudah memakai total pencairan.
+        $jumlahDiberikan = $request->filled('jumlah_diberikan')
+            ? (float) $request->jumlah_diberikan
+            : (float) $laporan->jumlah_diberikan;
+
         DB::beginTransaction();
         try {
             $laporan->update([
@@ -1361,7 +1377,7 @@ class SpdController extends Controller
                 'jabatan' => $request->jabatan,
                 'uraian' => $request->uraian,
                 'uang_dari' => $request->uang_dari ?? 'KAS',
-                'jumlah_diberikan' => $request->jumlah_diberikan ?? 0,
+                'jumlah_diberikan' => $jumlahDiberikan,
                 'odo_before' => $request->odo_before,
                 'odo_after' => $request->odo_after,
                 'kebutuhan_bbm_liter' => $request->kebutuhan_bbm_liter,
@@ -1373,6 +1389,9 @@ class SpdController extends Controller
                 'rejection_reason' => null,
                 'is_over_budget' => $isOverBudget,
             ]);
+
+            // Hitung ulang selisih dengan Jumlah Diberikan yang baru.
+            $laporan->calculateKeuangan();
 
             // Simpan struk_items lama (urutannya) supaya bisa di-reuse bila
             // user tidak mengupload ulang gambar pada item yang sama.
@@ -1912,10 +1931,16 @@ class SpdController extends Controller
             'jumlah_diberikan' => 'nullable|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($laporan, $request) {
+        // BUG-LPJ-002: bila field dikosongkan, pakai nilai efektif (nilai
+        // tersimpan atau total pencairan dana SPD).
+        $jumlahDiberikan = $request->filled('jumlah_diberikan')
+            ? (float) $request->jumlah_diberikan
+            : (float) $laporan->jumlah_diberikan_efektif;
+
+        DB::transaction(function () use ($laporan, $request, $jumlahDiberikan) {
             $laporan->update([
                 'uang_dari' => $request->uang_dari ?? 'KAS',
-                'jumlah_diberikan' => $request->jumlah_diberikan ?? 0,
+                'jumlah_diberikan' => $jumlahDiberikan,
             ]);
             $laporan->calculateKeuangan();
         });
