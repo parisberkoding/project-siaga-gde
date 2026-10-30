@@ -138,3 +138,23 @@ document.addEventListener('click', async (event) => {
         link.removeAttribute('aria-disabled');
     }, 3000);
 });
+
+// Ringkasan di panel kanan mengikuti isian form.
+const summary = {
+    nominal: document.getElementById('summaryNominal'),
+    fuel: document.getElementById('summaryFuel'),
+    vehicle: document.getElementById('summaryVehicle'),
+};
+function renderSummary() {
+    if (!summary.nominal) return;
+    summary.nominal.textContent = rupiah(billPayment.value || 0);
+    summary.vehicle.textContent = vehicleId.value ? search.value : '-';
+    summary.fuel.textContent = vehicleId.value
+        ? (fuelSelect.value || 'Jenis BBM belum dipilih')
+        : 'Pilih kendaraan terlebih dahulu';
+}
+billPayment?.addEventListener('change', renderSummary);
+fuelSelect?.addEventListener('change', renderSummary);
+search?.addEventListener('input', renderSummary);
+suggestions?.addEventListener('click', () => setTimeout(renderSummary));
+renderSummary();

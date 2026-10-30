@@ -17,12 +17,17 @@ document.querySelectorAll('table[data-datatable]').forEach((table) => {
     if (!table.querySelector('tbody td:not([colspan])')) return;
 
     const options = JSON.parse(table.dataset.datatable || '{}');
+    // Kolom aksi / tanpa judul tidak perlu diurutkan.
+    const unsortable = [...table.tHead.rows[0].cells]
+        .map((th, index) => (/^(aksi)?$/i.test(th.textContent.trim()) ? index : null))
+        .filter((index) => index !== null);
     table.datatable = new DataTable(table, {
         searchable: true,
         fixedColumns: false,
         perPage: 10,
         perPageSelect: [10, 25, 50, 100],
         ...options,
+        columns: [...(unsortable.length ? [{ select: unsortable, sortable: false }] : []), ...(options.columns ?? [])],
         labels: { ...labels, ...(options.labels ?? {}) },
     });
 });

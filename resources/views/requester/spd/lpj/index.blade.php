@@ -1,200 +1,84 @@
-@extends('templates.main')
+@php
+    $canUpdate = Auth::user()->hasPermission('lpj.update');
+@endphp
 
-@section('content')
-<div class="pagetitle">
-    <h1>Laporan Pertanggungjawaban</h1>
-    <nav>
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('requester-index') }}">Home</a></li>
-            <li class="breadcrumb-item">SPD</li>
-            <li class="breadcrumb-item active">Laporan LPJ</li>
-        </ol>
-    </nav>
-</div>
+<x-layouts.app title="Laporan SPD (LPJ)" :breadcrumbs="['Laporan LPJ' => null]">
+    <x-ui.page-header kicker="Pelaporan" title="Laporan Pertanggungjawaban" description="LPJ perjalanan dinas yang sudah Anda kirim beserta status validasinya." />
 
-<section class="section dashboard">
-    {{-- Alert Messages --}}
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    {{-- Stats Cards --}}
-    <div class="row mb-4">
-        <div class="col-xxl-3 col-md-6">
-            <div class="card info-card sales-card">
-                <div class="card-body">
-                    <h5 class="card-title">Total LPJ</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-file-earmark-text"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ $stats['total'] }}</h6>
-                            <span class="text-muted small pt-2">Semua laporan</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xxl-3 col-md-6">
-            <div class="card info-card warning-card">
-                <div class="card-body">
-                    <h5 class="card-title">Pending</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-hourglass-split"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ $stats['pending'] }}</h6>
-                            <span class="text-muted small pt-2">Menunggu validasi</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xxl-3 col-md-6">
-            <div class="card info-card revenue-card">
-                <div class="card-body">
-                    <h5 class="card-title">Disetujui</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-check-circle"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ $stats['approved'] }}</h6>
-                            <span class="text-muted small pt-2">Laporan disetujui</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xxl-3 col-md-6">
-            <div class="card info-card danger-card">
-                <div class="card-body">
-                    <h5 class="card-title">Ditolak</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-x-circle"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ $stats['rejected'] }}</h6>
-                            <span class="text-muted small pt-2">Laporan ditolak</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <x-ui.stat-card label="Total LPJ" :value="$stats['total']" icon="bi bi-file-earmark-text" hint="Semua laporan" />
+        <x-ui.stat-card label="Menunggu" :value="$stats['pending']" icon="bi bi-hourglass-split" tone="warning" hint="Menunggu validasi" />
+        <x-ui.stat-card label="Disetujui" :value="$stats['approved']" icon="bi bi-check-circle" tone="success" hint="Laporan disetujui" />
+        <x-ui.stat-card label="Ditolak" :value="$stats['rejected']" icon="bi bi-x-circle" :tone="$stats['rejected'] ? 'danger' : 'muted'" hint="Perlu direvisi" />
     </div>
 
-    {{-- Main Card --}}
-    <div class="card">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0"><i class="bi bi-file-earmark-check"></i> Daftar Laporan Pertanggungjawaban</h5>
-                <!-- <a href="{{ route('requester.surat.index') }}" class="btn btn-primary">
-                    <i class="bi bi-plus-lg"></i> Buat Laporan Baru
-                </a> -->
-            </div>
-
-            @if($laporanList->isEmpty())
-                <div class="text-center py-5">
-                    <i class="bi bi-file-earmark-x text-muted" style="font-size: 4rem;"></i>
-                    <p class="text-muted mt-3 mb-3">Belum ada laporan pertanggungjawaban</p>
-                    <a href="{{ route('requester.surat.index') }}" class="btn btn-primary">
-                        <i class="bi bi-plus-lg"></i> Buat Laporan Pertama
-                    </a>
-                </div>
+    <x-ui.card>
+        <x-ui.card-header title="Daftar Laporan Pertanggungjawaban" icon="bi bi-file-earmark-check" />
+        <x-ui.card-content>
+            @if ($laporanList->isEmpty())
+                <x-ui.empty-state icon="bi bi-file-earmark-x" title="Belum ada laporan pertanggungjawaban" description="LPJ dibuat dari surat tugas yang sudah disetujui.">
+                    <x-ui.button class="mt-2" :href="route('requester.surat.index')"><i class="bi bi-plus-lg"></i> Buat Laporan Pertama</x-ui.button>
+                </x-ui.empty-state>
             @else
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
+                <x-ui.table :datatable="['perPage' => 10]">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Surat Tugas</th>
+                            <th>Tujuan</th>
+                            <th>Kendaraan</th>
+                            <th class="text-right">Total Pengeluaran</th>
+                            <th>Status</th>
+                            <th>Tanggal</th>
+                            <th class="w-20 text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($laporanList as $index => $lpj)
                             <tr>
-                                <th>No</th>
-                                <th>Surat Tugas</th>
-                                <th>Tujuan</th>
-                                <th>Kendaraan</th>
-                                <th class="text-end">Total Pengeluaran</th>
-                                <th>Status</th>
-                                <th>Tanggal</th>
-                                <th class="text-center">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($laporanList as $index => $lpj)
-                            <tr>
-                                <td>{{ $index + 1 }}</td>
+                                <td class="text-muted-foreground">{{ $index + 1 }}</td>
                                 <td>
-                                    <strong>{{ $lpj->suratSpd->nomor_surat ?? '-' }}</strong>
-                                    @if($lpj->suratSpd && $lpj->suratSpd->is_extension)
-                                        <br><span class="badge bg-info">Perpanjangan</span>
+                                    <span class="font-medium">{{ $lpj->suratSpd->nomor_surat ?? '-' }}</span>
+                                    @if ($lpj->suratSpd?->is_extension)
+                                        <x-ui.badge variant="info" class="mt-1 flex"><i class="bi bi-arrow-repeat"></i> Perpanjangan</x-ui.badge>
                                     @endif
                                 </td>
-                                <td>{{ Str::limit($lpj->suratSpd->tempat_tujuan ?? '-', 25) }}</td>
-                                <td>
-                                    <span class="badge bg-dark">{{ $lpj->nomor_polisi }}</span>
-                                </td>
-                                <td class="text-end">
-                                    <strong>Rp {{ number_format($lpj->total_pengeluaran, 0, ',', '.') }}</strong>
-                                    @if($lpj->is_over_budget)
-                                        <br><span class="badge bg-warning text-dark">Over Budget</span>
+                                <td class="text-muted-foreground">{{ Str::limit($lpj->suratSpd->tempat_tujuan ?? '-', 25) }}</td>
+                                <td><x-ui.badge variant="outline"><i class="bi bi-truck"></i> {{ $lpj->nomor_polisi }}</x-ui.badge></td>
+                                <td data-order="{{ $lpj->total_pengeluaran }}" class="whitespace-nowrap text-right">
+                                    <span class="font-semibold tabular-nums">Rp {{ number_format($lpj->total_pengeluaran, 0, ',', '.') }}</span>
+                                    @if ($lpj->is_over_budget)
+                                        <x-ui.badge variant="warning" class="mt-1 ml-auto flex">Over Budget</x-ui.badge>
                                     @endif
                                 </td>
                                 <td>
-                                    @if($lpj->status == 'pending')
-                                        <span class="badge bg-warning text-dark">Menunggu</span>
-                                    @elseif($lpj->status == 'approved')
-                                        <span class="badge bg-success">Disetujui</span>
-                                    @else
-                                        <span class="badge bg-danger">Ditolak</span>
-                                    @endif
-                                    @if($lpj->is_late)
-                                        <br><span class="badge bg-danger">Terlambat</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    {{ $lpj->created_at->translatedFormat('d M Y') }}
-                                    <br><small class="text-muted">{{ $lpj->created_at->format('H:i') }}</small>
-                                </td>
-                                <td class="text-center">
-                                    <div class="btn-group">
-                                        <a href="{{ route('requester.lpj.show', $lpj) }}"
-                                           class="btn btn-sm btn-outline-primary" title="Detail">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-                                        <a href="{{ route('spd.laporan.export', $lpj) }}"
-                                           class="btn btn-sm btn-outline-primary" target="_blank" title="Cetak SPD + LPJ (1 bundel: tabel, spending, lampiran)">
-                                            <i class="bi bi-file-earmark-pdf"></i>
-                                        </a>
-                                        @if($lpj->status == 'rejected')
-                                            @can('permission', 'lpj.update')
-                                            <a href="{{ route('requester.lpj.edit', $lpj) }}"
-                                               class="btn btn-sm btn-outline-warning" title="Revisi LPJ">
-                                                <i class="bi bi-pencil"></i> Revisi
-                                            </a>
-                                            @endcan
+                                    <div class="grid justify-items-start gap-1">
+                                        <x-spd.status-badge :status="$lpj->status" />
+                                        @if ($lpj->is_late)
+                                            <x-ui.badge variant="danger"><i class="bi bi-alarm"></i> Terlambat</x-ui.badge>
                                         @endif
                                     </div>
                                 </td>
+                                <td data-order="{{ $lpj->created_at->timestamp }}" class="whitespace-nowrap">
+                                    {{ $lpj->created_at->translatedFormat('d M Y') }}
+                                    <span class="block text-xs text-muted-foreground">{{ $lpj->created_at->format('H:i') }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <x-ui.dropdown-menu :id="'aksi-lpj-' . $lpj->id" label="Aksi LPJ" @class(['border-destructive/50 text-destructive' => $lpj->status === 'rejected'])>
+                                        <div class="px-2.5 pb-1.5 pt-1 text-xs text-muted-foreground"><code>{{ $lpj->suratSpd->nomor_surat ?? '-' }}</code></div>
+                                        <x-ui.dropdown-item icon="bi bi-eye" :href="route('requester.lpj.show', $lpj)">Lihat detail</x-ui.dropdown-item>
+                                        <x-ui.dropdown-item icon="bi bi-file-earmark-pdf" :href="route('spd.laporan.export', $lpj)" target="_blank">Cetak SPD + LPJ</x-ui.dropdown-item>
+                                        @if ($lpj->status === 'rejected' && $canUpdate)
+                                            <x-ui.dropdown-separator />
+                                            <x-ui.dropdown-item icon="bi bi-pencil" variant="destructive" :href="route('requester.lpj.edit', $lpj)">Revisi LPJ</x-ui.dropdown-item>
+                                        @endif
+                                    </x-ui.dropdown-menu>
+                                </td>
                             </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                        @endforeach
+                    </tbody>
+                </x-ui.table>
             @endif
-        </div>
-    </div>
-</section>
-@endsection
+        </x-ui.card-content>
+    </x-ui.card>
+</x-layouts.app>

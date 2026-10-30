@@ -1,5 +1,5 @@
 <x-layouts.app title="Pelaporan BBM & SPD" :breadcrumbs="['Pelaporan' => null]">
-    <x-ui.page-header title="Pelaporan BBM & SPD" description="Laporkan pengisian BBM operasional atau pengeluaran surat tugas SPD." />
+    <x-ui.page-header kicker="Pelaporan" title="Pelaporan BBM & SPD" description="Laporkan pengisian BBM operasional atau pengeluaran surat tugas SPD." />
 
     {{-- Pilihan mode, tersimpan di URL (?mode=spd|operational) --}}
     <div class="grid gap-4 md:grid-cols-2">

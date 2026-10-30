@@ -7,6 +7,8 @@
         match ($variant) {
             'destructive' => 'bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20',
             'success' => 'bg-success text-white shadow-xs hover:bg-success/90',
+            'soft-success' => 'bg-success-soft text-success hover:bg-success hover:text-white',
+            'soft-destructive' => 'bg-destructive-soft text-destructive hover:bg-destructive hover:text-white',
             'outline' => 'border bg-card shadow-xs hover:bg-accent hover:text-accent-foreground',
             'secondary' => 'bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80',
             'ghost' => 'hover:bg-accent hover:text-accent-foreground',

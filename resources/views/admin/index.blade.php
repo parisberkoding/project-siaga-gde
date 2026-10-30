@@ -1,5 +1,5 @@
 <x-layouts.app title="Approval BBM" :breadcrumbs="['Permohonan BBM' => route('admin-dashboard'), 'Approval BBM' => null]">
-    <x-ui.page-header title="Approval BBM" description="Proses permohonan BBM, pantau riwayat, laporan transaksi, dan voucher yang terbit.">
+    <x-ui.page-header kicker="Permohonan BBM" title="Approval BBM" description="Proses permohonan BBM, pantau riwayat, laporan transaksi, dan voucher yang terbit.">
         <x-slot:actions>
             <x-ui.button variant="outline" :href="request()->fullUrl()"><i class="bi bi-arrow-clockwise"></i> Muat ulang</x-ui.button>
         </x-slot:actions>

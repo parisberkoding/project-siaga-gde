@@ -52,3 +52,14 @@ document.addEventListener('click', (event) => {
     const button = event.target.closest('[data-dismiss]');
     if (button) button.closest('[data-dismissible]')?.remove();
 });
+
+// <form method="GET" data-clean-query>: isian kosong tidak ikut ke URL (?status=&vehicle_id= ...).
+document.addEventListener('submit', (event) => {
+    const form = event.target;
+    if (event.defaultPrevented || !('cleanQuery' in form.dataset)) return;
+    [...form.elements].filter((el) => el.name && el.value === '').forEach((el) => { el.disabled = true; });
+});
+// Kembali lewat tombol Back (bfcache) memulihkan isian yang tadi dinonaktifkan.
+window.addEventListener('pageshow', () => {
+    document.querySelectorAll('form[data-clean-query] :disabled').forEach((el) => { el.disabled = false; });
+});

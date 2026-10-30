@@ -1,54 +1,104 @@
-// Keputusan massal Setujui/Tolak per permohonan, dipakai halaman Approval BBM dan Kelola Permohonan.
-//   [data-decision="approve|reject"][data-id]  tombol pilihan (aria-pressed)
-//   [data-note="id"]                           komentar per permohonan (opsional)
-//   #bulkActionBar, #selectedCount, #approveCount, #rejectCount, #saveDecisions
-//   form#bulkApprovalForm berisi input#decisionsInput
-import { confirmDialog } from '../ui/dialog';
+// Keputusan Setujui/Tolak permohonan BBM lewat dialog, satu per satu atau massal.
+// Dipakai halaman Approval BBM dan Kelola Permohonan. Kontrak markup:
+//   form#bulkApprovalForm > input#decisionsInput      tujuan kirim (payload JSON sama seperti sebelumnya)
+//   [data-decision-item="id"][data-summary='{...}']    satu permohonan (number, name, vehicle, amount)
+//     [data-select]                                    checkbox pilih massal
+//     [data-decide="approve|reject"]                   tombol keputusan cepat
+//   [data-select-all]                                  checkbox pilih semua (opsional)
+//   #bulkActionBar > #selectedCount, [data-decide-selected="approve|reject"], [data-clear-selection]
+//   <x-bbm.decision-dialog />                          dialog konfirmasi + komentar
+import { openDialog } from '../ui/dialog';
+import { escapeHtml } from './format';
 
-export function initDecisions({ fallbackNote = () => '' } = {}) {
-    const decisions = new Map(); // id -> 'approve' | 'reject'
+const config = {
+    approve: {
+        title: 'Setujui permohonan', confirm: 'Setujui', variant: 'success', icon: 'bi-check-lg',
+        banner: 'bg-success-soft text-success', iconBg: 'bg-success text-white',
+        text: (n) => `${n} permohonan akan disetujui dan voucher BBM diterbitkan.`,
+    },
+    reject: {
+        title: 'Tolak permohonan', confirm: 'Tolak', variant: 'destructive', icon: 'bi-x-lg',
+        banner: 'bg-destructive-soft text-destructive', iconBg: 'bg-destructive text-white',
+        text: (n) => `${n} permohonan akan ditolak. Sebaiknya beri alasan di komentar.`,
+    },
+};
+
+export function initDecisions() {
+    const form = document.getElementById('bulkApprovalForm');
+    const dialog = document.getElementById('decisionDialog');
+    if (!form || !dialog) return;
+
     const bar = document.getElementById('bulkActionBar');
-    if (!bar) return;
+    const items = () => [...document.querySelectorAll('[data-decision-item]')];
+    const selected = () => items().filter((item) => item.querySelector('[data-select]')?.checked);
+    const confirmButton = dialog.querySelector('[data-decision-confirm]');
+    let pending = { items: [], status: 'approve' };
 
-    const render = () => {
-        document.querySelectorAll('[data-decision]').forEach((button) => {
-            button.setAttribute('aria-pressed', decisions.get(button.dataset.id) === button.dataset.decision);
-        });
-        const values = [...decisions.values()];
-        document.getElementById('selectedCount').textContent = values.length;
-        document.getElementById('approveCount').textContent = values.filter((v) => v === 'approve').length;
-        document.getElementById('rejectCount').textContent = values.filter((v) => v === 'reject').length;
-        bar.hidden = values.length === 0;
-    };
+    function renderSelection() {
+        const count = selected().length;
+        if (bar) bar.hidden = count === 0;
+        const counter = document.getElementById('selectedCount');
+        if (counter) counter.textContent = count;
+        const all = document.querySelector('[data-select-all]');
+        if (all) {
+            all.checked = count > 0 && count === items().length;
+            all.indeterminate = count > 0 && count < items().length;
+        }
+    }
+
+    function open(targets, status) {
+        if (!targets.length) return;
+        const c = config[status];
+        pending = { items: targets, status };
+
+        document.getElementById('decisionDialog-title').textContent = `${c.title}${targets.length > 1 ? ` (${targets.length})` : ''}`;
+        dialog.querySelector('[data-decision-banner]').className = `flex items-center gap-3 rounded-lg p-3 text-sm ${c.banner}`;
+        dialog.querySelector('[data-decision-icon]').className = `flex size-9 shrink-0 items-center justify-center rounded-full text-base ${c.iconBg}`;
+        dialog.querySelector('[data-decision-icon]').innerHTML = `<i class="bi ${c.icon}"></i>`;
+        dialog.querySelector('[data-decision-text]').textContent = c.text(targets.length);
+        dialog.querySelector('[data-decision-list]').innerHTML = targets.map((item) => {
+            const s = JSON.parse(item.dataset.summary || '{}');
+            return `<li class="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm">
+                <span class="min-w-0"><span class="block truncate font-medium">${escapeHtml(s.name)}</span>
+                <span class="block truncate text-xs text-muted-foreground">${escapeHtml(s.number)} · ${escapeHtml(s.vehicle)}</span></span>
+                <span class="shrink-0 font-semibold tabular-nums">${escapeHtml(s.amount)}</span></li>`;
+        }).join('');
+        dialog.querySelector('[data-decision-note]').value = '';
+        confirmButton.dataset.variant = c.variant;
+        confirmButton.innerHTML = `<i class="bi ${c.icon}"></i> ${c.confirm}${targets.length > 1 ? ` ${targets.length} permohonan` : ''}`;
+        openDialog('decisionDialog');
+        dialog.querySelector('[data-decision-note]').focus();
+    }
+
+    confirmButton.addEventListener('click', () => {
+        const note = dialog.querySelector('[data-decision-note]').value.trim() || null;
+        document.getElementById('decisionsInput').value = JSON.stringify(
+            pending.items.map((item) => ({ request_id: Number(item.dataset.decisionItem), status: pending.status, note })),
+        );
+        confirmButton.disabled = true;
+        confirmButton.textContent = 'Menyimpan...';
+        form.submit();
+    });
 
     document.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-decision]');
-        if (!button) return;
-        const { id, decision } = button.dataset;
-        // Setujui dan Tolak saling meniadakan; klik ulang membatalkan pilihan.
-        if (decisions.get(id) === decision) decisions.delete(id);
-        else decisions.set(id, decision);
-        render();
+        const single = event.target.closest('[data-decide]');
+        if (single) return open([single.closest('[data-decision-item]')], single.dataset.decide);
+
+        const bulk = event.target.closest('[data-decide-selected]');
+        if (bulk) return open(selected(), bulk.dataset.decideSelected);
+
+        if (event.target.closest('[data-clear-selection]')) {
+            items().forEach((item) => { item.querySelector('[data-select]').checked = false; });
+            renderSelection();
+        }
     });
 
-    document.getElementById('saveDecisions').addEventListener('click', async () => {
-        if (decisions.size === 0) return;
-
-        const payload = [...decisions].map(([id, status]) => ({
-            request_id: Number(id),
-            status,
-            note: document.querySelector(`[data-note="${id}"]`)?.value.trim() || fallbackNote() || null,
-        }));
-        const approve = payload.filter((d) => d.status === 'approve').length;
-
-        const ok = await confirmDialog({
-            title: 'Simpan keputusan?',
-            message: `${approve} permohonan disetujui dan ${payload.length - approve} permohonan ditolak.`,
-            confirmText: 'Simpan keputusan',
-        });
-        if (!ok) return;
-
-        document.getElementById('decisionsInput').value = JSON.stringify(payload);
-        document.getElementById('bulkApprovalForm').submit();
+    document.addEventListener('change', (event) => {
+        if (event.target.matches('[data-select-all]')) {
+            items().forEach((item) => { item.querySelector('[data-select]').checked = event.target.checked; });
+        }
+        if (event.target.matches('[data-select], [data-select-all]')) renderSelection();
     });
+
+    renderSelection();
 }

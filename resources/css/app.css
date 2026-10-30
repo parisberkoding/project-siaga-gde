@@ -42,11 +42,17 @@
     --input: #d6dee8;
     --ring: #0b50a1;
 
-    --sidebar: #ffffff;
-    --sidebar-foreground: #33465c;
-    --sidebar-accent: #eaf1fa;
-    --sidebar-accent-foreground: #093d7d;
-    --sidebar-border: #e4e9f0;
+    /* Sidebar berwarna (biru GDE). Pada layar lebar warna ini juga jadi bingkai
+       di sekitar panel konten (pola shadcn Sidebar variant="inset"). */
+    --sidebar: #0b4a92;
+    --sidebar-deep: #062a55;
+    --sidebar-foreground: #d6e2f3;
+    --sidebar-muted-foreground: #93add3;
+    --sidebar-accent: rgb(255 255 255 / 0.1);
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: rgb(255 255 255 / 0.12);
+    --sidebar-primary: #ffffff;
+    --sidebar-primary-foreground: #0b50a1;
 
     /* Warna modul (sama dengan kartu All Modules) */
     --module-bbm: #ff771d;
@@ -93,6 +99,9 @@
     --color-sidebar-accent: var(--sidebar-accent);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-muted-foreground: var(--sidebar-muted-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
     --color-module-bbm: var(--module-bbm);
     --color-module-spd: var(--module-spd);
 }
@@ -106,6 +115,17 @@
         @apply bg-background text-foreground font-sans antialiased;
     }
 
+    /* Scrollbar ramping tanpa track (seperti T-Cash), supaya tidak menutupi sudut panel. */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in srgb, var(--muted-foreground) 35%, transparent) transparent;
+    }
+
+    /* Rata kiri bawaan untuk kepala tabel; di layer base supaya kelas text-right/text-center tetap menang. */
+    th {
+        text-align: start;
+    }
+
     /* <dialog> native: preflight menghapus margin auto, kembalikan supaya tetap di tengah. */
     dialog {
         @apply m-auto;
@@ -114,6 +134,40 @@
     /* ::backdrop tidak selalu mewarisi variabel CSS, jadi warna ditulis langsung. */
     dialog::backdrop {
         background: rgb(0 0 0 / 0.5);
+    }
+}
+
+@utility bg-sidebar-gradient {
+    background:
+        radial-gradient(120% 60% at 0% 0%, rgb(255 255 255 / 0.12), transparent 60%),
+        radial-gradient(80% 50% at 100% 100%, rgb(65 84 241 / 0.35), transparent 70%),
+        linear-gradient(180deg, var(--sidebar), var(--sidebar-deep));
+    /* Gradien dihitung terhadap jendela, jadi body, sidebar, dan strip atas tampak menyatu. */
+    background-attachment: fixed;
+}
+
+/* Ornamen sudut kanan atas untuk kartu: dua cincin tipis, semburat warna, dan kisi titik yang memudar.
+   Digambar di ::before (z-index -1 dalam isolate) supaya isi kartu tetap di atasnya. Warna dari --ornament. */
+@utility ornament-corner {
+    --ornament: var(--primary);
+    position: relative;
+    isolation: isolate;
+
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        border-radius: inherit;
+        background:
+            radial-gradient(circle at 100% 0%, transparent 52px, color-mix(in srgb, var(--ornament) 24%, transparent) 53px 54px, transparent 55px),
+            radial-gradient(circle at 100% 0%, transparent 88px, color-mix(in srgb, var(--ornament) 15%, transparent) 89px 90px, transparent 91px),
+            radial-gradient(60% 70% at 100% 0%, color-mix(in srgb, var(--ornament) 15%, transparent), transparent 70%),
+            radial-gradient(color-mix(in srgb, var(--ornament-dot, var(--foreground)) 14%, transparent) 1px, transparent 1px);
+        background-size: auto, auto, auto, 14px 14px;
+        -webkit-mask-image: radial-gradient(75% 85% at 100% 0%, #000 35%, transparent 80%);
+        mask-image: radial-gradient(75% 85% at 100% 0%, #000 35%, transparent 80%);
     }
 }
 
@@ -176,4 +230,44 @@
     .datatable-empty {
         @apply py-8 text-center text-muted-foreground;
     }
+}
+
+/* Di luar @layer supaya menang atas utilitas bg-card pada komponen. Checkbox kustom (x-ui.checkbox): centang & strip (indeterminate) putih di atas warna primary. */
+[data-slot='checkbox'] {
+    appearance: none;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 80%;
+}
+[data-slot='checkbox']:checked {
+    border-color: var(--primary);
+    background-color: var(--primary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E");
+}
+[data-slot='checkbox']:indeterminate {
+    border-color: var(--primary);
+    background-color: var(--primary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M4 8h8'/%3E%3C/svg%3E");
+}
+
+/* Tooltip ringan: <button data-tooltip="Ubah">. Muncul saat hover/fokus keyboard, di atas elemen. */
+[data-tooltip] {
+    position: relative;
+}
+[data-tooltip]:is(:hover, :focus-visible)::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    z-index: 30;
+    transform: translateX(-50%);
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--foreground);
+    color: var(--background);
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+    pointer-events: none;
 }

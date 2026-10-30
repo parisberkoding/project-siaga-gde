@@ -28,7 +28,7 @@
         @if ($title)
             <div data-slot="alert-title" class="font-medium tracking-tight">{{ $title }}</div>
         @endif
-        <div data-slot="alert-description" class="grid gap-1 opacity-90 [&_p]:leading-relaxed">{{ $slot }}</div>
+        <div data-slot="alert-description" class="opacity-90 [&_p]:leading-relaxed [&>*+*]:mt-1">{{ $slot }}</div>
     </div>
     @if ($dismissible)
         <button type="button" data-dismiss class="absolute right-2 top-2 rounded-md p-1 opacity-70 hover:opacity-100" aria-label="Tutup">

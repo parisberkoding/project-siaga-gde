@@ -1,7 +1,7 @@
 @php($proof = $request->transactionProof)
 
 <x-layouts.app title="Detail {{ $request->request_number }}" :breadcrumbs="['Permohonan BBM' => route('requester-index'), 'Riwayat' => route('requester-history'), $request->request_number => null]">
-    <x-ui.page-header :title="'Permohonan ' . $request->request_number" description="Rincian permohonan, persetujuan, dan laporan pembelian.">
+    <x-ui.page-header kicker="Detail Permohonan" :title="$request->request_number" description="Rincian permohonan, persetujuan, dan laporan pembelian.">
         <x-slot:actions>
             <x-bbm.status-badge :status="$request->status" class="text-sm" />
         </x-slot:actions>

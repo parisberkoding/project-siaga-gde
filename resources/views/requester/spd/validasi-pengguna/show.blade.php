@@ -1,219 +1,133 @@
-@extends('templates.main')
+@php
+    $surat = $laporan->suratSpd;
+    $total = 'Rp ' . number_format((float) $laporan->total_pengeluaran, 0, ',', '.');
+@endphp
 
-@section('content')
-<div class="pagetitle">
-    <h1>Validasi Perjalanan Dinas</h1>
-    <nav>
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('requester-index') }}">Home</a></li>
-            <li class="breadcrumb-item">SPD</li>
-            <li class="breadcrumb-item"><a href="{{ route('lpj.pengguna.index') }}">Validasi Perjalanan</a></li>
-            <li class="breadcrumb-item active">Detail</li>
-        </ol>
-    </nav>
-</div>
+<x-layouts.app title="Validasi Perjalanan Dinas" :breadcrumbs="['Validasi Perjalanan' => route('lpj.pengguna.index'), 'Detail' => null]">
+    <x-ui.page-header kicker="Validasi Perjalanan" :title="$surat->nomor_surat ?? 'Validasi Perjalanan Dinas'" description="Periksa rincian perjalanan lalu validasi sebagai pengguna yang berangkat.">
+        <x-slot:actions>
+            <x-ui.button variant="outline" :href="route('lpj.pengguna.index')"><i class="bi bi-arrow-left"></i> Kembali</x-ui.button>
+        </x-slot:actions>
+    </x-ui.page-header>
 
-<section class="section">
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-    @if($errors->any())
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-triangle me-2"></i>{{ $errors->first() }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    <div class="row">
-        {{-- Rincian perjalanan --}}
-        <div class="col-lg-8">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="bi bi-file-earmark-text"></i> Rincian Perjalanan Dinas</h5>
-
-                    <div class="row mb-2">
-                        <div class="col-md-4 text-muted">Nomor Surat Tugas</div>
-                        <div class="col-md-8"><strong>{{ $laporan->suratSpd->nomor_surat ?? '-' }}</strong></div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-md-4 text-muted">Nomor LPJ</div>
-                        <div class="col-md-8">{{ $laporan->lpj_number ?? '-' }}</div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-md-4 text-muted">Tempat Tujuan</div>
-                        <div class="col-md-8">{{ $laporan->suratSpd->tempat_tujuan ?? '-' }}</div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-md-4 text-muted">Tanggal Perjalanan</div>
-                        <div class="col-md-8">
-                            @if($laporan->suratSpd)
-                                {{ $laporan->suratSpd->tanggal_berangkat->translatedFormat('d F Y') }}
-                                s/d
-                                {{ $laporan->suratSpd->tanggal_kembali->translatedFormat('d F Y') }}
+    <div class="grid items-start gap-6 lg:grid-cols-3">
+        <div class="grid gap-6 lg:col-span-2">
+            <x-ui.card>
+                <x-ui.card-header title="Rincian Perjalanan Dinas" icon="bi bi-file-earmark-text" />
+                <x-ui.card-content>
+                    <dl class="divide-y">
+                        <x-ui.detail-row label="Nomor surat tugas"><span class="font-medium">{{ $surat->nomor_surat ?? '-' }}</span></x-ui.detail-row>
+                        <x-ui.detail-row label="Nomor LPJ">{{ $laporan->lpj_number ?? '-' }}</x-ui.detail-row>
+                        <x-ui.detail-row label="Tempat tujuan">{{ $surat->tempat_tujuan ?? '-' }}</x-ui.detail-row>
+                        <x-ui.detail-row label="Tanggal perjalanan">
+                            @if ($surat)
+                                {{ $surat->tanggal_berangkat->translatedFormat('d F Y') }} s/d {{ $surat->tanggal_kembali->translatedFormat('d F Y') }}
                             @else
                                 -
                             @endif
-                        </div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-md-4 text-muted">Pengemudi</div>
-                        <div class="col-md-8">{{ $laporan->nama ?? $laporan->suratSpd->pengemudi_nama ?? '-' }}</div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-4 text-muted">Daftar Pemakai (Penumpang)</div>
-                        <div class="col-md-8">
-                            @if($laporan->suratSpd && $laporan->suratSpd->details->isNotEmpty())
-                                <ol class="mb-1 ps-3">
-                                    @foreach($laporan->suratSpd->details as $d)
-                                        <li>
+                        </x-ui.detail-row>
+                        <x-ui.detail-row label="Pengemudi">{{ $laporan->nama ?? $surat->pengemudi_nama ?? '-' }}</x-ui.detail-row>
+                        <x-ui.detail-row label="Daftar pemakai">
+                            @if ($surat?->details->isNotEmpty())
+                                <ol class="grid gap-1.5">
+                                    @foreach ($surat->details as $d)
+                                        <li class="flex flex-wrap items-center gap-2">
+                                            <span class="flex size-5 items-center justify-center rounded-full bg-muted text-xs text-muted-foreground">{{ $loop->iteration }}</span>
                                             {{ $d->nama_lengkap }}
-                                            @if($d->user_id == auth()->id())
-                                                <span class="badge bg-primary">Anda</span>
+                                            @if ($d->user_id == auth()->id())
+                                                <x-ui.badge>Anda</x-ui.badge>
                                             @endif
-                                            @if(! $d->user_id)
-                                                <small class="text-muted">(tanpa akun)</small>
-                                            @endif
+                                            @unless ($d->user_id)
+                                                <span class="text-xs text-muted-foreground">(tanpa akun)</span>
+                                            @endunless
                                         </li>
                                     @endforeach
                                 </ol>
-                                <small class="text-muted">
-                                    <i class="bi bi-info-circle"></i>
-                                    Cukup <strong>satu</strong> dari penumpang di atas yang memvalidasi —
-                                    setelah divalidasi, penumpang lain tidak perlu memvalidasi lagi.
-                                </small>
+                                <p class="mt-2 text-xs text-muted-foreground">
+                                    <i class="bi bi-info-circle"></i> Cukup <strong>satu</strong> penumpang yang memvalidasi, penumpang lain tidak perlu memvalidasi lagi.
+                                </p>
                             @else
                                 -
                             @endif
-                        </div>
-                    </div>
+                        </x-ui.detail-row>
+                    </dl>
+                </x-ui.card-content>
+            </x-ui.card>
 
-                    <hr>
-
-                    <h6 class="text-primary mb-3"><i class="bi bi-list-check"></i> Rincian Pengeluaran</h6>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-bordered">
-                            <thead class="table-light">
+            <x-ui.card>
+                <x-ui.card-header title="Rincian Pengeluaran" icon="bi bi-list-check" />
+                <x-ui.card-content>
+                    <x-ui.table>
+                        <thead>
+                            <tr><th>Tanggal</th><th>Jenis</th><th class="text-right">Nominal</th></tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($laporan->details as $d)
                                 <tr>
-                                    <th>Tanggal</th>
-                                    <th>Jenis</th>
-                                    <th class="text-end">Nominal</th>
+                                    <td class="whitespace-nowrap">{{ $d->tanggal?->translatedFormat('d M Y') ?? '-' }}</td>
+                                    <td><x-spd.tipe-badge :tipe="$d->tipe_penggunaan" /></td>
+                                    <td class="whitespace-nowrap text-right tabular-nums">Rp {{ number_format((float) $d->nominal, 0, ',', '.') }}</td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($laporan->details as $d)
-                                    <tr>
-                                        <td>{{ $d->tanggal ? $d->tanggal->translatedFormat('d M Y') : '-' }}</td>
-                                        <td>{{ $d->tipe_penggunaan }}</td>
-                                        <td class="text-end">Rp {{ number_format((float) $d->nominal, 0, ',', '.') }}</td>
-                                    </tr>
-                                @empty
-                                    <tr><td colspan="3" class="text-center text-muted">Tidak ada rincian pengeluaran.</td></tr>
-                                @endforelse
-                            </tbody>
-                            <tfoot class="table-dark">
-                                <tr>
-                                    <th colspan="2" class="text-end">Total Pengeluaran</th>
-                                    <th class="text-end">Rp {{ number_format((float) $laporan->total_pengeluaran, 0, ',', '.') }}</th>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                </div>
-            </div>
+                            @empty
+                                <tr><td colspan="3" class="py-8 text-center text-muted-foreground">Tidak ada rincian pengeluaran.</td></tr>
+                            @endforelse
+                        </tbody>
+                        <tfoot>
+                            <tr class="border-t bg-muted/50 font-semibold">
+                                <td colspan="2" class="text-right">Total Pengeluaran</td>
+                                <td class="whitespace-nowrap text-right tabular-nums">{{ $total }}</td>
+                            </tr>
+                        </tfoot>
+                    </x-ui.table>
+                </x-ui.card-content>
+            </x-ui.card>
         </div>
 
-        {{-- Panel validasi / tanda tangan --}}
-        <div class="col-lg-4">
-            <div class="card border-primary">
-                <div class="card-header bg-primary text-white">
-                    <h6 class="mb-0"><i class="bi bi-shield-check"></i> Validasi Kebenaran Perjalanan</h6>
-                </div>
-                <div class="card-body">
-                    @if($laporan->approved_by_pengguna)
-                        <div class="alert alert-success py-2">
-                            <i class="bi bi-check-circle"></i> Sudah divalidasi
-                            <br><small>{{ optional($laporan->approved_pengguna_at)->translatedFormat('d F Y H:i') }}</small>
+        <x-ui.card class="overflow-hidden pt-0 lg:sticky lg:top-20">
+            <div class="bg-primary px-6 py-4 text-primary-foreground">
+                <p class="flex items-center gap-2 font-semibold"><i class="bi bi-shield-check"></i> Validasi Kebenaran Perjalanan</p>
+            </div>
+            <x-ui.card-content class="grid gap-4">
+                @if ($laporan->approved_by_pengguna)
+                    <x-ui.alert variant="success" title="Sudah divalidasi">{{ optional($laporan->approved_pengguna_at)->translatedFormat('d F Y H:i') }}</x-ui.alert>
+
+                    @if ($qrSvg)
+                        <div class="grid justify-items-center gap-2 rounded-lg border p-4">
+                            <div class="size-[150px] [&_svg]:size-full">{!! $qrSvg !!}</div>
+                            <span class="text-xs text-muted-foreground">QR Tanda Tangan Validasi</span>
                         </div>
-
-                        @if($qrSvg)
-                            <div class="text-center border rounded p-3">
-                                <div style="width:150px;height:150px;margin:0 auto;">{!! $qrSvg !!}</div>
-                                <div class="small text-muted mt-2">QR Tanda Tangan Validasi</div>
-                            </div>
-                        @endif
-
-                        <p class="small text-muted mt-3 mb-0">
-                            Divalidasi oleh <strong>{{ $laporan->approverPengguna->nama_lengkap ?? '-' }}</strong>.
-                            Menunggu validasi Divisi GA.
-                        </p>
-                    @else
-                        <p class="small text-muted">
-                            Sebagai <strong>User yang berangkat</strong>, nyatakan bahwa perjalanan dinas ini benar adanya
-                            beserta rincian pengeluarannya.
-                        </p>
-                        <button type="button" class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#validasiModal">
-                            <i class="bi bi-pen"></i> Validasi &amp; Tanda Tangan
-                        </button>
                     @endif
-                </div>
-            </div>
 
-            <div class="card">
-                <div class="card-body">
-                    <a href="{{ route('lpj.pengguna.index') }}" class="btn btn-secondary w-100">
-                        <i class="bi bi-arrow-left"></i> Kembali ke Daftar
-                    </a>
-                </div>
-            </div>
-        </div>
+                    <p class="text-sm text-muted-foreground">
+                        Divalidasi oleh <strong class="text-foreground">{{ $laporan->approverPengguna->nama_lengkap ?? '-' }}</strong>. Menunggu validasi Divisi GA.
+                    </p>
+                @else
+                    <p class="text-sm text-muted-foreground">
+                        Sebagai <strong class="text-foreground">pengguna yang berangkat</strong>, nyatakan bahwa perjalanan dinas ini benar adanya beserta rincian pengeluarannya.
+                    </p>
+                    <x-ui.button variant="success" data-dialog-open="validasiModal"><i class="bi bi-pen"></i> Validasi &amp; Tanda Tangan</x-ui.button>
+                @endif
+            </x-ui.card-content>
+        </x-ui.card>
     </div>
-</section>
 
-{{-- Modal validasi --}}
-@if(!$laporan->approved_by_pengguna)
-<div class="modal fade" id="validasiModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="bi bi-pen"></i> Validasi Perjalanan Dinas</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form action="{{ route('lpj.pengguna.approve', $laporan) }}" method="POST">
+    @unless ($laporan->approved_by_pengguna)
+        <x-ui.dialog id="validasiModal" title="Validasi Perjalanan Dinas">
+            <form action="{{ route('lpj.pengguna.approve', $laporan) }}" method="POST" data-loading class="grid gap-4">
                 @csrf
-                <div class="modal-body">
-                    <div class="alert alert-light border">
-                        <strong>{{ $laporan->suratSpd->nomor_surat ?? '-' }}</strong><br>
-                        <small class="text-muted">
-                            {{ $laporan->suratSpd->tempat_tujuan ?? '-' }} ·
-                            Rp {{ number_format((float) $laporan->total_pengeluaran, 0, ',', '.') }}
-                        </small>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="pernyataan" value="1" id="pernyataanChk" required>
-                        <label class="form-check-label" for="pernyataanChk">
-                            <strong>Saya mengetahui bahwa perjalanan dinas ini benar adanya</strong> dengan rincian
-                            sebagaimana terlampir pada laporan pertanggungjawaban ini.
-                        </label>
-                    </div>
+                <div class="rounded-lg border bg-muted/40 p-3 text-sm">
+                    <p class="font-medium">{{ $surat->nomor_surat ?? '-' }}</p>
+                    <p class="text-muted-foreground">{{ $surat->tempat_tujuan ?? '-' }} &middot; {{ $total }}</p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-check-circle"></i> Ya, Validasi &amp; Tanda Tangan
-                    </button>
+                <label class="flex items-start gap-3 text-sm">
+                    <x-ui.checkbox name="pernyataan" value="1" required class="mt-0.5" />
+                    <span><strong>Saya mengetahui bahwa perjalanan dinas ini benar adanya</strong> dengan rincian sebagaimana terlampir pada laporan pertanggungjawaban ini.</span>
+                </label>
+                <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <x-ui.button variant="outline" data-dialog-close>Batal</x-ui.button>
+                    <x-ui.button type="submit" variant="success"><i class="bi bi-check-circle"></i> Ya, Validasi &amp; Tanda Tangan</x-ui.button>
                 </div>
             </form>
-        </div>
-    </div>
-</div>
-@endif
-@endsection
+        </x-ui.dialog>
+    @endunless
+</x-layouts.app>

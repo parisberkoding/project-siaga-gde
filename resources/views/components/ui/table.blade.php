@@ -10,7 +10,7 @@
          [&_thead_tr]:border-b [&_thead]:bg-muted/50
          [&_tbody_tr:last-child]:border-0
          [&_tr]:border-b [&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-muted/40
-         [&_th]:h-10 [&_th]:whitespace-nowrap [&_th]:px-3 [&_th]:text-left [&_th]:align-middle [&_th]:font-medium [&_th]:text-muted-foreground
+         [&_th]:h-10 [&_th]:whitespace-nowrap [&_th]:px-3 [&_th]:align-middle [&_th]:font-medium [&_th]:text-muted-foreground
          [&_td]:px-3 [&_td]:py-2.5 [&_td]:align-middle'
     ) }}>
         {{ $slot }}

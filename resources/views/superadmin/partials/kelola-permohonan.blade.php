@@ -1,5 +1,5 @@
 <x-layouts.app title="Kelola Permohonan & Pelaporan" :breadcrumbs="['Permohonan BBM' => route('admin-dashboard'), 'Kelola Permohonan' => null]">
-    <x-ui.page-header title="Kelola Permohonan & Pelaporan" description="Ubah, batalkan, atau hapus permohonan dan laporan transaksi BBM." />
+    <x-ui.page-header kicker="Admin BBM" title="Kelola Permohonan & Pelaporan" description="Ubah, batalkan, atau hapus permohonan dan laporan transaksi BBM." />
 
     <x-ui.tabs-list>
         <x-ui.tabs-link :href="route('superadmin.permohonan', ['tab' => 'permohonan'])" :active="$tab == 'permohonan'">
@@ -15,7 +15,7 @@
             <x-ui.card-content class="grid gap-4">
                 <form method="GET" action="{{ route('superadmin.permohonan') }}" data-autosubmit class="grid gap-2 md:grid-cols-[1fr_16rem]">
                     <input type="hidden" name="tab" value="permohonan">
-                    <x-ui.input type="search" name="search" :value="$search" placeholder="Cari nomor permohonan, pemohon, atau kendaraan" aria-label="Cari" />
+                    <div class="relative"><i class="bi bi-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground"></i><x-ui.input type="search" name="search" :value="$search" class="w-full pl-9" placeholder="Cari nomor permohonan, pemohon, atau kendaraan" aria-label="Cari" /></div>
                     <x-ui.select name="status" aria-label="Status">
                         <option value="">Semua status</option>
                         @foreach (['pending' => 'Menunggu', 'pending_vehicle_approval' => 'Menunggu kendaraan', 'approved' => 'Disetujui', 'completed' => 'Selesai', 'rejected' => 'Ditolak', 'cancelled_by_driver' => 'Dibatalkan'] as $value => $label)
@@ -31,101 +31,109 @@
                     <x-ui.table>
                         <thead>
                             <tr>
-                                <th>Nomor</th>
+                                <th class="w-10">
+                                    @if ($permohonans->contains('status', 'pending'))
+                                        <x-ui.checkbox data-select-all aria-label="Pilih semua permohonan menunggu" />
+                                    @endif
+                                </th>
+                                <th>Permohonan</th>
                                 <th>Pemohon</th>
                                 <th>Kendaraan/Alat</th>
-                                <th>BBM</th>
                                 <th class="text-right">Nominal</th>
-                                <th>Tanggal</th>
                                 <th>Status</th>
-                                <th class="min-w-56">Keputusan / Catatan</th>
-                                <th class="text-right">Aksi</th>
+                                <th>Catatan / Voucher</th>
+                                <th class="w-20 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse ($permohonans as $p)
-                                <tr>
-                                    <td><code class="text-xs">{{ $p->request_number }}</code></td>
+                                @php
+                                    $isPending = $p->status === 'pending';
+                                    $summary = [
+                                        'number' => $p->request_number,
+                                        'name' => $p->requester->nama_lengkap ?? 'Unknown',
+                                        'vehicle' => trim(($p->vehicle->consumerial_code ?? 'N/A') . ' · ' . ($p->vehicle->consumerial_name ?? ''), ' ·'),
+                                        'amount' => 'Rp ' . number_format($p->bill_amounts, 0, ',', '.'),
+                                    ];
+                                @endphp
+                                <tr @if ($isPending) data-decision-item="{{ $p->id }}" data-summary="{{ json_encode($summary) }}" class="has-[[data-select]:checked]:bg-accent/60" @endif>
                                     <td>
-                                        <span class="font-medium">{{ $p->requester->nama_lengkap ?? 'Unknown' }}</span>
-                                        <span class="block text-xs text-muted-foreground">{{ $p->requester->username ?? '-' }}</span>
-                                    </td>
-                                    <td>
-                                        <span class="font-medium">{{ $p->vehicle->consumerial_code ?? 'N/A' }}</span>
-                                        <span class="block text-xs text-muted-foreground">{{ $p->vehicle->consumerial_name ?? 'N/A' }}</span>
-                                    </td>
-                                    <td><x-ui.badge variant="secondary">{{ $p->gasoline_type }}</x-ui.badge></td>
-                                    <td class="whitespace-nowrap text-right tabular-nums">Rp {{ number_format($p->bill_amounts, 0, ',', '.') }}</td>
-                                    <td class="whitespace-nowrap">{{ $p->request_date->format('d/m/Y') }}</td>
-                                    <td><x-bbm.status-badge :status="$p->status" /></td>
-                                    <td>
-                                        @if ($p->status == 'pending')
-                                            <div class="grid gap-1.5">
-                                                <div class="flex gap-1.5" role="group" aria-label="Keputusan">
-                                                    <x-ui.button variant="outline" size="sm" aria-pressed="false" data-decision="approve" data-id="{{ $p->id }}"
-                                                                 class="aria-pressed:border-success aria-pressed:bg-success aria-pressed:text-white">
-                                                        <i class="bi bi-check-circle"></i> Setujui
-                                                    </x-ui.button>
-                                                    <x-ui.button variant="outline" size="sm" aria-pressed="false" data-decision="reject" data-id="{{ $p->id }}"
-                                                                 class="aria-pressed:border-destructive aria-pressed:bg-destructive aria-pressed:text-white">
-                                                        <i class="bi bi-x-circle"></i> Tolak
-                                                    </x-ui.button>
-                                                </div>
-                                                <x-ui.input class="h-8" data-note="{{ $p->id }}" placeholder="Komentar (opsional)" aria-label="Komentar" />
-                                            </div>
-                                        @else
-                                            <span class="text-xs text-muted-foreground">
-                                                @if ($p->authorizer_notes)
-                                                    <i class="bi bi-chat-left-text"></i> {{ $p->authorizer_notes }}
-                                                @else
-                                                    {{ $p->approvedRequest?->voucher_code ?? '-' }}
-                                                @endif
-                                            </span>
+                                        @if ($isPending)
+                                            <x-ui.checkbox data-select aria-label="Pilih permohonan {{ $p->request_number }}" />
                                         @endif
                                     </td>
                                     <td>
-                                        <div class="flex justify-end gap-1">
-                                            <x-ui.button variant="outline" size="icon-sm" title="Ubah" data-edit-permohonan
-                                                         data-update-url="{{ route('superadmin.permohonan.update', $p->id) }}"
-                                                         data-request-number="{{ $p->request_number }}"
-                                                         data-vehicle-id="{{ $p->consumerial_tools_id }}"
-                                                         data-gasoline-type="{{ $p->gasoline_type }}"
-                                                         data-bill-amounts="{{ $p->bill_amounts }}"
-                                                         data-requester-notes="{{ $p->requester_notes }}"
-                                                         data-authorizer-notes="{{ $p->authorizer_notes }}">
-                                                <i class="bi bi-pencil"></i>
-                                            </x-ui.button>
-                                            {{-- Tombol memakai atribut form= karena form batal/hapus berada di luar form keputusan (form tidak boleh bersarang). --}}
+                                        <code class="whitespace-nowrap text-xs">{{ $p->request_number }}</code>
+                                        <span class="block text-xs text-muted-foreground">{{ $p->request_date->format('d/m/Y H:i') }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="whitespace-nowrap font-medium">{{ $p->requester->nama_lengkap ?? 'Unknown' }}</span>
+                                        <span class="block text-xs text-muted-foreground">{{ $p->requester->username ?? '-' }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="whitespace-nowrap font-medium">{{ $p->vehicle->consumerial_code ?? 'N/A' }}</span>
+                                        <span class="block whitespace-nowrap text-xs text-muted-foreground">{{ $p->vehicle->consumerial_name ?? 'N/A' }} &middot; {{ $p->gasoline_type }}</span>
+                                    </td>
+                                    <td class="whitespace-nowrap text-right font-semibold tabular-nums">Rp {{ number_format($p->bill_amounts, 0, ',', '.') }}</td>
+                                    <td><x-bbm.status-badge :status="$p->status" /></td>
+                                    <td class="max-w-56">
+                                        @if ($p->approvedRequest?->voucher_code)
+                                            <code class="text-xs font-semibold tracking-wide">{{ $p->approvedRequest->voucher_code }}</code>
+                                        @endif
+                                        @if ($p->authorizer_notes)
+                                            <span class="block truncate text-xs text-muted-foreground" title="{{ $p->authorizer_notes }}"><i class="bi bi-chat-left-text"></i> {{ $p->authorizer_notes }}</span>
+                                        @elseif (! $p->approvedRequest?->voucher_code)
+                                            <span class="text-xs text-muted-foreground">-</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">
+                                        {{-- Tombol batal/hapus memakai atribut form= karena formnya berada di luar form keputusan (form tidak boleh bersarang). --}}
+                                        <x-ui.dropdown-menu :id="'aksi-permohonan-' . $p->id" label="Aksi permohonan"
+                                            @class(['border-warning/50 text-warning' => $isPending])>
+                                            <div class="px-2.5 pb-1.5 pt-1 text-xs text-muted-foreground"><code>{{ $p->request_number }}</code></div>
+                                            @if ($isPending)
+                                                <x-ui.dropdown-item icon="bi bi-check-circle" variant="success" data-decide="approve">Setujui</x-ui.dropdown-item>
+                                                <x-ui.dropdown-item icon="bi bi-x-circle" variant="destructive" data-decide="reject">Tolak</x-ui.dropdown-item>
+                                                <x-ui.dropdown-separator />
+                                            @endif
+                                            <x-ui.dropdown-item icon="bi bi-pencil" data-edit-permohonan
+                                                data-update-url="{{ route('superadmin.permohonan.update', $p->id) }}"
+                                                data-request-number="{{ $p->request_number }}"
+                                                data-vehicle-id="{{ $p->consumerial_tools_id }}"
+                                                data-gasoline-type="{{ $p->gasoline_type }}"
+                                                data-bill-amounts="{{ $p->bill_amounts }}"
+                                                data-requester-notes="{{ $p->requester_notes }}"
+                                                data-authorizer-notes="{{ $p->authorizer_notes }}">Ubah permohonan</x-ui.dropdown-item>
                                             @unless (in_array($p->status, ['completed', 'cancelled_by_driver']))
-                                                <x-ui.button type="submit" form="cancel-permohonan-{{ $p->id }}" variant="outline" size="icon-sm" title="Batalkan">
-                                                    <i class="bi bi-slash-circle"></i>
-                                                </x-ui.button>
+                                                <x-ui.dropdown-item icon="bi bi-slash-circle" type="submit" :form="'cancel-permohonan-' . $p->id">Batalkan</x-ui.dropdown-item>
                                             @endunless
                                             @if ($p->status != 'completed')
-                                                <x-ui.button type="submit" form="delete-permohonan-{{ $p->id }}" variant="outline" size="icon-sm" title="Hapus" class="text-destructive hover:text-destructive">
-                                                    <i class="bi bi-trash"></i>
-                                                </x-ui.button>
+                                                <x-ui.dropdown-separator />
+                                                <x-ui.dropdown-item icon="bi bi-trash" variant="destructive" type="submit" :form="'delete-permohonan-' . $p->id">Hapus permanen</x-ui.dropdown-item>
                                             @endif
-                                        </div>
+                                        </x-ui.dropdown-menu>
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="9" class="py-10 text-center text-muted-foreground">Tidak ada data permohonan.</td></tr>
+                                <tr><td colspan="8" class="py-10 text-center text-muted-foreground">Tidak ada data permohonan.</td></tr>
                             @endforelse
                         </tbody>
                     </x-ui.table>
 
-                    <div id="bulkActionBar" hidden class="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-3 shadow-lg">
-                        <p class="text-sm">
-                            <strong id="selectedCount">0</strong> permohonan dipilih
-                            <span class="text-muted-foreground">(<span id="approveCount" class="text-success">0</span> disetujui, <span id="rejectCount" class="text-destructive">0</span> ditolak)</span>
+                    <div id="bulkActionBar" hidden class="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card/95 p-3 shadow-lg backdrop-blur">
+                        <p class="flex items-center gap-2 text-sm">
+                            <span class="flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-2 text-xs font-semibold text-primary-foreground" id="selectedCount">0</span>
+                            permohonan dipilih
+                            <button type="button" data-clear-selection class="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Batal pilih</button>
                         </p>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <x-ui.input id="bulkNoteInput" class="w-60" placeholder="Komentar untuk semua (opsional)" aria-label="Komentar untuk semua" />
-                            <x-ui.button id="saveDecisions"><i class="bi bi-save"></i> Simpan Keputusan</x-ui.button>
+                        <div class="flex gap-2">
+                            <x-ui.button variant="outline" data-decide-selected="reject" class="text-destructive hover:bg-destructive-soft hover:text-destructive"><i class="bi bi-x-circle"></i> Tolak terpilih</x-ui.button>
+                            <x-ui.button variant="success" data-decide-selected="approve"><i class="bi bi-check-circle"></i> Setujui terpilih</x-ui.button>
                         </div>
                     </div>
                 </form>
+
+                <x-bbm.decision-dialog />
 
                 @foreach ($permohonans as $p)
                     <form id="cancel-permohonan-{{ $p->id }}" action="{{ route('superadmin.permohonan.cancel', $p->id) }}" method="POST" hidden
@@ -196,7 +204,7 @@
             <x-ui.card-content class="grid gap-4">
                 <form method="GET" action="{{ route('superadmin.permohonan') }}" data-autosubmit>
                     <input type="hidden" name="tab" value="laporan">
-                    <x-ui.input type="search" name="search" :value="$search" placeholder="Cari ID transaksi atau nomor permohonan" aria-label="Cari" />
+                    <div class="relative"><i class="bi bi-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground"></i><x-ui.input type="search" name="search" :value="$search" class="w-full pl-9" placeholder="Cari ID transaksi atau nomor permohonan" aria-label="Cari" /></div>
                 </form>
 
                 <x-ui.table>
