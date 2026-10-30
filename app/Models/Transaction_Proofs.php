@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\MediaStorage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -73,6 +74,20 @@ class Transaction_Proofs extends Model
     public function unit()
     {
         return $this->belongsTo(Unit::class, 'unit_id');
+    }
+
+    /**
+     * BUG-SEC-003 — URL foto struk lewat rute ber-autentikasi, bukan
+     * symlink `/storage` publik.
+     */
+    public function getStrukUrlAttribute(): ?string
+    {
+        return $this->struk_bbm_path ? MediaStorage::url($this->struk_bbm_path) : null;
+    }
+
+    public function getOdometerUrlAttribute(): ?string
+    {
+        return $this->odometer_photo_path ? MediaStorage::url($this->odometer_photo_path) : null;
     }
 
     /**

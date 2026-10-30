@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\LpjPenggantian;
 use App\Models\SpdBarcodeSignature;
+use App\Support\MediaStorage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -151,8 +151,8 @@ class SpdPrintController extends Controller
     }
 
     /**
-     * Baca gambar struk dari storage public lalu encode jadi base64 data URI.
-     * Return null bila file tidak ditemukan.
+     * Baca gambar struk dari disk privat (fallback file lama di disk publik)
+     * lalu encode jadi base64. Return null bila file tidak ditemukan.
      */
     private function toBase64(?string $path): ?string
     {
@@ -160,31 +160,21 @@ class SpdPrintController extends Controller
             return null;
         }
 
-        try {
-            if (! Storage::disk('public')->exists($path)) {
-                return null;
-            }
+        $contents = MediaStorage::get($path);
 
-            return base64_encode(Storage::disk('public')->get($path));
-        } catch (\Throwable $e) {
-            return null;
-        }
+        return $contents === null ? null : base64_encode($contents);
     }
 
     /**
-     * Deteksi mime dari path storage public.
+     * Deteksi mime dari path media.
      */
     private function detectMime(?string $path): string
     {
-        try {
-            if ($path && Storage::disk('public')->exists($path)) {
-                return Storage::disk('public')->mimeType($path) ?? 'image/jpeg';
-            }
-        } catch (\Throwable $e) {
-            // fallthrough
+        if (! $path) {
+            return 'image/jpeg';
         }
 
-        return 'image/jpeg';
+        return MediaStorage::mimeType($path) ?: 'image/jpeg';
     }
 
     /**
@@ -209,18 +199,16 @@ class SpdPrintController extends Controller
         try {
             $record = SpdBarcodeSignature::where('spd_id', $surat->id)->first();
 
-            if ($record && $record->signature_path && file_exists(storage_path('app/public/' . $record->signature_path))) {
-                return file_get_contents(storage_path('app/public/' . $record->signature_path));
-            }
+            if ($record && $record->signature_path) {
+                $cached = MediaStorage::get($record->signature_path);
 
-            $storageDir = storage_path('app/public/qr-surat');
-            if (! is_dir($storageDir)) {
-                mkdir($storageDir, 0755, true);
+                if ($cached !== null) {
+                    return $cached;
+                }
             }
 
             $filename = 'QR_' . preg_replace('/[^A-Za-z0-9\-]/', '_', $surat->nomor_surat) . '.svg';
             $relativePath = 'qr-surat/' . $filename;
-            $fullPath = $storageDir . '/' . $filename;
 
             $qrData = json_encode([
                 'id'                => $surat->id,
@@ -236,7 +224,7 @@ class SpdPrintController extends Controller
             );
             $svgContent = (new Writer($renderer))->writeString($qrData);
 
-            file_put_contents($fullPath, $svgContent);
+            MediaStorage::put($relativePath, $svgContent);
 
             SpdBarcodeSignature::updateOrCreate(
                 ['spd_id' => $surat->id],

@@ -145,7 +145,7 @@
                                          <td class="text-end">Rp {{ number_format($detail->nominal, 0, ',', '.') }}</td>
                                          <td>
                                              @if($detail->strukItem && $detail->strukItem->path_image)
-                                                 <a href="{{ asset('storage/' . $detail->strukItem->path_image) }}"
+                                                 <a href="{{ $detail->strukItem->path_url }}"
                                                     target="_blank" class="btn btn-sm btn-outline-primary" title="Lihat struk">
                                                      <i class="bi bi-image"></i>
                                                  </a>

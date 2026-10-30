@@ -181,9 +181,9 @@
                                         <td>
                                             @if($detail->strukItem && $detail->strukItem->path_image)
                                                 <div>
-                                                    <a href="{{ asset('storage/' . $detail->strukItem->path_image) }}"
+                                                    <a href="{{ $detail->strukItem->path_url }}"
                                                        target="_blank" title="Klik untuk perbesar">
-                                                        <img src="{{ asset('storage/' . $detail->strukItem->path_image) }}"
+                                                        <img src="{{ $detail->strukItem->path_url }}"
                                                              alt="{{ $detail->strukItem->item_code }}"
                                                              style="height: 60px; width: auto; max-width: 120px; object-fit: cover; border: 1px solid #E4E9F0; border-radius: 6px; cursor: zoom-in;"
                                                              onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">

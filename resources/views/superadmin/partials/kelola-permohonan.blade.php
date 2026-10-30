@@ -322,7 +322,7 @@
 
                                     {{-- ✅ GUNAKAN DATA ATTRIBUTES --}}
                                     <button class="btn btn-info btn-view-struk"
-                                            data-image-url="{{ asset('storage/' . $lap->struk_bbm_path) }}"
+                                            data-image-url="{{ $lap->struk_url }}"
                                             data-transaction-id="{{ $lap->transaction_id }}"
                                             title="Lihat Struk">
                                         <i class="bi bi-receipt"></i>

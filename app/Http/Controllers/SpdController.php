@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\VehicleAndToolsConsumers;
 use App\Services\ImageCompressor;
 use App\Services\UnitScope;
+use App\Support\MediaStorage;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -23,7 +24,6 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class SpdController extends Controller
@@ -642,10 +642,13 @@ class SpdController extends Controller
         // Check if barcode already exists in DB
         $barcodeRecord = SpdBarcodeSignature::where('spd_id', $surat->id)->first();
 
-        if ($barcodeRecord && file_exists(storage_path('app/public/'.$barcodeRecord->signature_path))) {
-            // Barcode sudah ada di DB dan file masih ada
-            $qrSvgContent = file_get_contents(storage_path('app/public/'.$barcodeRecord->signature_path));
-        } else {
+        // QR disimpan di disk privat (BUG-SEC-003); MediaStorage membaca
+        // privat dulu lalu fallback ke file lama di disk publik.
+        $qrSvgContent = $barcodeRecord && $barcodeRecord->signature_path
+            ? MediaStorage::get($barcodeRecord->signature_path)
+            : null;
+
+        if ($qrSvgContent === null) {
             // Generate QR baru, simpan file, dan simpan ke DB
             $qrSvgContent = $this->generateAndStoreQr($surat);
         }
@@ -2133,14 +2136,8 @@ class SpdController extends Controller
     private function generateAndStoreQr(SuratSpd $surat): ?string
     {
         try {
-            $storageDir = storage_path('app/public/qr-surat');
-            if (! is_dir($storageDir)) {
-                mkdir($storageDir, 0755, true);
-            }
-
             $filename = 'QR_'.preg_replace('/[^A-Za-z0-9\-]/', '_', $surat->nomor_surat).'.svg';
             $relativePath = 'qr-surat/'.$filename;
-            $fullPath = $storageDir.'/'.$filename;
 
             // Generate QR SVG
             $qrData = json_encode([
@@ -2152,7 +2149,7 @@ class SpdController extends Controller
             ]);
 
             $svgContent = $this->generateQrSvgWithLogo($qrData);
-            file_put_contents($fullPath, $svgContent);
+            MediaStorage::put($relativePath, $svgContent);
 
             // Simpan ke database (update or create)
             SpdBarcodeSignature::updateOrCreate(
@@ -2181,16 +2178,11 @@ class SpdController extends Controller
     private function generateSignatureQr(SuratSpd $surat): ?string
     {
         try {
-            $storageDir = storage_path('app/public/qr-surat');
-            if (! is_dir($storageDir)) {
-                mkdir($storageDir, 0755, true);
-            }
-
             $filename = 'QR_'.preg_replace('/[^A-Za-z0-9\-]/', '_', $surat->nomor_surat).'.svg';
-            $fullPath = $storageDir.'/'.$filename;
+            $relativePath = 'qr-surat/'.$filename;
 
             // Cache — tidak generate ulang jika sudah ada
-            if (! file_exists($fullPath)) {
+            if (! MediaStorage::exists($relativePath)) {
                 $qrData = json_encode([
                     'id' => $surat->id,
                     'nomor_surat' => $surat->nomor_surat,
@@ -2200,11 +2192,15 @@ class SpdController extends Controller
                 ]);
 
                 $svgContent = $this->generateQrSvgWithLogo($qrData);
-                file_put_contents($fullPath, $svgContent);
+                MediaStorage::put($relativePath, $svgContent);
             }
 
             // Return SVG sebagai base64 data URI
-            return 'data:image/svg+xml;base64,'.base64_encode(file_get_contents($fullPath));
+            $svg = MediaStorage::get($relativePath);
+
+            return $svg !== null
+                ? 'data:image/svg+xml;base64,'.base64_encode($svg)
+                : null;
 
         } catch (\Throwable $e) {
             \Log::warning('QR signature gagal: '.$e->getMessage(), [
@@ -2261,7 +2257,7 @@ SVG;
     }
 
     /**
-     * Simpan gambar struk ke storage dengan kompresi 50% (tanpa resize).
+     * Simpan gambar struk ke disk privat dengan kompresi 50% (tanpa resize).
      * Hanya path yang disimpan ke DB — tidak ada base64.
      */
     protected function storeStrukImage($file, string $context): string
@@ -2276,9 +2272,9 @@ SVG;
         $path = 'transaction_proofs/struk/'.$filename;
 
         if ($jpeg !== null) {
-            Storage::disk('public')->put($path, $jpeg);
+            MediaStorage::put($path, $jpeg);
         } else {
-            $file->storeAs('transaction_proofs/struk', $filename, 'public');
+            MediaStorage::storeUploaded($file, 'transaction_proofs/struk', $filename);
         }
 
         return $path;
