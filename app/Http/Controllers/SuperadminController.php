@@ -19,6 +19,7 @@ use App\Models\VehicleBarcode;
 use App\Models\VehicleDetail;
 use App\Models\VehicleTripAnalysis;
 use App\Services\UnitScope;
+use App\Support\MediaStorage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -27,7 +28,6 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 
 class SuperadminController extends Controller
 {
@@ -578,8 +578,12 @@ class SuperadminController extends Controller
                         break;
                     }
 
-                    $path = storage_path('app/public/'.$trx->transactionProof->struk_bbm_path);
-                    $trx->transactionProof->compressed_image = $this->compressToJpeg($path, 65);
+                    // BUG-SEC-003: struk kini di disk privat; absolutePath()
+                    // otomatis fallback ke file lama di disk publik.
+                    $path = MediaStorage::absolutePath($trx->transactionProof->struk_bbm_path);
+                    $trx->transactionProof->compressed_image = $path
+                        ? $this->compressToJpeg($path, 65)
+                        : null;
                 }
             }
 
@@ -2875,9 +2879,9 @@ class SuperadminController extends Controller
 
             // Upload foto struk baru jika ada
             if ($request->hasFile('foto_struk')) {
-                // Hapus foto lama
-                if ($laporan->struk_bbm_path && Storage::disk('public')->exists($laporan->struk_bbm_path)) {
-                    Storage::disk('public')->delete($laporan->struk_bbm_path);
+                // Hapus foto lama (privat maupun legacy publik)
+                if ($laporan->struk_bbm_path) {
+                    MediaStorage::delete($laporan->struk_bbm_path);
                 }
 
                 $requestNumber = $laporan->permohonan->request_number;
@@ -2886,14 +2890,14 @@ class SuperadminController extends Controller
                 $strukFile = $request->file('foto_struk');
                 $strukExtension = $strukFile->getClientOriginalExtension();
                 $strukFileName = "STRUK-{$requestNumber}-{$dateFormat}.{$strukExtension}";
-                $updateData['struk_bbm_path'] = $strukFile->storeAs('transaction_proofs/struk', $strukFileName, 'public');
+                $updateData['struk_bbm_path'] = MediaStorage::storeUploaded($strukFile, 'transaction_proofs/struk', $strukFileName);
             }
 
             // Upload foto odometer baru jika ada
             if ($request->hasFile('foto_km')) {
-                // Hapus foto lama
-                if ($laporan->odometer_photo_path && Storage::disk('public')->exists($laporan->odometer_photo_path)) {
-                    Storage::disk('public')->delete($laporan->odometer_photo_path);
+                // Hapus foto lama (privat maupun legacy publik)
+                if ($laporan->odometer_photo_path) {
+                    MediaStorage::delete($laporan->odometer_photo_path);
                 }
 
                 $requestNumber = $laporan->permohonan->request_number;
@@ -2902,7 +2906,7 @@ class SuperadminController extends Controller
                 $odoFile = $request->file('foto_km');
                 $odoExtension = $odoFile->getClientOriginalExtension();
                 $odoFileName = "ODO-{$requestNumber}-{$dateFormat}.{$odoExtension}";
-                $updateData['odometer_photo_path'] = $odoFile->storeAs('transaction_proofs/odometer', $odoFileName, 'public');
+                $updateData['odometer_photo_path'] = MediaStorage::storeUploaded($odoFile, 'transaction_proofs/odometer', $odoFileName);
             }
 
             $laporan->update($updateData);
@@ -3039,13 +3043,13 @@ class SuperadminController extends Controller
 
             $laporan = Transaction_Proofs::findOrFail($id);
 
-            // Hapus files
-            if ($laporan->struk_bbm_path && Storage::disk('public')->exists($laporan->struk_bbm_path)) {
-                Storage::disk('public')->delete($laporan->struk_bbm_path);
+            // Hapus files (privat maupun legacy publik)
+            if ($laporan->struk_bbm_path) {
+                MediaStorage::delete($laporan->struk_bbm_path);
             }
 
-            if ($laporan->odometer_photo_path && Storage::disk('public')->exists($laporan->odometer_photo_path)) {
-                Storage::disk('public')->delete($laporan->odometer_photo_path);
+            if ($laporan->odometer_photo_path) {
+                MediaStorage::delete($laporan->odometer_photo_path);
             }
 
             // Update status permohonan kembali ke approved

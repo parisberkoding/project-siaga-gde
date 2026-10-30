@@ -12,6 +12,7 @@ use App\Models\Transaction_Proofs;
 use App\Models\VehicleAndToolsConsumers;
 use App\Services\ImageAnalysisService;
 use App\Services\ImageCompressor;
+use App\Support\MediaStorage;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -701,8 +702,11 @@ class ReportingController extends Controller
     }
 
     /**
-     * Simpan gambar struk ke storage dengan kompresi 50% (tanpa resize).
+     * Simpan gambar struk ke disk privat dengan kompresi 50% (tanpa resize).
      * Hanya path yang disimpan ke DB — tidak ada base64.
+     *
+     * BUG-SEC-003: struk berisi data sensitif (lokasi SPBU, plat nomor) →
+     * disk `local` (storage/app/private), bukan disk publik.
      */
     protected function storeStrukImage($file, string $context): string
     {
@@ -716,19 +720,19 @@ class ReportingController extends Controller
         $path = 'transaction_proofs/struk/' . $filename;
 
         if ($jpeg !== null) {
-            Storage::disk('public')->put($path, $jpeg);
+            MediaStorage::put($path, $jpeg);
         } else {
-            $file->storeAs('transaction_proofs/struk', $filename, 'public');
+            MediaStorage::storeUploaded($file, 'transaction_proofs/struk', $filename);
         }
 
         return $path;
     }
 
     /**
-     * Simpan file lain (tanpa kompresi) ke disk public.
+     * Simpan file lain (tanpa kompresi) ke disk privat.
      */
     protected function storeUploaded($file, string $dir, string $filename): string
     {
-        return $file->storeAs($dir, $filename, 'public');
+        return MediaStorage::storeUploaded($file, $dir, $filename);
     }
 }

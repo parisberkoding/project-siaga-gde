@@ -466,16 +466,9 @@
                                                 $strukPath = $trip->transactionProofPrevious->struk_bbm_path ?? null;
                                                 $odoPath = $trip->transactionProofPrevious->odometer_photo_path ?? null;
 
-                                                $strukBase64 = '';
-                                                $odoBase64 = '';
-
-                                                if ($strukPath && Storage::disk('public')->exists($strukPath)) {
-                                                    $strukBase64 = 'data:image/' . pathinfo($strukPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode(Storage::disk('public')->get($strukPath));
-                                                }
-
-                                                if ($odoPath && Storage::disk('public')->exists($odoPath)) {
-                                                    $odoBase64 = 'data:image/' . pathinfo($odoPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode(Storage::disk('public')->get($odoPath));
-                                                }
+                                                // BUG-SEC-003: baca dari disk privat (fallback legacy).
+                                                $strukBase64 = $strukPath ? (\App\Support\MediaStorage::dataUri($strukPath) ?? '') : '';
+                                                $odoBase64 = $odoPath ? (\App\Support\MediaStorage::dataUri($odoPath) ?? '') : '';
                                             @endphp
                                             data-struk-photo="{{ $strukBase64 }}"
                                             data-odo-photo="{{ $odoBase64 }}"
@@ -501,16 +494,9 @@
                                                 $strukPath = $trip->transactionProofLatest->struk_bbm_path ?? null;
                                                 $odoPath = $trip->transactionProofLatest->odometer_photo_path ?? null;
 
-                                                $strukBase64 = '';
-                                                $odoBase64 = '';
-
-                                                if ($strukPath && Storage::disk('public')->exists($strukPath)) {
-                                                    $strukBase64 = 'data:image/' . pathinfo($strukPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode(Storage::disk('public')->get($strukPath));
-                                                }
-
-                                                if ($odoPath && Storage::disk('public')->exists($odoPath)) {
-                                                    $odoBase64 = 'data:image/' . pathinfo($odoPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode(Storage::disk('public')->get($odoPath));
-                                                }
+                                                // BUG-SEC-003: baca dari disk privat (fallback legacy).
+                                                $strukBase64 = $strukPath ? (\App\Support\MediaStorage::dataUri($strukPath) ?? '') : '';
+                                                $odoBase64 = $odoPath ? (\App\Support\MediaStorage::dataUri($odoPath) ?? '') : '';
                                             @endphp
                                             data-struk-photo="{{ $strukBase64 }}"
                                             data-odo-photo="{{ $odoBase64 }}"

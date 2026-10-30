@@ -9,6 +9,7 @@ use App\Models\StrukItem;
 use App\Models\SuratSpd;
 use App\Services\ImageAnalysisService;
 use App\Services\ImageCompressor;
+use App\Support\MediaStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -1005,7 +1006,7 @@ class SpdDailyReportController extends Controller
     }
 
     /**
-     * Simpan gambar struk ke storage public (kompresi 50%, tanpa resize).
+     * Simpan gambar struk ke disk privat (kompresi 50%, tanpa resize).
      */
     protected function storeStrukImage($file, string $context): string
     {
@@ -1019,9 +1020,9 @@ class SpdDailyReportController extends Controller
         $path = 'transaction_proofs/struk/' . $filename;
 
         if ($jpeg !== null) {
-            Storage::disk('public')->put($path, $jpeg);
+            MediaStorage::put($path, $jpeg);
         } else {
-            $file->storeAs('transaction_proofs/struk', $filename, 'public');
+            MediaStorage::storeUploaded($file, 'transaction_proofs/struk', $filename);
         }
 
         return $path;
