@@ -10,6 +10,8 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/js/app.js',
+                'resources/css/legacy-shell.css',
+                'resources/js/legacy-shell.js',
                 ...globSync('resources/js/pages/**/*.js'),
             ],
             refresh: true,

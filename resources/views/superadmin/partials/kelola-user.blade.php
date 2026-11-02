@@ -164,7 +164,7 @@
                                 @endif
                             </td>
                             <td><small>{{ $user->created_at->format('d/m/Y H:i') }}</small></td>
-                            <td>
+                            <td class="text-nowrap">
                                 @can('permission', 'users.update')
                                 <button class="btn btn-warning btn-sm btn-action"
                                         onclick="openEditModal({{ $user->id }}, '{{ $user->username }}', '{{ e($user->nama_lengkap) }}', '{{ $user->email }}', '{{ e($user->jabatan ?? '') }}', '{{ $user->roles->first()->code ?? $user->role }}', '{{ $user->default_site_id ?? '' }}', '{{ $user->unit_id ?? '' }}', {{ $user->is_active ? 1 : 0 }})"
