@@ -1,106 +1,67 @@
-@extends('templates.main')
+@php
+    $canOpen = Auth::user()->hasPermission('ai.view');
+@endphp
 
-@section('content')
-<div class="module-dash">
+<x-layouts.app title="Dashboard AI Assistant" :breadcrumbs="['Dashboard' => null]">
+    <x-ui.page-header :kicker="$module->name" :icon="$module->icon ?: 'bi bi-robot'" title="Dashboard AI Assistant"
+        description="Pemakaian asisten AI, jumlah percakapan, dan sesi terakhir yang bisa dibuka kembali.">
+        @if ($canOpen)
+            <x-slot:actions>
+                <x-ui.button :href="route('ai-assistant.index')"><i class="bi bi-robot"></i> Buka AI Assistant</x-ui.button>
+            </x-slot:actions>
+        @endif
+    </x-ui.page-header>
 
-  @include('modules.dashboard.partials.head', [
-    'module' => $module,
-    'heading' => 'Dashboard AI Assistant',
-    'description' => 'Pemakaian asisten AI, jumlah percakapan, dan sesi terakhir yang bisa dibuka kembali.',
-    'actions' => [
-      ['label' => 'Buka AI Assistant', 'route' => 'ai-assistant.index', 'icon' => 'bi bi-robot', 'permission' => 'ai.view', 'class' => 'gde-btn--primary'],
-    ],
-  ])
-
-  <div class="module-dash__grid module-dash__grid--kpi">
-    <div class="gde-stat">
-      <span class="gde-stat__icon"><i class="bi bi-chat-dots"></i></span>
-      <div>
-        <div class="gde-stat__label">Total Sesi</div>
-        <div class="gde-stat__value">{{ number_format($totalSesi) }}</div>
-        <div class="gde-stat__hint">Percakapan tersimpan</div>
-      </div>
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <x-ui.stat-card label="Total Sesi" :value="number_format($totalSesi)" icon="bi bi-chat-dots" hint="Percakapan tersimpan" />
+        <x-ui.stat-card label="Sesi Bulan Ini" :value="number_format($sesiBulanIni)" icon="bi bi-calendar-check" tone="success"
+            :hint="'Sejak ' . now()->startOfMonth()->translatedFormat('d M Y')" />
+        <x-ui.stat-card label="Total Pesan" :value="number_format($totalPesan)" icon="bi bi-chat-square-text" tone="warning" hint="Pesan pengguna & AI" />
+        <x-ui.stat-card label="Pengguna Aktif" :value="number_format($penggunaAktif)" icon="bi bi-people" hint="Pernah membuka sesi" />
     </div>
 
-    <div class="gde-stat gde-stat--green">
-      <span class="gde-stat__icon"><i class="bi bi-calendar-check"></i></span>
-      <div>
-        <div class="gde-stat__label">Sesi Bulan Ini</div>
-        <div class="gde-stat__value">{{ number_format($sesiBulanIni) }}</div>
-        <div class="gde-stat__hint">Sejak {{ now()->startOfMonth()->translatedFormat('d M Y') }}</div>
-      </div>
-    </div>
-
-    <div class="gde-stat gde-stat--yellow">
-      <span class="gde-stat__icon"><i class="bi bi-chat-square-text"></i></span>
-      <div>
-        <div class="gde-stat__label">Total Pesan</div>
-        <div class="gde-stat__value">{{ number_format($totalPesan) }}</div>
-        <div class="gde-stat__hint">Pesan pengguna & AI</div>
-      </div>
-    </div>
-
-    <div class="gde-stat">
-      <span class="gde-stat__icon"><i class="bi bi-people"></i></span>
-      <div>
-        <div class="gde-stat__label">Pengguna Aktif</div>
-        <div class="gde-stat__value">{{ number_format($penggunaAktif) }}</div>
-        <div class="gde-stat__hint">Pernah membuka sesi</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="gde-card module-dash__card">
-    <div class="gde-card__head">
-      <div>
-        <div class="gde-card__title"><i class="bi bi-clock-history"></i> Sesi Terakhir</div>
-        <p class="gde-card__sub">8 percakapan terakhir</p>
-      </div>
-      <a href="{{ route('ai-assistant.index') }}" class="gde-btn gde-btn--ghost gde-btn--xs">Buka Assistant</a>
-    </div>
-    <div class="gde-card__body">
-      @if ($sesiTerbaru->isEmpty())
-        <div class="gde-empty">
-          <span class="gde-empty__icon"><i class="bi bi-chat-square-dots"></i></span>
-          <h4>Belum ada percakapan</h4>
-          <p>Mulai bertanya ke AI Assistant untuk melihat ringkasan data SIAGA.</p>
-          <a href="{{ route('ai-assistant.index') }}" class="gde-btn gde-btn--primary gde-btn--sm">
-            <i class="bi bi-robot"></i> Mulai Percakapan
-          </a>
-        </div>
-      @else
-        <div class="gde-table-wrap">
-          <table class="gde-table gde-table--compact">
-            <thead>
-              <tr>
-                <th>Judul Sesi</th>
-                <th>Pengguna</th>
-                <th>Pesan</th>
-                <th>Terakhir Digunakan</th>
-                <th class="text-end">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              @foreach ($sesiTerbaru as $sesi)
-                <tr>
-                  <td><strong>{{ \Illuminate\Support\Str::limit($sesi->title ?: 'Tanpa judul', 48) }}</strong></td>
-                  <td>{{ $sesi->user?->nama_lengkap ?? '-' }}</td>
-                  <td>{{ number_format($sesi->messages_count) }}</td>
-                  <td>{{ $sesi->updated_at?->translatedFormat('d M Y H:i') ?? '-' }}</td>
-                  <td class="text-end">
-                    <a href="{{ route('ai-assistant.index', ['session' => $sesi->session_key]) }}"
-                       class="gde-btn gde-btn--ghost gde-btn--xs">
-                      <i class="bi bi-box-arrow-up-right"></i> Buka
-                    </a>
-                  </td>
-                </tr>
-              @endforeach
-            </tbody>
-          </table>
-        </div>
-      @endif
-    </div>
-  </div>
-
-</div>
-@endsection
+    <x-ui.card class="gap-4">
+        <x-ui.card-header title="Sesi Terakhir" icon="bi bi-clock-history" description="8 percakapan terakhir">
+            @if ($canOpen && $sesiTerbaru->isNotEmpty())
+                <x-slot:action><x-ui.button variant="ghost" size="sm" :href="route('ai-assistant.index')">Buka Assistant <i class="bi bi-arrow-right"></i></x-ui.button></x-slot:action>
+            @endif
+        </x-ui.card-header>
+        <x-ui.card-content>
+            @if ($sesiTerbaru->isEmpty())
+                <x-ui.empty-state icon="bi bi-chat-square-dots" title="Belum ada percakapan"
+                    description="Mulai bertanya ke AI Assistant untuk melihat ringkasan data SIAGA.">
+                    @if ($canOpen)
+                        <x-ui.button size="sm" class="mt-2" :href="route('ai-assistant.index')"><i class="bi bi-robot"></i> Mulai Percakapan</x-ui.button>
+                    @endif
+                </x-ui.empty-state>
+            @else
+                <x-ui.table>
+                    <thead>
+                        <tr>
+                            <th>Judul Sesi</th>
+                            <th>Pengguna</th>
+                            <th class="text-right">Pesan</th>
+                            <th>Terakhir Digunakan</th>
+                            <th><span class="sr-only">Aksi</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($sesiTerbaru as $sesi)
+                            <tr>
+                                <td class="font-medium">{{ \Illuminate\Support\Str::limit($sesi->title ?: 'Tanpa judul', 48) }}</td>
+                                <td>{{ $sesi->user?->nama_lengkap ?? '-' }}</td>
+                                <td class="text-right tabular-nums">{{ number_format($sesi->messages_count) }}</td>
+                                <td class="whitespace-nowrap text-muted-foreground">{{ $sesi->updated_at?->translatedFormat('d M Y H:i') ?? '-' }}</td>
+                                <td class="text-right">
+                                    <x-ui.button variant="ghost" size="sm" :href="route('ai-assistant.index', ['session' => $sesi->session_key])">
+                                        <i class="bi bi-box-arrow-up-right"></i> Buka
+                                    </x-ui.button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </x-ui.table>
+            @endif
+        </x-ui.card-content>
+    </x-ui.card>
+</x-layouts.app>

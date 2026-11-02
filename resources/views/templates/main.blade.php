@@ -46,28 +46,44 @@
   <!-- GDE UI Templates — design system Geodipa (dimuat terakhir agar menimpa NiceAdmin) -->
   @include('partials.gde-head')
 
-  <!-- Custom CSS untuk role lainnya (other_user, manager) yang baru -->
+  {{-- Shell baru (sidebar + header seperti x-layouts.app); isi halaman tetap Bootstrap. --}}
+  @vite(['resources/css/legacy-shell.css', 'resources/js/legacy-shell.js'])
 
 </head>
 
-<body>
+@php($withSidebar = auth()->check() && ! ($hideSidebar ?? false))
+<body class="min-h-svh lg:bg-sidebar-gradient">
+    {{-- Pasang status sidebar tersembunyi sebelum render supaya tidak berkedip. --}}
+    <script>try { if (localStorage.getItem('sidebar-collapsed') === '1') document.body.setAttribute('data-sidebar-collapsed', ''); } catch (e) {}</script>
 
-  
-  @auth
-    {{-- Sidebar & navbar tampil untuk SEMUA user terautentikasi, termasuk
-         role custom buatan superadmin (dynamic RBAC). Isi menu disaring
-         berdasarkan permission di partials/sidebar. --}}
-    @include('partials.navbar')
-    @unless ($hideSidebar ?? false)
-      @include('partials.sidebar')
-    @endunless
-    @include('partials.gemini-status-banner')
-  @endauth
+  @if ($withSidebar)
+    {{-- Tampil untuk SEMUA user terautentikasi, termasuk role custom (dynamic RBAC);
+         isi menu disaring berdasarkan permission di partials/sidebar-menu. --}}
+    <div data-shell>
+      <div data-sidebar-overlay class="fixed inset-0 z-30 hidden bg-black/40 lg:hidden [[data-sidebar-open]_&]:block"></div>
+      <x-layouts.app.sidebar />
+    </div>
+  @endif
 
+  <div aria-hidden="true" class="bg-sidebar-gradient fixed inset-x-0 top-0 z-30 hidden h-2 lg:block"></div>
 
-    <main id="main" class="main {{ ($hideSidebar ?? false) ? 'main--full' : '' }}">
-      @yield('content')
-    </main><!-- End #main -->
+  <div @class(['transition-[padding] lg:py-2 lg:pr-2', 'lg:pl-64 lg:[[data-sidebar-collapsed]_&]:pl-2' => $withSidebar, 'lg:pl-2' => ! $withSidebar])>
+    <div class="flex min-h-svh flex-col bg-background lg:min-h-[calc(100svh-1rem)] lg:rounded-xl lg:shadow-xl lg:shadow-black/20">
+      @if ($withSidebar)
+        <div data-shell class="contents">
+          <x-layouts.app.header />
+          <x-layouts.app.gemini-banner />
+        </div>
+      @endif
+
+      {{-- Utilitas shell tidak berlaku di dalam #main (lihat legacy-shell.css), jadi lebar diatur pembungkus ini. --}}
+      <div class="mx-auto w-full max-w-screen-2xl flex-1">
+        <main id="main" class="main">
+          @yield('content')
+        </main><!-- End #main -->
+      </div>
+    </div>
+  </div>
 
 
   <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>

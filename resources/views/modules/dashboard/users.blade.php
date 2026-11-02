@@ -1,155 +1,97 @@
-@extends('templates.main')
+@php
+    $user = Auth::user();
+    $canView = $user->hasPermission('users.view');
+    $maxRole = max(1, $roleCounts->max('users_count') ?? 1);
+    $maxUnit = max(1, $unitCounts->max('users_count') ?? 1);
+@endphp
 
-@section('content')
-<div class="module-dash">
+<x-layouts.app title="Dashboard Pengguna" :breadcrumbs="['Dashboard' => null]">
+    <x-ui.page-header :kicker="$module->name" :icon="$module->icon ?: 'bi bi-people'" title="Dashboard Manajemen Pengguna"
+        description="Jumlah akun, sebaran role, dan pengguna terbaru pada unit bisnis Anda.">
+        <x-slot:actions>
+            @if ($canView)
+                <x-ui.button variant="outline" :href="route('users')"><i class="bi bi-people"></i> Daftar User</x-ui.button>
+            @endif
+            @if ($user->hasPermission('users.create'))
+                <x-ui.button :href="route('users.create')"><i class="bi bi-person-plus"></i> Tambah User</x-ui.button>
+            @endif
+        </x-slot:actions>
+    </x-ui.page-header>
 
-  @include('modules.dashboard.partials.head', [
-    'module' => $module,
-    'heading' => 'Dashboard Manajemen Pengguna',
-    'description' => 'Jumlah akun, sebaran role, dan pengguna terbaru pada unit bisnis Anda.',
-    'actions' => [
-      ['label' => 'Daftar User', 'route' => 'users', 'icon' => 'bi bi-people', 'permission' => 'users.view', 'class' => 'gde-btn--primary'],
-      ['label' => 'Tambah User', 'route' => 'users.create', 'icon' => 'bi bi-person-plus', 'permission' => 'users.create'],
-    ],
-  ])
-
-  <div class="module-dash__grid module-dash__grid--kpi">
-    <div class="gde-stat">
-      <span class="gde-stat__icon"><i class="bi bi-people"></i></span>
-      <div>
-        <div class="gde-stat__label">Total Pengguna</div>
-        <div class="gde-stat__value">{{ number_format($totalUser) }}</div>
-        <div class="gde-stat__hint">Akun terdaftar</div>
-      </div>
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <x-ui.stat-card label="Total Pengguna" :value="number_format($totalUser)" icon="bi bi-people" hint="Akun terdaftar" :href="$canView ? route('users') : null" />
+        <x-ui.stat-card label="Akun Aktif" :value="number_format($userAktif)" icon="bi bi-person-check" tone="success" hint="Boleh login" />
+        <x-ui.stat-card label="Akun Nonaktif" :value="number_format($userNonaktif)" icon="bi bi-person-dash" :tone="$userNonaktif ? 'danger' : 'muted'" hint="Dinonaktifkan sementara" />
+        <x-ui.stat-card label="Pengguna Baru" :value="number_format($userBaru)" icon="bi bi-person-plus" tone="warning" hint="Dibuat bulan ini" />
     </div>
 
-    <div class="gde-stat gde-stat--green">
-      <span class="gde-stat__icon"><i class="bi bi-person-check"></i></span>
-      <div>
-        <div class="gde-stat__label">Akun Aktif</div>
-        <div class="gde-stat__value">{{ number_format($userAktif) }}</div>
-        <div class="gde-stat__hint">Boleh login</div>
-      </div>
+    <div class="grid gap-4 lg:grid-cols-2">
+        <x-ui.card class="gap-4">
+            <x-ui.card-header title="Sebaran Role" icon="bi bi-shield-check" description="Jumlah pengguna per role" />
+            <x-ui.card-content>
+                @if ($roleCounts->isEmpty())
+                    <x-ui.empty-state icon="bi bi-shield" title="Belum ada role" />
+                @else
+                    <ul class="grid gap-3">
+                        @foreach ($roleCounts as $role)
+                            <x-ui.bar-row :label="$role->name" :value="$role->users_count" :max="$maxRole" />
+                        @endforeach
+                    </ul>
+                @endif
+            </x-ui.card-content>
+        </x-ui.card>
+
+        <x-ui.card class="gap-4">
+            <x-ui.card-header title="Sebaran Unit" icon="bi bi-diagram-3" description="Jumlah pengguna per unit bisnis" />
+            <x-ui.card-content>
+                @if ($unitCounts->isEmpty())
+                    <x-ui.empty-state icon="bi bi-diagram-3" title="Belum ada unit" />
+                @else
+                    <ul class="grid gap-3">
+                        @foreach ($unitCounts as $unit)
+                            <x-ui.bar-row :label="$unit->name . ($unit->is_central ? ' (Pusat)' : '')" :value="$unit->users_count" :max="$maxUnit" color="bg-success" />
+                        @endforeach
+                    </ul>
+                @endif
+            </x-ui.card-content>
+        </x-ui.card>
     </div>
 
-    <div class="gde-stat gde-stat--red">
-      <span class="gde-stat__icon"><i class="bi bi-person-dash"></i></span>
-      <div>
-        <div class="gde-stat__label">Akun Nonaktif</div>
-        <div class="gde-stat__value">{{ number_format($userNonaktif) }}</div>
-        <div class="gde-stat__hint">Dinonaktifkan sementara</div>
-      </div>
-    </div>
-
-    <div class="gde-stat gde-stat--yellow">
-      <span class="gde-stat__icon"><i class="bi bi-person-plus"></i></span>
-      <div>
-        <div class="gde-stat__label">Pengguna Baru</div>
-        <div class="gde-stat__value">{{ number_format($userBaru) }}</div>
-        <div class="gde-stat__hint">Dibuat bulan ini</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="module-dash__grid module-dash__grid--2">
-    <div class="gde-card module-dash__card">
-      <div class="gde-card__head">
-        <div>
-          <div class="gde-card__title"><i class="bi bi-shield-check"></i> Sebaran Role</div>
-          <p class="gde-card__sub">Jumlah pengguna per role</p>
-        </div>
-      </div>
-      <div class="gde-card__body">
-        @php $maxRole = max(1, $roleCounts->max('users_count') ?? 1); @endphp
-        @forelse ($roleCounts as $role)
-          <div class="dash-bar">
-            <div class="dash-bar__meta">
-              <span>{{ $role->name }}</span>
-              <b>{{ number_format($role->users_count) }}</b>
-            </div>
-            <div class="gde-progress gde-progress--blue">
-              <span class="gde-progress__bar" style="width: {{ round($role->users_count / $maxRole * 100) }}%"></span>
-            </div>
-          </div>
-        @empty
-          <div class="dash-list__empty">Belum ada role.</div>
-        @endforelse
-      </div>
-    </div>
-
-    <div class="gde-card module-dash__card">
-      <div class="gde-card__head">
-        <div>
-          <div class="gde-card__title"><i class="bi bi-diagram-3"></i> Sebaran Unit</div>
-          <p class="gde-card__sub">Jumlah pengguna per unit bisnis</p>
-        </div>
-      </div>
-      <div class="gde-card__body">
-        @php $maxUnit = max(1, $unitCounts->max('users_count') ?? 1); @endphp
-        @forelse ($unitCounts as $unit)
-          <div class="dash-bar">
-            <div class="dash-bar__meta">
-              <span>{{ $unit->name }}{{ $unit->is_central ? ' (Pusat)' : '' }}</span>
-              <b>{{ number_format($unit->users_count) }}</b>
-            </div>
-            <div class="gde-progress">
-              <span class="gde-progress__bar" style="width: {{ round($unit->users_count / $maxUnit * 100) }}%"></span>
-            </div>
-          </div>
-        @empty
-          <div class="dash-list__empty">Belum ada unit.</div>
-        @endforelse
-      </div>
-    </div>
-  </div>
-
-  <div class="gde-card module-dash__card">
-    <div class="gde-card__head">
-      <div>
-        <div class="gde-card__title"><i class="bi bi-person-lines-fill"></i> Pengguna Terbaru</div>
-        <p class="gde-card__sub">6 akun terakhir yang dibuat</p>
-      </div>
-      @if (Auth::user()->hasPermission('users.view'))
-        <a href="{{ route('users') }}" class="gde-btn gde-btn--ghost gde-btn--xs">Lihat semua</a>
-      @endif
-    </div>
-    <div class="gde-card__body">
-      @if ($userTerbaru->isEmpty())
-        <div class="dash-list__empty">Belum ada pengguna.</div>
-      @else
-        <div class="gde-table-wrap">
-          <table class="gde-table gde-table--compact">
-            <thead>
-              <tr>
-                <th>Nama</th>
-                <th>Username</th>
-                <th>Unit</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Dibuat</th>
-              </tr>
-            </thead>
-            <tbody>
-              @foreach ($userTerbaru as $row)
-                <tr>
-                  <td><strong>{{ $row->nama_lengkap }}</strong></td>
-                  <td>{{ $row->username }}</td>
-                  <td>{{ $row->unit?->name ?? 'Belum ada unit' }}</td>
-                  <td>{{ $row->roles->pluck('name')->join(', ') ?: ucfirst($row->role) }}</td>
-                  <td>
-                    <span class="gde-badge {{ $row->is_active ? '' : 'gde-badge--red' }}">
-                      {{ $row->is_active ? 'Aktif' : 'Nonaktif' }}
-                    </span>
-                  </td>
-                  <td>{{ $row->created_at?->translatedFormat('d M Y') ?? '-' }}</td>
-                </tr>
-              @endforeach
-            </tbody>
-          </table>
-        </div>
-      @endif
-    </div>
-  </div>
-
-</div>
-@endsection
+    <x-ui.card class="gap-4">
+        <x-ui.card-header title="Pengguna Terbaru" icon="bi bi-person-lines-fill" description="6 akun terakhir yang dibuat">
+            @if ($canView)
+                <x-slot:action><x-ui.button variant="ghost" size="sm" :href="route('users')">Lihat semua <i class="bi bi-arrow-right"></i></x-ui.button></x-slot:action>
+            @endif
+        </x-ui.card-header>
+        <x-ui.card-content>
+            @if ($userTerbaru->isEmpty())
+                <x-ui.empty-state icon="bi bi-people" title="Belum ada pengguna" />
+            @else
+                <x-ui.table>
+                    <thead>
+                        <tr>
+                            <th>Nama</th>
+                            <th>Username</th>
+                            <th>Unit</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Dibuat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($userTerbaru as $row)
+                            <tr>
+                                <td class="font-medium">{{ $row->nama_lengkap }}</td>
+                                <td class="text-muted-foreground">{{ $row->username }}</td>
+                                <td>{{ $row->unit?->name ?? 'Belum ada unit' }}</td>
+                                <td>{{ $row->roles->pluck('name')->join(', ') ?: ucfirst($row->role) }}</td>
+                                <td><x-ui.badge :variant="$row->is_active ? 'success' : 'danger'">{{ $row->is_active ? 'Aktif' : 'Nonaktif' }}</x-ui.badge></td>
+                                <td class="whitespace-nowrap text-muted-foreground">{{ $row->created_at?->translatedFormat('d M Y') ?? '-' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </x-ui.table>
+            @endif
+        </x-ui.card-content>
+    </x-ui.card>
+</x-layouts.app>

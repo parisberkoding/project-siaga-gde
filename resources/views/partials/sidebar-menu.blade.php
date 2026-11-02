@@ -171,7 +171,7 @@
             ['label' => 'Unit Bisnis', 'icon' => 'bi bi-diagram-3', 'route' => 'superadmin.units.index', 'active' => ['superadmin.units.*'], 'perms' => ['settings.manage']],
             ['label' => 'Site / Lokasi', 'icon' => 'bi bi-geo-alt', 'route' => 'superadmin.sites.index', 'active' => ['superadmin.sites.*'], 'perms' => ['settings.manage']],
             ['label' => 'Pemetaan Jabatan SSO', 'icon' => 'bi bi-person-badge', 'route' => 'superadmin.sso.mappings.index', 'active' => ['superadmin.sso.*'], 'perms' => ['settings.sso_mapping']],
-            ['label' => 'Tahap Fitur', 'icon' => 'bi bi-toggle2', 'route' => 'superadmin.features.index', 'active' => ['superadmin.features.index'], 'perms' => ['features.manage']],
+            ['label' => 'Tahap Fitur', 'icon' => 'bi bi-toggles', 'route' => 'superadmin.features.index', 'active' => ['superadmin.features.index'], 'perms' => ['features.manage']],
             ['label' => 'Akses Fitur', 'icon' => 'bi bi-ui-checks', 'route' => 'superadmin.features.on_unit', 'active' => ['superadmin.features.on_unit'], 'perms' => ['features.manage']],
         ]],
 

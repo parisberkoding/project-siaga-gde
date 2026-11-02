@@ -21,12 +21,12 @@
     <link rel="icon" href="{{ asset('DashboardTemplates/assets/img/geodipa-logo-croped.png') }}">
     <link rel="stylesheet" href="{{ asset('gde-ui-templates/fonts/poppins.css') }}">
     <link rel="stylesheet" href="{{ asset('DashboardTemplates/assets/vendor/bootstrap-icons/bootstrap-icons.css') }}">
-    {{-- Pasang status sidebar tersembunyi sebelum render supaya tidak berkedip. --}}
-    <script>try { if (localStorage.getItem('sidebar-collapsed') === '1') document.documentElement.setAttribute('data-sidebar-collapsed', ''); } catch (e) {}</script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('head')
 </head>
 <body class="min-h-svh lg:bg-sidebar-gradient">
+    {{-- Pasang status sidebar tersembunyi sebelum render supaya tidak berkedip. --}}
+    <script>try { if (localStorage.getItem('sidebar-collapsed') === '1') document.body.setAttribute('data-sidebar-collapsed', ''); } catch (e) {}</script>
     @if ($sidebar)
         <div data-sidebar-overlay class="fixed inset-0 z-30 hidden bg-black/40 lg:hidden [[data-sidebar-open]_&]:block"></div>
 
