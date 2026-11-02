@@ -23,7 +23,8 @@
             </span>
         </div>
 
-        <div class="grid gap-4 xl:grid-cols-2">
+        {{-- Satu kolom: tiap permohonan satu kartu memanjang (lg ke atas isinya berderet). --}}
+        <div class="grid gap-3">
             @foreach ($pendingRequests->sortBy('request_date') as $req)
                 @php
                     $vehicleCode = $req->vehicle->consumerial_code ?? '-';
@@ -32,64 +33,60 @@
                     $waitingDays = $req->request_date->diffInDays(now());
                 @endphp
                 <article data-decision-item="{{ $req->id }}" data-summary="{{ json_encode($summary) }}"
-                         class="ornament-corner flex flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:translate-y-0 has-[[data-select]:checked]:border-primary has-[[data-select]:checked]:shadow-md has-[[data-select]:checked]:ring-2 has-[[data-select]:checked]:ring-primary/30">
-                    <div class="grid flex-1 content-start gap-4 p-4">
-                        {{-- Kepala: pemohon, status, waktu tunggu, pilih --}}
-                        <div class="flex items-start gap-3">
-                            <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-primary to-module-spd text-sm font-semibold text-white shadow-sm ring-4 ring-card">
-                                {{ $initials($req->requester->nama_lengkap) }}
-                            </span>
-                            <div class="grid min-w-0 flex-1 gap-1">
-                                <p class="truncate text-base font-semibold leading-tight">{{ $req->requester->nama_lengkap }}</p>
-                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                                    <span class="inline-flex items-center gap-1 rounded-full bg-warning-soft px-2 py-0.5 font-semibold text-warning">
-                                        <span class="relative flex size-1.5"><span class="absolute inline-flex size-full animate-ping rounded-full bg-warning opacity-60 motion-reduce:animate-none"></span><span class="relative inline-flex size-1.5 rounded-full bg-warning"></span></span>
-                                        Menunggu
-                                    </span>
-                                    <span @class(['inline-flex items-center gap-1', 'font-semibold text-destructive' => $waitingDays >= 2, 'text-muted-foreground' => $waitingDays < 2])
-                                          title="Diajukan {{ $req->request_date->format('d/m/Y H:i') }}">
-                                        <i class="bi bi-clock-history"></i> {{ $req->request_date->diffForHumans() }}
-                                    </span>
-                                </div>
-                            </div>
-                            {{-- Pilih untuk keputusan massal --}}
-                            <label class="flex shrink-0 cursor-pointer items-center gap-2 rounded-md border bg-card/80 px-2.5 py-1.5 text-xs font-medium text-muted-foreground shadow-xs backdrop-blur transition-colors hover:border-primary/50 hover:text-foreground has-checked:border-primary has-checked:bg-primary/10 has-checked:text-primary">
-                                <x-ui.checkbox data-select aria-label="Pilih permohonan {{ $req->request_number }}" />
-                                Pilih
-                            </label>
-                        </div>
-
-                        {{-- Rincian ringkas + nominal --}}
-                        <div class="flex items-stretch justify-between gap-4">
-                            <div class="grid min-w-0 gap-1.5 text-sm">
-                                <p class="flex min-w-0 items-center gap-2">
-                                    <i class="bi bi-truck text-muted-foreground"></i>
-                                    <span class="truncate"><span class="font-semibold">{{ $vehicleCode }}</span> <span class="text-muted-foreground">{{ $vehicleName }}</span></span>
-                                </p>
-                                <p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
-                                    <span class="inline-flex items-center gap-1.5"><i class="bi bi-fuel-pump"></i> <span class="text-foreground">{{ $req->gasoline_type }}</span></span>
-                                    <span class="size-1 rounded-full bg-border"></span>
-                                    <span class="inline-flex items-center gap-1.5"><i class="bi bi-calendar3"></i> {{ $req->request_date->translatedFormat('d M Y, H:i') }}</span>
-                                </p>
-                                <p class="font-mono text-xs text-muted-foreground">{{ $req->request_number }}</p>
-                            </div>
-                            <div class="grid min-w-36 shrink-0 content-center gap-1.5 rounded-xl bg-primary/5 px-4 py-3 text-right ring-1 ring-primary/10">
-                                <p class="text-[10px] font-semibold uppercase leading-none tracking-wider text-muted-foreground">Nominal</p>
-                                <p class="whitespace-nowrap text-xl leading-none font-bold tracking-tight tabular-nums text-primary"><span class="mr-0.5 text-sm font-semibold text-primary/70">Rp</span>{{ number_format((float) $req->bill_amounts, 0, ",", ".") }}</p>
+                         class="flex flex-col gap-4 rounded-xl border bg-card p-4 shadow-xs transition-shadow duration-200 hover:shadow-md lg:flex-row lg:items-center lg:gap-6 has-[[data-select]:checked]:border-primary has-[[data-select]:checked]:ring-2 has-[[data-select]:checked]:ring-primary/30">
+                    {{-- Pemohon, status, waktu tunggu --}}
+                    <div class="flex min-w-0 items-center gap-3 lg:w-64 lg:shrink-0">
+                        <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-primary to-module-spd text-sm font-semibold text-white shadow-sm">
+                            {{ $initials($req->requester->nama_lengkap) }}
+                        </span>
+                        <div class="grid min-w-0 flex-1 gap-1">
+                            <p class="truncate text-base font-semibold leading-tight">{{ $req->requester->nama_lengkap }}</p>
+                            <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                                <span class="inline-flex items-center gap-1 rounded-full bg-warning-soft px-2 py-0.5 font-semibold text-warning">
+                                    <span class="relative flex size-1.5"><span class="absolute inline-flex size-full animate-ping rounded-full bg-warning opacity-60 motion-reduce:animate-none"></span><span class="relative inline-flex size-1.5 rounded-full bg-warning"></span></span>
+                                    Menunggu
+                                </span>
+                                <span @class(['inline-flex items-center gap-1', 'font-semibold text-destructive' => $waitingDays >= 2, 'text-muted-foreground' => $waitingDays < 2])
+                                      title="Diajukan {{ $req->request_date->format('d/m/Y H:i') }}">
+                                    <i class="bi bi-clock-history"></i> {{ $req->request_date->diffForHumans() }}
+                                </span>
                             </div>
                         </div>
+                    </div>
 
+                    {{-- Rincian: kendaraan, BBM, tanggal, nomor, catatan --}}
+                    <div class="grid min-w-0 flex-1 gap-1.5 text-sm">
+                        <p class="flex min-w-0 items-center gap-2">
+                            <i class="bi bi-truck text-muted-foreground"></i>
+                            <span class="truncate"><span class="font-semibold">{{ $vehicleCode }}</span> <span class="text-muted-foreground">{{ $vehicleName }}</span></span>
+                        </p>
+                        <p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
+                            <span class="inline-flex items-center gap-1.5"><i class="bi bi-fuel-pump"></i> <span class="text-foreground">{{ $req->gasoline_type }}</span></span>
+                            <span class="size-1 rounded-full bg-border"></span>
+                            <span class="inline-flex items-center gap-1.5"><i class="bi bi-calendar3"></i> {{ $req->request_date->translatedFormat('d M Y, H:i') }}</span>
+                            <span class="size-1 rounded-full bg-border"></span>
+                            <span class="font-mono text-xs">{{ $req->request_number }}</span>
+                        </p>
                         @if ($req->requester_notes)
-                            <blockquote class="relative rounded-lg bg-muted/60 py-2 pl-9 pr-3 text-sm text-foreground/80">
-                                <i class="bi bi-quote absolute left-3 top-1.5 text-lg text-primary/40"></i>
-                                {{ $req->requester_notes }}
-                            </blockquote>
+                            <p class="flex min-w-0 items-start gap-2 text-foreground/80">
+                                <i class="bi bi-chat-left-quote text-primary/50"></i>
+                                <span class="line-clamp-2">{{ $req->requester_notes }}</span>
+                            </p>
                         @endif
                     </div>
 
-                    {{-- Aksi --}}
-                    <div class="mx-4 flex items-center justify-between gap-3 border-t py-3">
-                        <span class="text-xs text-muted-foreground">Keputusan akan dikonfirmasi lewat dialog.</span>
+                    {{-- Nominal --}}
+                    <div class="flex items-baseline justify-between gap-2 rounded-lg bg-primary/5 px-4 py-2.5 ring-1 ring-primary/10 lg:grid lg:min-w-40 lg:shrink-0 lg:justify-items-end lg:gap-1">
+                        <p class="text-[10px] font-semibold uppercase leading-none tracking-wider text-muted-foreground">Nominal</p>
+                        <p class="whitespace-nowrap text-xl leading-none font-bold tracking-tight tabular-nums text-primary"><span class="mr-0.5 text-sm font-semibold text-primary/70">Rp</span>{{ number_format((float) $req->bill_amounts, 0, ",", ".") }}</p>
+                    </div>
+
+                    {{-- Pilih (keputusan massal) + aksi; keputusan dikonfirmasi lewat dialog --}}
+                    <div class="flex items-center justify-between gap-2 border-t pt-3 lg:shrink-0 lg:border-t-0 lg:pt-0">
+                        <label class="flex cursor-pointer items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground shadow-xs transition-colors hover:border-primary/50 hover:text-foreground has-checked:border-primary has-checked:bg-primary/10 has-checked:text-primary">
+                            <x-ui.checkbox data-select aria-label="Pilih permohonan {{ $req->request_number }}" />
+                            Pilih
+                        </label>
                         <div class="flex gap-2">
                             <x-ui.button variant="outline" size="sm" data-decide="reject" class="text-destructive hover:bg-destructive-soft hover:text-destructive">
                                 <i class="bi bi-x-circle"></i> Tolak

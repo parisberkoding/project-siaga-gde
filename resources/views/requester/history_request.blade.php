@@ -1,8 +1,27 @@
 <x-layouts.app title="Riwayat Permohonan BBM" :breadcrumbs="['Permohonan BBM' => route('requester-index'), 'Riwayat' => null]">
-    <x-ui.page-header kicker="Permohonan BBM" title="Riwayat Permohonan" description="Semua permohonan BBM yang pernah Anda ajukan." />
+    <x-ui.page-header kicker="Permohonan BBM" title="Riwayat Permohonan" description="Semua permohonan BBM yang pernah Anda ajukan, per bulan pengajuan." />
 
     <x-ui.card class="gap-4">
         <x-ui.card-content class="grid gap-4">
+            <form method="GET" action="{{ route('requester-history') }}" data-autosubmit class="flex flex-wrap items-center justify-between gap-3">
+                <label class="flex items-center gap-2 text-sm font-medium">
+                    <i class="bi bi-calendar3 text-muted-foreground"></i> Bulan
+                    <x-ui.select name="bulan" inline aria-label="Filter bulan pengajuan">
+                        @foreach ($months as $month)
+                            <option value="{{ $month->format('Y-m') }}" @selected($selectedMonth?->format('Y-m') === $month->format('Y-m'))>{{ $month->translatedFormat('F Y') }}</option>
+                        @endforeach
+                        <option value="semua" @selected(! $selectedMonth)>Semua bulan</option>
+                    </x-ui.select>
+                </label>
+                <noscript><x-ui.button type="submit" variant="outline" size="sm">Terapkan</x-ui.button></noscript>
+                <p class="text-sm text-muted-foreground">
+                    {{ $history->total() }} permohonan {{ $selectedMonth ? 'di ' . $selectedMonth->translatedFormat('F Y') : 'di semua bulan' }}
+                </p>
+            </form>
+
+            {{-- Pengguna HP: navigasi halaman juga di atas supaya tidak perlu menggulir ke bawah. --}}
+            <div class="md:hidden">{{ $history->links('vendor.pagination.shadcn') }}</div>
+
             <x-ui.table>
                 <thead>
                     <tr>
@@ -35,7 +54,9 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="py-10 text-center text-muted-foreground">Belum ada riwayat permohonan.</td>
+                            <td colspan="7" class="py-10 text-center text-muted-foreground">
+                                {{ $selectedMonth ? 'Tidak ada permohonan di bulan ini. Pilih bulan lain atau Semua bulan.' : 'Belum ada riwayat permohonan.' }}
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>

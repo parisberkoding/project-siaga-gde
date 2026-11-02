@@ -605,12 +605,34 @@ class RequestManagementController extends Controller
         // Get all requests with relationships.
         // Urutkan berdasar aktivitas laporan terbaru (submission report / tanggal request)
         // supaya permohonan yang baru saja dilaporkan langsung muncul di paling atas.
-        $history = Permohonan::where('requester_id', $user->id)
-            ->with(['vehicle', 'authorizer', 'approvedRequest', 'transactionProof'])
-            ->orderByDesc(DB::raw('COALESCE((SELECT created_at FROM transaction_proofs tp WHERE tp.req_id = permohonans.id), request_date)'))
-            ->paginate(20);
+        $base = Permohonan::where('requester_id', $user->id);
 
-        return view('requester.history_request', compact('title', 'history'));
+        // Filter per bulan pengajuan supaya yang diambil hanya data satu bulan.
+        // Default: bulan pengajuan terakhir; "semua" = tanpa filter bulan.
+        $range = (clone $base)->selectRaw('MIN(request_date) AS first, MAX(request_date) AS last')->first();
+        $months = collect();
+        if ($range?->last) {
+            $cursor = Carbon::parse($range->last)->startOfMonth();
+            $first = Carbon::parse($range->first)->startOfMonth();
+            while ($cursor->gte($first) && $months->count() < 24) {
+                $months->push($cursor->copy());
+                $cursor->subMonth();
+            }
+        }
+
+        $bulan = request('bulan', $months->first()?->format('Y-m'));
+        $selectedMonth = $bulan && $bulan !== 'semua' && preg_match('/^\d{4}-\d{2}$/', $bulan)
+            ? Carbon::createFromFormat('Y-m-d', $bulan . '-01')->startOfMonth()
+            : null;
+
+        $history = $base
+            ->with(['vehicle', 'authorizer', 'approvedRequest', 'transactionProof'])
+            ->when($selectedMonth, fn ($q) => $q->whereBetween('request_date', [$selectedMonth, $selectedMonth->copy()->endOfMonth()]))
+            ->orderByDesc(DB::raw('COALESCE((SELECT created_at FROM transaction_proofs tp WHERE tp.req_id = permohonans.id), request_date)'))
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('requester.history_request', compact('title', 'history', 'months', 'selectedMonth'));
     }
 
     /**

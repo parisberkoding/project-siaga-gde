@@ -9,6 +9,14 @@
     $draftGrouped = $draftItems->groupBy(fn ($i) => $i->tanggal ? $i->tanggal->format('Y-m-d') : 'tanpa-tanggal');
     $rp = fn ($value) => 'Rp ' . number_format((float) $value, 0, ',', '.');
     $updateItemUrlBase = rtrim(str_replace('/__SLUG__', '', route('pelaporan.spd.daily.update-item', ['surat' => $surat, 'item' => '__SLUG__'])), '/');
+    // Disusun di sini karena @json multi-baris dengan "::" gagal di-parse Blade.
+    $pageData = [
+        'bulkUploadUrl' => route('pelaporan.spd.daily.upload-items', $surat),
+        'bulkUpdateUrl' => route('pelaporan.spd.daily.update-items', $surat),
+        'updateItemUrlBase' => $updateItemUrlBase,
+        'csrfToken' => csrf_token(),
+        'maxBulkUpload' => \App\Http\Controllers\SpdDailyReportController::MAX_BULK_UPLOAD,
+    ];
 @endphp
 
 <x-layouts.app title="Pelaporan & Validasi SPD" :breadcrumbs="['SPD Berjalan' => route('requester.spd.berjalan'), 'Pelaporan & Validasi' => null]">
@@ -253,13 +261,7 @@
     </template>
 
     @push('scripts')
-        <script type="application/json" id="page-data">@json([
-            'bulkUploadUrl' => route('pelaporan.spd.daily.upload-items', $surat),
-            'bulkUpdateUrl' => route('pelaporan.spd.daily.update-items', $surat),
-            'updateItemUrlBase' => $updateItemUrlBase,
-            'csrfToken' => csrf_token(),
-            'maxBulkUpload' => \App\Http\Controllers\SpdDailyReportController::MAX_BULK_UPLOAD,
-        ])</script>
+        <script type="application/json" id="page-data">@json($pageData)</script>
         @vite('resources/js/pages/spd/validasi.js')
     @endpush
 </x-layouts.app>
