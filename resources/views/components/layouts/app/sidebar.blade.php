@@ -21,22 +21,55 @@
     </div>
 
     @if ($module)
+        {{-- Seluruh kartu modul aktif bisa diklik: membuka daftar modul untuk pindah langsung. --}}
+        @php
+            $modules = app(\App\Services\ModuleContext::class)->availableModules($user);
+            $moduleTile = fn ($code) => match ($code) {
+                'bbm' => 'bg-module-bbm',
+                'spd' => 'bg-module-spd',
+                default => 'bg-white/15',
+            };
+        @endphp
         <div class="px-3 pb-2">
-            <div class="flex items-center gap-3 rounded-lg bg-white/8 p-2 ring-1 ring-white/10">
-                <span @class([
-                    'flex size-9 shrink-0 items-center justify-center rounded-md text-white shadow-sm',
-                    'bg-module-bbm' => $module->code === 'bbm',
-                    'bg-module-spd' => $module->code === 'spd',
-                    'bg-white/15' => ! in_array($module->code, ['bbm', 'spd'], true),
-                ])>
+            <button type="button" popovertarget="module-switcher" aria-haspopup="menu"
+                    class="group flex w-full cursor-pointer items-center gap-3 rounded-lg bg-white/8 p-2 text-left ring-1 ring-white/10 outline-none transition-colors hover:bg-white/14 hover:ring-white/25 focus-visible:ring-2 focus-visible:ring-white/60">
+                <span class="flex size-9 shrink-0 items-center justify-center rounded-md text-white shadow-sm {{ $moduleTile($module->code) }}">
                     <i class="{{ $module->icon ?: 'bi bi-grid' }}"></i>
                 </span>
                 <span class="grid min-w-0 flex-1 leading-tight">
                     <span class="text-[11px] uppercase tracking-wider text-sidebar-muted-foreground">Modul aktif</span>
                     <span class="line-clamp-2 text-sm font-semibold text-white">{{ $module->name }}</span>
                 </span>
-                <a href="{{ route('modules.index') }}" class="flex size-7 shrink-0 items-center justify-center rounded-md text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-white" title="Ganti modul" aria-label="Ganti modul">
-                    <i class="bi bi-arrow-left-right"></i>
+                <span class="flex size-7 shrink-0 items-center justify-center rounded-md text-sidebar-muted-foreground transition-colors group-hover:bg-white/15 group-hover:text-white">
+                    <i class="bi bi-chevron-expand"></i>
+                </span>
+            </button>
+
+            <div id="module-switcher" popover data-dropdown data-align="start" role="menu" aria-label="Pindah modul"
+                 class="m-0 w-72 rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-lg">
+                <p class="px-2 pb-1.5 pt-1 text-xs font-medium text-muted-foreground">Pindah modul</p>
+                @foreach ($modules as $item)
+                    @php $isCurrent = $item->is($module); @endphp
+                    <form action="{{ route('modules.activate', $item->code) }}" method="POST">
+                        @csrf
+                        <button type="submit" role="menuitem" @if ($isCurrent) aria-current="page" @endif
+                                @class(['flex w-full items-center gap-3 rounded-md p-2 text-left outline-none transition-colors hover:bg-accent focus-visible:bg-accent', 'bg-accent' => $isCurrent])>
+                            <span @class(['flex size-8 shrink-0 items-center justify-center rounded-md text-white shadow-sm', $moduleTile($item->code) === 'bg-white/15' ? 'bg-primary' : $moduleTile($item->code)])>
+                                <i class="{{ $item->icon ?: 'bi bi-grid' }}"></i>
+                            </span>
+                            <span class="grid min-w-0 flex-1 leading-tight">
+                                <span class="truncate text-sm font-medium">{{ $item->name }}</span>
+                                @if ($item->description)
+                                    <span class="truncate text-xs text-muted-foreground" title="{{ $item->description }}">{{ $item->description }}</span>
+                                @endif
+                            </span>
+                            @if ($isCurrent)<i class="bi bi-check2 text-primary"></i>@endif
+                        </button>
+                    </form>
+                @endforeach
+                <div class="my-1 h-px bg-border"></div>
+                <a href="{{ route('modules.index') }}" role="menuitem" class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none hover:bg-accent focus-visible:bg-accent">
+                    <i class="bi bi-grid text-muted-foreground"></i> Lihat semua modul
                 </a>
             </div>
         </div>

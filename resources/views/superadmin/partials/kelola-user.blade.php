@@ -1,808 +1,362 @@
-@extends('templates.main')
+{{--
+  Manajemen Pengguna (modul Pengguna & Hak Akses). Semua aksi memakai endpoint yang sudah ada:
+  filter search/role, ubah, reset password, kredensial (+ reveal JSON), hapus, pulihkan.
+  Bagian bertanda "Segera" (filter unit/status, aksi massal, ekspor, riwayat aktivitas) baru UI:
+  endpoint-nya belum ada di BE. Interaksi halaman: resources/js/pages/users/index.js.
+--}}
+@php
+    $authUser = Auth::user();
+    $scope = \App\Services\UnitScope::for($authUser);
+    $scoped = fn () => \App\Models\User::query()->when(! $scope->isGlobal(), fn ($q) => $q->where('unit_id', $authUser->unit_id));
+    $stats = [
+        'total' => $scoped()->count(),
+        'aktif' => $scoped()->where('is_active', true)->count(),
+        'nonaktif' => $scoped()->where('is_active', false)->count(),
+        'sso' => $scoped()->where('auth_provider', 'sso')->count(),
+    ];
+    $roleCounts = \Illuminate\Support\Facades\DB::table('user_roles')
+        ->join('users', 'users.id', '=', 'user_roles.user_id')
+        ->whereNull('users.deleted_at')
+        ->when(! $scope->isGlobal(), fn ($q) => $q->where('users.unit_id', $authUser->unit_id))
+        ->selectRaw('role_id, count(*) as total')->groupBy('role_id')->pluck('total', 'role_id');
 
-@section('title', 'Kelola User')
+    // Hak akses efektif per role untuk dialog detail (dibaca JS dari atribut data).
+    $rolePerms = \App\Models\Role::with('permissions.group')->get()->mapWithKeys(fn ($r) => [$r->code => [
+        'name' => $r->name,
+        'groups' => $r->permissions->groupBy(fn ($p) => $p->group?->name ?? 'Lainnya')
+            ->map(fn ($perms) => $perms->map(fn ($p) => ['code' => $p->code, 'label' => $p->description ?: $p->action])->values())->all(),
+    ]]);
 
-@section('content')
-<div class="pagetitle">
-    <h1>Manajemen User</h1>
-    <nav>
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('admin-dashboard') }}">Home</a></li>
-            <li class="breadcrumb-item">Master Data</li>
-            <li class="breadcrumb-item active">Pengguna</li>
-        </ol>
-    </nav>
-</div>
+    $tones = [
+        'superadmin' => 'bg-rose-100 text-rose-700 ring-rose-200', 'developers' => 'bg-slate-200 text-slate-700 ring-slate-300',
+        'general_affairs' => 'bg-emerald-100 text-emerald-700 ring-emerald-200', 'manager' => 'bg-amber-100 text-amber-800 ring-amber-200',
+        'dispatcher' => 'bg-cyan-100 text-cyan-700 ring-cyan-200', 'requester' => 'bg-blue-100 text-blue-700 ring-blue-200',
+        'pegawai' => 'bg-violet-100 text-violet-700 ring-violet-200', 'pengguna_spd' => 'bg-indigo-100 text-indigo-700 ring-indigo-200',
+        'view_only' => 'bg-zinc-100 text-zinc-600 ring-zinc-200', 'vendor' => 'bg-orange-100 text-orange-700 ring-orange-200',
+    ];
+    $avatarTones = ['from-blue-500 to-indigo-600', 'from-emerald-500 to-teal-600', 'from-orange-400 to-rose-500', 'from-violet-500 to-fuchsia-600', 'from-cyan-500 to-sky-600'];
+    $initials = fn ($name) => collect(explode(' ', trim((string) $name)))->filter()->take(2)->map(fn ($p) => mb_strtoupper(mb_substr($p, 0, 1)))->join('') ?: '?';
+    $canUpdate = $authUser->hasPermission('users.update');
+    $canDelete = $authUser->hasPermission('users.delete');
+    $canCreate = $authUser->hasPermission('users.create');
+    $soon = '<span class="ml-1 rounded-full bg-muted px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Segera</span>';
+@endphp
 
-<!-- Alert Messages -->
-@if(session('success'))
-<div class="alert alert-success alert-dismissible fade show">
-    <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-@endif
+<x-layouts.app title="Manajemen Pengguna" :breadcrumbs="['Daftar Pengguna' => null]">
+    <x-ui.page-header kicker="Pengguna & Hak Akses" title="Manajemen Pengguna"
+        description="Kelola akun, peran, unit, dan akses login setiap pengguna SIAGA.">
+        <x-slot:actions>
+            <x-ui.button variant="outline" disabled title="Ekspor daftar pengguna belum tersedia"><i class="bi bi-file-earmark-spreadsheet"></i> Ekspor {!! $soon !!}</x-ui.button>
+            @if ($canCreate)
+                <x-ui.button :href="route('users.create')"><i class="bi bi-person-plus"></i> Tambah Pengguna</x-ui.button>
+            @endif
+        </x-slot:actions>
+    </x-ui.page-header>
 
-@if(session('error'))
-<div class="alert alert-danger alert-dismissible fade show">
-    <i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-@endif
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <x-ui.stat-card label="Total Pengguna" :value="$stats['total']" icon="bi bi-people" hint="Dalam cakupan unit Anda" />
+        <x-ui.stat-card label="Akun Aktif" :value="$stats['aktif']" icon="bi bi-person-check" tone="success" hint="Bisa login" />
+        <x-ui.stat-card label="Akun Nonaktif" :value="$stats['nonaktif']" icon="bi bi-person-slash" tone="warning" hint="Login diblokir" />
+        <x-ui.stat-card label="Terhapus" :value="$deletedUsers->total()" icon="bi bi-trash3" tone="danger" hint="Bisa dipulihkan" :href="$canDelete ? route('users', ['tab' => 'deleted']) : null" />
+    </div>
 
-@if($errors->any())
-<div class="alert alert-danger alert-dismissible fade show">
-    <i class="bi bi-exclamation-triangle me-2"></i>
-    <strong>Terjadi kesalahan:</strong>
-    <ul class="mb-0 mt-2">
-        @foreach($errors->all() as $error)
-        <li>{{ $error }}</li>
-        @endforeach
-    </ul>
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-@endif
+    <x-ui.tabs-list>
+        <x-ui.tabs-link :href="route('users', ['tab' => 'list'])" :active="$tab !== 'deleted'"><i class="bi bi-people"></i> Daftar Pengguna</x-ui.tabs-link>
+        @if ($canDelete)
+            <x-ui.tabs-link :href="route('users', ['tab' => 'deleted'])" :active="$tab === 'deleted'"><i class="bi bi-trash3"></i> Terhapus
+                @if ($deletedUsers->total())<x-ui.badge variant="danger" class="rounded-full">{{ $deletedUsers->total() }}</x-ui.badge>@endif
+            </x-ui.tabs-link>
+        @endif
+    </x-ui.tabs-list>
 
-<div class="card">
-    <div class="card-body pt-4">
-        <!-- Sub Tabs -->
-        <ul class="nav nav-tabs sub-tabs mb-3">
-            <li class="nav-item">
-                <a class="nav-link {{ $tab == 'list' ? 'active' : '' }}"
-                   href="{{ route('users', ['tab' => 'list']) }}">
-                    <i class="bi bi-list-ul me-1"></i> Daftar User
+    @if ($tab !== 'deleted')
+        {{-- Filter cepat per role (dengan jumlah), lalu pencarian. --}}
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('users', ['tab' => 'list', 'search' => $search]) }}"
+               @class(['inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ring-1 transition-colors', 'bg-primary text-primary-foreground ring-primary' => ! $role, 'bg-card ring-border hover:bg-accent' => $role])>
+                Semua <span class="tabular-nums opacity-75">{{ $stats['total'] }}</span>
+            </a>
+            @foreach ($roles as $r)
+                <a href="{{ route('users', ['tab' => 'list', 'role' => $r->code, 'search' => $search]) }}"
+                   @class(['inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ring-1 transition-colors', 'bg-primary text-primary-foreground ring-primary' => $role === $r->code, 'bg-card ring-border hover:bg-accent' => $role !== $r->code])>
+                    {{ $r->name }} <span class="tabular-nums opacity-75">{{ $roleCounts[$r->id] ?? 0 }}</span>
                 </a>
-            </li>
-            @can('permission', 'users.create')
-            <li class="nav-item">
-                <a class="nav-link {{ Request::routeIs('users.create') ? 'active' : '' }}"
-                   href="{{ route('users.create') }}">
-                    <i class="bi bi-plus-circle me-1"></i> Tambah User
-                </a>
-            </li>
-            @endcan
-            @can('permission', 'users.delete')
-            <li class="nav-item">
-                <a class="nav-link {{ $tab == 'deleted' ? 'active' : '' }}"
-                   href="{{ route('users', ['tab' => 'deleted']) }}">
-                    <i class="bi bi-trash me-1"></i> Data Terhapus
-                </a>
-            </li>
-            @endcan
-        </ul>
+            @endforeach
+        </div>
 
-        <!-- Tab Content: Daftar User -->
-        @if($tab == 'list')
-        <div id="userListTab">
-            <!-- Filter Form -->
-            <form method="GET" action="{{ route('users') }}" class="mb-3" data-autofilter>
+        <x-ui.card class="gap-0 py-0">
+            <form method="GET" action="{{ route('users') }}" data-autofilter class="flex flex-wrap items-center gap-2 border-b p-4">
                 <input type="hidden" name="tab" value="list">
-                <div class="row g-2">
-                    <div class="col-md-9">
-                        <input type="text" class="form-control" name="search"
-                               value="{{ $search }}"
-                               placeholder="🔍 Cari berdasarkan nama, username, atau email...">
-                    </div>
-                    <div class="col-md-3">
-                        <select class="form-select" name="role">
-                            <option value="">-- Semua Role --</option>
-                            @foreach($roles as $r)
-                            <option value="{{ $r->code }}" {{ $role == $r->code ? 'selected' : '' }}>
-                                {{ $r->name }}
-                            </option>
-                            @endforeach
-                        </select>
-                    </div>
+                @if ($role)<input type="hidden" name="role" value="{{ $role }}">@endif
+                <div class="relative min-w-60 flex-1">
+                    <i class="bi bi-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+                    <x-ui.input name="search" :value="$search" placeholder="Cari nama, username, atau email" class="pl-9" />
                 </div>
+                <x-ui.select inline disabled title="Filter unit belum tersedia di server"><option>Semua unit</option></x-ui.select>
+                <x-ui.select inline disabled title="Filter status belum tersedia di server"><option>Semua status</option></x-ui.select>
+                <span class="text-xs text-muted-foreground">Filter unit dan status {!! $soon !!}</span>
             </form>
 
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th width="80">ID</th>
-                            <th>Username</th>
-                            <th>Nama Lengkap</th>
-                            <th>Email</th>
-                            <th>Jabatan</th>
-                            <th width="120">Role</th>
-                            <th>Site</th>
-                            <th>Unit Bisnis</th>
-                            <th width="110">Master Pekerja</th>
-                            <th>Tanggal Dibuat</th>
-                            <th width="180">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($users as $user)
-                        <tr>
-                            <td><small class="text-muted">{{ $user->id }}</small></td>
-                            <td>
-                                <strong>{{ $user->username }}</strong>
-                                <div class="small text-muted">{{ $user->user_code }}</div>
-                                @if($user->isPendingCredentials())
-                                    <span class="badge bg-warning text-dark">Kredensial pending</span>
-                                @endif
-                            </td>
-                            <td>{{ $user->nama_lengkap }}</td>
-                            <td><small>{{ $user->email }}</small></td>
-                            <td><small class="text-muted">{{ $user->jabatan ?? '-' }}</small></td>
-                            <td>
-                                @php
-                                    $roleColors = [
-                                        'superadmin' => 'bg-danger',
-                                        'general_affairs' => 'bg-success',
-                                        'dispatcher' => 'bg-secondary',
-                                        'requester' => 'bg-info',
-                                        'manager' => 'bg-warning text-dark',
-                                        'view_only' => 'bg-dark',
-                                    ];
-                                    $rbacRole = $user->roles->first();
-                                @endphp
-                                @if($rbacRole)
-                                    <span class="badge {{ $roleColors[$rbacRole->code] ?? 'bg-secondary' }}">
-                                        {{ $rbacRole->name }}
-                                    </span>
-                                @else
-                                    <span class="badge bg-secondary">
-                                        {{ $user->role }}
-                                    </span>
-                                @endif
-                            </td>
-                            <td><small>{{ $user->defaultSite?->code ?? '-' }}</small></td>
-                            <td>
-                                @if($user->unit)
-                                    <span class="badge bg-primary">{{ $user->unit->code }}</span>
-                                @else
-                                    <span class="badge bg-light text-muted">Global</span>
-                                @endif
-                            </td>
-                            <td>
-                                @if($user->employeeDefault)
-                                    <span class="badge bg-success" title="Terhubung ke Master Pekerja"><i class="bi bi-link"></i> Aktif</span>
-                                @else
-                                    <span class="badge bg-light text-muted" title="Tidak terdaftar di Master Pekerja">-</span>
-                                @endif
-                            </td>
-                            <td><small>{{ $user->created_at->format('d/m/Y H:i') }}</small></td>
-                            <td class="text-nowrap">
-                                @can('permission', 'users.update')
-                                <button class="btn btn-warning btn-sm btn-action"
-                                        onclick="openEditModal({{ $user->id }}, '{{ $user->username }}', '{{ e($user->nama_lengkap) }}', '{{ $user->email }}', '{{ e($user->jabatan ?? '') }}', '{{ $user->roles->first()->code ?? $user->role }}', '{{ $user->default_site_id ?? '' }}', '{{ $user->unit_id ?? '' }}', {{ $user->is_active ? 1 : 0 }})"
-                                        title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                                <button class="btn btn-info btn-sm btn-action"
-                                        onclick="openResetModal({{ $user->id }}, '{{ $user->username }}')"
-                                        title="Reset Password">
-                                    <i class="bi bi-key"></i>
-                                </button>
-                                <button class="btn btn-secondary btn-sm btn-action"
-                                        onclick="openCredentialsModal({{ $user->id }}, '{{ $user->username }}', {{ $user->hasOperationalCredentials() ? 'true' : 'false' }})"
-                                        title="Kredensial akun (untuk dibagikan offline)">
-                                    <i class="bi bi-person-badge"></i>
-                                </button>
-                                @endcan
-                                @can('permission', 'users.delete')
-                                <form action="{{ route('users.delete', $user->id) }}"
-                                      method="POST"
-                                      style="display: inline;"
-                                      onsubmit="return confirm('Yakin ingin menghapus user {{ $user->username }}?\n\nData dapat dipulihkan dari tab Data Terhapus.')">
-                                    @csrf
-                                    <button type="submit" class="btn btn-danger btn-sm btn-action" title="Hapus">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                                @endcan
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="11">
-                                <div class="empty-state">
-                                    <i class="bi bi-inbox"></i>
-                                    <p>Belum ada data user</p>
-                                </div>
-                            </td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+            {{-- Aksi massal: muncul saat ada baris yang dipilih. Endpoint belum ada, jadi tombolnya nonaktif. --}}
+            <div data-bulk-bar hidden class="flex flex-wrap items-center gap-2 border-b bg-primary/5 px-4 py-2.5 text-sm">
+                <span class="font-medium"><span data-bulk-count>0</span> pengguna dipilih</span>
+                <span class="mx-1 h-4 w-px bg-border"></span>
+                <x-ui.button size="sm" variant="outline" disabled><i class="bi bi-person-check"></i> Aktifkan</x-ui.button>
+                <x-ui.button size="sm" variant="outline" disabled><i class="bi bi-person-slash"></i> Nonaktifkan</x-ui.button>
+                <x-ui.button size="sm" variant="outline" disabled><i class="bi bi-shield"></i> Ubah role</x-ui.button>
+                {!! $soon !!}
+                <button type="button" data-bulk-clear class="ml-auto text-xs text-muted-foreground hover:text-foreground">Batal pilih</button>
             </div>
 
-            <!-- Pagination -->
-            <div class="mt-3">
-                {{ $users->appends(['tab' => 'list', 'role' => $role, 'search' => $search])->links() }}
-            </div>
-        </div>
-        @endif
-
-        <!-- Tab Content: Data Terhapus -->
-        @if($tab == 'deleted')
-        <div id="userDeletedTab">
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i>
-                Data yang dihapus masih dapat dipulihkan. Data akan terhapus permanen setelah 30 hari.
-            </div>
-            <div class="table-responsive">
-                <table class="table table-hover">
+            @if ($users->isEmpty())
+                <x-ui.empty-state icon="bi bi-people" title="Tidak ada pengguna" description="Ubah kata kunci atau filter role." class="py-12" />
+            @else
+                <x-ui.table>
                     <thead>
                         <tr>
-                            <th>Username</th>
-                            <th>Nama Lengkap</th>
-                            <th>Email</th>
+                            <th class="w-10 pl-4"><x-ui.checkbox data-bulk-all aria-label="Pilih semua di halaman ini" /></th>
+                            <th>Pengguna</th>
                             <th>Role</th>
-                            <th>Dihapus Pada</th>
-                            <th width="100">Aksi</th>
+                            <th>Unit & Site</th>
+                            <th>Status</th>
+                            <th>Dibuat</th>
+                            <th class="w-16 pr-4 text-right">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($deletedUsers as $user)
-                        <tr>
-                            <td><strong>{{ $user->username }}</strong></td>
-                            <td>{{ $user->nama_lengkap }}</td>
-                            <td><small>{{ $user->email }}</small></td>
-                            <td>
-                                @php
-                                    $roleColors = [
-                                        'superadmin' => 'bg-danger',
-                                        'general_affairs' => 'bg-success',
-                                        'dispatcher' => 'bg-secondary',
-                                        'requester' => 'bg-info',
-                                        'manager' => 'bg-warning text-dark',
-                                        'view_only' => 'bg-dark',
-                                    ];
-                                    $rbacRole = $user->roles->first();
-                                @endphp
-                                @if($rbacRole)
-                                    <span class="badge {{ $roleColors[$rbacRole->code] ?? 'bg-secondary' }}">
-                                        {{ $rbacRole->name }}
+                        @foreach ($users as $user)
+                            @php
+                                $userRole = $user->roles->first();
+                                $roleCode = $userRole->code ?? $user->role;
+                                $payload = [
+                                    'id' => $user->id, 'username' => $user->username, 'nama_lengkap' => $user->nama_lengkap, 'email' => $user->email,
+                                    'jabatan' => $user->jabatan, 'role' => $roleCode, 'roles' => $user->roles->pluck('code')->all(),
+                                    'site' => $user->default_site_id, 'unit' => $user->unit_id, 'is_active' => (bool) $user->is_active,
+                                    'has_credentials' => $user->hasOperationalCredentials(),
+                                    'unit_label' => $user->unit ? "{$user->unit->code} · {$user->unit->name}" : 'Global (semua unit)',
+                                    'site_label' => $user->defaultSite ? "{$user->defaultSite->code} · {$user->defaultSite->name}" : '-',
+                                    'provider' => $user->auth_provider === 'sso' ? 'SSO' : 'Akun lokal',
+                                    'source' => $user->registration_source ?: '-',
+                                    'created' => $user->created_at?->translatedFormat('d M Y H:i'),
+                                    'deactivated' => $user->deactivated_at?->translatedFormat('d M Y H:i'),
+                                    'deactivation_reason' => $user->deactivation_reason,
+                                    'employee' => (bool) $user->employeeDefault,
+                                ];
+                            @endphp
+                            <tr @class(['opacity-60' => ! $user->is_active])>
+                                <td class="pl-4"><x-ui.checkbox data-bulk-item :value="$user->id" :aria-label="'Pilih ' . $user->username" /></td>
+                                <td>
+                                    <div class="flex items-center gap-3">
+                                        <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br {{ $avatarTones[$user->id % count($avatarTones)] }} text-xs font-semibold text-white shadow-sm">{{ $initials($user->nama_lengkap ?: $user->username) }}</span>
+                                        <span class="grid min-w-0 leading-tight">
+                                            <span class="truncate font-medium">{{ $user->nama_lengkap ?: $user->username }}</span>
+                                            <span class="truncate text-xs text-muted-foreground">{{ '@' . $user->username }}{{ $user->email ? ' · ' . $user->email : '' }}</span>
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 {{ $tones[$roleCode] ?? 'bg-muted text-muted-foreground ring-border' }}">
+                                        <i class="bi bi-shield-fill-check text-[10px]"></i> {{ $userRole->name ?? $user->role }}
                                     </span>
-                                @else
-                                    <span class="badge bg-secondary">
-                                        {{ $user->role }}
-                                    </span>
-                                @endif
-                            </td>
-                            <td><small>{{ $user->deleted_at->format('d/m/Y H:i') }}</small></td>
-                            <td>
-                                <form action="{{ route('users.restore', $user->id) }}"
-                                      method="POST"
-                                      onsubmit="return confirm('Pulihkan user {{ $user->username }}?')">
-                                    @csrf
-                                    <button type="submit" class="btn btn-success btn-sm" title="Pulihkan">
-                                        <i class="bi bi-arrow-counterclockwise"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="6">
-                                <div class="empty-state">
-                                    <i class="bi bi-check-circle"></i>
-                                    <p>Tidak ada data yang dihapus</p>
-                                </div>
-                            </td>
-                        </tr>
-                        @endforelse
+                                    @if ($user->roles->count() > 1)<span class="ml-1 text-xs text-muted-foreground">+{{ $user->roles->count() - 1 }}</span>@endif
+                                    @if ($user->jabatan)<span class="mt-0.5 block max-w-44 truncate text-xs text-muted-foreground" title="{{ $user->jabatan }}">{{ $user->jabatan }}</span>@endif
+                                </td>
+                                <td>
+                                    <span class="block text-sm">{{ $user->unit->code ?? 'Global' }}</span>
+                                    <span class="text-xs text-muted-foreground">{{ $user->defaultSite->code ?? 'Tanpa site' }}</span>
+                                </td>
+                                <td>
+                                    <div class="flex flex-wrap gap-1">
+                                        @if ($user->is_active)
+                                            <x-ui.badge variant="success"><span class="size-1.5 rounded-full bg-current"></span> Aktif</x-ui.badge>
+                                        @else
+                                            <x-ui.badge variant="danger" :title="$user->deactivation_reason"><span class="size-1.5 rounded-full bg-current"></span> Nonaktif</x-ui.badge>
+                                        @endif
+                                        @if ($user->auth_provider === 'sso')<x-ui.badge variant="info">SSO</x-ui.badge>@endif
+                                        @if ($user->isPendingCredentials())<x-ui.badge variant="warning">Kredensial pending</x-ui.badge>@endif
+                                        @if ($user->employeeDefault)<x-ui.badge variant="muted" title="Terhubung ke Master Pekerja"><i class="bi bi-link-45deg"></i> Pekerja</x-ui.badge>@endif
+                                    </div>
+                                </td>
+                                <td class="whitespace-nowrap text-xs text-muted-foreground">{{ $user->created_at?->translatedFormat('d M Y') }}</td>
+                                <td class="pr-4 text-right">
+                                    <x-ui.dropdown-menu :id="'aksi-user-' . $user->id" label="Aksi pengguna">
+                                        <div class="px-2.5 pb-1.5 pt-1 text-xs text-muted-foreground">{{ '@' . $user->username }}</div>
+                                        <x-ui.dropdown-item icon="bi bi-person-vcard" data-user-detail="{{ json_encode($payload) }}">Detail & hak akses</x-ui.dropdown-item>
+                                        @if ($canUpdate)
+                                            <x-ui.dropdown-item icon="bi bi-pencil-square" data-user-edit="{{ json_encode($payload) }}">Ubah data & role</x-ui.dropdown-item>
+                                            <x-ui.dropdown-item icon="bi bi-key" data-user-reset="{{ json_encode($payload) }}">Reset password</x-ui.dropdown-item>
+                                            <x-ui.dropdown-item icon="bi bi-person-badge" data-user-credentials="{{ json_encode($payload) }}">Kredensial akun</x-ui.dropdown-item>
+                                        @endif
+                                        @if ($canDelete && $user->id !== $authUser->id)
+                                            <x-ui.dropdown-separator />
+                                            <form action="{{ route('users.delete', $user->id) }}" method="POST"
+                                                  data-confirm="Akun {{ $user->username }} dipindah ke tab Terhapus dan masih bisa dipulihkan." data-confirm-title="Hapus pengguna?" data-confirm-text="Ya, hapus" data-confirm-variant="destructive">
+                                                @csrf
+                                                <x-ui.dropdown-item type="submit" icon="bi bi-trash3" variant="destructive">Hapus pengguna</x-ui.dropdown-item>
+                                            </form>
+                                        @endif
+                                    </x-ui.dropdown-menu>
+                                </td>
+                            </tr>
+                        @endforeach
                     </tbody>
-                </table>
+                </x-ui.table>
+                <div class="border-t p-4">{{ $users->appends(['tab' => 'list', 'role' => $role, 'search' => $search])->links('vendor.pagination.shadcn') }}</div>
+            @endif
+        </x-ui.card>
+    @else
+        <x-ui.alert variant="info">Pengguna yang dihapus masih bisa dipulihkan beserta role-nya.</x-ui.alert>
+        <x-ui.card class="gap-0 py-0">
+            @if ($deletedUsers->isEmpty())
+                <x-ui.empty-state icon="bi bi-check2-circle" title="Tidak ada pengguna terhapus" class="py-12" />
+            @else
+                <x-ui.table>
+                    <thead><tr><th class="pl-4">Pengguna</th><th>Role</th><th>Dihapus</th><th class="w-32 pr-4 text-right">Aksi</th></tr></thead>
+                    <tbody>
+                        @foreach ($deletedUsers as $user)
+                            <tr>
+                                <td class="pl-4">
+                                    <span class="block font-medium">{{ $user->nama_lengkap ?: $user->username }}</span>
+                                    <span class="text-xs text-muted-foreground">{{ '@' . $user->username }}{{ $user->email ? ' · ' . $user->email : '' }}</span>
+                                </td>
+                                <td><x-ui.badge variant="muted">{{ $user->roles->first()->name ?? $user->role }}</x-ui.badge></td>
+                                <td class="whitespace-nowrap text-xs text-muted-foreground">{{ $user->deleted_at?->translatedFormat('d M Y H:i') }}</td>
+                                <td class="pr-4 text-right">
+                                    <form action="{{ route('users.restore', $user->id) }}" method="POST" data-confirm="Akun {{ $user->username }} akan aktif kembali di daftar pengguna." data-confirm-title="Pulihkan pengguna?" data-confirm-text="Ya, pulihkan" data-confirm-variant="success">
+                                        @csrf
+                                        <x-ui.button type="submit" size="sm" variant="outline"><i class="bi bi-arrow-counterclockwise"></i> Pulihkan</x-ui.button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </x-ui.table>
+                <div class="border-t p-4">{{ $deletedUsers->appends(['tab' => 'deleted'])->links('vendor.pagination.shadcn') }}</div>
+            @endif
+        </x-ui.card>
+    @endif
+
+    {{-- Detail & hak akses efektif (gabungan permission dari semua role pengguna). --}}
+    <x-ui.dialog id="userDetailDialog" title="Detail pengguna" size="lg">
+        <div class="grid gap-5" data-role-perms="{{ $rolePerms->toJson() }}">
+            <div class="flex items-center gap-3">
+                <span data-detail="avatar" class="flex size-12 items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-indigo-600 text-base font-semibold text-white"></span>
+                <div class="grid leading-tight">
+                    <span data-detail="nama_lengkap" class="text-lg font-semibold"></span>
+                    <span data-detail="handle" class="text-sm text-muted-foreground"></span>
+                </div>
+                <span data-detail="status" class="ml-auto"></span>
             </div>
-
-            <!-- Pagination -->
-            <div class="mt-3">
-                {{ $deletedUsers->appends(['tab' => 'deleted'])->links() }}
+            <dl class="grid gap-x-6 gap-y-3 rounded-lg bg-muted/40 p-4 text-sm sm:grid-cols-2">
+                @foreach (['jabatan' => 'Jabatan', 'unit_label' => 'Unit bisnis', 'site_label' => 'Site', 'provider' => 'Metode login', 'source' => 'Sumber pendaftaran', 'created' => 'Dibuat'] as $key => $label)
+                    <div><dt class="text-xs text-muted-foreground">{{ $label }}</dt><dd data-detail="{{ $key }}" class="font-medium"></dd></div>
+                @endforeach
+            </dl>
+            <div class="grid gap-2">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-semibold">Hak akses efektif</h3>
+                    <span data-detail="perm_count" class="text-xs text-muted-foreground"></span>
+                </div>
+                <p class="text-xs text-muted-foreground">Gabungan permission dari role: <span data-detail="role_names" class="font-medium text-foreground"></span></p>
+                <div data-detail="perms" class="grid max-h-72 gap-3 overflow-y-auto pr-1"></div>
+            </div>
+            <div class="grid gap-1 rounded-lg border border-dashed p-3 text-sm">
+                <span class="font-medium">Riwayat aktivitas & login terakhir {!! $soon !!}</span>
+                <span class="text-xs text-muted-foreground">Server belum mencatat waktu login dan riwayat perubahan akun.</span>
             </div>
         </div>
-        @endif
-    </div>
-</div>
+    </x-ui.dialog>
 
-<!-- Modal: Edit User -->
-<div class="modal fade" id="editUserModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form id="editUserForm" method="POST">
+    @if ($canUpdate)
+        <x-ui.dialog id="userEditDialog" title="Ubah data & role" description="Perubahan role langsung mengubah hak akses pengguna." size="lg" static>
+            <form id="userEditForm" method="POST" class="grid gap-4" data-loading>
                 @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit User</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-ui.field label="Username" required><x-ui.input name="username" data-edit="username" required /></x-ui.field>
+                    <x-ui.field label="Nama lengkap" required><x-ui.input name="nama_lengkap" data-edit="nama_lengkap" required /></x-ui.field>
+                    <x-ui.field label="Email" hint="Boleh kosong untuk akun hasil scan."><x-ui.input type="email" name="email" data-edit="email" /></x-ui.field>
+                    <x-ui.field label="Jabatan"><x-ui.input name="jabatan" data-edit="jabatan" /></x-ui.field>
                 </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Username *</label>
-                        <input type="text" class="form-control" name="username" id="editUsername" required>
+                <x-ui.field label="Role / hak akses" required>
+                    <div class="grid gap-2 sm:grid-cols-2">
+                        @foreach ($roles as $r)
+                            <label class="flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent has-checked:border-primary has-checked:bg-primary/5">
+                                <input type="radio" name="role_code" value="{{ $r->code }}" required class="mt-1 accent-primary">
+                                <span class="grid gap-0.5">
+                                    <span class="text-sm font-medium">{{ $r->name }}</span>
+                                    <span class="line-clamp-2 text-xs text-muted-foreground">{{ $r->description ?: $r->code }}</span>
+                                </span>
+                            </label>
+                        @endforeach
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Nama Lengkap *</label>
-                        <input type="text" class="form-control" name="nama_lengkap" id="editNamaLengkap" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-control" name="email" id="editEmail">
-                        <small class="text-muted">Boleh kosong untuk akun hasil scan yang belum punya email.</small>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Jabatan</label>
-                        <input type="text" class="form-control" name="jabatan" id="editJabatan">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Role / Hak Akses *</label>
-                        <select class="form-select" name="role_code" id="editRoleCode" required>
-                            <option value="">— Pilih Role —</option>
-                            @foreach($roles as $r)
-                            <option value="{{ $r->code }}">{{ $r->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Site / Unit</label>
-                        <select class="form-select" name="default_site_id" id="editSiteId">
-                            <option value="">— Tidak ditentukan —</option>
-                            @foreach($sites as $site)
-                            <option value="{{ $site->id }}">{{ $site->code }} — {{ $site->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Unit Bisnis</label>
-                        <select class="form-select" name="unit_id" id="editUnitId">
-                            <option value="">— Global / Pusat (tanpa scope) —</option>
-                            @foreach($units as $unit)
-                            <option value="{{ $unit->id }}">{{ $unit->code }} — {{ $unit->name }}</option>
-                            @endforeach
-                        </select>
-                        <small class="text-muted">Kosongkan untuk akses global (pusat).</small>
-                    </div>
-                    <div class="form-check">
-                        <input type="hidden" name="is_active" value="0">
-                        <input class="form-check-input" type="checkbox" name="is_active" id="editIsActive" value="1">
-                        <label class="form-check-label" for="editIsActive">Akun aktif (bisa login)</label>
-                    </div>
+                </x-ui.field>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-ui.field label="Unit bisnis" hint="Kosong berarti akses global (pusat).">
+                        <x-ui.select name="unit_id" data-edit="unit">
+                            <option value="">Global / Pusat</option>
+                            @foreach ($units as $unit)<option value="{{ $unit->id }}">{{ $unit->code }} · {{ $unit->name }}</option>@endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                    <x-ui.field label="Site">
+                        <x-ui.select name="default_site_id" data-edit="site">
+                            <option value="">Tidak ditentukan</option>
+                            @foreach ($sites as $site)<option value="{{ $site->id }}">{{ $site->code }} · {{ $site->name }}</option>@endforeach
+                        </x-ui.select>
+                    </x-ui.field>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-save me-2"></i>Simpan Perubahan
-                    </button>
-                </div>
+                <label class="flex items-center justify-between gap-4 rounded-lg border p-3">
+                    <span class="grid">
+                        <span class="text-sm font-medium">Akun aktif</span>
+                        <span class="text-xs text-muted-foreground">Matikan untuk memblokir login tanpa menghapus akun.</span>
+                    </span>
+                    <input type="hidden" name="is_active" value="0">
+                    <input type="checkbox" name="is_active" value="1" data-edit="is_active" class="peer sr-only">
+                    <span aria-hidden="true" class="relative h-6 w-11 shrink-0 rounded-full bg-input transition-colors after:absolute after:left-0.5 after:top-0.5 after:size-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:bg-success peer-checked:after:translate-x-5 peer-focus-visible:ring-[3px] peer-focus-visible:ring-ring/50"></span>
+                </label>
             </form>
-        </div>
-    </div>
-</div>
+            <x-slot:footer>
+                <x-ui.button variant="outline" data-dialog-close>Batal</x-ui.button>
+                <x-ui.button type="submit" form="userEditForm"><i class="bi bi-check2"></i> Simpan perubahan</x-ui.button>
+            </x-slot:footer>
+        </x-ui.dialog>
 
-<!-- Modal: Reset Password -->
-<div class="modal fade" id="resetPasswordModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form id="resetPasswordForm" method="POST">
+        <x-ui.dialog id="userResetDialog" title="Reset password" size="sm" static>
+            <form id="userResetForm" method="POST" class="grid gap-4" data-loading>
                 @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-key me-2"></i>Reset Password</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle me-2"></i>
-                        Password akan direset untuk user: <strong id="resetUsername"></strong>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Password Baru *</label>
-                        <div class="input-group">
-                            <input type="password" class="form-control" name="new_password" id="newPassword" required>
-                            <button class="btn btn-outline-secondary" type="button"
-                                    onclick="togglePassword('newPassword', this)">
-                                <i class="bi bi-eye"></i>
-                            </button>
-                        </div>
-                        <small class="text-muted">Minimal 6 karakter</small>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Konfirmasi Password *</label>
-                        <div class="input-group">
-                            <input type="password" class="form-control" name="new_password_confirmation"
-                                   id="newPasswordConfirmation" required>
-                            <button class="btn btn-outline-secondary" type="button"
-                                    onclick="togglePassword('newPasswordConfirmation', this)">
-                                <i class="bi bi-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-circle me-2"></i>Reset Password
-                    </button>
-                </div>
+                <x-ui.alert variant="warning">Password baru untuk <strong data-reset="username"></strong>. Sampaikan ke pengguna secara langsung.</x-ui.alert>
+                <x-ui.field label="Password baru" hint="Minimal 6 karakter." required>
+                    <div class="relative"><x-ui.input type="password" name="new_password" minlength="6" required class="pr-10" /><button type="button" data-toggle-password class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground" aria-label="Tampilkan password"><i class="bi bi-eye"></i></button></div>
+                </x-ui.field>
+                <x-ui.field label="Konfirmasi password" required>
+                    <div class="relative"><x-ui.input type="password" name="new_password_confirmation" minlength="6" required class="pr-10" /><button type="button" data-toggle-password class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground" aria-label="Tampilkan password"><i class="bi bi-eye"></i></button></div>
+                </x-ui.field>
             </form>
-        </div>
-    </div>
-</div>
+            <x-slot:footer>
+                <x-ui.button variant="outline" data-dialog-close>Batal</x-ui.button>
+                <x-ui.button type="submit" form="userResetForm"><i class="bi bi-key"></i> Reset password</x-ui.button>
+            </x-slot:footer>
+        </x-ui.dialog>
 
-<!-- Modal: Kredensial Akun -->
-<div class="modal fade" id="credentialsModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form id="credentialsForm" method="POST">
+        <x-ui.dialog id="userCredentialsDialog" title="Kredensial akun" description="Untuk dibagikan ke pegawai secara offline. Setiap kali password dibuka, akses tercatat." size="sm" static>
+            <form id="userCredentialsForm" method="POST" class="grid gap-4" data-loading>
                 @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-person-badge me-2"></i>Kredensial Akun</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <x-ui.field label="Username"><x-ui.input data-credentials="username" readonly /></x-ui.field>
+                <x-ui.field label="Password baru / ganti" hint="Kosongkan bila hanya ingin melihat password tersimpan.">
+                    <div class="relative"><x-ui.input type="password" name="password" minlength="6" class="pr-10" /><button type="button" data-toggle-password class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground" aria-label="Tampilkan password"><i class="bi bi-eye"></i></button></div>
+                </x-ui.field>
+                <div data-credentials="revealed" hidden class="rounded-lg bg-success-soft p-3">
+                    <span class="text-xs text-muted-foreground">Password tersimpan</span>
+                    <span data-credentials="password" class="block font-mono text-lg font-semibold"></span>
+                    <span data-credentials="count" class="text-xs text-muted-foreground"></span>
                 </div>
-                <div class="modal-body">
-                    <div class="alert alert-info py-2 small">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Kredensial ini untuk diberikan ke pegawai secara <strong>offline</strong>.
-                        Setiap kali password dibuka, akses tercatat di audit trail.
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Username</label>
-                        <input type="text" class="form-control" id="credUsername" readonly>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Password baru / ganti</label>
-                        <div class="input-group">
-                            <input type="password" class="form-control" name="password" id="credPassword" minlength="6">
-                            <button class="btn btn-outline-secondary" type="button"
-                                    onclick="togglePassword('credPassword', this)">
-                                <i class="bi bi-eye"></i>
-                            </button>
-                        </div>
-                        <small class="text-muted">Minimal 6 karakter. Kosongkan jika hanya ingin melihat password tersimpan.</small>
-                    </div>
-                    <div id="credRevealed" class="alert alert-success d-none">
-                        <div class="small text-muted">Password tersimpan:</div>
-                        <div class="fw-bold fs-5" id="credRevealedPassword"></div>
-                        <div class="small text-muted mt-1" id="credRevealCount"></div>
-                    </div>
-                    <button type="button" class="btn btn-outline-primary btn-sm" id="credRevealBtn">
-                        <i class="bi bi-eye me-1"></i>Lihat password tersimpan
-                    </button>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-circle me-2"></i>Simpan Kredensial
-                    </button>
-                </div>
+                <x-ui.button type="button" variant="outline" size="sm" data-credentials="reveal"><i class="bi bi-eye"></i> Lihat password tersimpan</x-ui.button>
             </form>
-        </div>
-    </div>
-</div>
+            <x-slot:footer>
+                <x-ui.button variant="outline" data-dialog-close>Tutup</x-ui.button>
+                <x-ui.button type="submit" form="userCredentialsForm"><i class="bi bi-check2"></i> Simpan kredensial</x-ui.button>
+            </x-slot:footer>
+        </x-ui.dialog>
+    @endif
 
-<script>
-// ✅ CRITICAL FIX: Pisahkan event listeners dari lifecycle alert
-(function() {
-    'use strict';
-
-    // Global state untuk prevent double-opening
-    window.isModalOpening = false;
-
-    // ✅ Cleanup function untuk clear semua modal backdrop
-    function cleanupModals() {
-        document.querySelectorAll('.modal-backdrop').forEach(b => {
-            b.remove();
-        });
-        document.body.classList.remove('modal-open');
-        document.body.style.removeProperty('overflow');
-        document.body.style.removeProperty('padding-right');
-    }
-
-    // ✅ Toggle Password Visibility
-    window.togglePassword = function(inputId, button) {
-        const input = document.getElementById(inputId);
-        const icon = button.querySelector('i');
-
-        if (input.type === 'password') {
-            input.type = 'text';
-            icon.classList.remove('bi-eye');
-            icon.classList.add('bi-eye-slash');
-        } else {
-            input.type = 'password';
-            icon.classList.remove('bi-eye-slash');
-            icon.classList.add('bi-eye');
-        }
-    };
-
-    // ✅ Open Edit User Modal
-    window.openEditModal = function(id, username, namaLengkap, email, jabatan, role, siteId, unitId, isActive) {
-        if (window.isModalOpening) {
-            console.log('Modal already opening, blocked');
-            return;
-        }
-
-        window.isModalOpening = true;
-        console.log('Opening Edit Modal for user:', username);
-
-        setTimeout(() => {
-            window.isModalOpening = false;
-        }, 1000);
-
-        const modalElement = document.getElementById('editUserModal');
-        if (!modalElement) {
-            console.error('Edit Modal element not found');
-            window.isModalOpening = false;
-            return;
-        }
-
-        // Dispose existing modal instance
-        const existingModal = bootstrap.Modal.getInstance(modalElement);
-        if (existingModal) {
-            existingModal.dispose();
-        }
-
-        // Cleanup any leftover backdrops
-        cleanupModals();
-
-        // Set form action
-        const form = document.getElementById('editUserForm');
-        if (form) {
-            form.action = `/users/${id}/update`;
-        }
-
-        // Set form values
-        const elements = {
-            editUsername: document.getElementById('editUsername'),
-            editNamaLengkap: document.getElementById('editNamaLengkap'),
-            editEmail: document.getElementById('editEmail'),
-            editJabatan: document.getElementById('editJabatan'),
-            editRoleCode: document.getElementById('editRoleCode'),
-            editSiteId: document.getElementById('editSiteId'),
-            editUnitId: document.getElementById('editUnitId'),
-            editIsActive: document.getElementById('editIsActive'),
-        };
-
-        if (elements.editUsername) elements.editUsername.value = username;
-        if (elements.editNamaLengkap) elements.editNamaLengkap.value = namaLengkap;
-        if (elements.editEmail) elements.editEmail.value = email;
-        if (elements.editJabatan) elements.editJabatan.value = jabatan || '';
-        if (elements.editRoleCode) elements.editRoleCode.value = role;
-        if (elements.editSiteId) elements.editSiteId.value = siteId || '';
-        if (elements.editUnitId) elements.editUnitId.value = unitId || '';
-        if (elements.editIsActive) elements.editIsActive.checked = Number(isActive) === 1;
-
-        // Create new modal instance
-        const modal = new bootstrap.Modal(modalElement, {
-            backdrop: 'static',
-            keyboard: false
-        });
-
-        modal.show();
-
-        // Cleanup on hide
-        modalElement.addEventListener('hidden.bs.modal', function hideHandler() {
-            const inst = bootstrap.Modal.getInstance(modalElement);
-            if (inst) inst.dispose();
-            cleanupModals();
-            modalElement.removeEventListener('hidden.bs.modal', hideHandler);
-        });
-    };
-
-    // ✅ Open Reset Password Modal
-    window.openResetModal = function(id, username) {
-        if (window.isModalOpening) {
-            console.log('Modal already opening, blocked');
-            return;
-        }
-
-        window.isModalOpening = true;
-        console.log('Opening Reset Password Modal for user:', username);
-
-        setTimeout(() => {
-            window.isModalOpening = false;
-        }, 1000);
-
-        const modalElement = document.getElementById('resetPasswordModal');
-        if (!modalElement) {
-            console.error('Reset Modal element not found');
-            window.isModalOpening = false;
-            return;
-        }
-
-        // Dispose existing modal instance
-        const existingModal = bootstrap.Modal.getInstance(modalElement);
-        if (existingModal) {
-            existingModal.dispose();
-        }
-
-        // Cleanup any leftover backdrops
-        cleanupModals();
-
-        // Set form action
-        const form = document.getElementById('resetPasswordForm');
-        if (form) {
-            form.action = `/users/${id}/reset-password`;
-        }
-
-        // Set username display
-        const resetUsernameEl = document.getElementById('resetUsername');
-        if (resetUsernameEl) {
-            resetUsernameEl.textContent = username;
-        }
-
-        // Clear password fields
-        const newPasswordEl = document.getElementById('newPassword');
-        const newPasswordConfEl = document.getElementById('newPasswordConfirmation');
-
-        if (newPasswordEl) newPasswordEl.value = '';
-        if (newPasswordConfEl) newPasswordConfEl.value = '';
-
-        // Reset password visibility to hidden
-        ['newPassword', 'newPasswordConfirmation'].forEach(id => {
-            const input = document.getElementById(id);
-            if (input && input.type === 'text') {
-                input.type = 'password';
-                const btn = input.nextElementSibling;
-                if (btn) {
-                    const icon = btn.querySelector('i');
-                    if (icon) {
-                        icon.classList.remove('bi-eye-slash');
-                        icon.classList.add('bi-eye');
-                    }
-                }
-            }
-        });
-
-        // Create new modal instance
-        const modal = new bootstrap.Modal(modalElement, {
-            backdrop: 'static',
-            keyboard: false
-        });
-
-        modal.show();
-
-        // Cleanup on hide
-        modalElement.addEventListener('hidden.bs.modal', function hideHandler() {
-            const inst = bootstrap.Modal.getInstance(modalElement);
-            if (inst) inst.dispose();
-            cleanupModals();
-            modalElement.removeEventListener('hidden.bs.modal', hideHandler);
-        });
-    };
-
-    window.openCredentialsModal = function(id, username, hasCredentials) {
-        const modalElement = document.getElementById('credentialsModal');
-        const form = document.getElementById('credentialsForm');
-        if (!modalElement || !form) return;
-
-        form.action = `/users/${id}/credentials`;
-        document.getElementById('credUsername').value = username;
-        document.getElementById('credPassword').value = '';
-        document.getElementById('credRevealed').classList.add('d-none');
-        document.getElementById('credRevealedPassword').textContent = '';
-        document.getElementById('credRevealCount').textContent = '';
-
-        const revealBtn = document.getElementById('credRevealBtn');
-        revealBtn.dataset.url = `/users/${id}/credentials/reveal`;
-        revealBtn.disabled = !hasCredentials;
-        revealBtn.innerHTML = hasCredentials
-            ? '<i class="bi bi-eye me-1"></i>Lihat password tersimpan'
-            : '<i class="bi bi-slash-circle me-1"></i>Belum ada password tersimpan';
-
-        const existing = bootstrap.Modal.getInstance(modalElement);
-        if (existing) existing.dispose();
-        cleanupModals();
-
-        new bootstrap.Modal(modalElement, { backdrop: 'static', keyboard: false }).show();
-    };
-
-    document.getElementById('credRevealBtn')?.addEventListener('click', async function() {
-        const url = this.dataset.url;
-        if (!url) return;
-
-        this.disabled = true;
-        try {
-            const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-            const data = await res.json();
-            if (!res.ok || !data.success) {
-                throw new Error(data.message || 'Gagal membuka kredensial.');
-            }
-
-            document.getElementById('credRevealedPassword').textContent = data.password;
-            document.getElementById('credRevealCount').textContent = `Sudah dibuka ${data.reveals} kali.`;
-            document.getElementById('credRevealed').classList.remove('d-none');
-        } catch (err) {
-            alert(err.message);
-        } finally {
-            this.disabled = false;
-        }
-    });
-
-    // ✅ Init on DOM ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-            cleanupModals();
-            initAutoFilter();
-            console.log('User page initialized');
-        });
-    } else {
-        cleanupModals();
-        initAutoFilter();
-        console.log('User page initialized (immediate)');
-    }
-
-    // ✅ Realtime filter: submit otomatis tanpa tombol Terapkan Filter
-    function initAutoFilter() {
-        document.querySelectorAll('form[data-autofilter]').forEach(function(form) {
-            const search = form.querySelector('input[name="search"]');
-            if (search) {
-                let timer;
-                search.addEventListener('input', function() {
-                    clearTimeout(timer);
-                    timer = setTimeout(function() { form.submit(); }, 400);
-                });
-            }
-            form.querySelectorAll('select').forEach(function(sel) {
-                sel.addEventListener('change', function() { form.submit(); });
-            });
-        });
-    }
-
-    // ✅ Cleanup on unload
-    window.addEventListener('beforeunload', cleanupModals);
-
-    // ✅ IMPORTANT: Alert dismissal dipisahkan dan delayed
-    // Biarkan alerts auto-dismiss tanpa mengganggu event listeners
-    setTimeout(function() {
-        const alerts = document.querySelectorAll('.alert');
-        alerts.forEach(function(alert) {
-            setTimeout(function() {
-                try {
-                    const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
-                    if (bsAlert) {
-                        bsAlert.close();
-                    }
-                } catch (e) {
-                    // Silently ignore
-                }
-            }, 5000);
-        });
-    }, 100);
-
-})();
-</script>
-
-<style>
-.empty-state {
-    text-align: center;
-    padding: 40px 20px;
-    color: #64748B;
-}
-
-.empty-state i {
-    font-size: 3rem;
-    margin-bottom: 15px;
-    opacity: 0.5;
-}
-
-.btn-action {
-    padding: 5px 10px;
-    font-size: 0.85rem;
-    margin: 2px;
-}
-
-.sub-tabs .nav-link {
-    border: 2px solid #E4E9F0;
-    color: #64748B;
-    font-weight: 500;
-    padding: 8px 16px;
-    margin-right: 5px;
-}
-
-.sub-tabs .nav-link.active {
-    background: #0B50A1;
-    border-color: #0B50A1;
-    color: white;
-}
-
-.input-group .btn-outline-secondary {
-    border-color: #ced4da;
-}
-
-.input-group .btn-outline-secondary:hover {
-    background-color: #E4E9F0;
-    border-color: #ced4da;
-}
-</style>
-@endsection
+    @vite('resources/js/pages/users/index.js')
+</x-layouts.app>
