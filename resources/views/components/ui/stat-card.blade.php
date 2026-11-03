@@ -14,7 +14,7 @@
 @if ($href)
     <a href="{{ $href }}" {{ $attributes->class('group/stat block rounded-xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50') }}>
 @endif
-<x-ui.card @class(['gap-3', 'h-full transition-shadow group-hover/stat:border-primary/30 group-hover/stat:shadow-md' => $href, $attributes->get('class') => ! $href])>
+<x-ui.card @class(['gap-3', 'h-full transition-shadow group-hover/stat:border-primary/30 group-hover/stat:shadow-md' => $href, ($attributes->get('class') ?? '') => ! $href])>
     <x-ui.card-content class="flex items-start justify-between gap-3">
         <div class="grid gap-1">
             <span class="flex items-center gap-1 text-sm text-muted-foreground">
