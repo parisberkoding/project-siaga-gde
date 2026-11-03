@@ -7,7 +7,7 @@
     $balanceAkhir = $total - (float) $laporan->total_pengeluaran;
 @endphp
 
-<x-layouts.app title="Pemberian Dana" :breadcrumbs="['Validasi Laporan' => route('lpj.superadmin.index'), $laporan->lpj_number => route('lpj.superadmin.show', $laporan), 'Pemberian Dana' => null]">
+<x-layouts.app title="Pemberian Dana" :breadcrumbs="['Pemeriksaan LPJ (GA)' => route('lpj.superadmin.index'), $laporan->lpj_number => route('lpj.superadmin.show', $laporan), 'Pemberian Dana' => null]">
     <x-ui.page-header kicker="Lampiran Pemberian Dana" title="Pemberian Dana Perjalanan Dinas" :description="$surat->nomor_surat ?? '-'">
         <x-slot:actions>
             <x-ui.button variant="outline" :href="route('lpj.superadmin.show', $laporan)"><i class="bi bi-arrow-left"></i> Detail LPJ</x-ui.button>

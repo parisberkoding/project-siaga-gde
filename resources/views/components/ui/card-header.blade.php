@@ -5,9 +5,15 @@
     @if ($title)
         <div data-slot="card-title" class="flex items-center gap-2 font-semibold leading-none">
             @if ($step)
-                <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-sm shadow-primary/30">{{ $step }}</span>
+                {{-- Warna langkah bergilir supaya form bertahap tidak monoton; urutan sama dengan form BBM. --}}
+                @php
+                    $stepTones = ['from-blue-600 to-indigo-600 shadow-blue-600/30', 'from-orange-500 to-amber-500 shadow-orange-500/30', 'from-emerald-500 to-teal-600 shadow-emerald-500/30',
+                        'from-violet-500 to-purple-600 shadow-violet-500/30', 'from-cyan-500 to-sky-600 shadow-cyan-500/30', 'from-rose-500 to-pink-600 shadow-rose-500/30'];
+                    $stepTone = $stepTones[(((int) $step ?: 1) - 1) % count($stepTones)];
+                @endphp
+                <span class="flex size-6 shrink-0 items-center justify-center rounded-lg bg-linear-to-br text-xs font-bold text-white shadow-sm {{ $stepTone }}">{{ $step }}</span>
             @elseif ($icon)
-                <i class="{{ $icon }} text-muted-foreground"></i>
+                <i class="{{ $icon }} text-primary"></i>
             @endif
             {{ $title }}
         </div>

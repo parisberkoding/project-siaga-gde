@@ -3,7 +3,7 @@
     $rp = fn ($value) => 'Rp ' . number_format((float) $value, 0, ',', '.');
 @endphp
 
-<x-layouts.app title="Detail LPJ" :breadcrumbs="['Laporan LPJ' => route('requester.lpj.index'), 'Detail' => null]">
+<x-layouts.app title="Detail LPJ" :breadcrumbs="['LPJ Saya' => route('requester.lpj.index'), 'Detail' => null]">
     <x-ui.page-header kicker="Laporan Pertanggungjawaban" :title="$surat->nomor_surat ?? 'Detail LPJ'" description="Rincian pengeluaran dan status validasi LPJ.">
         <x-slot:actions>
             <x-spd.status-badge :status="$laporan->status" class="px-3 py-1 text-sm" />

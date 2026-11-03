@@ -2,8 +2,8 @@
     $rp = fn ($value) => 'Rp ' . number_format((float) $value, 0, ',', '.');
 @endphp
 
-<x-layouts.app title="Perpanjangan SPD" :breadcrumbs="['Perpanjangan (ETD)' => null]">
-    <x-ui.page-header kicker="Admin SPD" title="Manajemen Perpanjangan SPD" description="Setujui pengajuan perpanjangan, lalu checklist setelah surat perpanjangan dicetak." />
+<x-layouts.app title="Persetujuan Perpanjangan" :breadcrumbs="['Persetujuan Perpanjangan' => null]">
+    <x-ui.page-header kicker="Admin SPD" title="Persetujuan Perpanjangan SPD" description="Setujui pengajuan perpanjangan, lalu checklist setelah surat perpanjangan dicetak." />
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-ui.stat-card label="Perlu Approval" :value="$stats['pending']" icon="bi bi-hourglass-split" tone="warning" hint="Menunggu persetujuan" />
@@ -34,7 +34,7 @@
                             $orig = $ext->originalSurat;
                             $info = ['nomor' => $orig->nomor_surat, 'driver' => 'Driver: ' . $orig->pengemudi_nama, 'durasi' => 'Tambahan: +' . $ext->durasi_tambahan_hari . ' hari'];
                         @endphp
-                        <x-ui.queue-card :name="$orig->pengemudi_nama" :subtitle="$orig->nomor_surat" :since="$ext->created_at" :note="$ext->alasan_perpanjangan"
+                        <x-ui.queue-card :name="$orig->pengemudi_nama" :subtitle="($ext->nomor_surat_extension ?? $ext->extensionSurat?->nomor_surat ?? '-') . ' · dari ' . $orig->nomor_surat" :since="$ext->created_at" :note="$ext->alasan_perpanjangan"
                             figure-label="Tambahan" :figure="'+' . $ext->durasi_tambahan_hari . ' hari'" :figure-hint="$rp($ext->budget_tambahan)">
                             <p class="flex min-w-0 items-center gap-2">
                                 <i class="bi bi-geo-alt text-muted-foreground"></i>

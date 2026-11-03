@@ -3,8 +3,8 @@
     $canLpj = Auth::user()->hasPermission('lpj.create');
 @endphp
 
-<x-layouts.app title="Daftar Surat Tugas" :breadcrumbs="['Daftar Surat Tugas' => null]">
-    <x-ui.page-header kicker="Surat Tugas" title="Daftar Surat Tugas" description="Surat tugas perjalanan dinas yang Anda ajukan beserta status LPJ-nya.">
+<x-layouts.app title="Surat Tugas Saya" :breadcrumbs="['Surat Tugas Saya' => null]">
+    <x-ui.page-header kicker="Surat Tugas" title="Surat Tugas Saya" description="Surat tugas perjalanan dinas yang Anda ajukan beserta status LPJ-nya.">
         @if ($canCreate)
             <x-slot:actions>
                 <x-ui.button :href="route('requester.surat.create')"><i class="bi bi-plus-lg"></i> Buat Surat Baru</x-ui.button>

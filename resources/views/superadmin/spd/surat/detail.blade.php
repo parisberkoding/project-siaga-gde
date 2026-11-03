@@ -5,7 +5,7 @@
     $jenisLabels = ['dalam_kota' => 'SPD Dalam Kota', 'luar_kota' => 'SPD Luar Kota', 'lainnya' => $surat->jenis_spd_lainnya ?: 'Lainnya'];
 @endphp
 
-<x-layouts.app title="Detail Surat Tugas" :breadcrumbs="['Validasi Surat Tugas' => route('surat.superadmin.index'), $surat->nomor_surat => null]">
+<x-layouts.app title="Detail Surat Tugas" :breadcrumbs="['Persetujuan Surat Tugas' => route('surat.superadmin.index'), $surat->nomor_surat => null]">
     <x-ui.page-header kicker="Detail & Validasi" :title="$surat->nomor_surat" :description="$surat->pengemudi_nama . ' · ' . $surat->tempat_tujuan">
         <x-slot:actions>
             <x-spd.status-badge :status="$surat->status" class="px-3 py-1 text-sm" />

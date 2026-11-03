@@ -23,7 +23,9 @@ document.addEventListener('click', (event) => {
 });
 
 document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') setOpen(false);
+    if (event.key !== 'Escape') return;
+    setOpen(false);
+    document.querySelectorAll('details[data-menu][open]').forEach((menu) => { menu.open = false; });
 });
 
 // Menu akun (<details data-menu>): tutup saat klik di luar.

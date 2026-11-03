@@ -2,34 +2,46 @@
     // Dipakai tiga rute (GA, management, pengguna). Route detail mengikuti KONTEKS halaman, bukan hanya
     // permission, agar user dengan banyak peran tidak nyasar ke tahap validasi yang lain.
     $isPengguna = request()->routeIs('lpj.pengguna.*');
-    $showRoute = $isPengguna ? 'lpj.pengguna.show' : (request()->routeIs('lpj.management.*') ? 'lpj.management.show' : 'lpj.superadmin.show');
-    $pageTitle = $isPengguna ? 'Validasi Perjalanan' : 'Validasi Laporan';
+    $isManagement = request()->routeIs('lpj.management.*');
+    $showRoute = $isPengguna ? 'lpj.pengguna.show' : ($isManagement ? 'lpj.management.show' : 'lpj.superadmin.show');
+    [$pageTitle, $kicker, $description] = match (true) {
+        $isPengguna => ['Konfirmasi Perjalanan', 'Tahap 1 dari 3', 'LPJ perjalanan yang Anda ikuti. Pastikan rinciannya benar lalu konfirmasi.'],
+        $isManagement => ['Persetujuan Akhir LPJ', 'Tahap 3 dari 3', 'LPJ yang sudah dikonfirmasi penumpang dan diperiksa GA, tinggal persetujuan akhir.'],
+        default => ['Pemeriksaan LPJ (GA)', 'Tahap 2 dari 3', 'Periksa struk dan biaya LPJ dari driver, lalu validasi atau tolak.'],
+    };
     $menungguOverdue = $suratMenungguOverdue ?? collect();
     $rp = fn ($value) => 'Rp ' . number_format((float) $value, 0, ',', '.');
     $canPencairan = Auth::user()->hasPermission('lpj.pencairan');
 @endphp
 
 <x-layouts.app :title="$pageTitle" :breadcrumbs="[$pageTitle => null]">
-    <x-ui.page-header :kicker="$isPengguna ? 'Validasi Pengguna' : 'Admin SPD'" title="Validasi Laporan Pertanggungjawaban"
-        :description="$isPengguna ? 'LPJ perjalanan yang Anda ikuti dan perlu dikonfirmasi kebenarannya.' : 'Periksa LPJ dari driver lalu setujui atau tolak.'" />
+    <x-ui.page-header :kicker="$kicker" :title="$pageTitle" :description="$description" />
 
-    {{-- LPJ belum disubmit & lewat batas 3 hari: pengingat untuk mengejar, form LPJ driver tetap terbuka. --}}
+    {{-- LPJ belum disubmit & lewat batas 3 hari: satu baris ringkas, daftar lengkapnya dibuka bila perlu. --}}
     @if ($menungguOverdue->isNotEmpty())
-        <x-ui.alert variant="destructive" :title="$menungguOverdue->count() . ' surat tugas belum dibuatkan LPJ dan sudah lewat batas 3 hari.'">
-            <p>Batas submit = tanggal kembali SPD + 3 hari. Form LPJ driver <strong>tidak ditutup</strong>, LPJ tetap bisa masuk kapan saja dan akan tercatat terlambat.</p>
-            <ul class="mt-2 grid gap-1.5">
+        <details class="group rounded-lg border border-destructive/30 bg-destructive-soft text-sm">
+            <summary class="flex cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+                <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-destructive text-white"><i class="bi bi-alarm"></i></span>
+                <span class="grid min-w-0 flex-1 gap-0.5">
+                    <span class="font-semibold text-destructive">{{ $menungguOverdue->count() }} surat tugas belum dibuatkan LPJ melewati batas 3 hari</span>
+                    <span class="text-xs text-muted-foreground">Form LPJ driver tetap terbuka, LPJ yang masuk nanti tercatat terlambat.</span>
+                </span>
+                <span class="shrink-0 text-xs font-medium text-destructive"><span class="group-open:hidden">Lihat daftar</span><span class="hidden group-open:inline">Tutup</span> <i class="bi bi-chevron-down inline-block transition-transform group-open:rotate-180"></i></span>
+            </summary>
+            <ul class="grid max-h-64 gap-1.5 overflow-y-auto border-t border-destructive/20 px-4 py-3">
                 @foreach ($menungguOverdue as $suratOverdue)
-                    <li class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-card/70 px-2.5 py-1.5 text-foreground">
+                    <li class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-card px-2.5 py-1.5">
                         <span class="font-medium">{{ $suratOverdue->nomor_surat }}</span>
                         <span class="text-xs text-muted-foreground">{{ $suratOverdue->pengemudi_nama }} &middot; {{ $suratOverdue->tempat_tujuan }} &middot; kembali {{ $suratOverdue->tanggal_kembali?->translatedFormat('d M Y') }}</span>
                         <x-spd.lpj-deadline :surat="$suratOverdue" compact class="ml-auto" />
                     </li>
                 @endforeach
             </ul>
-        </x-ui.alert>
+        </details>
     @endif
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    {{-- Konfirmasi penumpang hanya punya antrean; angka Disetujui/Terlambat milik halaman GA. --}}
+    <div @class(['grid gap-4 sm:grid-cols-2 xl:grid-cols-4', 'hidden' => $isPengguna])>
         <x-ui.stat-card label="Menunggu Validasi" :value="$stats['pending']" icon="bi bi-hourglass-split" tone="warning" hint="Perlu divalidasi" />
         <x-ui.stat-card label="Disetujui" :value="$stats['approved']" icon="bi bi-check-circle" tone="success" hint="Total disetujui" />
         <x-ui.stat-card label="Terlambat" :value="$stats['late']" icon="bi bi-clock" tone="danger" hint="Submission terlambat" />
@@ -37,6 +49,8 @@
     </div>
 
     <x-ui.tabs default="pending">
+        {{-- Penumpang hanya punya antrean, tanpa riwayat disetujui/ditolak. --}}
+        @unless ($isPengguna)
         <x-ui.tabs-list>
             <x-ui.tabs-trigger value="pending">Menunggu Validasi
                 @if ($stats['pending'] > 0)<x-ui.badge variant="warning" class="rounded-full">{{ $stats['pending'] }}</x-ui.badge>@endif
@@ -44,6 +58,7 @@
             <x-ui.tabs-trigger value="approved">Disetujui</x-ui.tabs-trigger>
             <x-ui.tabs-trigger value="rejected">Ditolak</x-ui.tabs-trigger>
         </x-ui.tabs-list>
+        @endunless
 
         {{-- Antrian: kartu; validasi dua tahap (User & GA) dilakukan di halaman detail. --}}
         <x-ui.tabs-content value="pending">
@@ -54,9 +69,9 @@
                     @foreach ($pending_list->sortBy('created_at') as $lpj)
                         @php
                             $surat = $lpj->suratSpd;
-                            $steps = [['User', $lpj->approved_by_pengguna], ['GA', $lpj->approved_by_divisi_ga]];
+                            $steps = [['Penumpang', $lpj->approved_by_pengguna], ['GA', $lpj->approved_by_divisi_ga], ['Manajemen', $lpj->approved_by_management]];
                         @endphp
-                        <x-ui.queue-card :name="$lpj->nama" :subtitle="$surat->nomor_surat ?? '-'" :since="$lpj->created_at"
+                        <x-ui.queue-card :name="$lpj->nama" :subtitle="($lpj->lpj_number ?? '-') . ' · SPD ' . ($surat->nomor_surat ?? '-')" :since="$lpj->created_at"
                             :status="$lpj->is_late ? 'Terlambat ' . $lpj->days_late . ' hari' : 'Menunggu'" :tone="$lpj->is_late ? 'danger' : 'warning'"
                             figure-label="Total biaya" :figure="$rp($lpj->total_pengeluaran)" :figure-hint="$lpj->is_over_budget ? 'Melebihi budget' : null">
                             <p class="flex min-w-0 items-center gap-2">
@@ -67,7 +82,7 @@
                             <p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
                                 <span class="inline-flex items-center gap-1.5"><i class="bi bi-calendar3"></i> <span class="text-foreground">{{ $lpj->tanggal_lpj?->translatedFormat('d M Y') ?? '-' }}</span></span>
                                 <span class="size-1 rounded-full bg-border"></span>
-                                {{-- Progres dua tanda tangan --}}
+                                {{-- Progres tiga tanda tangan --}}
                                 @foreach ($steps as [$label, $done])
                                     <span @class(['inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium', 'bg-success-soft text-success' => $done, 'bg-muted text-muted-foreground' => ! $done])>
                                         <i class="bi {{ $done ? 'bi-check-circle-fill' : 'bi-circle' }}"></i> {{ $label }}
@@ -76,7 +91,7 @@
                             </p>
                             <x-slot:actions>
                                 <x-ui.button variant="ghost" size="sm" :href="route('spd.laporan.export', $lpj)" target="_blank"><i class="bi bi-file-earmark-pdf"></i> PDF</x-ui.button>
-                                <x-ui.button size="sm" :href="route($showRoute, $lpj)"><i class="bi bi-clipboard-check"></i> Periksa & Validasi</x-ui.button>
+                                <x-ui.button size="sm" :href="route($showRoute, $lpj)"><i class="bi bi-clipboard-check"></i> {{ $isPengguna ? 'Periksa & Konfirmasi' : 'Periksa & Validasi' }}</x-ui.button>
                             </x-slot:actions>
                         </x-ui.queue-card>
                     @endforeach

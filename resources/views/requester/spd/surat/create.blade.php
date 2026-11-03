@@ -1,5 +1,5 @@
-<x-layouts.app title="Buat Surat Tugas" :breadcrumbs="['Daftar Surat Tugas' => route('requester.surat.index'), 'Buat Surat' => null]">
-    <x-ui.page-header kicker="Surat Tugas" title="Buat Surat Tugas Perjalanan Dinas" description="Isi data perjalanan, budget ditentukan admin saat persetujuan." />
+<x-layouts.app title="Ajukan Surat Tugas" :breadcrumbs="['Surat Tugas Saya' => route('requester.surat.index'), 'Ajukan' => null]">
+    <x-ui.page-header kicker="Surat Tugas" title="Ajukan Surat Tugas Perjalanan Dinas" description="Isi data perjalanan, budget ditentukan admin saat persetujuan." />
 
     <form action="{{ route('requester.surat.store') }}" method="POST" id="formSurat" data-loading class="grid items-start gap-6 lg:grid-cols-3">
         @csrf
@@ -54,10 +54,10 @@
                 <x-ui.card-content class="grid gap-4">
                     <div class="grid gap-4 sm:grid-cols-2">
                         <x-ui.field label="Tanggal Berangkat" for="tanggalBerangkat" required error="tanggal_berangkat">
-                            <x-ui.input type="date" id="tanggalBerangkat" name="tanggal_berangkat" :value="old('tanggal_berangkat')" required :min="date('Y-m-d')" />
+                            <x-ui.date-picker id="tanggalBerangkat" name="tanggal_berangkat" :value="old('tanggal_berangkat')" required :min="date('Y-m-d')" />
                         </x-ui.field>
                         <x-ui.field label="Tanggal Kembali" for="tanggalKembali" required error="tanggal_kembali">
-                            <x-ui.input type="date" id="tanggalKembali" name="tanggal_kembali" :value="old('tanggal_kembali')" required />
+                            <x-ui.date-picker id="tanggalKembali" name="tanggal_kembali" :value="old('tanggal_kembali')" required />
                         </x-ui.field>
                     </div>
                     <x-ui.alert variant="info" id="infoLama" hidden>Lama perjalanan: <strong id="lamaHari">0</strong> hari</x-ui.alert>

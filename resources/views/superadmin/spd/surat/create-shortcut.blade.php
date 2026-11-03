@@ -1,5 +1,5 @@
-<x-layouts.app title="Buat Surat Tugas" :breadcrumbs="['Validasi Surat Tugas' => route('surat.superadmin.index'), 'Buat Surat Tugas' => null]">
-    <x-ui.page-header kicker="Admin SPD" title="Buat Surat Tugas" description="Surat yang dibuat dari sini langsung disetujui tanpa alur validasi." />
+<x-layouts.app title="Buat Surat Tugas Cepat" :breadcrumbs="['Persetujuan Surat Tugas' => route('surat.superadmin.index'), 'Buat Surat Tugas Cepat' => null]">
+    <x-ui.page-header kicker="Admin SPD" title="Buat Surat Tugas Cepat" description="Surat yang dibuat dari sini langsung disetujui tanpa alur validasi." />
 
     <form action="{{ route('surat.superadmin.store-shortcut') }}" method="POST" id="formSurat" data-loading class="grid items-start gap-6 lg:grid-cols-3">
         @csrf
@@ -116,10 +116,10 @@
                 <x-ui.card-content class="grid gap-4">
                     <div class="grid gap-4 sm:grid-cols-2">
                         <x-ui.field label="Tanggal Berangkat" for="tanggalBerangkat" required error="tanggal_berangkat">
-                            <x-ui.input type="date" id="tanggalBerangkat" name="tanggal_berangkat" :value="old('tanggal_berangkat')" required />
+                            <x-ui.date-picker id="tanggalBerangkat" name="tanggal_berangkat" :value="old('tanggal_berangkat')" required />
                         </x-ui.field>
                         <x-ui.field label="Tanggal Kembali" for="tanggalKembali" required error="tanggal_kembali">
-                            <x-ui.input type="date" id="tanggalKembali" name="tanggal_kembali" :value="old('tanggal_kembali')" required />
+                            <x-ui.date-picker id="tanggalKembali" name="tanggal_kembali" :value="old('tanggal_kembali')" required />
                         </x-ui.field>
                     </div>
                     <x-ui.alert variant="info" id="infoLama" hidden>Lama perjalanan: <strong id="lamaHari">0</strong> hari</x-ui.alert>

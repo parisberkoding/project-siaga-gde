@@ -1,5 +1,5 @@
-<x-layouts.app title="Validasi Surat Tugas" :breadcrumbs="['Validasi Surat Tugas' => null]">
-    <x-ui.page-header kicker="Admin SPD" title="Validasi Surat Tugas" description="Periksa pengajuan surat tugas, tentukan dana, lalu setujui atau tolak.">
+<x-layouts.app title="Persetujuan Surat Tugas" :breadcrumbs="['Persetujuan Surat Tugas' => null]">
+    <x-ui.page-header kicker="Admin SPD" title="Persetujuan Surat Tugas" description="Periksa pengajuan surat tugas, tentukan dana, lalu setujui atau tolak.">
         @can('permission', 'spd.manage')
             <x-slot:actions>
                 <x-ui.button :href="route('surat.superadmin.create-shortcut')"><i class="bi bi-plus-lg"></i> Buat Surat Tugas</x-ui.button>

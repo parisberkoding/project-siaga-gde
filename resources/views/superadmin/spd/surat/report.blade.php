@@ -2,8 +2,8 @@
     $rp = fn ($value) => 'Rp ' . number_format((float) $value, 0, ',', '.');
 @endphp
 
-<x-layouts.app title="Laporan SPD" :breadcrumbs="['Laporan SPD' => null]">
-    <x-ui.page-header kicker="Admin SPD" title="Laporan SPD" description="Anggaran dan realisasi seluruh surat tugas beserta status LPJ-nya." />
+<x-layouts.app title="Rekap Biaya SPD" :breadcrumbs="['Rekap Biaya SPD' => null]">
+    <x-ui.page-header kicker="Admin SPD" title="Rekap Biaya SPD" description="Anggaran dan realisasi seluruh surat tugas beserta status LPJ-nya." />
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <x-ui.stat-card label="Surat Disetujui" :value="$totalApproved" icon="bi bi-file-earmark-check" hint="Surat SPD" />

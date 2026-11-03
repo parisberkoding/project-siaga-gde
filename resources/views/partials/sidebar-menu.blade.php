@@ -133,20 +133,24 @@
         // ['label' => 'Pelaporan BBM & SPD', 'icon' => 'bi bi-journal-text', 'route' => 'pelaporan.index', 'active' => ['pelaporan.*'], 'perms' => ['pelaporan.view', 'pelaporan.create']],
 
         // ── SPD Management (anak di-filter per permission) ──
-        ['label' => 'SPD Management', 'icon' => 'bi bi-envelope-paper', 'id' => 'spd-nav', 'module' => 'spd', 'active' => ['requester.surat.*', 'requester.spd.berjalan', 'requester.lpj.*', 'surat.superadmin.*', 'perpanjangan.superadmin.*', 'lpj.superadmin.*', 'lpj.pengguna.*'], 'children' => [
+        // Urutan mengikuti alur: ajukan surat, perjalanan, LPJ, lalu tahap persetujuan.
+        // Menu "Saya" memakai izin membuat, bukan izin lihat: halamannya hanya memuat dokumen milik
+        // sendiri, jadi penumpang (pegawai) dan admin tidak melihat halaman yang selalu kosong.
+        ['label' => 'SPD Management', 'icon' => 'bi bi-envelope-paper', 'id' => 'spd-nav', 'module' => 'spd', 'active' => ['requester.surat.*', 'requester.spd.berjalan', 'requester.lpj.*', 'requester.perpanjangan.*', 'surat.superadmin.*', 'perpanjangan.superadmin.*', 'lpj.superadmin.*', 'lpj.pengguna.*', 'lpj.management.*'], 'children' => [
             // Driver / Requester
-            ['label' => 'Buat Surat Tugas', 'icon' => 'bi bi-plus-circle', 'section' => 'Perjalanan Saya', 'route' => 'requester.surat.create', 'active' => ['requester.surat.create'], 'perms' => ['spd.create'], 'hideIfPerms' => ['spd.manage']],
-            ['label' => 'Daftar Surat Tugas', 'icon' => 'bi bi-file-earmark-text', 'section' => 'Perjalanan Saya', 'route' => 'requester.surat.index', 'active' => ['requester.surat.index', 'requester.surat.show'], 'perms' => ['spd.view']],
-            ['label' => 'SPD Berjalan', 'icon' => 'bi bi-car-front', 'section' => 'Perjalanan Saya', 'route' => 'requester.spd.berjalan', 'active' => ['requester.spd.berjalan'], 'perms' => ['lpj.create', 'spd.view']],
-            ['label' => 'Laporan SPD (LPJ)', 'icon' => 'bi bi-receipt', 'section' => 'Perjalanan Saya', 'route' => 'requester.lpj.index', 'active' => ['requester.lpj.*'], 'perms' => ['lpj.create', 'lpj.view']],
-            // User yang berangkat (penumpang)
-            ['label' => 'Validasi Perjalanan (User)', 'icon' => 'bi bi-person-check', 'section' => 'Validasi', 'route' => 'lpj.pengguna.index', 'active' => ['lpj.pengguna.*'], 'perms' => ['spd.validate_trip']],
-            // Admin / Superadmin
-            ['label' => 'Buat Surat Tugas', 'icon' => 'bi bi-lightning-charge', 'section' => 'Admin', 'route' => 'surat.superadmin.create-shortcut', 'active' => ['surat.superadmin.create-shortcut', 'surat.superadmin.store-shortcut'], 'perms' => ['spd.manage']],
-            ['label' => 'Validasi Surat Tugas', 'icon' => 'bi bi-envelope-check', 'section' => 'Validasi', 'route' => 'surat.superadmin.index', 'active' => ['surat.superadmin.index', 'surat.superadmin.show'], 'perms' => ['spd.manage']],
-            ['label' => 'Perpanjangan (ETD)', 'icon' => 'bi bi-calendar-plus', 'section' => 'Validasi', 'route' => 'perpanjangan.superadmin.index', 'active' => ['perpanjangan.superadmin.*'], 'perms' => ['spd.update']],
-            ['label' => 'Validasi Laporan', 'icon' => 'bi bi-clipboard-check', 'section' => 'Validasi', 'route' => 'lpj.superadmin.index', 'active' => ['lpj.superadmin.*'], 'perms' => ['lpj.validate']],
-            ['label' => 'Laporan SPD', 'icon' => 'bi bi-bar-chart-line', 'section' => 'Admin', 'route' => 'surat.superadmin.report', 'active' => ['surat.superadmin.report'], 'perms' => ['spd.manage']],
+            ['label' => 'Ajukan Surat Tugas', 'icon' => 'bi bi-plus-circle', 'section' => 'Perjalanan Saya', 'route' => 'requester.surat.create', 'active' => ['requester.surat.create'], 'perms' => ['spd.create'], 'hideIfPerms' => ['spd.manage']],
+            ['label' => 'Surat Tugas Saya', 'icon' => 'bi bi-file-earmark-text', 'section' => 'Perjalanan Saya', 'route' => 'requester.surat.index', 'active' => ['requester.surat.index', 'requester.surat.show', 'requester.perpanjangan.*'], 'perms' => ['spd.create'], 'hideIfPerms' => ['spd.manage']],
+            ['label' => 'SPD Berjalan', 'icon' => 'bi bi-car-front', 'section' => 'Perjalanan Saya', 'route' => 'requester.spd.berjalan', 'active' => ['requester.spd.berjalan'], 'perms' => ['lpj.create'], 'hideIfPerms' => ['spd.manage']],
+            ['label' => 'LPJ Saya', 'icon' => 'bi bi-receipt', 'section' => 'Perjalanan Saya', 'route' => 'requester.lpj.index', 'active' => ['requester.lpj.*'], 'perms' => ['lpj.create'], 'hideIfPerms' => ['spd.manage']],
+            // Persetujuan, urut sesuai tahap
+            ['label' => 'Surat Tugas Masuk', 'icon' => 'bi bi-envelope-check', 'section' => 'Persetujuan', 'route' => 'surat.superadmin.index', 'active' => ['surat.superadmin.index', 'surat.superadmin.show'], 'perms' => ['spd.manage']],
+            ['label' => 'Perpanjangan Masuk', 'icon' => 'bi bi-calendar-plus', 'section' => 'Persetujuan', 'route' => 'perpanjangan.superadmin.index', 'active' => ['perpanjangan.superadmin.*'], 'perms' => ['spd.update']],
+            ['label' => 'Konfirmasi Perjalanan', 'icon' => 'bi bi-person-check', 'section' => 'Persetujuan', 'route' => 'lpj.pengguna.index', 'active' => ['lpj.pengguna.*'], 'perms' => ['spd.validate_trip']],
+            ['label' => 'Pemeriksaan LPJ (GA)', 'icon' => 'bi bi-clipboard-check', 'section' => 'Persetujuan', 'route' => 'lpj.superadmin.index', 'active' => ['lpj.superadmin.*'], 'perms' => ['lpj.validate']],
+            ['label' => 'Persetujuan Akhir LPJ', 'icon' => 'bi bi-patch-check', 'section' => 'Persetujuan', 'route' => 'lpj.management.index', 'active' => ['lpj.management.*'], 'perms' => ['lpj.validate_management']],
+            // Admin
+            ['label' => 'Buat Surat Tugas Cepat', 'icon' => 'bi bi-lightning-charge', 'section' => 'Admin', 'route' => 'surat.superadmin.create-shortcut', 'active' => ['surat.superadmin.create-shortcut', 'surat.superadmin.store-shortcut'], 'perms' => ['spd.manage']],
+            ['label' => 'Rekap Biaya SPD', 'icon' => 'bi bi-bar-chart-line', 'section' => 'Admin', 'route' => 'surat.superadmin.report', 'active' => ['surat.superadmin.report'], 'perms' => ['spd.manage']],
         ]],
 
         // ── Master Data - Kendaraan & Alat ──

@@ -2,7 +2,7 @@
     $canUpdate = Auth::user()->hasPermission('lpj.update');
 @endphp
 
-<x-layouts.app title="Laporan SPD (LPJ)" :breadcrumbs="['Laporan LPJ' => null]">
+<x-layouts.app title="LPJ Saya" :breadcrumbs="['LPJ Saya' => null]">
     <x-ui.page-header kicker="Pelaporan" title="Laporan Pertanggungjawaban" description="LPJ perjalanan dinas yang sudah Anda kirim beserta status validasinya." />
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

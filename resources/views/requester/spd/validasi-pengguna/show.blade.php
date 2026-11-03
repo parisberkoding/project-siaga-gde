@@ -3,8 +3,8 @@
     $total = 'Rp ' . number_format((float) $laporan->total_pengeluaran, 0, ',', '.');
 @endphp
 
-<x-layouts.app title="Validasi Perjalanan Dinas" :breadcrumbs="['Validasi Perjalanan' => route('lpj.pengguna.index'), 'Detail' => null]">
-    <x-ui.page-header kicker="Validasi Perjalanan" :title="$surat->nomor_surat ?? 'Validasi Perjalanan Dinas'" description="Periksa rincian perjalanan lalu validasi sebagai pengguna yang berangkat.">
+<x-layouts.app title="Konfirmasi Perjalanan Dinas" :breadcrumbs="['Konfirmasi Perjalanan' => route('lpj.pengguna.index'), 'Detail' => null]">
+    <x-ui.page-header kicker="Konfirmasi Perjalanan" :title="$surat->nomor_surat ?? 'Konfirmasi Perjalanan Dinas'" description="Periksa rincian perjalanan lalu validasi sebagai pengguna yang berangkat.">
         <x-slot:actions>
             <x-ui.button variant="outline" :href="route('lpj.pengguna.index')"><i class="bi bi-arrow-left"></i> Kembali</x-ui.button>
         </x-slot:actions>

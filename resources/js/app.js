@@ -7,4 +7,5 @@ import './ui/datatable';
 import './ui/toast';
 import './ui/dropdown';
 import './ui/month-picker';
+import './ui/date-picker';
 import './ui/action-dialog';

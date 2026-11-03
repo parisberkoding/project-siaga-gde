@@ -43,7 +43,7 @@
                     </div>
 
                     <x-ui.field label="Tanggal Kembali Baru" for="tanggalKembaliBaru" required error="tanggal_kembali_baru" hint="Harus setelah tanggal kembali sebelumnya">
-                        <x-ui.input type="date" name="tanggal_kembali_baru" id="tanggalKembaliBaru" :value="old('tanggal_kembali_baru')" required />
+                        <x-ui.date-picker name="tanggal_kembali_baru" id="tanggalKembaliBaru" :value="old('tanggal_kembali_baru')" required />
                     </x-ui.field>
 
                     <div id="infoPerpanjangan" hidden class="grid divide-y rounded-lg border border-success/30 bg-success-soft text-center sm:grid-cols-3 sm:divide-x sm:divide-y-0">

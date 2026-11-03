@@ -14,7 +14,7 @@
     $kategori = ['Makan', 'Hotel', 'BBM', 'Parkir', 'Tol', 'Lain-lain'];
 @endphp
 
-<x-layouts.app title="Revisi LPJ" :breadcrumbs="['Laporan LPJ' => route('requester.lpj.index'), 'Revisi LPJ' => null]">
+<x-layouts.app title="Revisi LPJ" :breadcrumbs="['LPJ Saya' => route('requester.lpj.index'), 'Revisi LPJ' => null]">
     <x-ui.page-header kicker="Laporan Pertanggungjawaban" title="Revisi Laporan Pertanggungjawaban" :description="$surat->nomor_surat . ' · ' . $surat->tempat_tujuan" />
 
     <x-ui.alert variant="destructive" title="LPJ ditolak">

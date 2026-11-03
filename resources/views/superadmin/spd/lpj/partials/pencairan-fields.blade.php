@@ -1,6 +1,6 @@
 {{-- Isian satu baris pencairan (form tambah & dialog ubah). Field transfer ditampilkan oleh resources/js/pages/spd/pencairan.js. --}}
 <x-ui.field label="Tanggal" required>
-    <x-ui.input type="date" name="tanggal" :value="$values['tanggal']" required />
+    <x-ui.date-picker name="tanggal" :value="$values['tanggal']" required />
 </x-ui.field>
 <x-ui.field label="Nominal (Rp)" required>
     <x-ui.input type="number" name="nominal" :value="$values['nominal']" min="0" step="0.01" required />

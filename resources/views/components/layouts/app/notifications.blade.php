@@ -25,10 +25,16 @@
             fn () => $Extension::pending()->inUnit($unitId)->count()],
         ['spd', 'spd.update', 'Perpanjangan perlu checklist', 'Sudah disetujui, surat perlu dicetak', 'bi-check2-square', 'info', 'perpanjangan.superadmin.index',
             fn () => $Extension::needAcknowledge()->inUnit($unitId)->count()],
-        ['spd', 'lpj.validate', 'LPJ menunggu validasi GA', 'Periksa LPJ dari driver', 'bi-receipt', 'warning', 'lpj.superadmin.index',
-            fn () => $Lpj::pending()->inUnit($unitId)->count()],
-        ['spd', 'spd.validate_trip', 'Perjalanan perlu validasi Anda', 'Konfirmasi kebenaran perjalanan dinas', 'bi-person-check', 'info', 'lpj.pengguna.index',
-            fn () => $Lpj::pending()->inUnit($unitId)->whereNull('approved_by_pengguna')->count()],
+        // Tiga tahap LPJ dihitung terpisah: satu LPJ hanya muncul di tahap yang sedang menunggu orang itu,
+        // jadi tidak terhitung dua kali di lonceng.
+        ['spd', 'spd.validate_trip', 'Perjalanan perlu konfirmasi Anda', 'Tahap 1: pastikan rincian perjalanan benar', 'bi-person-check', 'info', 'lpj.pengguna.index',
+            fn () => $Lpj::pending()->whereNull('approved_by_pengguna')
+                ->whereHas('suratSpd', fn ($q) => $q->where(fn ($s) => $s->where('user_id', $user->id)->orWhereHas('details', fn ($d) => $d->where('user_id', $user->id))))
+                ->count()],
+        ['spd', 'lpj.validate', 'LPJ perlu diperiksa GA', 'Tahap 2: periksa struk dan biaya', 'bi-receipt', 'warning', 'lpj.superadmin.index',
+            fn () => $Lpj::pending()->inUnit($unitId)->whereNull('approved_by_divisi_ga')->count()],
+        ['spd', 'lpj.validate_management', 'LPJ menunggu persetujuan akhir', 'Tahap 3: penumpang dan GA sudah selesai', 'bi-patch-check', 'warning', 'lpj.management.index',
+            fn () => $Lpj::pending()->inUnit($unitId)->whereNotNull('approved_by_pengguna')->whereNotNull('approved_by_divisi_ga')->whereNull('approved_by_management')->count()],
         ['spd', 'lpj.create', 'SPD selesai, LPJ belum dibuat', 'Laporkan struk dan buat LPJ', 'bi-car-front', 'danger', 'requester.spd.berjalan',
             fn () => $SuratSpd::forUser($user->id)->where('status', 'approved')->whereDoesntHave('lpjPenggantian')->whereDate('tanggal_kembali', '<', today())->count()],
         ['spd', 'lpj.update', 'LPJ ditolak, perlu revisi', 'Perbaiki lalu ajukan ulang', 'bi-arrow-counterclockwise', 'danger', 'requester.lpj.index',

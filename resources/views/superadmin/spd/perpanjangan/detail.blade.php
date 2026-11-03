@@ -4,7 +4,7 @@
     $rp = fn ($value) => 'Rp ' . number_format((float) $value, 0, ',', '.');
 @endphp
 
-<x-layouts.app title="Detail Perpanjangan" :breadcrumbs="['Perpanjangan (ETD)' => route('perpanjangan.superadmin.index'), $surat->nomor_surat => null]">
+<x-layouts.app title="Detail Perpanjangan" :breadcrumbs="['Persetujuan Perpanjangan' => route('perpanjangan.superadmin.index'), $surat->nomor_surat => null]">
     <x-ui.page-header kicker="Detail & Validasi" :title="$surat->nomor_surat" :description="$surat->pengemudi_nama . ' · ' . $surat->tempat_tujuan">
         <x-slot:actions>
             <x-spd.status-badge :status="$surat->status" class="px-3 py-1 text-sm" />

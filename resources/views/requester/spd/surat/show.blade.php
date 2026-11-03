@@ -4,7 +4,7 @@
     $overdue = $surat->isLpjDeadlineOverdue();
 @endphp
 
-<x-layouts.app title="Detail Surat Tugas" :breadcrumbs="['Daftar Surat Tugas' => route('requester.surat.index'), $surat->nomor_surat => null]">
+<x-layouts.app title="Detail Surat Tugas" :breadcrumbs="['Surat Tugas Saya' => route('requester.surat.index'), $surat->nomor_surat => null]">
     <x-ui.page-header kicker="Surat Tugas" :title="$surat->nomor_surat" description="Detail surat tugas perjalanan dinas.">
         <x-slot:actions>
             <x-spd.status-badge :status="$surat->status" class="px-3 py-1 text-sm" />

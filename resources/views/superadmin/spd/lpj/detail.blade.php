@@ -15,7 +15,7 @@
     $kekurangan = $jumlahDiberikan > 0 ? abs(min(0, $selisih)) : (float) $laporan->kekurangan;
 @endphp
 
-<x-layouts.app title="Detail LPJ" :breadcrumbs="['Validasi Laporan' => route($indexRoute), 'Detail' => null]">
+<x-layouts.app title="Detail LPJ" :breadcrumbs="[(request()->routeIs('lpj.management.*') ? 'Persetujuan Akhir LPJ' : 'Pemeriksaan LPJ (GA)') => route($indexRoute), 'Detail' => null]">
     <x-ui.page-header kicker="Laporan Pertanggungjawaban" :title="$surat->nomor_surat ?? 'Detail LPJ'" :description="$laporan->nama . ' · ' . ($surat->tempat_tujuan ?? '-')">
         <x-slot:actions>
             <x-spd.status-badge :status="$laporan->status" class="px-3 py-1 text-sm" />
