@@ -1,49 +1,58 @@
 {{-- Slot permohonan yang menunggu persetujuan + dialog pembatalan. --}}
-<x-ui.card class="gap-4 border-warning/40">
-    <x-ui.card-header>
-        <div class="font-semibold leading-none">Slot {{ $slotNum }}</div>
-        <div class="text-sm text-muted-foreground"><code>{{ $request->request_number }}</code></div>
-        <x-slot:action><x-bbm.status-badge :status="$request->status" /></x-slot:action>
-    </x-ui.card-header>
+<x-ui.card class="gap-4 overflow-hidden py-0">
+    <div class="h-1 bg-warning"></div>
 
-    <x-ui.card-content class="grid gap-3 text-sm">
-        <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5">
-            <dt class="text-muted-foreground">Kendaraan</dt>
-            <dd>
-                {{ $request->vehicle->consumerial_code ?? 'N/A' }}
-                <span class="block text-xs text-muted-foreground">{{ $request->vehicle->consumerial_name ?? '' }} ({{ $request->vehicle->consumerial_type ?? '-' }})</span>
-                @if ($request->vehicle && ! $request->vehicle->is_approved)
-                    <x-ui.badge variant="danger" class="mt-1"><i class="bi bi-exclamation-circle"></i> Kendaraan belum disetujui</x-ui.badge>
-                @endif
-            </dd>
-            <dt class="text-muted-foreground">BBM</dt>
-            <dd>{{ $request->gasoline_type }}</dd>
-            <dt class="text-muted-foreground">Nominal</dt>
-            <dd class="font-medium">Rp {{ number_format($request->bill_amounts, 0, ',', '.') }}</dd>
-            @if ($request->requester_notes)
-                <dt class="text-muted-foreground">Catatan</dt>
-                <dd>{{ Str::limit($request->requester_notes, 80) }}</dd>
-            @endif
-            <dt class="text-muted-foreground">Diajukan</dt>
-            <dd>{{ $request->request_date->diffForHumans() }}</dd>
-        </dl>
+    <x-ui.card-content class="grid gap-4">
+        <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+                <p class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Slot {{ $slotNum }}</p>
+                <a href="{{ route('requester-show', $request->id) }}" class="mt-1 block truncate font-mono text-xs text-muted-foreground hover:text-foreground hover:underline">{{ $request->request_number }}</a>
+            </div>
+            <x-bbm.status-badge :status="$request->status" />
+        </div>
 
-        @if ($request->status === 'pending_vehicle_approval')
-            <x-ui.alert variant="warning">
-                Kendaraan rental sedang menunggu persetujuan Superadmin. Setelah disetujui, permohonan diproses oleh Admin.
-            </x-ui.alert>
-        @else
-            <p class="text-xs text-muted-foreground"><i class="bi bi-clock-history"></i> Menunggu persetujuan Admin GA.</p>
+        <div>
+            <p class="text-2xl font-bold tabular-nums tracking-tight">Rp {{ number_format($request->bill_amounts, 0, ',', '.') }}</p>
+            <p class="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                <i class="bi bi-fuel-pump"></i> {{ $request->gasoline_type }}
+            </p>
+        </div>
+
+        <div class="flex items-center gap-3 rounded-lg bg-muted/60 p-3 text-sm">
+            <span class="flex size-9 shrink-0 items-center justify-center rounded-md bg-card text-muted-foreground shadow-xs">
+                <i class="bi {{ strtolower($request->vehicle->consumerial_type ?? '') === 'kendaraan' ? 'bi-car-front' : 'bi-tools' }}"></i>
+            </span>
+            <div class="min-w-0">
+                <p class="truncate font-medium">{{ $request->vehicle->consumerial_code ?? 'N/A' }}</p>
+                <p class="truncate text-xs text-muted-foreground">{{ $request->vehicle->consumerial_name ?? '-' }}</p>
+            </div>
+        </div>
+
+        @if ($request->vehicle && ! $request->vehicle->is_approved)
+            <x-ui.badge variant="danger"><i class="bi bi-exclamation-circle"></i> Kendaraan belum disetujui</x-ui.badge>
         @endif
+
+        <p class="flex items-start gap-2 text-xs text-muted-foreground">
+            <i class="bi bi-clock-history mt-px"></i>
+            <span>
+                Diajukan {{ $request->request_date->diffForHumans() }}.
+                {{ $request->status === 'pending_vehicle_approval'
+                    ? 'Kendaraan rental menunggu persetujuan Superadmin, setelah itu diproses Admin GA.'
+                    : 'Menunggu persetujuan Admin GA.' }}
+            </span>
+        </p>
     </x-ui.card-content>
 
-    @can('permission', 'bbm.request')
-        <x-ui.card-footer class="mt-auto">
-            <x-ui.button variant="outline" class="w-full text-destructive hover:text-destructive" data-dialog-open="cancel-request-{{ $request->id }}">
-                <i class="bi bi-x-circle"></i> Batalkan Permohonan
+    <div class="mt-auto flex items-center gap-2 border-t px-4 py-2.5">
+        <x-ui.button variant="ghost" size="sm" :href="route('requester-show', $request->id)">
+            <i class="bi bi-eye"></i> Detail
+        </x-ui.button>
+        @can('permission', 'bbm.request')
+            <x-ui.button variant="ghost" size="sm" class="ml-auto text-destructive hover:bg-destructive-soft hover:text-destructive" data-dialog-open="cancel-request-{{ $request->id }}">
+                <i class="bi bi-x-circle"></i> Batalkan
             </x-ui.button>
-        </x-ui.card-footer>
-    @endcan
+        @endcan
+    </div>
 </x-ui.card>
 
 @can('permission', 'bbm.request')

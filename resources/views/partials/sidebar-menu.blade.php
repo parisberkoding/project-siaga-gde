@@ -121,7 +121,7 @@
         // ── BBM / Permohonan ──
         ['label' => 'Permohonan BBM', 'icon' => 'bi bi-fuel-pump', 'id' => 'bbm-nav', 'module' => 'bbm', 'active' => ['requester-index', 'requester-history', 'admin-dashboard', 'superadmin.permohonan*'], 'children' => [
             ['label' => 'Permohonan Baru', 'icon' => 'bi bi-plus-circle', 'section' => 'Permohonan', 'route' => 'requester-index', 'active' => ['requester-index'], 'perms' => ['bbm.request']],
-            ['label' => 'Riwayat Permohonan', 'icon' => 'bi bi-clock-history', 'section' => 'Permohonan', 'route' => 'requester-history', 'active' => ['requester-history'], 'perms' => ['bbm.view', 'bbm.report']],
+            ['label' => 'Riwayat Permohonan', 'icon' => 'bi bi-clock-history', 'section' => 'Permohonan', 'route' => 'requester-history', 'active' => ['requester-history'], 'perms' => ['bbm.request', 'bbm.report'], 'hideIfPerms' => ['bbm.approve']],
             ['label' => 'Approval BBM', 'icon' => 'bi bi-check2-square', 'section' => 'Admin', 'route' => 'admin-dashboard', 'active' => ['admin-dashboard'], 'perms' => ['bbm.approve']],
             ['label' => 'Kelola Permohonan', 'icon' => 'bi bi-pencil-square', 'section' => 'Admin', 'route' => 'superadmin.permohonan', 'active' => ['superadmin.permohonan*'], 'perms' => ['bbm.approve']],
         ]],

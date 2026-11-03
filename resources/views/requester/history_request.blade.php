@@ -1,23 +1,19 @@
 <x-layouts.app title="Riwayat Permohonan BBM" :breadcrumbs="['Permohonan BBM' => route('requester-index'), 'Riwayat' => null]">
-    <x-ui.page-header kicker="Permohonan BBM" title="Riwayat Permohonan" description="Semua permohonan BBM yang pernah Anda ajukan, per bulan pengajuan." />
+    <x-ui.page-header kicker="Permohonan BBM" title="Riwayat Permohonan" description="100 permohonan terbaru tampil langsung. Pilih bulan pengajuan untuk melihat data bulan tertentu." />
 
     <x-ui.card class="gap-4">
         <x-ui.card-content class="grid gap-4">
-            <form method="GET" action="{{ route('requester-history') }}" data-autosubmit class="flex flex-wrap items-center justify-between gap-3">
-                <label class="flex items-center gap-2 text-sm font-medium">
-                    <i class="bi bi-calendar3 text-muted-foreground"></i> Bulan
-                    <x-ui.select name="bulan" inline aria-label="Filter bulan pengajuan">
-                        @foreach ($months as $month)
-                            <option value="{{ $month->format('Y-m') }}" @selected($selectedMonth?->format('Y-m') === $month->format('Y-m'))>{{ $month->translatedFormat('F Y') }}</option>
-                        @endforeach
-                        <option value="semua" @selected(! $selectedMonth)>Semua bulan</option>
-                    </x-ui.select>
-                </label>
-                <noscript><x-ui.button type="submit" variant="outline" size="sm">Terapkan</x-ui.button></noscript>
+            {{-- Filter bulan: tiap pilihan adalah tautan ?bulan=YYYY-MM, bulan tanpa data nonaktif. --}}
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium text-muted-foreground">Bulan pengajuan</span>
+                    <x-ui.month-picker id="history-month" :months="$months" :selected="$selectedMonth" />
+                </div>
                 <p class="text-sm text-muted-foreground">
-                    {{ $history->total() }} permohonan {{ $selectedMonth ? 'di ' . $selectedMonth->translatedFormat('F Y') : 'di semua bulan' }}
+                    <span class="font-medium text-foreground tabular-nums">{{ $history->total() }}</span> permohonan
+                    {{ $selectedMonth ? 'di ' . $selectedMonth->translatedFormat('F Y') : 'di semua bulan' }}
                 </p>
-            </form>
+            </div>
 
             {{-- Pengguna HP: navigasi halaman juga di atas supaya tidak perlu menggulir ke bawah. --}}
             <div class="md:hidden">{{ $history->links('vendor.pagination.shadcn') }}</div>

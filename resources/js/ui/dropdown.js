@@ -8,12 +8,14 @@ document.addEventListener('beforetoggle', (event) => {
     const menu = event.target;
     if (!menu.matches?.('[data-dropdown]') || event.newState !== 'open') return;
     const rect = triggerOf(menu).getBoundingClientRect();
-    Object.assign(menu.style, {
-        inset: 'auto',
-        top: `${rect.bottom + GAP}px`,
-        right: `${Math.max(8, window.innerWidth - rect.right)}px`,
-    });
+    // data-align="start": rata kiri dengan tombol (mis. month picker di kiri filter).
+    const horizontal = menu.dataset.align === 'start'
+        ? { left: `${Math.max(8, rect.left)}px` }
+        : { right: `${Math.max(8, window.innerWidth - rect.right)}px` };
+    Object.assign(menu.style, { inset: 'auto', top: `${rect.bottom + GAP}px`, ...horizontal });
 }, true);
+
+const visibleItems = (menu) => [...menu.querySelectorAll('[role="menuitem"]')].filter((item) => item.checkVisibility());
 
 // Setelah tampil (ukuran sudah diketahui): balik ke atas tombol bila tidak muat di bawah.
 document.addEventListener('toggle', (event) => {
@@ -23,7 +25,11 @@ document.addEventListener('toggle', (event) => {
     if (rect.bottom + GAP + menu.offsetHeight > window.innerHeight - 8) {
         menu.style.top = `${Math.max(8, rect.top - GAP - menu.offsetHeight)}px`;
     }
-    menu.querySelector('[role="menuitem"]')?.focus();
+    if (menu.dataset.align === 'start' && rect.left + menu.offsetWidth > window.innerWidth - 8) {
+        menu.style.left = `${Math.max(8, window.innerWidth - 8 - menu.offsetWidth)}px`;
+    }
+    const items = visibleItems(menu);
+    (items.find((item) => item.hasAttribute('aria-current')) ?? items[0])?.focus();
 }, true);
 
 // Pilih item menutup menu; menggulir halaman juga menutup (posisi tidak lagi pas).
@@ -40,7 +46,7 @@ document.addEventListener('keydown', (event) => {
     const menu = event.target.closest?.('[data-dropdown]');
     if (!menu || !['ArrowDown', 'ArrowUp'].includes(event.key)) return;
     event.preventDefault();
-    const items = [...menu.querySelectorAll('[role="menuitem"]')];
+    const items = visibleItems(menu);
     const next = items.indexOf(document.activeElement) + (event.key === 'ArrowDown' ? 1 : -1);
     items[(next + items.length) % items.length]?.focus();
 });

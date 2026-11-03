@@ -510,6 +510,11 @@ class RequestManagementController extends Controller
     {
         $baseSlots = 5; // Default 5 slots
 
+        // Penalti/bonus slot DIJEDA sementara (3 Nov 2026): semua user tetap 5 slot sampai aturan penalti
+        // diputuskan tim. Data penalti tetap dicatat VoucherExpiryService,
+        // jadi cukup hapus baris return ini untuk mengaktifkan kembali.
+        return $baseSlots;
+
         $adjustments = UserSlotAdjustment::where('user_id', $userId)
             ->where('is_active', true)
             ->where('effective_from', '<=', now())
@@ -607,8 +612,9 @@ class RequestManagementController extends Controller
         // supaya permohonan yang baru saja dilaporkan langsung muncul di paling atas.
         $base = Permohonan::where('requester_id', $user->id);
 
-        // Filter per bulan pengajuan supaya yang diambil hanya data satu bulan.
-        // Default: bulan pengajuan terakhir; "semua" = tanpa filter bulan.
+        // Filter per bulan pengajuan (opsional). Default "semua": 100 permohonan terbaru dalam satu halaman,
+        // karena driver lebih suka melihat data langsung tanpa berpindah halaman.
+        // ponytail: sementara dari sisi tampilan; dev BE perlu menetapkan batas resmi, misalnya parameter per_page dengan batas maksimal.
         $range = (clone $base)->selectRaw('MIN(request_date) AS first, MAX(request_date) AS last')->first();
         $months = collect();
         if ($range?->last) {
@@ -620,7 +626,7 @@ class RequestManagementController extends Controller
             }
         }
 
-        $bulan = request('bulan', $months->first()?->format('Y-m'));
+        $bulan = request('bulan', 'semua');
         $selectedMonth = $bulan && $bulan !== 'semua' && preg_match('/^\d{4}-\d{2}$/', $bulan)
             ? Carbon::createFromFormat('Y-m-d', $bulan . '-01')->startOfMonth()
             : null;
@@ -629,7 +635,7 @@ class RequestManagementController extends Controller
             ->with(['vehicle', 'authorizer', 'approvedRequest', 'transactionProof'])
             ->when($selectedMonth, fn ($q) => $q->whereBetween('request_date', [$selectedMonth, $selectedMonth->copy()->endOfMonth()]))
             ->orderByDesc(DB::raw('COALESCE((SELECT created_at FROM transaction_proofs tp WHERE tp.req_id = permohonans.id), request_date)'))
-            ->paginate(25)
+            ->paginate(100)
             ->withQueryString();
 
         return view('requester.history_request', compact('title', 'history', 'months', 'selectedMonth'));

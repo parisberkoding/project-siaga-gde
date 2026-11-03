@@ -1,5 +1,5 @@
 // Halaman Permohonan BBM (requester-index): pencarian kendaraan, opsi nominal, cetak voucher.
-import { confirmDialog, alertDialog } from '../../ui/dialog';
+import './voucher-print';
 import { rupiah, escapeHtml, pageData } from '../../lib/format';
 
 const { vehicles = [], fallbackOptions = [] } = pageData();
@@ -33,11 +33,25 @@ function populateBillPayment(min, max) {
     if (previous >= min && previous <= max) billPayment.value = previous;
 }
 
+// Kisi ringkasan kendaraan terpilih (Jenis, BBM, Tangki, Benchmark).
+const infoGrid = document.getElementById('vehicleInfo');
+function renderVehicleInfo(vehicle, benchmark) {
+    if (!infoGrid) return;
+    infoGrid.hidden = !vehicle;
+    if (!vehicle) return;
+    const set = (id, text) => { document.getElementById(id).textContent = text || '-'; };
+    set('viType', vehicle.type);
+    set('viFuel', vehicle.fuel);
+    set('viTank', vehicle.tank ? `${parseFloat(vehicle.tank)} liter` : '');
+    set('viBenchmark', benchmark ? rupiah(benchmark) : '');
+}
+
 function selectVehicle(vehicle) {
     if (!vehicle) {
         vehicleId.value = '';
         fuelSelect.value = '';
         vehicleInfo.textContent = 'Ketik untuk memilih kendaraan atau alat.';
+        renderVehicleInfo(null);
         populateBillPayment(fallbackMin, fallbackMax);
         return;
     }
@@ -55,15 +69,25 @@ function selectVehicle(vehicle) {
     if (match) fuelSelect.value = match.value;
 
     // Nominal mengikuti benchmark (selalu kelipatan 50.000 di dalam rentang).
-    if (benchmark && range && benchmark >= range.min && benchmark <= range.max) billPayment.value = benchmark;
-
-    if (benchmark) {
-        const extra = [vehicle.tank ? `tangki ${parseFloat(vehicle.tank)} L` : '', vehicle.fuel || ''].filter(Boolean).join(', ');
-        vehicleInfo.innerHTML = `Benchmark BBM <strong class="text-foreground">${rupiah(benchmark)}</strong>${extra ? ` (${escapeHtml(extra)})` : ''}`;
-    } else {
-        vehicleInfo.textContent = 'Data tangki atau harga belum lengkap, memakai rentang umum 50.000 sampai 3.000.000.';
+    if (benchmark && range && benchmark >= range.min && benchmark <= range.max) {
+        billPayment.value = benchmark;
+        const option = billPayment.querySelector(`option[value="${benchmark}"]`);
+        if (option) option.textContent += ' (benchmark)';
     }
+
+    renderVehicleInfo(vehicle, benchmark);
+    vehicleInfo.textContent = benchmark
+        ? 'Nominal awal mengikuti benchmark kendaraan, pilihan lain tersedia dalam rentang yang diizinkan.'
+        : 'Data tangki atau harga belum lengkap, memakai rentang umum 50.000 sampai 3.000.000.';
 }
+
+// Tautan "Ajukan permohonan" di slot kosong: gulir ke form lalu fokus ke pencarian kendaraan.
+document.addEventListener('click', (event) => {
+    if (!event.target.closest('[data-focus-vehicle]') || !search) return;
+    event.preventDefault();
+    search.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    search.focus({ preventScroll: true });
+});
 
 function renderSuggestions(items) {
     suggestions.replaceChildren(
@@ -106,38 +130,6 @@ if (search) {
     if (preselected) search.value = preselected.label;
     selectVehicle(preselected ?? null);
 }
-
-// Cetak voucher: di HP biarkan link membuka aplikasi Bluetooth Print, di desktop tawarkan pratinjau JSON.
-document.addEventListener('click', async (event) => {
-    const link = event.target.closest('[data-thermer-print]');
-    if (!link) return;
-
-    if (!link.dataset.voucherCode) {
-        event.preventDefault();
-        alertDialog({ title: 'Voucher tidak lengkap', message: 'Data voucher tidak lengkap, voucher tidak dapat dicetak.' });
-        return;
-    }
-
-    if (!/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-        event.preventDefault();
-        const ok = await confirmDialog({
-            title: 'Cetak dari desktop',
-            message: 'Pencetakan memakai aplikasi Bluetooth Print di perangkat Android. Buka pratinjau data voucher di tab baru?',
-            confirmText: 'Buka pratinjau',
-        });
-        if (ok) window.open(link.dataset.responseUrl, '_blank');
-        return;
-    }
-
-    const original = link.innerHTML;
-    link.innerHTML = '<i class="bi bi-hourglass-split"></i> Membuka aplikasi...';
-    link.setAttribute('aria-disabled', 'true');
-    setTimeout(() => link.closest('dialog')?.close(), 500);
-    setTimeout(() => {
-        link.innerHTML = original;
-        link.removeAttribute('aria-disabled');
-    }, 3000);
-});
 
 // Ringkasan di panel kanan mengikuti isian form.
 const summary = {
