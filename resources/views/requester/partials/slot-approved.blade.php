@@ -1,6 +1,7 @@
 {{-- Slot permohonan yang sudah disetujui: tiket voucher, sisa masa berlaku, cetak voucher, lapor pembelian. --}}
 @php
     $voucher = $request->approvedRequest;
+    $isVehicle = strtolower($request->vehicle->consumerial_type ?? '') === 'kendaraan';
     $validUntil = $voucher?->valid_until ? \Carbon\Carbon::parse($voucher->valid_until) : null;
     $approvedAt = $voucher?->approval_date ? \Carbon\Carbon::parse($voucher->approval_date) : $request->authorization_date;
     $totalMinutes = $validUntil && $approvedAt ? max(1, $approvedAt->diffInMinutes($validUntil)) : 50 * 60;
@@ -16,47 +17,49 @@
         : 'Sisa ' . ($leftMinutes >= 60 ? intdiv($leftMinutes, 60) . ' jam ' : '') . ($leftMinutes % 60) . ' menit';
 @endphp
 
-<x-ui.card class="gap-4 overflow-hidden py-0">
-    <div class="h-1 bg-success"></div>
-
-    <x-ui.card-content class="grid gap-4">
-        <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-                <p class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Slot {{ $slotNum }}</p>
-                <a href="{{ route('requester-show', $request->id) }}" class="mt-1 block truncate font-mono text-xs text-muted-foreground hover:text-foreground hover:underline">{{ $request->request_number }}</a>
-            </div>
-            <x-bbm.status-badge :status="$request->status" />
+<article class="flex flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+    {{-- Bagian atas tiket: kode voucher dan nominal di atas gradien hijau. --}}
+    <div class="bg-voucher-gradient relative overflow-hidden px-5 pb-5 pt-4 text-white">
+        <i class="bi bi-ticket-perforated pointer-events-none absolute -right-3 -top-1 text-8xl leading-none text-white/10" aria-hidden="true"></i>
+        <div class="relative flex items-center justify-between gap-3">
+            <span class="text-xs font-semibold uppercase tracking-wider text-white/80">Slot {{ $slotNum }}</span>
+            <span class="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-medium ring-1 ring-white/25"><i class="bi bi-check-circle"></i> Disetujui</span>
         </div>
-
-        {{-- Tiket voucher: lubang di kiri-kanan dan garis putus sebagai perforasi. --}}
-        <div class="relative rounded-lg border border-success/30 bg-success-soft">
-            <span class="absolute -left-2 top-1/2 size-4 -translate-y-1/2 rounded-full border border-success/30 bg-card [clip-path:inset(0_0_0_50%)]"></span>
-            <span class="absolute -right-2 top-1/2 size-4 -translate-y-1/2 rounded-full border border-success/30 bg-card [clip-path:inset(0_50%_0_0)]"></span>
-            <div class="px-4 pb-3 pt-3 text-center">
-                <p class="text-xs font-medium text-success"><i class="bi bi-ticket-perforated"></i> Kode voucher</p>
-                <p class="mt-1 select-all font-mono text-xl font-semibold tracking-widest">{{ $voucher->voucher_code ?? 'N/A' }}</p>
-            </div>
-            <div class="flex items-center justify-between gap-3 border-t border-dashed border-success/40 px-4 py-2.5">
-                <span class="text-lg font-bold tabular-nums">Rp {{ number_format($request->bill_amounts, 0, ',', '.') }}</span>
-                <span class="text-xs text-muted-foreground">{{ $request->gasoline_type }}</span>
-            </div>
+        <p class="relative mt-3 text-xs text-white/75">Kode voucher</p>
+        <p class="relative select-all font-mono text-xl font-bold tracking-widest">{{ $voucher->voucher_code ?? 'N/A' }}</p>
+        <div class="relative mt-3 flex items-end justify-between gap-3">
+            <span class="text-2xl font-bold tabular-nums tracking-tight">Rp {{ number_format($request->bill_amounts, 0, ',', '.') }}</span>
+            <span class="rounded-md bg-white/15 px-2 py-0.5 text-xs font-medium">{{ $request->gasoline_type }}</span>
         </div>
+    </div>
 
+    {{-- Perforasi: garis putus dengan lekukan setengah lingkaran di kiri dan kanan. --}}
+    <div class="relative h-0 border-t-2 border-dashed border-border" aria-hidden="true">
+        <span class="absolute -left-3 -top-3 size-6 rounded-full border bg-background"></span>
+        <span class="absolute -right-3 -top-3 size-6 rounded-full border bg-background"></span>
+    </div>
+
+    <div class="grid gap-4 px-5 pb-4 pt-5 text-sm">
         <div class="grid gap-1.5">
             <div class="flex items-center justify-between gap-3 text-xs">
-                <span @class(['font-medium', 'text-success' => $tone === 'success', 'text-warning' => $tone === 'warning', 'text-destructive' => $tone === 'destructive'])>
+                <span @class(['font-semibold', 'text-emerald-700' => $tone === 'success', 'text-amber-700' => $tone === 'warning', 'text-destructive' => $tone === 'destructive'])>
                     <i class="bi bi-hourglass-split"></i> {{ $leftLabel }}
                 </span>
                 <span class="text-muted-foreground">sampai {{ $validUntil?->translatedFormat('d M, H:i') ?? '-' }}</span>
             </div>
-            <div class="h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Sisa masa berlaku voucher" aria-valuenow="{{ $percent }}" aria-valuemin="0" aria-valuemax="100">
-                <div @class(['h-full rounded-full', 'bg-success' => $tone === 'success', 'bg-warning' => $tone === 'warning', 'bg-destructive' => $tone === 'destructive']) style="width: {{ $percent }}%"></div>
+            <div class="h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Sisa masa berlaku voucher" aria-valuenow="{{ $percent }}" aria-valuemin="0" aria-valuemax="100">
+                <div @class([
+                    'h-full rounded-full bg-linear-to-r',
+                    'from-emerald-400 to-teal-600' => $tone === 'success',
+                    'from-amber-300 to-orange-500' => $tone === 'warning',
+                    'from-red-400 to-destructive' => $tone === 'destructive',
+                ]) style="width: {{ $percent }}%"></div>
             </div>
         </div>
 
-        <div class="flex items-center gap-3 text-sm">
-            <span class="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                <i class="bi {{ strtolower($request->vehicle->consumerial_type ?? '') === 'kendaraan' ? 'bi-car-front' : 'bi-tools' }}"></i>
+        <div class="flex items-center gap-3">
+            <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                <i class="bi {{ $isVehicle ? 'bi-car-front' : 'bi-tools' }}"></i>
             </span>
             <div class="min-w-0">
                 <p class="truncate font-medium">{{ $request->vehicle->consumerial_code ?? 'N/A' }}</p>
@@ -65,13 +68,19 @@
         </div>
 
         @if ($request->authorizer_notes)
-            <p class="rounded-lg bg-muted/60 p-3 text-xs"><span class="text-muted-foreground">Catatan admin:</span> {{ $request->authorizer_notes }}</p>
+            <p class="flex gap-2 rounded-lg bg-emerald-50 p-3 text-xs text-emerald-900">
+                <i class="bi bi-chat-left-quote text-emerald-600"></i>
+                <span><span class="font-medium">Catatan admin:</span> {{ $request->authorizer_notes }}</span>
+            </p>
         @endif
-    </x-ui.card-content>
 
-    <div class="mt-auto grid gap-2 border-t p-4">
+        <a href="{{ route('requester-show', $request->id) }}" class="truncate font-mono text-xs text-muted-foreground hover:text-foreground hover:underline">{{ $request->request_number }}</a>
+    </div>
+
+    <div class="mt-auto grid gap-2 border-t bg-muted/30 p-4">
         @can('permission', 'pelaporan.create')
-            <x-ui.button :href="route('pelaporan.index', ['mode' => 'operational', 'permohonan_id' => $request->id])">
+            <x-ui.button :href="route('pelaporan.index', ['mode' => 'operational', 'permohonan_id' => $request->id])"
+                         class="bg-linear-to-r from-primary to-indigo-600 shadow-md shadow-primary/20 hover:brightness-110">
                 <i class="bi bi-send"></i> Lapor Pembelian
             </x-ui.button>
         @endcan
@@ -84,6 +93,6 @@
             </x-ui.button>
         </div>
     </div>
-</x-ui.card>
+</article>
 
 @include('requester.partials.voucher-print-modal', ['request' => $request])

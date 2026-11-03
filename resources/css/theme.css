@@ -99,6 +99,27 @@
     --color-module-spd: var(--module-spd);
 }
 
+/* Hero halaman: biru GDE dengan semburat indigo dan oranye modul BBM. Teks putih di atasnya. */
+@utility bg-brand-gradient {
+    background:
+        radial-gradient(70% 90% at 100% 0%, rgb(255 119 29 / 0.42), transparent 60%),
+        radial-gradient(60% 80% at 0% 100%, rgb(65 84 241 / 0.55), transparent 70%),
+        linear-gradient(135deg, #0b50a1 0%, #083d7d 100%);
+}
+
+/* Tiket voucher BBM yang sudah disetujui (hijau toska). Teks putih tebal di atasnya. */
+@utility bg-voucher-gradient {
+    background:
+        radial-gradient(90% 90% at 0% 0%, rgb(255 255 255 / 0.16), transparent 60%),
+        radial-gradient(70% 80% at 100% 100%, rgb(250 204 21 / 0.18), transparent 70%),
+        linear-gradient(135deg, #0f766e 0%, #15803d 100%);
+}
+
+/* Slot yang dikunci penalti: garis miring tipis. */
+@utility bg-stripes {
+    background-image: repeating-linear-gradient(135deg, var(--muted) 0 10px, transparent 10px 20px);
+}
+
 @utility bg-sidebar-gradient {
     background:
         radial-gradient(120% 60% at 0% 0%, rgb(255 255 255 / 0.12), transparent 60%),
