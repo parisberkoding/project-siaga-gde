@@ -107,7 +107,11 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                <small class="text-muted">Pilih dari Master Pekerja atau biarkan untuk input manual.</small>
+                                <small class="text-muted">
+                                    Pengemudi lain (tanpa akun) tetap bisa diisi manual.
+                                    Pengemudi yang dipilih akan melihat surat ini di menu
+                                    <strong>Perjalanan Dinas Saya</strong> dan dapat membuat LPJ.
+                                </small>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Nama Pengemudi <span class="text-danger">*</span></label>

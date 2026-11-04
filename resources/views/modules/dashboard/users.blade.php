@@ -135,7 +135,7 @@
                   <td><strong>{{ $row->nama_lengkap }}</strong></td>
                   <td>{{ $row->username }}</td>
                   <td>{{ $row->unit?->name ?? 'Belum ada unit' }}</td>
-                  <td>{{ $row->roles->pluck('name')->join(', ') ?: ucfirst($row->role) }}</td>
+                  <td>{{ $row->roles->pluck('name')->join(', ') ?: $row->role }}</td>
                   <td>
                     <span class="gde-badge {{ $row->is_active ? '' : 'gde-badge--red' }}">
                       {{ $row->is_active ? 'Aktif' : 'Nonaktif' }}

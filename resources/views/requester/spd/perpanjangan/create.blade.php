@@ -103,8 +103,8 @@
                                         <strong id="infoKembali" class="text-primary">-</strong>
                                     </div>
                                     <div class="col-md-6">
-                                        <small class="text-muted">Budget Per Hari:</small><br>
-                                        <strong id="infoBudget">-</strong>
+                                        <small class="text-muted">Dana Perpanjangan:</small><br>
+                                        <strong class="text-muted">Ditentukan Admin GA</strong>
                                     </div>
                                 </div>
                             </div>
@@ -130,8 +130,9 @@
                                         <small>hari</small>
                                     </div>
                                     <div class="col-md-4 text-center border-end">
-                                        <small class="text-muted d-block">Budget Tambahan</small>
-                                        <h4 class="mb-0" id="budgetTambahan">-</h4>
+                                        <small class="text-muted d-block">Dana Perpanjangan</small>
+                                        <h6 class="mb-0 text-muted">Diinput Admin GA</h6>
+                                        <small class="text-muted">setelah disetujui</small>
                                     </div>
                                     <div class="col-md-4 text-center">
                                         <small class="text-muted d-block">Deadline LPJ Baru</small>
@@ -184,6 +185,7 @@
                                 <li>Surat lama tetap valid</li>
                                 <li>Setiap surat memiliki LPJ masing-masing</li>
                                 <li>Deadline LPJ baru = tanggal kembali baru + 3 hari</li>
+                                <li>Driver hanya mengajukan perpanjangan; nominal dana diinput Admin GA</li>
                             </ul>
                         </div>
                     </div>
@@ -201,11 +203,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const infoPerpanjangan = document.getElementById('infoPerpanjangan');
 
     let currentKembali = null;
-    let budgetPerHari = 0;
-
-    function formatRupiah(num) {
-        return new Intl.NumberFormat('id-ID').format(num);
-    }
 
     function formatDate(dateStr) {
         const date = new Date(dateStr);
@@ -227,7 +224,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('infoTujuan').textContent = selected.dataset.tujuan;
         document.getElementById('infoTanggal').textContent = selected.dataset.berangkat + ' - ' + selected.dataset.kembaliFormatted + ' (' + selected.dataset.lama + ' hari)';
         document.getElementById('infoKembali').textContent = selected.dataset.kembaliFormatted;
-        document.getElementById('infoBudget').textContent = 'Rp ' + formatRupiah(selected.dataset.budget);
         infoSurat.style.display = 'block';
 
         // Set min date for tanggal kembali baru
@@ -235,9 +231,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const minDate = new Date(currentKembali);
         minDate.setDate(minDate.getDate() + 1);
         tanggalKembaliBaru.min = minDate.toISOString().split('T')[0];
-
-        // Store budget
-        budgetPerHari = parseFloat(selected.dataset.budget);
 
         // Update calculation if tanggal already filled
         updateCalculation();
@@ -255,18 +248,16 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Calculate
+        // Calculate durasi
         const diffTime = Math.abs(newKembali - currentKembali);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        const budgetTambahan = diffDays * budgetPerHari;
 
         // Deadline LPJ baru = tanggal kembali baru + 3 hari
         const deadline = new Date(newKembali);
         deadline.setDate(deadline.getDate() + 3);
 
-        // Update display
+        // Update display (nominal TIDAK dihitung di sisi driver)
         document.getElementById('durasiTambahan').textContent = '+' + diffDays;
-        document.getElementById('budgetTambahan').textContent = 'Rp ' + formatRupiah(budgetTambahan);
         document.getElementById('deadlineBaru').textContent = formatDate(deadline);
         infoPerpanjangan.style.display = 'block';
     }

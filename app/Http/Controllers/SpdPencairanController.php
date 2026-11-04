@@ -104,6 +104,8 @@ class SpdPencairanController extends Controller
 
         DB::transaction(function () use ($data, $laporan) {
             $urutan = (int) SuratSpdBudget::where('surat_spd_id', $laporan->surat_spd_id)->max('urutan');
+            $surat = $laporan->suratSpd;
+            $extension = $surat?->is_extension ? $surat->extensionRecord : null;
 
             SuratSpdBudget::create([
                 'surat_spd_id'       => $laporan->surat_spd_id,
@@ -114,6 +116,10 @@ class SpdPencairanController extends Controller
                 'rek_tujuan'         => $data['bentuk_pencairan'] === 'Transfer' ? ($data['rek_tujuan'] ?? null) : null,
                 'catatan'            => $data['catatan'] ?? null,
                 'urutan'             => $urutan + 1,
+                'sumber'             => $extension
+                    ? SuratSpdBudget::SUMBER_PERPANJANGAN
+                    : SuratSpdBudget::SUMBER_AWAL,
+                'surat_spd_extension_id' => $extension?->id,
             ]);
 
             $this->syncJumlahDiberikan($laporan);

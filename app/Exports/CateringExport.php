@@ -82,16 +82,24 @@ class CateringExport
         foreach (CarbonPeriod::create($this->startDate, $this->endDate) as $date) {
             $dateStr = $date->toDateString();
 
-            $distributions = LunchDistribution::forDate($dateStr)->get()->keyBy('site_id');
+            $distributions = LunchDistribution::forDate($dateStr)
+                ->when($this->siteId, fn ($q) => $q->where('site_id', $this->siteId))
+                ->when($this->siteIds !== null, fn ($q) => $q->whereIn('site_id', $this->siteIds))
+                ->get()
+                ->keyBy('site_id');
 
             $forecastBySite = LunchForecast::forDate($dateStr)
                 ->whereNotNull('predicted_site_id')
+                ->when($this->siteId, fn ($q) => $q->where('predicted_site_id', $this->siteId))
+                ->when($this->siteIds !== null, fn ($q) => $q->whereIn('predicted_site_id', $this->siteIds))
                 ->selectRaw('predicted_site_id, count(*) as total')
                 ->groupBy('predicted_site_id')
                 ->pluck('total', 'predicted_site_id');
 
             $guestBySite = LunchGuestReservation::whereDate('reservation_date', $dateStr)
                 ->where('status', 'confirmed')
+                ->when($this->siteId, fn ($q) => $q->where('site_id', $this->siteId))
+                ->when($this->siteIds !== null, fn ($q) => $q->whereIn('site_id', $this->siteIds))
                 ->selectRaw('site_id, sum(guest_count) as total')
                 ->groupBy('site_id')
                 ->pluck('total', 'site_id');
@@ -142,6 +150,7 @@ class CateringExport
             ->whereDate('reservation_date', '>=', $this->startDate)
             ->whereDate('reservation_date', '<=', $this->endDate)
             ->when($this->siteId, fn ($q) => $q->where('site_id', $this->siteId))
+            ->when($this->siteIds !== null, fn ($q) => $q->whereIn('site_id', $this->siteIds))
             ->orderBy('reservation_date')
             ->orderBy('site_id')
             ->get();
@@ -201,6 +210,7 @@ class CateringExport
             ->whereDate('transaction_date', '>=', $this->startDate)
             ->whereDate('transaction_date', '<=', $this->endDate)
             ->when($this->siteIds !== null, fn ($q) => $q->whereIn('site_id', $this->siteIds))
+            ->when($this->siteId, fn ($q) => $q->where('site_id', $this->siteId))
             ->get(['employee_default_id', 'transaction_date'])
             ->map(fn ($t) => $t->employee_default_id . '|' . $t->transaction_date->toDateString())
             ->flip();

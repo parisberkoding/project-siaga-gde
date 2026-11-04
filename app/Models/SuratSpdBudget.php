@@ -29,6 +29,8 @@ class SuratSpdBudget extends Model
         'rek_tujuan',
         'catatan',
         'urutan',
+        'sumber',
+        'surat_spd_extension_id',
     ];
 
     protected $casts = [
@@ -42,6 +44,13 @@ class SuratSpdBudget extends Model
      */
     public const BENTUK_PENCAIRAN = ['Tunai', 'Transfer'];
 
+    /**
+     * Sumber baris pemberian dana.
+     */
+    public const SUMBER_AWAL = 'awal';
+    public const SUMBER_TAMBAHAN = 'tambahan';
+    public const SUMBER_PERPANJANGAN = 'perpanjangan';
+
     // ============================================================
     // RELATIONSHIPS
     // ============================================================
@@ -52,6 +61,14 @@ class SuratSpdBudget extends Model
     public function suratSpd()
     {
         return $this->belongsTo(SuratSpd::class, 'surat_spd_id');
+    }
+
+    /**
+     * Record perpanjangan yang menjadi dasar pemberian dana ini (bila ada).
+     */
+    public function extension()
+    {
+        return $this->belongsTo(SuratSpdExtension::class, 'surat_spd_extension_id');
     }
 
     // ============================================================
@@ -117,5 +134,25 @@ class SuratSpdBudget extends Model
     public function isTransfer(): bool
     {
         return $this->bentuk_pencairan === 'Transfer';
+    }
+
+    /**
+     * Baris ini merupakan penambahan dana karena perpanjangan (ETD).
+     */
+    public function isPerpanjangan(): bool
+    {
+        return $this->sumber === self::SUMBER_PERPANJANGAN;
+    }
+
+    /**
+     * Label sumber dana untuk ditampilkan pada tabel pemberian dana.
+     */
+    public function getSumberLabelAttribute(): string
+    {
+        return match ($this->sumber) {
+            self::SUMBER_PERPANJANGAN => 'Perpanjangan',
+            self::SUMBER_TAMBAHAN => 'Tambahan',
+            default => 'Awal',
+        };
     }
 }

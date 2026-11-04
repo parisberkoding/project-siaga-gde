@@ -183,9 +183,12 @@ class SuratSpdExtension extends Model
      *
      * Selain mengubah status, perpanjangan dipropagasikan ke chain:
      *   - surat sebelumnya (immediate previous) dan root chain
-     *     (tanggal_kembali, lpj_deadline, total_budget, extension_count);
-     *   - surat extension baru ikut di-approve;
-     *   - penambahan dana dicatat di root bila budget_tambahan > 0.
+     *     (tanggal_kembali, lpj_deadline, extension_count);
+     *   - surat extension baru ikut di-approve.
+     *
+     * PENTING: budget TIDAK lagi ditambahkan otomatis dari durasi perpanjangan.
+     * Driver hanya mengajukan perpanjangan; Admin GA unit yang memverifikasi
+     * lalu mencatat sendiri pemberian dana perpanjangan (kapan & berapa).
      *
      * Idempotent: pemanggilan kedua tidak menerapkan propagation dua kali.
      */
@@ -195,12 +198,11 @@ class SuratSpdExtension extends Model
             return;
         }
 
-        $budgetTambahan = (float) $this->budget_tambahan;
         $tanggalKembaliBaru = $this->tanggal_kembali_baru
             ? Carbon::parse($this->tanggal_kembali_baru)
             : null;
 
-        DB::transaction(function () use ($userId, $budgetTambahan, $tanggalKembaliBaru) {
+        DB::transaction(function () use ($userId, $tanggalKembaliBaru) {
             $this->update([
                 'status' => 'approved',
                 'approved_by' => $userId,
@@ -219,8 +221,6 @@ class SuratSpdExtension extends Model
             $targets = collect([$previous, $root])->filter()->unique('id');
 
             foreach ($targets as $target) {
-                $totalBudgetLama = (float) $target->total_budget;
-
                 $data = [
                     'extension_count' => ((int) $target->extension_count) + 1,
                 ];
@@ -233,28 +233,11 @@ class SuratSpdExtension extends Model
                     $data['lpj_deadline'] = $target->lpj_deadline;
                 }
 
-                // Update pertama memicu event `updating` SuratSpd yang
-                // mengkalkulasi ulang total_budget dari budget_per_hari.
                 $target->update($data);
-
-                // Tulis akumulasi budget setelah kalkulasi otomatis selesai,
-                // agar nilai tambahan tidak tertimpa.
-                $target->update([
-                    'total_budget' => $totalBudgetLama + $budgetTambahan,
-                ]);
             }
 
             if ($extensionSurat) {
                 $extensionSurat->approve($userId);
-            }
-
-            if ($budgetTambahan > 0 && $root) {
-                SuratSpdFundAddition::create([
-                    'surat_spd_id' => $root->id,
-                    'nominal_tambahan' => $budgetTambahan,
-                    'alasan' => 'Perpanjangan SPD '.$this->nomor_surat_extension,
-                    'created_by' => $userId,
-                ]);
             }
         });
     }

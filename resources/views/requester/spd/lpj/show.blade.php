@@ -7,7 +7,7 @@
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="">Home</a></li>
             <li class="breadcrumb-item">SPD</li>
-            <li class="breadcrumb-item"><a href="{{ route('requester.lpj.index') }}">Laporan LPJ</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('requester.lpj.index') }}">LPJ Saya</a></li>
             <li class="breadcrumb-item active">Detail</li>
         </ol>
     </nav>

@@ -747,6 +747,8 @@ PROMPT;
                 'date_from' => $start->toDateString(),
                 'date_to' => $end->toDateString(),
             ],
+            // Batas unit: fallback function calling tidak boleh melihat unit lain.
+            'scope' => $this->currentScope,
         ]));
 
         $spending = $records->whereIn('status', ['completed', 'approved']);
@@ -792,7 +794,9 @@ PROMPT;
 
     protected function driverStatistics(): array
     {
-        return collect(app(DriverDataMart::class)->records())
+        return collect(app(DriverDataMart::class)->records([
+            'scope' => $this->currentScope,
+        ]))
             ->map(fn ($r) => [
                 'driver' => $r['driver'],
                 'total' => $r['total_requests'],
@@ -810,6 +814,7 @@ PROMPT;
     protected function vehicleKmPerformance(): array
     {
         $proofs = Transaction_Proofs::with('permohonan.consumerialTool')
+            ->inUnit($this->currentScope?->unitId)
             ->whereHas('permohonan.consumerialTool', fn ($q) => $q->where('consumerial_type', 'KENDARAAN'))
             ->where('km_terakhir', '>', 0)
             ->orderBy('purchase_datetime', 'asc')

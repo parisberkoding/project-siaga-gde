@@ -181,7 +181,12 @@
                                             </td>
                                             <td>
                                                 <span class="badge bg-info">+{{ $ext->durasi_tambahan_hari }} hari</span>
-                                                <br><small class="text-muted">Rp {{ number_format($ext->budget_tambahan, 0, ',', '.') }}</small>
+                                                <br>
+                                                @if((float) $ext->budget_tambahan > 0)
+                                                    <small class="text-success">Dana: Rp {{ number_format($ext->budget_tambahan, 0, ',', '.') }}</small>
+                                                @else
+                                                    <small class="text-muted">Dana: diinput Admin GA</small>
+                                                @endif
                                             </td>
                                             <td class="text-center">
                                                 <div class="btn-group">
@@ -371,6 +376,51 @@
                         <label class="form-label">Catatan (Opsional)</label>
                         <textarea name="catatan" class="form-control" rows="2" placeholder="Catatan tambahan..."></textarea>
                     </div>
+
+                    {{-- Dana perpanjangan: Admin GA menentukan kapan & berapa.
+                         Baris ini akan tampil sebagai "Perpanjangan" pada
+                         Pemberian Dana surat perpanjangan. --}}
+                    <div class="border rounded p-3 bg-light">
+                        <div class="fw-semibold mb-1">
+                            <i class="bi bi-cash-stack text-success"></i> Pemberian Dana Perpanjangan
+                            <span class="text-muted fw-normal">(opsional)</span>
+                        </div>
+                        <p class="small text-muted mb-2">
+                            Nominal tidak diminta dari driver. Isi di sini bila dana tambahan
+                            diberikan bersamaan dengan persetujuan; dapat ditambahkan lagi nanti
+                            dari detail surat perpanjangan.
+                        </p>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label small mb-1">Tanggal Diberikan</label>
+                                <input type="date" name="dana_tanggal" class="form-control form-control-sm"
+                                       value="{{ now()->toDateString() }}">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-1">Nominal (Rp)</label>
+                                <input type="number" name="dana_nominal" class="form-control form-control-sm" min="0" step="1000" placeholder="0">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-1">Bentuk</label>
+                                <select name="dana_bentuk" class="form-select form-select-sm" id="danaBentukApprove">
+                                    <option value="Tunai">Tunai</option>
+                                    <option value="Transfer">Transfer</option>
+                                </select>
+                            </div>
+                            <div class="col-6 dana-transfer-field">
+                                <label class="form-label small mb-1">No. Referensi Bank</label>
+                                <input type="text" name="dana_bank_reference" class="form-control form-control-sm" maxlength="255">
+                            </div>
+                            <div class="col-12 dana-transfer-field">
+                                <label class="form-label small mb-1">Rekening Tujuan</label>
+                                <input type="text" name="dana_rek_tujuan" class="form-control form-control-sm" maxlength="255">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small mb-1">Catatan</label>
+                                <input type="text" name="dana_catatan" class="form-control form-control-sm" maxlength="255" placeholder="cth: tambahan biaya akomodasi perpanjangan">
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -484,6 +534,19 @@ document.addEventListener('DOMContentLoaded', function() {
             new bootstrap.Modal(document.getElementById('modalAcknowledge')).show();
         });
     });
+
+    // Dana perpanjangan: field bank hanya relevan untuk Transfer.
+    const danaBentuk = document.getElementById('danaBentukApprove');
+    function syncDanaTransferFields() {
+        const isTransfer = danaBentuk && danaBentuk.value === 'Transfer';
+        document.querySelectorAll('.dana-transfer-field').forEach(function (el) {
+            el.classList.toggle('d-none', !isTransfer);
+        });
+    }
+    if (danaBentuk) {
+        danaBentuk.addEventListener('change', syncDanaTransferFields);
+        syncDanaTransferFields();
+    }
 });
 </script>
 @endsection

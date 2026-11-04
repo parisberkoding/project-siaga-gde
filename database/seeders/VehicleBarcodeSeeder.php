@@ -22,7 +22,7 @@ class VehicleBarcodeSeeder extends Seeder
             mkdir($storageDir, 0755, true);
         }
 
-        $vehicles = VehicleAndToolsConsumers::all();
+        $vehicles = VehicleAndToolsConsumers::query()->get();
 
         if ($vehicles->isEmpty()) {
             $this->command->warn('Tidak ada data kendaraan ditemukan.');

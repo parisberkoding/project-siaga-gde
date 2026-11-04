@@ -804,7 +804,7 @@
                             <option value="">-- Semua Approver --</option>
                             @foreach($approvers as $approver)
                             <option value="{{ $approver->id }}">
-                                {{ $approver->nama_lengkap }} ({{ ucfirst($approver->role) }})
+                                {{ $approver->nama_lengkap }} ({{ $approver->role }})
                             </option>
                             @endforeach
                         </select>

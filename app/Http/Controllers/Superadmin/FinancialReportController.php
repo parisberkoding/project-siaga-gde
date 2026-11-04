@@ -46,8 +46,9 @@ class FinancialReportController extends Controller
             });
         }
 
+        // Ambil koleksi penuh sebelum paginate agar ringkasan tidak terpotong.
+        $allTrx = (clone $trxQuery)->orderByDesc('service_date')->get();
         $transactions = $trxQuery->orderByDesc('service_date')->paginate(20);
-        $allTrx = $trxQuery->get(); // untuk summary (tanpa paginate)
 
         // ── Summary bulan ini ──
         $totalCost = $allTrx->sum('total_amount');

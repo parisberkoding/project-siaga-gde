@@ -231,7 +231,7 @@ class ModuleSeeder extends Seeder
         $modules = Module::orderBy('order')->get();
         $now = now();
 
-        foreach (Unit::all() as $unit) {
+        foreach (Unit::query()->get() as $unit) {
             $sudahPunyaBaris = DB::table('unit_modules')
                 ->where('unit_id', $unit->id)
                 ->exists();

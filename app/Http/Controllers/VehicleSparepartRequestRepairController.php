@@ -9,6 +9,7 @@ use App\Models\VehiclePartsReplacement;
 use App\Models\VehiclePartsReplacementTransaction;
 use App\Models\VehicleAndToolsConsumers;
 use App\Models\User;
+use App\Services\UnitScope;
 
 /**
  * Controller untuk role ADMIN (admin/superadmin):
@@ -27,19 +28,30 @@ class VehicleSparepartRequestRepairController extends Controller
     // ════════════════════════════════════════════════════════════════
     public function index(Request $request)
     {
+        // Batas unit: admin/superadmin unit hanya melihat VPR unitnya.
+        $unitId = UnitScope::for($request->user())->unitId();
+
         $counts = [
-            'pending'    => VehiclePartsReplacement::pending()->count(),
-            'approved'   => VehiclePartsReplacement::approved()->count(),
-            'scheduled'  => VehiclePartsReplacement::scheduled()->count(),
-            'in_service' => VehiclePartsReplacement::inService()->count(),
-            'completed'  => VehiclePartsReplacement::completed()->count(),
-            'rejected'   => VehiclePartsReplacement::rejected()->count(),
+            'pending'    => VehiclePartsReplacement::inUnit($unitId)->pending()->count(),
+            'approved'   => VehiclePartsReplacement::inUnit($unitId)->approved()->count(),
+            'scheduled'  => VehiclePartsReplacement::inUnit($unitId)->scheduled()->count(),
+            'in_service' => VehiclePartsReplacement::inUnit($unitId)->inService()->count(),
+            'completed'  => VehiclePartsReplacement::inUnit($unitId)->completed()->count(),
+            'rejected'   => VehiclePartsReplacement::inUnit($unitId)->rejected()->count(),
         ];
 
         $query = VehiclePartsReplacement::with([
             'vehicle', 'dispatcher', 'lastDriver', 'desiredDriver',
             'checkingDetail', 'replacementDetails', 'transaction', 'approver',
-        ])->orderByRaw("FIELD(status, 'pending', 'approved', 'scheduled', 'in_service', 'completed', 'rejected')")
+        ])->inUnit($unitId)
+          ->orderByRaw("CASE status
+                WHEN 'pending' THEN 1
+                WHEN 'approved' THEN 2
+                WHEN 'scheduled' THEN 3
+                WHEN 'in_service' THEN 4
+                WHEN 'completed' THEN 5
+                WHEN 'rejected' THEN 6
+                ELSE 7 END")
           ->orderByDesc('created_at');
 
         if ($request->filled('status'))        $query->where('status', $request->status);
@@ -50,8 +62,11 @@ class VehicleSparepartRequestRepairController extends Controller
 
         $replacements = $query->paginate(15)->withQueryString();
 
-        $vehicles    = VehicleAndToolsConsumers::orderBy('consumerial_code')->get();
-        $dispatchers = User::where('role', 'dispatcher')->orderBy('nama_lengkap')->get();
+        $vehicles    = VehicleAndToolsConsumers::inUnit($unitId)->orderBy('consumerial_code')->get();
+        $dispatchers = User::where('role', 'dispatcher')
+            ->when($unitId !== null, fn ($q) => $q->where('unit_id', $unitId))
+            ->orderBy('nama_lengkap')
+            ->get();
 
         $statusCounts = $counts;
 
@@ -66,13 +81,18 @@ class VehicleSparepartRequestRepairController extends Controller
     // ════════════════════════════════════════════════════════════════
     public function show($vprCode)
     {
+        $unitId = UnitScope::for(Auth::user())->unitId();
+
         $replacement = VehiclePartsReplacement::with([
             'vehicle', 'dispatcher', 'lastDriver', 'desiredDriver',
             'approver', 'checkingDetail.itemResults.vehiclePart',
             'replacementDetails.vehiclePart', 'transaction.details',
-        ])->where('vpr_code', $vprCode)->firstOrFail();
+        ])->inUnit($unitId)->where('vpr_code', $vprCode)->firstOrFail();
 
-        $drivers = User::where('role', 'requester')->orderBy('nama_lengkap')->get();
+        $drivers = User::where('role', 'requester')
+            ->when($unitId !== null, fn ($q) => $q->where('unit_id', $unitId))
+            ->orderBy('nama_lengkap')
+            ->get();
         $checkResults = $replacement->checkingDetail?->itemResults ?? collect();
 
         return view('admin.replacement-approval.show', compact('replacement', 'drivers', 'checkResults'));
@@ -83,7 +103,8 @@ class VehicleSparepartRequestRepairController extends Controller
     // ════════════════════════════════════════════════════════════════
     public function approve(Request $request, $vprCode)
     {
-        $replacement = VehiclePartsReplacement::where('vpr_code', $vprCode)
+        $replacement = VehiclePartsReplacement::inUnit(UnitScope::for($request->user())->unitId())
+            ->where('vpr_code', $vprCode)
             ->pending()->firstOrFail();
 
         $replacement->approve(Auth::id());
@@ -104,7 +125,8 @@ class VehicleSparepartRequestRepairController extends Controller
             'rejection_reason.required' => 'Alasan penolakan wajib diisi.',
         ]);
 
-        $replacement = VehiclePartsReplacement::where('vpr_code', $vprCode)
+        $replacement = VehiclePartsReplacement::inUnit(UnitScope::for($request->user())->unitId())
+            ->where('vpr_code', $vprCode)
             ->pending()->firstOrFail();
 
         $replacement->reject(Auth::id(), $request->rejection_reason);
@@ -131,7 +153,8 @@ public function schedule(Request $request, $vprCode)
             'driver_id.exists'         => 'Driver tidak valid.',
         ]);
 
-        $replacement = VehiclePartsReplacement::where('vpr_code', $vprCode)
+        $replacement = VehiclePartsReplacement::inUnit(UnitScope::for($request->user())->unitId())
+            ->where('vpr_code', $vprCode)
             ->whereIn('status', ['approved', 'scheduled'])
             ->firstOrFail();
 
@@ -154,6 +177,9 @@ public function schedule(Request $request, $vprCode)
     {
         $today = now()->startOfDay();
 
+        // Batas unit: jadwal service hanya kendaraan unit user.
+        $unitId = UnitScope::for($request->user())->unitId();
+
         // Month navigation
         $month      = $request->get('month', now()->format('Y-m'));
         $monthStart = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
@@ -166,7 +192,7 @@ public function schedule(Request $request, $vprCode)
         $query = VehiclePartsReplacement::with([
             'vehicle', 'dispatcher', 'desiredDriver', 'lastDriver',
             'replacementDetails', 'transaction',
-        ])->whereNotNull('scheduled_date')
+        ])->inUnit($unitId)->whereNotNull('scheduled_date')
           ->whereDate('scheduled_date', '>=', $monthStart)
           ->whereDate('scheduled_date', '<=', $monthEnd);
 
@@ -190,22 +216,25 @@ public function schedule(Request $request, $vprCode)
             }
         });
 
-        $vehicles = VehicleAndToolsConsumers::orderBy('consumerial_code')->get();
-        $drivers  = User::where('role', 'requester')->orderBy('nama_lengkap')->get();
+        $vehicles = VehicleAndToolsConsumers::inUnit($unitId)->orderBy('consumerial_code')->get();
+        $drivers  = User::where('role', 'requester')
+            ->when($unitId !== null, fn ($q) => $q->where('unit_id', $unitId))
+            ->orderBy('nama_lengkap')
+            ->get();
 
         // Global counts (not filtered by month)
         $counts = [
-            'overdue'   => VehiclePartsReplacement::whereNotNull('scheduled_date')
+            'overdue'   => VehiclePartsReplacement::inUnit($unitId)->whereNotNull('scheduled_date')
                                ->whereDate('scheduled_date', '<', $today)
                                ->whereNotIn('status', ['completed', 'rejected'])
                                ->count(),
-            'today'     => VehiclePartsReplacement::whereDate('scheduled_date', $today)
+            'today'     => VehiclePartsReplacement::inUnit($unitId)->whereDate('scheduled_date', $today)
                                ->whereNotIn('status', ['completed', 'rejected'])
                                ->count(),
-            'upcoming'  => VehiclePartsReplacement::whereDate('scheduled_date', '>', $today)
+            'upcoming'  => VehiclePartsReplacement::inUnit($unitId)->whereDate('scheduled_date', '>', $today)
                                ->whereNotIn('status', ['completed', 'rejected'])
                                ->count(),
-            'completed' => VehiclePartsReplacement::completed()
+            'completed' => VehiclePartsReplacement::inUnit($unitId)->completed()
                                ->whereMonth('scheduled_date', now()->month)
                                ->whereYear('scheduled_date', now()->year)
                                ->count(),
@@ -223,10 +252,12 @@ public function schedule(Request $request, $vprCode)
     // ════════════════════════════════════════════════════════════════
     public function transactionMonitoringIndex(Request $request)
     {
+        $unitId = UnitScope::for($request->user())->unitId();
+
         $query = VehiclePartsReplacementTransaction::with([
             'replacement.vehicle',
             'driver',
-        ])->orderByDesc('service_date');
+        ])->inUnit($unitId)->orderByDesc('service_date');
 
         if ($request->filled('vehicle_id')) {
             $query->whereHas('replacement', fn ($q) => $q->where('vehicle_id', $request->vehicle_id));
@@ -244,19 +275,19 @@ public function schedule(Request $request, $vprCode)
         if ($request->filled('date_to'))   $query->whereDate('service_date', '<=', $request->date_to);
 
         $transactions = $query->paginate(20)->withQueryString();
-        $vehicles     = VehicleAndToolsConsumers::orderBy('consumerial_code')->get();
+        $vehicles     = VehicleAndToolsConsumers::inUnit($unitId)->orderBy('consumerial_code')->get();
 
         $counts = [
-            'overdue'    => VehiclePartsReplacementTransaction::overdue()->count(),
-            'in_progress' => VehiclePartsReplacementTransaction::whereHas(
+            'overdue'    => VehiclePartsReplacementTransaction::inUnit($unitId)->overdue()->count(),
+            'in_progress' => VehiclePartsReplacementTransaction::inUnit($unitId)->whereHas(
                                 'replacement', fn ($q) => $q->where('status', 'in_service')
                              )->count(),
-            'completed'   => VehiclePartsReplacementTransaction::whereHas(
+            'completed'   => VehiclePartsReplacementTransaction::inUnit($unitId)->whereHas(
                                 'replacement', fn ($q) => $q->where('status', 'completed')
                              )->whereMonth('service_date', now()->month)
                               ->whereYear('service_date', now()->year)
                               ->count(),
-            'total_cost'  => VehiclePartsReplacementTransaction::whereHas(
+            'total_cost'  => VehiclePartsReplacementTransaction::inUnit($unitId)->whereHas(
                                 'replacement', fn ($q) => $q->where('status', 'completed')
                              )->whereMonth('service_date', now()->month)
                               ->whereYear('service_date', now()->year)
@@ -281,7 +312,8 @@ public function schedule(Request $request, $vprCode)
             'actual_cost.min'     => 'Biaya aktual tidak boleh negatif.',
         ]);
 
-        $replacement = VehiclePartsReplacement::where('vpr_code', $vprCode)
+        $replacement = VehiclePartsReplacement::inUnit(UnitScope::for($request->user())->unitId())
+            ->where('vpr_code', $vprCode)
             ->whereIn('status', ['in_service', 'scheduled'])
             ->firstOrFail();
 

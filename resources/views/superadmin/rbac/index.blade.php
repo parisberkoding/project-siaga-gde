@@ -66,7 +66,9 @@
                     <tr>
                         <td>
                             <strong>{{ $role->name }}</strong>
-                            <br><small class="text-muted">code: <code>{{ $role->code }}</code></small>
+                            @if($role->name !== $role->code)
+                                <br><small class="text-muted">code: <code>{{ $role->code }}</code></small>
+                            @endif
                         </td>
                         <td><small>{{ $role->description ?? '—' }}</small></td>
                         <td class="text-center">

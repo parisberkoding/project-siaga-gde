@@ -13,6 +13,7 @@ use App\Models\VehicleCheckingSchedule;
 use App\Models\VehiclePartsReplacement;
 use App\Models\VehiclePartsReplacementDetail;
 use App\Models\VehiclePartsReplacementTransaction;
+use App\Services\UnitScope;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -33,12 +34,16 @@ class DispatcherAdministrationController extends Controller
     {
         $dispatcherId = Auth::id();
 
+        // Batas unit: dispatcher/admin unit hanya melihat jadwal unitnya.
+        $unitId = UnitScope::for(Auth::user())->unitId();
+
         // Refresh status jadwal (bisa juga via cron, tapi fallback di sini)
         VehicleCheckingSchedule::refreshStatuses();
 
         // ── Jadwal Overdue ──
         $overdueSchedules = VehicleCheckingSchedule::with(['vehicle'])
             ->active()
+            ->inUnit($unitId)
             ->overdue()
             ->orderBy('next_due_date', 'asc')
             ->get();
@@ -46,6 +51,7 @@ class DispatcherAdministrationController extends Controller
         // ── Jadwal Due Today ──
         $dueTodaySchedules = VehicleCheckingSchedule::with(['vehicle'])
             ->active()
+            ->inUnit($unitId)
             ->dueToday()
             ->orderBy('check_frequency')
             ->get();
@@ -53,6 +59,7 @@ class DispatcherAdministrationController extends Controller
         // ── Jadwal Upcoming (7 hari ke depan) ──
         $upcomingSchedules = VehicleCheckingSchedule::with(['vehicle'])
             ->active()
+            ->inUnit($unitId)
             ->where('status', 'completed')
             ->where('next_due_date', '>', Carbon::today())
             ->where('next_due_date', '<=', Carbon::today()->addDays(7))
@@ -63,19 +70,20 @@ class DispatcherAdministrationController extends Controller
         $badges = [
             'overdue_count' => $overdueSchedules->count(),
             'due_today_count' => $dueTodaySchedules->count(),
-            'pending_replacements' => VehiclePartsReplacement::pending()->count(),
-            'recently_serviced' => VehiclePartsReplacementTransaction::recentlyCompleted()->count(),
+            'pending_replacements' => VehiclePartsReplacement::inUnit($unitId)->pending()->count(),
+            'recently_serviced' => VehiclePartsReplacementTransaction::inUnit($unitId)->recentlyCompleted()->count(),
         ];
 
         // ── Kendaraan yang baru selesai service (badge 24 jam) ──
         $recentlyServiced = VehiclePartsReplacementTransaction::with(['replacement.vehicle', 'driver'])
+            ->inUnit($unitId)
             ->recentlyCompleted()
             ->get();
 
         // ── Periode bulan ini ──
-        $currentPeriodExists = VehicleChecking::currentPeriod()->exists();
-        $currentPeriodCount = VehicleChecking::currentPeriod()->count();
-        $totalActiveVehicles = VehicleAndToolsConsumers::where('is_active', true)->count();
+        $currentPeriodExists = VehicleChecking::currentPeriod()->inUnit($unitId)->exists();
+        $currentPeriodCount = VehicleChecking::currentPeriod()->inUnit($unitId)->count();
+        $totalActiveVehicles = VehicleAndToolsConsumers::where('is_active', true)->inUnit($unitId)->count();
 
         // dd('Dashboard data:', [
         //     'overdue' => $overdueSchedules->pluck('schedule_code'),
@@ -114,9 +122,12 @@ class DispatcherAdministrationController extends Controller
         $periodStart = $now->copy()->startOfMonth()->toDateString();
         $periodEnd = $now->copy()->endOfMonth()->toDateString();
 
+        // Batas unit: hanya kendaraan unit user yang dibuatkan periode.
+        $unitId = UnitScope::for(Auth::user())->unitId();
+
         // Cek apakah sudah di-generate bulan ini
-        $existingCount = VehicleChecking::where('period_start', $periodStart)->count();
-        $activeVehicles = VehicleAndToolsConsumers::where('is_active', true)->get();
+        $existingCount = VehicleChecking::inUnit($unitId)->where('period_start', $periodStart)->count();
+        $activeVehicles = VehicleAndToolsConsumers::where('is_active', true)->inUnit($unitId)->get();
 
         if ($existingCount >= $activeVehicles->count()) {
             return redirect()
@@ -198,15 +209,22 @@ class DispatcherAdministrationController extends Controller
      */
     public function assignIndex()
     {
+        $unitId = UnitScope::for(Auth::user())->unitId();
+
         $schedules = VehicleCheckingSchedule::with(['vehicle', 'assignedDispatcher'])
             ->active()
+            ->inUnit($unitId)
             ->orderBy('vehicle_id')
             ->orderBy('check_frequency')
             ->get()
             ->groupBy('vehicle_id');
 
-        $dispatchers = User::where('role', 'dispatchers')->orderBy('nama_lengkap')->get();
+        $dispatchers = User::whereIn('role', ['dispatcher', 'dispatchers'])
+            ->when($unitId !== null, fn ($q) => $q->where('unit_id', $unitId))
+            ->orderBy('nama_lengkap')
+            ->get();
         $vehicles = VehicleAndToolsConsumers::where('is_active', true)
+            ->inUnit($unitId)
             ->orderBy('consumerial_code')
             ->get();
 
@@ -227,8 +245,11 @@ class DispatcherAdministrationController extends Controller
         try {
             DB::beginTransaction();
 
+            $unitId = UnitScope::for($request->user())->unitId();
+
             foreach ($request->assignments as $assignment) {
-                VehicleCheckingSchedule::where('id', $assignment['schedule_id'])
+                VehicleCheckingSchedule::inUnit($unitId)
+                    ->where('id', $assignment['schedule_id'])
                     ->update(['assigned_dispatcher_id' => $assignment['dispatcher_id'] ?: null]);
             }
 
@@ -257,12 +278,14 @@ class DispatcherAdministrationController extends Controller
      */
     public function history(Request $request)
     {
+        $unitId = UnitScope::for($request->user())->unitId();
+
         $query = VehicleCheckingDetail::with([
             'vehicleChecking.vehicle',
             'dispatcher',
             'currentDriver',
             'itemResults',
-        ])->orderBy('checked_at', 'desc');
+        ])->inUnit($unitId)->orderBy('checked_at', 'desc');
 
         // Filter by kendaraan
         if ($request->filled('vehicle_id')) {
@@ -297,9 +320,13 @@ class DispatcherAdministrationController extends Controller
         $checkings = $query->paginate(20)->withQueryString();
 
         // Data untuk dropdown filter
-        $vehicles = VehicleAndToolsConsumers::where('is_active', true)->orderBy('consumerial_code')->get();
-        $drivers = User::where('role', 'requester')->orderBy('nama_lengkap')->get();
-        $dispatchers = User::where('role', 'dispatcher')->orderBy('nama_lengkap')->get();
+        $vehicles = VehicleAndToolsConsumers::where('is_active', true)->inUnit($unitId)->orderBy('consumerial_code')->get();
+        $drivers = User::where('role', 'requester')
+            ->when($unitId !== null, fn ($q) => $q->where('unit_id', $unitId))
+            ->orderBy('nama_lengkap')->get();
+        $dispatchers = User::whereIn('role', ['dispatcher', 'dispatchers'])
+            ->when($unitId !== null, fn ($q) => $q->where('unit_id', $unitId))
+            ->orderBy('nama_lengkap')->get();
 
         return view('dispatcher.history.index', compact(
             'checkings',
@@ -318,6 +345,8 @@ class DispatcherAdministrationController extends Controller
      */
     public function replacementIndex(Request $request)
     {
+        $unitId = UnitScope::for($request->user())->unitId();
+
         $query = VehiclePartsReplacement::with([
             'vehicle',
             'dispatcher',
@@ -326,7 +355,7 @@ class DispatcherAdministrationController extends Controller
             'approver',
             'replacementDetails',
             'transaction',
-        ])->orderBy('created_at', 'desc');
+        ])->inUnit($unitId)->orderBy('created_at', 'desc');
 
         // Filter by status
         if ($request->filled('status')) {
@@ -340,15 +369,15 @@ class DispatcherAdministrationController extends Controller
 
         $replacements = $query->paginate(15)->withQueryString();
 
-        $vehicles = VehicleAndToolsConsumers::where('is_active', true)->orderBy('consumerial_code')->get();
+        $vehicles = VehicleAndToolsConsumers::where('is_active', true)->inUnit($unitId)->orderBy('consumerial_code')->get();
 
         // Hitung badge per status
         $statusCounts = [
-            'pending' => VehiclePartsReplacement::pending()->count(),
-            'approved' => VehiclePartsReplacement::approved()->count(),
-            'scheduled' => VehiclePartsReplacement::scheduled()->count(),
-            'in_service' => VehiclePartsReplacement::inService()->count(),
-            'completed' => VehiclePartsReplacement::completed()->count(),
+            'pending' => VehiclePartsReplacement::inUnit($unitId)->pending()->count(),
+            'approved' => VehiclePartsReplacement::inUnit($unitId)->approved()->count(),
+            'scheduled' => VehiclePartsReplacement::inUnit($unitId)->scheduled()->count(),
+            'in_service' => VehiclePartsReplacement::inUnit($unitId)->inService()->count(),
+            'completed' => VehiclePartsReplacement::inUnit($unitId)->completed()->count(),
         ];
 
         return view('dispatcher.replacement.index', compact('replacements', 'vehicles', 'statusCounts'));
@@ -360,13 +389,15 @@ class DispatcherAdministrationController extends Controller
      */
     public function replacementCreate($checkingDetailCode)
     {
+        $unitId = UnitScope::for(Auth::user())->unitId();
+
         $detail = VehicleCheckingDetail::with([
             'vehicleChecking.vehicle',
             'currentDriver',
             'itemResults' => function ($q) {
                 $q->where('needs_replacement', true)->with('vehiclePart');
             },
-        ])->where('checking_detail_code', $checkingDetailCode)
+        ])->inUnit($unitId)->where('checking_detail_code', $checkingDetailCode)
             ->firstOrFail();
 
         // Cek apakah sudah ada VPR dari pengecekan ini
@@ -384,7 +415,9 @@ class DispatcherAdministrationController extends Controller
                 ->with('error', 'Tidak ada item yang perlu penggantian dari pengecekan ini.');
         }
 
-        $drivers = User::where('role', 'requester')->orderBy('nama_lengkap')->get();
+        $drivers = User::where('role', 'requester')
+            ->when($unitId !== null, fn ($q) => $q->where('unit_id', $unitId))
+            ->orderBy('nama_lengkap')->get();
 
         return view('dispatcher.replacement.create', compact('detail', 'drivers'));
     }
@@ -408,8 +441,17 @@ class DispatcherAdministrationController extends Controller
         ]);
 
         $detail = VehicleCheckingDetail::with(['vehicleChecking.vehicle', 'currentDriver'])
+            ->inUnit(UnitScope::for($request->user())->unitId())
             ->where('checking_detail_code', $checkingDetailCode)
             ->firstOrFail();
+
+        // Driver yang ditunjuk harus berada di unit yang sama.
+        if ($request->filled('desired_driver_id')) {
+            $desiredDriver = User::findOrFail($request->desired_driver_id);
+            if (! UnitScope::for($request->user())->allowsUnit($desiredDriver->unit_id)) {
+                return back()->withInput()->with('error', 'Driver yang dipilih berada di luar unit Anda.');
+            }
+        }
 
         // Double check: belum ada VPR dari pengecekan ini
         if (VehiclePartsReplacement::where('vehicle_checking_detail_id', $detail->id)->exists()) {
@@ -486,7 +528,7 @@ class DispatcherAdministrationController extends Controller
             'replacementDetails.vehiclePart',
             'transaction.details',
             'transaction.driver',
-        ])->where('vpr_code', $vprCode)
+        ])->inUnit(UnitScope::for(Auth::user())->unitId())->where('vpr_code', $vprCode)
             ->firstOrFail();
 
         return view('dispatcher.replacement.show', compact('replacement'));
@@ -502,7 +544,8 @@ class DispatcherAdministrationController extends Controller
             'vehicleChecking.vehicle',
             'currentDriver',
             'itemResults' => fn ($q) => $q->where('needs_replacement', true)->with('vehiclePart'),
-        ])->where('checking_detail_code', $checkingDetailCode)
+        ])->inUnit(UnitScope::for(Auth::user())->unitId())
+          ->where('checking_detail_code', $checkingDetailCode)
             ->firstOrFail();
 
         if ($detail->itemResults->isEmpty()) {
@@ -579,7 +622,10 @@ class DispatcherAdministrationController extends Controller
         $dateFrom = Carbon::parse($request->date_from)->startOfDay();
         $dateTo = Carbon::parse($request->date_to)->endOfDay();
 
+        $unitId = UnitScope::for($request->user())->unitId();
+
         $vehicles = VehicleAndToolsConsumers::where('is_active', true)
+            ->inUnit($unitId)
             ->orderBy('consumerial_code')
             ->get();
 
@@ -589,6 +635,7 @@ class DispatcherAdministrationController extends Controller
             'currentDriver',
             'itemResults.vehiclePart',
         ])
+            ->inUnit($unitId)
             ->whereBetween('checked_at', [$dateFrom, $dateTo])
             ->orderBy('checked_at', 'desc')
             ->get();
@@ -628,6 +675,7 @@ class DispatcherAdministrationController extends Controller
             'currentDriver',
             'itemResults.vehiclePart',
         ])
+            ->inUnit(UnitScope::for($request->user())->unitId())
             ->where('type', 'routine')
             ->whereBetween('checked_at', [$dateFrom, $dateTo])
             ->orderBy('checked_at', 'desc')
@@ -664,6 +712,7 @@ class DispatcherAdministrationController extends Controller
             'itemResults.vehiclePart',
             'damagePhotos',
         ])
+            ->inUnit(UnitScope::for($request->user())->unitId())
             ->where('type', 'body')
             ->whereBetween('checked_at', [$dateFrom, $dateTo])
             ->orderBy('checked_at', 'desc')
@@ -692,6 +741,7 @@ class DispatcherAdministrationController extends Controller
     public function exportCheckingIndex()
     {
         $vehicles = VehicleAndToolsConsumers::where('is_active', true)
+            ->inUnit(UnitScope::for(auth()->user())->unitId())
             ->orderBy('consumerial_code')
             ->get();
 
@@ -718,7 +768,8 @@ class DispatcherAdministrationController extends Controller
             'year.required' => 'Tahun periode wajib diisi.',
         ]);
 
-        $vehicle = VehicleAndToolsConsumers::findOrFail($request->vehicle_id);
+        $vehicle = VehicleAndToolsConsumers::inUnit(UnitScope::for($request->user())->unitId())
+            ->findOrFail($request->vehicle_id);
         $month = Carbon::create((int) $request->year, (int) $request->month, 1);
 
         $header = [
@@ -738,6 +789,7 @@ class DispatcherAdministrationController extends Controller
     public function exportBodyCheckingIndex()
     {
         $vehicles = VehicleAndToolsConsumers::where('is_active', true)
+            ->inUnit(UnitScope::for(auth()->user())->unitId())
             ->orderBy('consumerial_code')
             ->get();
 
@@ -764,7 +816,8 @@ class DispatcherAdministrationController extends Controller
             'year.required' => 'Tahun periode wajib diisi.',
         ]);
 
-        $vehicle = VehicleAndToolsConsumers::findOrFail($request->vehicle_id);
+        $vehicle = VehicleAndToolsConsumers::inUnit(UnitScope::for($request->user())->unitId())
+            ->findOrFail($request->vehicle_id);
         $month = Carbon::create((int) $request->year, (int) $request->month, 1);
 
         $header = [
