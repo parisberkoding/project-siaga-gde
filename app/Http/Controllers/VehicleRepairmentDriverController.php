@@ -137,7 +137,12 @@ class VehicleRepairmentDriverController extends Controller
                   ->orWhere('last_driver_id', $driverId);
             })
             ->whereIn('status', ['approved', 'scheduled', 'in_service', 'completed'])
-            ->orderByRaw("FIELD(status, 'in_service', 'scheduled', 'approved', 'completed')")
+            ->orderByRaw("CASE status
+                WHEN 'in_service' THEN 1
+                WHEN 'scheduled' THEN 2
+                WHEN 'approved' THEN 3
+                WHEN 'completed' THEN 4
+                ELSE 5 END")
             ->orderByDesc('scheduled_date')
             ->get();
 

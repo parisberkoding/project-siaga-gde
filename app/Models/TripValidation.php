@@ -94,6 +94,20 @@ class TripValidation extends Model
 
     // ==================== SCOPES ====================
 
+    /**
+     * Scope unit bisnis: validasi trip dari permohonan pada unit tertentu.
+     * Null = tanpa scope (global / Pusat).
+     */
+    public function scopeInUnit($query, ?int $unitId)
+    {
+        if ($unitId === null) {
+            return $query;
+        }
+
+        return $query->whereHas('transactionProofPrevious.permohonan', fn ($q) => $q
+            ->where('permohonans.unit_id', $unitId));
+    }
+
     public function scopeNeedsValidation($query)
     {
         return $query->whereNull('validated_at')

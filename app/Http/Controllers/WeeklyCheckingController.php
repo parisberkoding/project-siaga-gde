@@ -24,9 +24,13 @@ class WeeklyCheckingController extends Controller
 
     public function index(Request $request)
     {
+        // Batas unit: daftar & filter hanya kendaraan unit user.
+        $unitId = UnitScope::for($request->user())->unitId();
+
         $query = VehicleCheckingDetail::with(['vehicleChecking.vehicle', 'dispatcher', 'currentDriver'])
             ->routine()
             ->where('sub_type', 'weekly')
+            ->inUnit($unitId)
             ->orderBy('checked_at', 'desc');
 
         if ($request->filled('vehicle_id')) {
@@ -43,7 +47,7 @@ class WeeklyCheckingController extends Controller
         $checkings = $query->paginate(15)->withQueryString();
 
         $vehicles = VehicleAndToolsConsumers::where('is_active', true)
-            ->inUnit(UnitScope::for($request->user())->unitId())
+            ->inUnit($unitId)
             ->orderBy('consumerial_code')
             ->get();
 
@@ -239,7 +243,8 @@ class WeeklyCheckingController extends Controller
             'currentDriver',
             'itemResults.vehiclePart',
             'partsReplacement',
-        ])->where('checking_detail_code', $checkingDetailCode)
+        ])->inUnit(UnitScope::for(request()->user())->unitId())
+          ->where('checking_detail_code', $checkingDetailCode)
           ->where('type', 'routine')
           ->where('sub_type', 'weekly')
           ->firstOrFail();

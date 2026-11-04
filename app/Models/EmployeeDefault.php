@@ -168,6 +168,22 @@ class EmployeeDefault extends Model
         });
     }
 
+    /**
+     * Scope unit bisnis langsung dari unit_id (dengan fallback unit site default).
+     * Null = tanpa scope (global / pusat).
+     */
+    public function scopeForUnit($query, ?int $unitId)
+    {
+        if ($unitId === null) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($unitId) {
+            $q->where('unit_id', $unitId)
+                ->orWhereHas('defaultSite', fn ($site) => $site->where('unit_id', $unitId));
+        });
+    }
+
     public function scopeVerified($query)
     {
         return $query->where('verification_status', 'verified');

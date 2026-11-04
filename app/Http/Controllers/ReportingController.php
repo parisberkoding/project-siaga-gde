@@ -115,7 +115,9 @@ class ReportingController extends Controller
         // Permohonan acuan validasi (opsional; hanya mode operasional).
         $permohonan = null;
         if ($request->filled('permohonan_id')) {
-            $permohonan = Permohonan::with('vehicle')->find($request->input('permohonan_id'));
+            $permohonan = Permohonan::with('vehicle')
+                ->where('requester_id', Auth::id())
+                ->find($request->input('permohonan_id'));
         }
 
         // Multi-file: images[]
@@ -247,7 +249,16 @@ class ReportingController extends Controller
             'vehicle_id' => 'required|exists:vehicle_and_tools_consumers,id',
         ]);
 
-        $vehicle = VehicleAndToolsConsumers::with('detail')->find($request->vehicle_id);
+        $vehicle = VehicleAndToolsConsumers::with('detail')
+            ->visibleTo(Auth::user())
+            ->find($request->vehicle_id);
+
+        if (! $vehicle) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kendaraan berada di luar unit Anda.',
+            ], 403);
+        }
 
         return response()->json([
             'success'          => true,

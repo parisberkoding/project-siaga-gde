@@ -106,6 +106,7 @@
                                     <th>Nomor Referensi Perbankan</th>
                                     <th class="text-end">Nominal</th>
                                     <th>Bentuk Pencairan</th>
+                                    <th>Sumber</th>
                                     <th>Rek. Tujuan</th>
                                     <th style="width: 90px;">Aksi</th>
                                 </tr>
@@ -121,6 +122,15 @@
                                             <span class="badge {{ $pencairan->isTransfer() ? 'bg-primary' : 'bg-secondary' }}">
                                                 {{ $pencairan->bentuk_pencairan_label }}
                                             </span>
+                                        </td>
+                                        <td>
+                                            @if($pencairan->isPerpanjangan())
+                                                <span class="badge bg-warning text-dark">
+                                                    <i class="bi bi-arrow-repeat"></i> Perpanjangan
+                                                </span>
+                                            @else
+                                                <span class="badge bg-light text-dark border">{{ $pencairan->sumber_label }}</span>
+                                            @endif
                                         </td>
                                         <td>{{ $pencairan->isTransfer() ? ($pencairan->rek_tujuan ?: '-') : '-' }}</td>
                                         <td>
@@ -141,7 +151,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="text-center text-muted">Belum ada data pencairan.</td>
+                                        <td colspan="8" class="text-center text-muted">Belum ada data pencairan.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -150,7 +160,7 @@
                                     <tr class="table-light">
                                         <th colspan="3" class="text-end">Grand Total</th>
                                         <th class="text-end">Rp {{ number_format($total, 0, ',', '.') }}</th>
-                                        <th colspan="3"></th>
+                                        <th colspan="4"></th>
                                     </tr>
                                 </tfoot>
                             @endif

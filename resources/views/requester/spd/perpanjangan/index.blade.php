@@ -50,7 +50,7 @@
                                 <th>Surat Original</th>
                                 <th>Surat Perpanjangan</th>
                                 <th>Perpanjangan</th>
-                                <th>Budget Tambahan</th>
+                                <th>Dana Perpanjangan</th>
                                 <th>Status</th>
                                 <th>Tanggal Ajukan</th>
                             </tr>
@@ -75,7 +75,13 @@
                                         <strong>{{ $ext->tanggal_kembali_baru->translatedFormat('d M Y') }}</strong>
                                         <br><span class="badge bg-info">+{{ $ext->durasi_tambahan_hari }} hari</span>
                                     </td>
-                                    <td>Rp {{ number_format($ext->budget_tambahan, 0, ',', '.') }}</td>
+                                    <td>
+                                        @if((float) $ext->budget_tambahan > 0)
+                                            Rp {{ number_format($ext->budget_tambahan, 0, ',', '.') }}
+                                        @else
+                                            <span class="text-muted small">Menunggu input Admin GA</span>
+                                        @endif
+                                    </td>
                                     <td>
                                         @if($ext->status == 'pending')
                                             <span class="badge bg-warning text-dark">Menunggu Approval</span>

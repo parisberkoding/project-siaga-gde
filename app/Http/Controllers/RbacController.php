@@ -52,7 +52,7 @@ class RbacController extends Controller
 
             $role = Role::create([
                 'code'        => $validated['code'],
-                'name'        => $validated['name'],
+                'name'        => Role::normalizeLabel($validated['name']),
                 'description' => $validated['description'] ?? null,
                 // Kosong = role global (berlaku semua unit). Diisi = role
                 // khusus unit tersebut, dan hanya bisa diberikan ke user
@@ -119,7 +119,7 @@ class RbacController extends Controller
             DB::beginTransaction();
 
             $role->update([
-                'name'        => $validated['name'],
+                'name'        => Role::normalizeLabel($validated['name']),
                 'description' => $validated['description'] ?? null,
                 'unit_id'     => $validated['unit_id'] ?? null,
                 'is_active'   => $request->boolean('is_active', $role->is_active),

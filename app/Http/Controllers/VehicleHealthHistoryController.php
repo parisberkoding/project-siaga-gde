@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\VehicleAndToolsConsumers;
 use App\Models\VehicleBarcode;
 use App\Models\VehicleCheckingDetail;
+use App\Services\UnitScope;
 use ZipArchive;
 
 class VehicleHealthHistoryController extends Controller
@@ -40,10 +41,12 @@ class VehicleHealthHistoryController extends Controller
         $decoded = json_decode($raw, true);
 
         if (is_array($decoded) && isset($decoded['id'])) {
-            $vehicle = VehicleAndToolsConsumers::find($decoded['id']);
+            $vehicle = VehicleAndToolsConsumers::visibleTo($request->user())->find($decoded['id']);
         } else {
             // Fallback: input manual berdasarkan consumerial_code
-            $vehicle = VehicleAndToolsConsumers::where('consumerial_code', $raw)->first();
+            $vehicle = VehicleAndToolsConsumers::visibleTo($request->user())
+                ->where('consumerial_code', $raw)
+                ->first();
         }
 
         if (!$vehicle) {
@@ -101,9 +104,11 @@ class VehicleHealthHistoryController extends Controller
         $decoded = json_decode($raw, true);
 
         if (is_array($decoded) && isset($decoded['id'])) {
-            $vehicle = VehicleAndToolsConsumers::find($decoded['id']);
+            $vehicle = VehicleAndToolsConsumers::visibleTo($request->user())->find($decoded['id']);
         } else {
-            $vehicle = VehicleAndToolsConsumers::where('consumerial_code', $raw)->first();
+            $vehicle = VehicleAndToolsConsumers::visibleTo($request->user())
+                ->where('consumerial_code', $raw)
+                ->first();
         }
 
         if (!$vehicle) {
@@ -127,7 +132,18 @@ class VehicleHealthHistoryController extends Controller
             abort(403, 'Anda tidak memiliki akses untuk mengunduh QR code.');
         }
 
-        $barcode = VehicleBarcode::where('vehicle_and_tools_consumer_id', $vehicleId)->first();
+        $unitId = UnitScope::for($user)->unitId();
+
+        $barcode = VehicleBarcode::where('vehicle_and_tools_consumer_id', $vehicleId)
+            ->when($unitId !== null, fn ($q) => $q->whereHas(
+                'vehicle',
+                fn ($v) => $v->where('vehicle_and_tools_consumers.unit_id', $unitId)
+            ))
+            ->first();
+
+        if (! $barcode) {
+            abort(404, 'QR code kendaraan tidak ditemukan untuk unit Anda.');
+        }
 
         if (!$barcode || !file_exists($barcode->full_path)) {
             abort(404, 'File QR code tidak ditemukan. Silakan jalankan VehicleBarcodeSeeder terlebih dahulu.');
@@ -142,7 +158,15 @@ class VehicleHealthHistoryController extends Controller
      */
     public function downloadAllBarcodesZip()
     {
-        $barcodes = VehicleBarcode::all();
+        // Batas unit: superadmin unit hanya mengunduh QR kendaraan unitnya.
+        $unitId = UnitScope::for(Auth::user())->unitId();
+
+        $barcodes = VehicleBarcode::query()
+            ->when($unitId !== null, fn ($q) => $q->whereHas(
+                'vehicle',
+                fn ($v) => $v->where('vehicle_and_tools_consumers.unit_id', $unitId)
+            ))
+            ->get();
 
         if ($barcodes->isEmpty()) {
             return back()->with('error', 'Belum ada QR code kendaraan. Silakan jalankan VehicleBarcodeSeeder terlebih dahulu.');

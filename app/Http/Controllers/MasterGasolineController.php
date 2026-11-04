@@ -13,7 +13,7 @@ class MasterGasolineController extends Controller
     /**
      * Halaman Master Harga BBM (Superadmin & Admin/GA).
      */
-    public function index()
+    public function index(Request $request)
     {
         $title = 'Master Harga BBM';
 
@@ -27,6 +27,8 @@ class MasterGasolineController extends Controller
             ->where('consumerial_type', 'KENDARAAN')
             ->where('is_approved', true)
             ->where('is_active', true)
+            // Batas unit: daftar kendaraan mengikuti unit user.
+            ->visibleTo($request->user())
             ->orderBy('consumerial_name')
             ->get();
 

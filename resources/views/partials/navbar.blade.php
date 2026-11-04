@@ -208,7 +208,7 @@
               <td class="fw-semibold">Role</td>
               <td>
                 <span class="badge bg-{{ Auth::user()->role === 'admin' ? 'primary' : 'success' }}">
-                  {{ ucfirst(Auth::user()->role) }}
+                  {{ Auth::user()->role }}
                 </span>
               </td>
             </tr>

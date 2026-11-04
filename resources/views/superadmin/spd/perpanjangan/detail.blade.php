@@ -237,41 +237,21 @@
                             Periksa detail surat dengan teliti sebelum memvalidasi.
                         </p>
 
-                        {{-- Form Approve dengan Input Budget --}}
-                        <form action="{{ route('surat.superadmin.approve', $surat) }}" method="POST" id="approveForm">
+                        {{-- Form Approve Perpanjangan.
+                             Driver tidak mengajukan nominal; dana tambahan
+                             dicatat Admin GA (bisa saat approve atau setelahnya
+                             lewat detail surat perpanjangan). --}}
+                        <form action="{{ route('perpanjangan.superadmin.approve', $extension) }}" method="POST" id="approveForm">
                             @csrf
 
-                            {{-- Budget Input --}}
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">
-                                    <i class="bi bi-cash-stack text-success"></i> Budget Per Hari <span class="text-danger">*</span>
-                                </label>
-                                <div class="input-group">
-                                    <span class="input-group-text">Rp</span>
-                                    <input type="number" class="form-control" name="budget_per_hari"
-                                           id="budgetPerHari" min="0" step="1000" required
-                                           placeholder="Contoh: 500000">
-                                </div>
-                                <div class="form-text">Tentukan budget harian untuk perjalanan ini</div>
-                            </div>
-
-                            {{-- Kalkulasi Budget --}}
-                            <div class="alert alert-light border mb-3" id="budgetInfo">
-                                <div class="row text-center">
-                                    <div class="col-6 border-end">
-                                        <small class="text-muted d-block">Lama Perjalanan</small>
-                                        <strong class="fs-5">{{ $surat->lama_perjalanan_hari }}</strong>
-                                        <small class="text-muted d-block">hari</small>
-                                    </div>
-                                    <div class="col-6">
-                                        <small class="text-muted d-block">Total Budget</small>
-                                        <strong class="fs-5 text-success" id="totalBudgetCalc">Rp 0</strong>
-                                    </div>
-                                </div>
+                            <div class="alert alert-info py-2 mb-3">
+                                <i class="bi bi-info-circle"></i>
+                                Menyetujui perpanjangan hanya memindahkan tanggal kembali dan
+                                tenggat LPJ. Nominal dana perpanjangan diinput Admin GA.
                             </div>
 
                             <button type="submit" class="btn btn-success w-100 mb-2">
-                                <i class="bi bi-check-circle"></i> Setujui Surat Tugas
+                                <i class="bi bi-check-circle"></i> Setujui Perpanjangan
                             </button>
                         </form>
 
@@ -396,39 +376,12 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const budgetPerHari = document.getElementById('budgetPerHari');
-    const totalBudgetCalc = document.getElementById('totalBudgetCalc');
-    const lamaHari = {{ $surat->lama_perjalanan_hari }};
-
-    function formatRupiah(num) {
-        return 'Rp ' + new Intl.NumberFormat('id-ID').format(num);
-    }
-
-    function calculateTotal() {
-        const budget = parseFloat(budgetPerHari.value) || 0;
-        const total = budget * lamaHari;
-        totalBudgetCalc.textContent = formatRupiah(total);
-    }
-
-    if (budgetPerHari) {
-        budgetPerHari.addEventListener('input', calculateTotal);
-    }
-
-    // Form validation
     document.getElementById('approveForm')?.addEventListener('submit', function(e) {
-        const budget = parseFloat(budgetPerHari.value) || 0;
-        if (budget <= 0) {
-            e.preventDefault();
-            alert('Silakan masukkan budget per hari terlebih dahulu!');
-            budgetPerHari.focus();
-            return false;
-        }
-
-        const total = budget * lamaHari;
-        if (!confirm(`Anda yakin ingin menyetujui surat tugas ini?\n\nBudget per hari: ${formatRupiah(budget)}\nTotal budget: ${formatRupiah(total)}\nDeadline LPJ: 3 hari setelah tanggal kembali`)) {
+        if (!confirm('Anda yakin ingin menyetujui perpanjangan ini? Tanggal kembali dan tenggat LPJ akan diperbarui.')) {
             e.preventDefault();
         }
     });
 });
 </script>
+@endpush
 @endsection

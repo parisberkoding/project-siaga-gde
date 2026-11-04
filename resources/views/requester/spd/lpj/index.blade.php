@@ -2,12 +2,12 @@
 
 @section('content')
 <div class="pagetitle">
-    <h1>Laporan Pertanggungjawaban</h1>
+    <h1>LPJ Saya</h1>
     <nav>
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{ route('requester-index') }}">Home</a></li>
             <li class="breadcrumb-item">SPD</li>
-            <li class="breadcrumb-item active">Laporan LPJ</li>
+            <li class="breadcrumb-item active">LPJ Saya</li>
         </ol>
     </nav>
 </div>
@@ -103,7 +103,7 @@
     <div class="card">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0"><i class="bi bi-file-earmark-check"></i> Daftar Laporan Pertanggungjawaban</h5>
+                <h5 class="card-title mb-0"><i class="bi bi-file-earmark-check"></i> Daftar LPJ Saya</h5>
                 <!-- <a href="{{ route('requester.surat.index') }}" class="btn btn-primary">
                     <i class="bi bi-plus-lg"></i> Buat Laporan Baru
                 </a> -->

@@ -178,13 +178,13 @@ class RbacSeeder extends Seeder
     {
         $roles = [
             'superadmin' => [
-                'name' => 'Super Admin',
+                'name' => 'superadmin',
                 'description' => 'Akses penuh ke seluruh modul & RBAC.',
                 'is_system' => true,
                 'permissions' => Permission::pluck('code')->toArray(), // full access
             ],
             'general_affairs' => [
-                'name' => 'General Affairs',
+                'name' => 'general_affairs',
                 'description' => 'Admin: approval BBM, kelola SPD, VPR/service, lunch, master harga BBM. Tanpa user management.',
                 'is_system' => true,
                 'permissions' => [
@@ -199,7 +199,7 @@ class RbacSeeder extends Seeder
                 ],
             ],
             'dispatcher' => [
-                'name' => 'Dispatcher',
+                'name' => 'dispatcher',
                 'description' => 'Fokus operasional kendaraan: pemeriksaan, VPR, scanner, export.',
                 'is_system' => true,
                 'permissions' => [
@@ -207,7 +207,7 @@ class RbacSeeder extends Seeder
                 ],
             ],
             'requester' => [
-                'name' => 'Driver / Requester',
+                'name' => 'requester',
                 'description' => 'Driver: request BBM, buat surat tugas & LPJ SPD, acknowledge hasil pengecekan. '
                     .'TIDAK memvalidasi kebenaran perjalanan (itu ranah pengguna yang berangkat / pegawai).',
                 'is_system' => true,
@@ -220,7 +220,7 @@ class RbacSeeder extends Seeder
                 ],
             ],
             'manager' => [
-                'name' => 'Manager',
+                'name' => 'manager',
                 'description' => 'Approval & review, tanpa CRUD master.',
                 'is_system' => true,
                 'permissions' => [
@@ -233,7 +233,7 @@ class RbacSeeder extends Seeder
                 ],
             ],
             'view_only' => [
-                'name' => 'View Only',
+                'name' => 'view_only',
                 'description' => 'Read-only ke seluruh dashboard & data.',
                 'is_system' => true,
                 'permissions' => [
@@ -243,7 +243,7 @@ class RbacSeeder extends Seeder
                 ],
             ],
             'vendor' => [
-                'name' => 'Vendor Catering',
+                'name' => 'vendor',
                 'description' => 'Akses terbatas: melihat daftar kehadiran lunch harian.',
                 'is_system' => true,
                 'permissions' => [
@@ -252,7 +252,7 @@ class RbacSeeder extends Seeder
             ],
             // Developers — mengaktifkan/menonaktifkan fitur (development <-> production).
             'developers' => [
-                'name' => 'Developers',
+                'name' => 'developers',
                 'description' => 'Mengelola tahap rilis fitur: menaikkan ke production atau menurunkan ke development.',
                 'is_system' => true,
                 'permissions' => [
@@ -262,7 +262,7 @@ class RbacSeeder extends Seeder
 
             // User yang berangkat (penumpang) — memvalidasi kebenaran perjalanan dinas.
             'pengguna_spd' => [
-                'name' => 'Pengguna Perjalanan (User Berangkat)',
+                'name' => 'pengguna_spd',
                 'description' => 'Penumpang SPD: melihat surat & LPJ, memvalidasi kebenaran perjalanan dinas (tahap 1).',
                 'is_system' => false,
                 'permissions' => [
@@ -278,7 +278,7 @@ class RbacSeeder extends Seeder
             // Apakah nanti dapat hak tulis (CRUD) ditentukan oleh role hasil
             // mapping jabatan+unit di tabel `sso_role_mappings`, bukan di sini.
             'pegawai' => [
-                'name' => 'Pegawai',
+                'name' => 'pegawai',
                 'description' => 'Pegawai non-GA: melihat surat tugas & LPJ, serta memvalidasi kebenaran perjalanan dinas '
                     .'sebagai pengguna yang berangkat (tahap 1). Target pemetaan jabatan SSO untuk pegawai umum.',
                 'is_system' => false,

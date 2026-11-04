@@ -84,6 +84,17 @@ class Role extends Model
     }
 
     /**
+     * Format label role: lowercase, spasi/simbol menjadi underscore.
+     * Contoh: "Driver / Requester" -> "driver_requester", "BBM Officer" -> "bbm_officer".
+     */
+    public static function normalizeLabel(?string $value): string
+    {
+        $label = preg_replace('/[^a-z0-9]+/', '_', strtolower(trim((string) $value))) ?? '';
+
+        return trim($label, '_') ?: 'role';
+    }
+
+    /**
      * Role yang berlaku untuk unit tertentu: global + milik unit itu.
      *
      * Unit null (user belum di-assign) hanya mendapat role global. Ini

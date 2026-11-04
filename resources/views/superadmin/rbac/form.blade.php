@@ -70,8 +70,9 @@
                                    class="form-control @error('name') is-invalid @enderror"
                                    name="name"
                                    value="{{ old('name', $role->name ?? '') }}"
-                                   placeholder="Contoh: BBM Officer"
+                                   placeholder="Contoh: bbm_officer"
                                    required>
+                            <small class="text-muted">Huruf kecil semua; spasi otomatis menjadi underscore.</small>
                             @error('name')
                             <div class="text-danger small mt-1">{{ $message }}</div>
                             @enderror
@@ -200,8 +201,8 @@
                     <i class="bi bi-question-circle me-2"></i>Tips
                 </h6>
                 <ul class="small mb-0" style="padding-left:16px;">
-                    <li class="mb-2">Buat role spesifik sesuai fungsi, misal <strong>"BBM Officer"</strong> yang hanya bisa request BBM.</li>
-                    <li class="mb-2">Role <strong>"View Only"</strong> hanya perlu permission <code>*.view</code>.</li>
+                    <li class="mb-2">Buat role spesifik sesuai fungsi, misal <strong>"bbm_officer"</strong> yang hanya bisa request BBM.</li>
+                    <li class="mb-2">Role <strong>"view_only"</strong> hanya perlu permission <code>*.view</code>.</li>
                     <li class="mb-2">Role sistem tidak bisa diedit atau dihapus.</li>
                     <li>User bisa punya lebih dari satu role.</li>
                 </ul>

@@ -28,8 +28,12 @@ class BodyCheckingController extends Controller
      */
     public function index(Request $request)
     {
+        // Batas unit: daftar & filter hanya kendaraan unit user.
+        $unitId = UnitScope::for($request->user())->unitId();
+
         $query = VehicleCheckingDetail::with(['vehicleChecking.vehicle', 'dispatcher', 'currentDriver', 'itemResults', 'damagePhotos'])
             ->body()
+            ->inUnit($unitId)
             ->orderBy('checked_at', 'desc');
 
         // Filter by kendaraan
@@ -50,7 +54,7 @@ class BodyCheckingController extends Controller
         $checkings = $query->paginate(15)->withQueryString();
 
         $vehicles = VehicleAndToolsConsumers::where('is_active', true)
-            ->inUnit(UnitScope::for($request->user())->unitId())
+            ->inUnit($unitId)
             ->orderBy('consumerial_code')
             ->get();
 
@@ -332,7 +336,8 @@ class BodyCheckingController extends Controller
             'itemResults.vehiclePart',
             'partsReplacement',
             'damagePhotos',
-        ])->where('checking_detail_code', $checkingDetailCode)
+        ])->inUnit(UnitScope::for(request()->user())->unitId())
+          ->where('checking_detail_code', $checkingDetailCode)
           ->where('type', 'body')
           ->firstOrFail();
 

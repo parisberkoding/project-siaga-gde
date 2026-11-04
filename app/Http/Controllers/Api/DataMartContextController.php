@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\AI\DataMart\DataMartContextBuilder;
+use App\Services\UnitScope;
 use Illuminate\Http\JsonResponse;
 
 class DataMartContextController extends Controller
@@ -20,6 +21,8 @@ class DataMartContextController extends Controller
      */
     public function show(int $unitId): JsonResponse
     {
+        UnitScope::for(request()->user())->ensureUnit($unitId);
+
         $data = $this->builder->buildCached($unitId);
 
         return response()->json($data, 200, [], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
@@ -32,6 +35,8 @@ class DataMartContextController extends Controller
      */
     public function refresh(int $unitId): JsonResponse
     {
+        UnitScope::for(request()->user())->ensureUnit($unitId);
+
         $data = $this->builder->buildForUnit($unitId);
 
         return response()->json($data, 200, [], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);

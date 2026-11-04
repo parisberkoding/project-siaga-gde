@@ -88,14 +88,36 @@
                             <i class="bi bi-info-circle"></i> Data pemberi tugas belum diisi. Silakan isi sebelum menyetujui.
                         </div>
                         <div class="row mb-2">
+                            <div class="col-md-8">
+                                <label class="form-label">Ambil dari Master Pekerja <span class="text-muted fw-normal">(opsional)</span></label>
+                                <select class="form-select form-select-sm" name="pemberi_employee_id" id="pemberiEmployeeApproval">
+                                    <option value="">— Input manual —</option>
+                                    @foreach(($pejabatOptions ?? collect()) as $pejabat)
+                                        <option value="{{ $pejabat->id }}"
+                                                data-nama="{{ $pejabat->employee_name }}"
+                                                data-jabatan="{{ $pejabat->position ?? '' }}"
+                                                {{ old('pemberi_employee_id') == $pejabat->id ? 'selected' : '' }}>
+                                            {{ $pejabat->employee_name }} · {{ $pejabat->position ?? 'Tanpa jabatan' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">
+                                    Nama &amp; jabatan otomatis mengikuti Master Pekerja, sehingga sama dengan
+                                    yang tercetak pada template surat.
+                                </small>
+                            </div>
+                        </div>
+                        <div class="row mb-2">
                             <div class="col-md-4">
                                 <label class="form-label">Nama <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control form-control-sm" name="pemberi_tugas_nama"
+                                       id="pemberiNamaApproval"
                                        value="{{ old('pemberi_tugas_nama') }}" required placeholder="Nama lengkap pemberi tugas">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Jabatan <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control form-control-sm" name="pemberi_tugas_jabatan"
+                                       id="pemberiJabatanApproval"
                                        value="{{ old('pemberi_tugas_jabatan') }}" required placeholder="Contoh: HC, GA, & Finance Manager">
                             </div>
                         </div>
@@ -263,6 +285,7 @@
                                             <th>Tanggal</th>
                                             <th class="text-end">Nominal</th>
                                             <th>Bentuk</th>
+                                            <th>Sumber</th>
                                             <th>No. Referensi / Rek. Tujuan</th>
                                         </tr>
                                     </thead>
@@ -276,6 +299,15 @@
                                                     <span class="badge {{ $budget->isTransfer() ? 'bg-primary' : 'bg-secondary' }}">
                                                         {{ $budget->bentuk_pencairan_label }}
                                                     </span>
+                                                </td>
+                                                <td>
+                                                    @if($budget->isPerpanjangan())
+                                                        <span class="badge bg-warning text-dark">
+                                                            <i class="bi bi-arrow-repeat"></i> Perpanjangan
+                                                        </span>
+                                                    @else
+                                                        <span class="badge bg-light text-dark border">{{ $budget->sumber_label }}</span>
+                                                    @endif
                                                 </td>
                                                 <td>
                                                     @if($budget->isTransfer())
@@ -295,7 +327,7 @@
                                         <tr>
                                             <th colspan="2" class="text-end">Total Dana Diberikan:</th>
                                             <th class="text-end">Rp {{ number_format($surat->pencairans->sum('nominal'), 0, ',', '.') }}</th>
-                                            <th colspan="2"></th>
+                                            <th colspan="3"></th>
                                         </tr>
                                     </tfoot>
                                 </table>
@@ -315,6 +347,39 @@
                                     </div>
                                 </div>
                             @endif
+                        @endif
+
+                        {{-- Tambah pemberian dana (termasuk dana perpanjangan ETD).
+                             Driver tidak mengisi nominal; Admin GA mencatat kapan
+                             dan berapa dana yang benar-benar diberikan. --}}
+                        @if($surat->status == 'approved' || $surat->status == 'completed')
+                            <div class="mt-3 border rounded p-3 bg-light">
+                                <h6 class="mb-1">
+                                    <i class="bi bi-plus-circle text-success"></i>
+                                    Tambah Pemberian Dana
+                                    @if($surat->is_extension)
+                                        <span class="badge bg-warning text-dark">Perpanjangan</span>
+                                    @endif
+                                </h6>
+                                <p class="small text-muted mb-2">
+                                    Catat tanggal &amp; nominal dana yang diberikan. Baris untuk surat
+                                    perpanjangan otomatis ditandai <strong>Perpanjangan</strong>.
+                                </p>
+                                <form action="{{ route('surat.superadmin.pencairan.store', $surat) }}" method="POST">
+                                    @csrf
+                                    @include('partials.pencairan-input', [
+                                        'name'           => 'pencairans',
+                                        'rows'           => collect(),
+                                        'tanggalDefault' => now()->toDateString(),
+                                        'totalTargetId'  => 'totalPencairanTambah',
+                                    ])
+                                    <div class="mt-2">
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            <i class="bi bi-save"></i> Simpan Pemberian Dana
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                         @endif
                     @endif
 
@@ -636,6 +701,22 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('confirmApproveSurat')?.addEventListener('click', function() {
         document.getElementById('approveForm').submit();
     });
+
+    // Pemberi tugas dari Master Pekerja → isi nama & jabatan dari data master
+    // agar persis sama dengan yang dicetak pada template surat.
+    const pemberiEmployee = document.getElementById('pemberiEmployeeApproval');
+    const pemberiNama = document.getElementById('pemberiNamaApproval');
+    const pemberiJabatan = document.getElementById('pemberiJabatanApproval');
+
+    if (pemberiEmployee && pemberiNama && pemberiJabatan) {
+        pemberiEmployee.addEventListener('change', function() {
+            const selected = this.options[this.selectedIndex];
+            if (!selected || !selected.value) return;
+
+            pemberiNama.value = selected.dataset.nama || '';
+            pemberiJabatan.value = selected.dataset.jabatan || '';
+        });
+    }
 });
 </script>
 

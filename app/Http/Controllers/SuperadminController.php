@@ -65,94 +65,20 @@ class SuperadminController extends Controller
         return redirect()->route('superadmin.dashboard.bisnis');
     }
 
-    public function getDashboardStats()
+    public function getDashboardStats(Request $request)
     {
         try {
-            $stats = [
-                'totalExpense' => Permohonan::whereIn('status', ['completed', 'approved'])
-                    ->sum('bill_amounts'),
-                // 'expense_in_requests' => Permohonan::whereIn('status', ['pending', 'approved'])
-                //     ->sum('bill_amounts'),
-                'totalRequests' => Permohonan::count(),
-                'completedRequests' => Permohonan::where('status', 'completed')->count(),
-
-                // Gasoline Distribution
-                'gasolineDistribution' => Permohonan::whereIn('status', ['completed', 'approved'])
-                    ->selectRaw('gasoline_type, SUM(bill_amounts) as total')
-                    ->groupBy('gasoline_type')
-                    ->pluck('total', 'gasoline_type')
-                    ->toArray(),
-
-                // Expense over time based on period
-                'expenseOverTime' => $this->getExpenseOverTime($period),
-
-                // Gasoline distribution by expense (untuk pie chart)
-                'gasolineExpenseDistribution' => Permohonan::whereIn('status', ['completed', 'approved'])
-                    ->whereBetween('request_date', [$startDate, $endDate])
-                    ->selectRaw('gasoline_type, SUM(bill_amounts) as total')
-                    ->groupBy('gasoline_type')
-                    ->pluck('total', 'gasoline_type')
-                    ->toArray(),
-
-                // Period info
-                'period' => $period,
-                'periodLabel' => $this->getPeriodLabel($period),
-                'startDate' => $startDate->format('Y-m-d'),
-                'endDate' => $endDate->format('Y-m-d'),
-
-                // Vehicle Expense (top 10)
-                'vehicleExpense' => Permohonan::with('consumerialTool')
-                    ->whereIn('status', ['completed', 'approved'])
-                    ->selectRaw('consumerial_tools_id, SUM(bill_amounts) as total')
-                    ->groupBy('consumerial_tools_id')
-                    ->orderBy('total', 'desc')
-                    ->limit(10)
-                    ->get()
-                    ->mapWithKeys(function ($item) {
-                        $vehicle = $item->consumerialTool;
-                        $vehicleName = $vehicle
-                            ? "{$vehicle->plat_nomer} - {$vehicle->merk}"
-                            : 'Unknown';
-
-                        return [$vehicleName => $item->total];
-                    })
-                    ->toArray(),
-
-                // Driver Expense (top 10)
-                'driverExpense' => Permohonan::with('requester')
-                    ->whereIn('status', ['completed', 'approved'])
-                    ->selectRaw('requester_id, SUM(bill_amounts) as total')
-                    ->groupBy('requester_id')
-                    ->orderBy('total', 'desc')
-                    ->limit(10)
-                    ->get()
-                    ->mapWithKeys(function ($item) {
-                        $driverName = $item->requester->fullname ?? 'Unknown';
-
-                        return [$driverName => $item->total];
-                    })
-                    ->toArray(),
-
-                // Driver Request Count
-                'driverRequestCount' => Permohonan::with('requester')
-                    ->selectRaw('requester_id, COUNT(*) as count')
-                    ->groupBy('requester_id')
-                    ->orderBy('count', 'desc')
-                    ->get()
-                    ->mapWithKeys(function ($item) {
-                        $driverName = $item->requester->fullname ?? 'Unknown';
-
-                        return [$driverName => $item->count];
-                    })
-                    ->toArray(),
-            ];
+            // Batas unit: superadmin unit hanya mendapat agregat unitnya.
+            // Delegasi ke getDashboardStatsData() yang sudah memakai inUnit().
+            $period = $request->get('period', 'month');
+            $unitId = UnitScope::for($request->user())->unitId();
 
             return response()->json([
                 'success' => true,
-                'data' => $stats,
+                'data' => $this->getDashboardStatsData($period, $unitId),
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => safe_exception_message($e, 'Gagal memuat dashboard. Silakan coba lagi atau hubungi admin.'),
@@ -950,6 +876,7 @@ class SuperadminController extends Controller
     private function getVehicleFuelConsumptionData(?Request $request = null)
     {
         $query = Transaction_Proofs::with(['permohonan.consumerialTool', 'permohonan.requester'])
+            ->inUnit(UnitScope::for(request()->user())->unitId())
             ->whereHas('permohonan', function ($q) {
                 $q->where('status', 'completed');
             });
@@ -1114,24 +1041,32 @@ class SuperadminController extends Controller
 
     public function showVehicleDetail($id)
     {
-        $vehicle = VehicleAndToolsConsumers::with('detail.site', 'detail.site.unit', 'unit', 'creator', 'approver')->findOrFail($id);
+        $vehicle = VehicleAndToolsConsumers::with('detail.site', 'detail.site.unit', 'unit', 'creator', 'approver')
+            ->inUnit(UnitScope::for(Auth::user())->unitId())
+            ->findOrFail($id);
 
         return view('superadmin.vehicles.detail', compact('vehicle'));
     }
 
     public function editVehicleDetail($id)
     {
-        $vehicle = VehicleAndToolsConsumers::with('detail')->findOrFail($id);
+        $scope = UnitScope::for(Auth::user());
+
+        $vehicle = VehicleAndToolsConsumers::with('detail')
+            ->inUnit($scope->unitId())
+            ->findOrFail($id);
         $detail = $vehicle->detail ?? new VehicleDetail;
-        $sites = Site::active()->with('unit')->orderBy('name')->get();
-        $units = Unit::active()->orderBy('name')->get();
+        $sites = $scope->sites()->load('unit');
+        $units = $scope->units();
 
         return view('superadmin.vehicles.detail-form', compact('vehicle', 'detail', 'sites', 'units'));
     }
 
     public function updateVehicleDetail(Request $request, $id)
     {
-        $vehicle = VehicleAndToolsConsumers::findOrFail($id);
+        $scope = UnitScope::for($request->user());
+
+        $vehicle = VehicleAndToolsConsumers::inUnit($scope->unitId())->findOrFail($id);
 
         $validated = $request->validate([
             'unit_id' => 'nullable|exists:units,id',
@@ -1168,6 +1103,9 @@ class SuperadminController extends Controller
             $validated,
             $vehicle->unit_id ? (int) $vehicle->unit_id : null
         );
+
+        // Unit tujuan tidak boleh di luar kewenangan user.
+        $scope->ensureUnit($unitId);
 
         if ($mismatch = $this->siteUnitMismatchMessage($validated['site_id'] ?? null, $unitId)) {
             return redirect()->back()->withInput()->with('error', $mismatch);
@@ -1211,14 +1149,18 @@ class SuperadminController extends Controller
     {
         $title = 'Dashboard Approval Superadmin';
 
+        $unitId = UnitScope::for(Auth::user())->unitId();
+
         // Get pending vehicles (rental yang belum diapprove)
         $pendingVehicles = VehicleAndToolsConsumers::with(['creator', 'permohonans'])
+            ->inUnit($unitId)
             ->where('is_approved', false)
             ->orderBy('created_at', 'desc')
             ->get();
 
         // Get permohonan yang terkait dengan kendaraan pending
         $pendingVehicleRequests = Permohonan::with(['requester', 'vehicle'])
+            ->inUnit($unitId)
             ->where('status', 'pending_vehicle_approval')
             ->orderBy('request_date', 'desc')
             ->get();
@@ -1238,7 +1180,8 @@ class SuperadminController extends Controller
         try {
             DB::beginTransaction();
 
-            $vehicle = VehicleAndToolsConsumers::findOrFail($id);
+            $vehicle = VehicleAndToolsConsumers::inUnit(UnitScope::for($request->user())->unitId())
+                ->findOrFail($id);
 
             if ($vehicle->is_approved) {
                 return back()->with('error', 'Kendaraan sudah disetujui sebelumnya.');
@@ -1280,7 +1223,8 @@ class SuperadminController extends Controller
         try {
             DB::beginTransaction();
 
-            $vehicle = VehicleAndToolsConsumers::findOrFail($id);
+            $vehicle = VehicleAndToolsConsumers::inUnit(UnitScope::for($request->user())->unitId())
+                ->findOrFail($id);
 
             if ($vehicle->is_approved) {
                 return back()->with('error', 'Kendaraan sudah disetujui, tidak dapat ditolak.');
@@ -1322,6 +1266,7 @@ class SuperadminController extends Controller
     {
         try {
             $stats = Permohonan::with(['requester', 'transactionProof'])
+                ->inUnit(UnitScope::for(request()->user())->unitId())
                 ->get()
                 ->groupBy('requester_id')
                 ->map(function ($requests, $requesterId) {
@@ -1365,6 +1310,7 @@ class SuperadminController extends Controller
     {
         try {
             $query = Transaction_Proofs::with(['permohonan.consumerialTool', 'permohonan.requester'])
+                ->inUnit(UnitScope::for($request->user())->unitId())
                 ->whereHas('permohonan', function ($q) {
                     $q->where('status', 'completed');
                 });
@@ -1435,8 +1381,10 @@ class SuperadminController extends Controller
     {
         try {
             $query = Transaction_Proofs::with(['permohonan.consumerialTool'])
+                ->inUnit(UnitScope::for($request->user())->unitId())
                 ->whereHas('permohonan.consumerialTool', function ($q) {
-                    $q->where('consumerial_type', 'Kendaraan');
+                    // Data tersimpan uppercase; samakan agar tidak kosong di SQLite.
+                    $q->whereRaw("UPPER(consumerial_type) = 'KENDARAAN'");
                 })
                 ->where('km_terakhir', '>', 0)
                 ->orderBy('purchase_datetime', 'asc');
@@ -1546,7 +1494,7 @@ class SuperadminController extends Controller
                 'consumerialTool',
                 'transactionProof',
                 'approvedRequest',
-            ]);
+            ])->inUnit(UnitScope::for($request->user())->unitId());
 
             // Apply status filter (default: approved and completed)
             if ($request->has('status_filter')) {
@@ -1636,6 +1584,7 @@ class SuperadminController extends Controller
     {
         try {
             $requests = Permohonan::with(['requester', 'transactionProof'])
+                ->inUnit(UnitScope::for(request()->user())->unitId())
                 ->get();
 
             $driverStats = [];
@@ -2229,8 +2178,9 @@ class SuperadminController extends Controller
     public function createVehicle()
     {
         $title = 'Tambah Kendaraan / Alat';
-        $sites = Site::active()->with('unit')->orderBy('name')->get();
-        $units = Unit::active()->orderBy('name')->get();
+        $scope = UnitScope::for(auth()->user());
+        $sites = $scope->sites()->load('unit');
+        $units = $scope->units();
 
         // Unit awal yang disarankan: unit user (kalau ada), kalau tidak biarkan kosong.
         $defaultUnitId = auth()->user()?->unit_id;
@@ -2241,10 +2191,14 @@ class SuperadminController extends Controller
     public function editVehicle($id)
     {
         $title = 'Edit Kendaraan / Alat';
-        $vehicle = VehicleAndToolsConsumers::with('detail.site')->findOrFail($id);
+        $scope = UnitScope::for(auth()->user());
+
+        $vehicle = VehicleAndToolsConsumers::with('detail.site')
+            ->inUnit($scope->unitId())
+            ->findOrFail($id);
         $detail = $vehicle->detail ?? new VehicleDetail;
-        $sites = Site::active()->with('unit')->orderBy('name')->get();
-        $units = Unit::active()->orderBy('name')->get();
+        $sites = $scope->sites()->load('unit');
+        $units = $scope->units();
 
         // Harga BBM region unit kendaraan (untuk kalkulasi benchmark otomatis)
         $regionPrices = [];
@@ -2499,6 +2453,9 @@ class SuperadminController extends Controller
                 ->with('error', 'Unit bisnis wajib dipilih agar kendaraan/alat bisa difilter per unit.');
         }
 
+        // Hanya boleh membuat kendaraan untuk unit yang menjadi kewenangannya.
+        UnitScope::for($request->user())->ensureUnit($unitId);
+
         if ($mismatch = $this->siteUnitMismatchMessage($validated['site_id'] ?? null, $unitId)) {
             return redirect()->back()->withInput()->with('error', $mismatch);
         }
@@ -2542,7 +2499,9 @@ class SuperadminController extends Controller
 
     public function updateVehicle(Request $request, $id)
     {
-        $vehicle = VehicleAndToolsConsumers::findOrFail($id);
+        $scope = UnitScope::for($request->user());
+
+        $vehicle = VehicleAndToolsConsumers::inUnit($scope->unitId())->findOrFail($id);
 
         $validated = $request->validate(
             $this->vehicleValidationRules((int) $vehicle->id),
@@ -2550,6 +2509,9 @@ class SuperadminController extends Controller
         );
 
         $unitId = $this->resolveVehicleUnitId($validated, $vehicle->unit_id ? (int) $vehicle->unit_id : null);
+
+        // Unit tujuan tidak boleh di luar kewenangan user (cegah "pindah unit" diam-diam).
+        $scope->ensureUnit($unitId);
 
         if ($mismatch = $this->siteUnitMismatchMessage($validated['site_id'] ?? null, $unitId)) {
             return redirect()->back()->withInput()->with('error', $mismatch);
@@ -2590,7 +2552,9 @@ class SuperadminController extends Controller
     public function deleteVehicle($id)
     {
         try {
-            $vehicle = VehicleAndToolsConsumers::withCount('permohonans')->findOrFail($id);
+            $vehicle = VehicleAndToolsConsumers::withCount('permohonans')
+                ->inUnit(UnitScope::for(Auth::user())->unitId())
+                ->findOrFail($id);
 
             // Check if vehicle has related data
             if ($vehicle->permohonans_count > 0) {
@@ -2617,7 +2581,9 @@ class SuperadminController extends Controller
     public function restoreVehicle($id)
     {
         try {
-            $vehicle = VehicleAndToolsConsumers::withTrashed()->findOrFail($id);
+            $vehicle = VehicleAndToolsConsumers::withTrashed()
+                ->inUnit(UnitScope::for(Auth::user())->unitId())
+                ->findOrFail($id);
 
             if (! $vehicle->trashed()) {
                 return redirect()
@@ -2700,7 +2666,7 @@ class SuperadminController extends Controller
             ->get();
 
         // Get gasoline types
-        $gasolineTypes = \App\Models\GasolineType::all();
+        $gasolineTypes = \App\Models\GasolineType::orderBy('gasoline_name')->get();
 
         return view('superadmin.partials.kelola-permohonan', compact(
             'title',
@@ -3109,8 +3075,9 @@ class SuperadminController extends Controller
         try {
             DB::beginTransaction();
 
-            // Get all vehicles
+            // Get all vehicles (dibatasi unit user)
             $vehicles = VehicleAndToolsConsumers::where('consumerial_type', 'KENDARAAN')
+                ->inUnit(UnitScope::for(Auth::user())->unitId())
                 ->where('is_approved', true)
                 ->get();
 
@@ -3311,8 +3278,11 @@ class SuperadminController extends Controller
      */
     private function getAllTripsData()
     {
+        $unitId = UnitScope::for(Auth::user())->unitId();
+
         // Get all vehicles
         $vehicles = VehicleAndToolsConsumers::where('consumerial_type', 'KENDARAAN')
+            ->inUnit($unitId)
             ->where('is_approved', true)
             ->get();
 
@@ -3438,7 +3408,8 @@ class SuperadminController extends Controller
         ]);
 
         try {
-            $tripValidation = TripValidation::findOrFail($id);
+            $tripValidation = TripValidation::inUnit(UnitScope::for($request->user())->unitId())
+                ->findOrFail($id);
 
             // Update validation data
             $updateData = [
@@ -3494,8 +3465,10 @@ class SuperadminController extends Controller
             DB::beginTransaction();
 
             $successCount = 0;
+            $unitId = UnitScope::for($request->user())->unitId();
+
             foreach ($validated['validation_ids'] as $id) {
-                $tripValidation = TripValidation::find($id);
+                $tripValidation = TripValidation::inUnit($unitId)->find($id);
                 if ($tripValidation) {
                     $tripValidation->update([
                         'is_long_trip' => $validated['is_long_trip'],
@@ -3634,6 +3607,9 @@ class SuperadminController extends Controller
     {
         $title = 'Kelola Status Kendaraan & Alat';
 
+        // Batas unit: superadmin unit hanya melihat kendaraan unitnya.
+        $unitId = UnitScope::for($request->user())->unitId();
+
         // Get filters
         $type = $request->get('type'); // KENDARAAN or ALAT
         $status = $request->get('status'); // active or inactive
@@ -3641,6 +3617,7 @@ class SuperadminController extends Controller
 
         // Query vehicles (hanya yang sudah approved)
         $query = VehicleAndToolsConsumers::with(['creator', 'approver'])
+            ->inUnit($unitId)
             ->where('is_approved', true);
 
         // Filter by type
@@ -3672,14 +3649,16 @@ class SuperadminController extends Controller
 
         // Statistics
         $stats = [
-            'total' => VehicleAndToolsConsumers::where('is_approved', true)->count(),
-            'active' => VehicleAndToolsConsumers::where('is_approved', true)->where('is_active', true)->count(),
-            'inactive' => VehicleAndToolsConsumers::where('is_approved', true)->where('is_active', false)->count(),
+            'total' => VehicleAndToolsConsumers::where('is_approved', true)->inUnit($unitId)->count(),
+            'active' => VehicleAndToolsConsumers::where('is_approved', true)->inUnit($unitId)->where('is_active', true)->count(),
+            'inactive' => VehicleAndToolsConsumers::where('is_approved', true)->inUnit($unitId)->where('is_active', false)->count(),
             'kendaraan_active' => VehicleAndToolsConsumers::where('is_approved', true)
+                ->inUnit($unitId)
                 ->where('is_active', true)
                 ->where('consumerial_type', 'KENDARAAN')
                 ->count(),
             'alat_active' => VehicleAndToolsConsumers::where('is_approved', true)
+                ->inUnit($unitId)
                 ->where('is_active', true)
                 ->where('consumerial_type', 'ALAT')
                 ->count(),
@@ -3701,7 +3680,8 @@ class SuperadminController extends Controller
     public function activateVehicle($id)
     {
         try {
-            $vehicle = VehicleAndToolsConsumers::findOrFail($id);
+            $vehicle = VehicleAndToolsConsumers::inUnit(UnitScope::for(Auth::user())->unitId())
+                ->findOrFail($id);
 
             // Cek apakah sudah approved
             if (! $vehicle->is_approved) {
@@ -3735,7 +3715,8 @@ class SuperadminController extends Controller
         try {
             DB::beginTransaction();
 
-            $vehicle = VehicleAndToolsConsumers::findOrFail($id);
+            $vehicle = VehicleAndToolsConsumers::inUnit(UnitScope::for($request->user())->unitId())
+                ->findOrFail($id);
 
             // Cek apakah sudah inactive
             if (! $vehicle->is_active) {
@@ -3784,9 +3765,10 @@ class SuperadminController extends Controller
             DB::beginTransaction();
 
             $activatedCount = 0;
+            $unitId = UnitScope::for($request->user())->unitId();
 
             foreach ($validated['vehicle_ids'] as $id) {
-                $vehicle = VehicleAndToolsConsumers::find($id);
+                $vehicle = VehicleAndToolsConsumers::inUnit($unitId)->find($id);
 
                 if ($vehicle && $vehicle->is_approved && ! $vehicle->is_active) {
                     $vehicle->update(['is_active' => true]);
@@ -3821,9 +3803,10 @@ class SuperadminController extends Controller
 
             $deactivatedCount = 0;
             $skippedCount = 0;
+            $unitId = UnitScope::for($request->user())->unitId();
 
             foreach ($validated['vehicle_ids'] as $id) {
-                $vehicle = VehicleAndToolsConsumers::find($id);
+                $vehicle = VehicleAndToolsConsumers::inUnit($unitId)->find($id);
 
                 if (! $vehicle || ! $vehicle->is_active) {
                     $skippedCount++;
@@ -3949,7 +3932,8 @@ class SuperadminController extends Controller
         try {
             DB::beginTransaction();
 
-            $trips = TripValidation::whereNotNull('transaction_proof_previous_id')
+            $trips = TripValidation::inUnit(UnitScope::for(Auth::user())->unitId())
+                ->whereNotNull('transaction_proof_previous_id')
                 ->whereNotNull('transaction_proof_latest_id')
                 ->get();
 
@@ -3986,6 +3970,9 @@ class SuperadminController extends Controller
     {
         $title = 'Analisis Trip & Efisiensi BBM';
 
+        // Batas unit: analisis trip hanya data unit user.
+        $unitId = UnitScope::for($request->user())->unitId();
+
         // Get filters
         $alertLevel = $request->get('alert_level');
         $vehicleId = $request->get('vehicle_id');
@@ -3999,6 +3986,7 @@ class SuperadminController extends Controller
             'transactionProofPrevious.permohonan.requester',
             'validator',
         ])
+            ->inUnit($unitId)
             ->whereNotNull('actual_efficiency'); // Hanya yang sudah di-calculate
 
         // Filter by alert level
@@ -4047,30 +4035,32 @@ class SuperadminController extends Controller
 
         // Statistics
         $stats = [
-            'total' => TripValidation::whereNotNull('actual_efficiency')->count(),
-            'normal' => TripValidation::where('alert_level', 'normal')->count(),
-            'warning' => TripValidation::where('alert_level', 'warning')->count(),
-            'critical' => TripValidation::where('alert_level', 'critical')->count(),
-            'needValidation' => TripValidation::whereNull('validated_at')
+            'total' => TripValidation::inUnit($unitId)->whereNotNull('actual_efficiency')->count(),
+            'normal' => TripValidation::inUnit($unitId)->where('alert_level', 'normal')->count(),
+            'warning' => TripValidation::inUnit($unitId)->where('alert_level', 'warning')->count(),
+            'critical' => TripValidation::inUnit($unitId)->where('alert_level', 'critical')->count(),
+            'needValidation' => TripValidation::inUnit($unitId)->whereNull('validated_at')
                 ->where(function ($q) {
                     $q->where('diff_odo', '>=', 300)
                         ->orWhere('is_premature_refuel', true)
                         ->orWhere('efficiency_deviation_percent', '<', -20);
                 })
                 ->count(),
-            'avgEfficiency' => TripValidation::whereNotNull('actual_efficiency')
+            'avgEfficiency' => TripValidation::inUnit($unitId)->whereNotNull('actual_efficiency')
                 ->avg('actual_efficiency'),
-            'avgDeviation' => TripValidation::whereNotNull('efficiency_deviation_percent')
+            'avgDeviation' => TripValidation::inUnit($unitId)->whereNotNull('efficiency_deviation_percent')
                 ->avg('efficiency_deviation_percent'),
         ];
 
         // Get vehicles and drivers for filter
         $vehicles = VehicleAndToolsConsumers::where('is_approved', true)
+            ->inUnit($unitId)
             ->where('consumerial_type', 'KENDARAAN')
             ->orderBy('consumerial_code')
             ->get();
 
         $drivers = User::where('role', 'requester')
+            ->when($unitId !== null, fn ($q) => $q->where('unit_id', $unitId))
             ->orderBy('nama_lengkap')
             ->get();
 

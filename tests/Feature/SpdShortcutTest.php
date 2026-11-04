@@ -127,14 +127,26 @@ it('shortcut SPD: menolak tanpa nama pemberi tugas', function () {
 });
 
 it('menyajikan form shortcut dengan opsi Master Pekerja', function () {
-    EmployeeDefault::create(['employee_name' => 'Pekerja Shortcut', 'position' => 'Driver', 'is_active' => true]);
+    // Pengemudi = akun ber-role Driver/Requester yang terhubung ke Master Pekerja.
+    $driver = User::factory()->create(['role' => 'requester']);
+    $driver->roles()->attach(Role::where('code', 'requester')->first()->id, ['is_primary' => true]);
+
+    EmployeeDefault::create([
+        'employee_name' => 'Pekerja Shortcut',
+        'position' => 'Driver',
+        'is_active' => true,
+        'user_id' => $driver->id,
+    ]);
     EmployeeDefault::create(['employee_name' => 'Manager Shortcut', 'position' => 'Operations Manager', 'is_active' => true]);
+    // Karyawan non-driver tidak boleh muncul di dropdown pengemudi.
+    EmployeeDefault::create(['employee_name' => 'Staff Bukan Driver', 'position' => 'Staff Admin', 'is_active' => true]);
 
     $this->actingAs($this->superadmin)
         ->get(route('surat.superadmin.create-shortcut'))
         ->assertStatus(200)
         ->assertSee('Pekerja Shortcut', false)
-        ->assertSee('Manager Shortcut', false);
+        ->assertSee('Manager Shortcut', false)
+        ->assertDontSee('Staff Bukan Driver', false);
 });
 
 it('shortcut SPD menampilkan field Kode GL & nominal pemberian', function () {

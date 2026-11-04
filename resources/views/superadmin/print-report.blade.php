@@ -157,7 +157,7 @@
                             <option value="">-- Semua Approver --</option>
                             @foreach($approvers as $approver)
                                 <option value="{{ $approver->id }}" {{ old('authorizer_id') == $approver->id ? 'selected' : '' }}>
-                                    {{ $approver->nama_lengkap }} ({{ ucfirst($approver->role) }})
+                                    {{ $approver->nama_lengkap }} ({{ $approver->role }})
                                 </option>
                             @endforeach
                         </select>
