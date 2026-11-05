@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Approved_Request;
 use App\Models\GasolineType;
 use App\Models\Permohonan;
+use App\Models\SuratSpd;
 use App\Models\Transaction_Proofs;
 use App\Models\UserSlotAdjustment;
 use App\Models\VehicleAndToolsConsumers;
@@ -72,16 +73,21 @@ class RequestManagementController extends Controller
 
         // Get all vehicles (only approved ones) — + detail untuk label "Plat - Merk" & budget
         // Scope unit: driver/user ber-unit hanya melihat plat nomor dari unitnya sendiri.
+        // Kunci SPD: kendaraan yang sedang dipakai perjalanan dinas (SPD aktif)
+        // tidak ditampilkan karena tidak boleh dipakai untuk BBM operasional.
+        $activeSpdVehicleIds = SuratSpd::vehicleIdsAktifPada();
+
         $vehicles = VehicleAndToolsConsumers::with('detail.site')
             ->where('is_approved', true)
             ->where('is_active', true)
+            ->when($activeSpdVehicleIds !== [], fn ($q) => $q->whereNotIn('id', $activeSpdVehicleIds))
             ->visibleTo($user)
             ->orderBy('consumerial_type')
             ->orderBy('consumerial_name')
             ->get();
 
         // Get gasoline types
-        $gasolineTypes = GasolineType::all();
+        $gasolineTypes = GasolineType::orderBy('gasoline_name')->get();
 
         // Opsi nominal fallback (tanpa benchmark) untuk kendaraan yang datanya belum lengkap
         $fallbackOptions = FuelBenchmarkService::optionsForBenchmark(null);
@@ -270,6 +276,18 @@ class RequestManagementController extends Controller
                                 ->withInput()
                                 ->with('error', 'Plat nomor '.$vehicle->consumerial_code.' terdaftar di unit lain ('
                                     .($vehicle->unit?->name ?? 'tanpa unit').'). Silakan pilih kendaraan unit Anda.');
+                        }
+
+                        // ✅ Kunci SPD: kendaraan yang sedang dipakai perjalanan
+                        // dinas tidak boleh diajukan permohonan BBM operasional.
+                        if (in_array((int) $vehicle->id, SuratSpd::vehicleIdsAktifPada(), true)) {
+                            DB::rollBack();
+
+                            return back()
+                                ->withInput()
+                                ->with('error', 'Kendaraan '.$vehicle->consumerial_code.' sedang dipakai untuk perjalanan dinas (SPD) '
+                                    .'yang masih berjalan. Permohonan BBM operasional untuk kendaraan ini tidak dapat diajukan '
+                                    .'sampai SPD selesai.');
                         }
 
                         $vehicleId = $validated['vehicle_id'];
@@ -510,11 +528,6 @@ class RequestManagementController extends Controller
     {
         $baseSlots = 5; // Default 5 slots
 
-        // Penalti/bonus slot DIJEDA sementara (3 Nov 2026): semua user tetap 5 slot sampai aturan penalti
-        // diputuskan tim. Data penalti tetap dicatat VoucherExpiryService,
-        // jadi cukup hapus baris return ini untuk mengaktifkan kembali.
-        return $baseSlots;
-
         $adjustments = UserSlotAdjustment::where('user_id', $userId)
             ->where('is_active', true)
             ->where('effective_from', '<=', now())
@@ -533,8 +546,8 @@ class RequestManagementController extends Controller
 
         $maxSlots = $baseSlots + $totalAdjustment;
 
-        // Min 1 slot, max 6 slots
-        return max(1, min(6, $maxSlots));
+        // Min 1 slot, max 7 slots (5 dasar + bonus tepat waktu maksimal 2)
+        return max(1, min(7, $maxSlots));
     }
 
     /**
@@ -600,45 +613,142 @@ class RequestManagementController extends Controller
     }
 
     /**
-     * Show history of all requests
+     * Riwayat permohonan BBM milik requester/driver.
+     *
+     * Performa: data TIDAK lagi diambil seluruhnya. Server mengirim maksimal
+     * 100 baris per batch (satu query ber-limit), lalu UI menampilkan 10 baris
+     * per halaman. Begitu 100 baris itu habis, UI meminta batch berikutnya
+     * lewat request JSON (`?json=1&offset=100`). Dengan begitu halaman pertama
+     * hanya menyentuh 100 baris walau riwayat driver sudah ribuan.
+     *
+     * Filter rentang tanggal (`from`/`to`):
+     *   - urutan terbalik otomatis dibalik supaya selalu X → Y;
+     *   - rentang dibatasi maksimal 30 hari (inklusif).
      */
-    public function requester_history()
+    public function requester_history(Request $request)
     {
         $title = 'Riwayat Permohonan BBM';
         $user = Auth::user();
 
-        // Get all requests with relationships.
-        // Urutkan berdasar aktivitas laporan terbaru (submission report / tanggal request)
-        // supaya permohonan yang baru saja dilaporkan langsung muncul di paling atas.
-        $base = Permohonan::where('requester_id', $user->id);
+        [$from, $to, $notice] = $this->resolveHistoryDateRange($request);
 
-        // Filter per bulan pengajuan (opsional). Default "semua": 100 permohonan terbaru dalam satu halaman,
-        // karena driver lebih suka melihat data langsung tanpa berpindah halaman.
-        // ponytail: sementara dari sisi tampilan; dev BE perlu menetapkan batas resmi, misalnya parameter per_page dengan batas maksimal.
-        $range = (clone $base)->selectRaw('MIN(request_date) AS first, MAX(request_date) AS last')->first();
-        $months = collect();
-        if ($range?->last) {
-            $cursor = Carbon::parse($range->last)->startOfMonth();
-            $first = Carbon::parse($range->first)->startOfMonth();
-            while ($cursor->gte($first) && $months->count() < 24) {
-                $months->push($cursor->copy());
-                $cursor->subMonth();
-            }
+        // Urutkan berdasar aktivitas laporan terbaru (submission report / tanggal
+        // request) supaya permohonan yang baru dilaporkan langsung di paling atas.
+        // `id` ditambahkan sebagai tie-breaker agar offset antar batch stabil.
+        $query = Permohonan::where('requester_id', $user->id)
+            ->with(['vehicle', 'authorizer', 'approvedRequest', 'transactionProof'])
+            ->when($from, fn ($q) => $q->whereDate('request_date', '>=', $from->toDateString()))
+            ->when($to, fn ($q) => $q->whereDate('request_date', '<=', $to->toDateString()))
+            ->orderByDesc(DB::raw('COALESCE((SELECT created_at FROM transaction_proofs tp WHERE tp.req_id = permohonans.id), request_date)'))
+            ->orderByDesc('permohonans.id');
+
+        $perBatch = 100;
+        $offset = max(0, $request->integer('offset', 0));
+
+        // Ambil satu baris ekstra untuk mengetahui apakah masih ada batch berikutnya
+        // tanpa perlu COUNT(*) atas seluruh riwayat.
+        $rows = (clone $query)
+            ->skip($offset)
+            ->limit($perBatch + 1)
+            ->get();
+
+        $hasMore = $rows->count() > $perBatch;
+        $rows = $rows->take($perBatch)->values();
+
+        $mapped = $rows->map(fn (Permohonan $item) => [
+            'request_number' => $item->request_number,
+            'date' => $item->request_date?->translatedFormat('d M Y H:i') ?? '-',
+            'vehicle_code' => $item->vehicle->consumerial_code ?? 'N/A',
+            'vehicle_name' => $item->vehicle->consumerial_name ?? '',
+            'vehicle_type' => $item->vehicle->consumerial_type ?? '',
+            'gasoline_type' => $item->gasoline_type ?? '-',
+            'amount_formatted' => 'Rp '.number_format((float) $item->bill_amounts, 0, ',', '.'),
+            'status' => $item->status,
+            'status_label' => match ($item->status) {
+                'pending' => 'Menunggu',
+                'pending_vehicle_approval' => 'Menunggu Kendaraan',
+                'approved' => 'Disetujui',
+                'completed' => 'Selesai',
+                'rejected' => 'Ditolak',
+                'cancelled' => 'Dibatalkan',
+                default => ucfirst((string) $item->status),
+            },
+            'status_class' => match ($item->status) {
+                'pending', 'pending_vehicle_approval' => 'bg-warning text-dark',
+                'approved' => 'bg-success',
+                'completed' => 'bg-info text-dark',
+                'rejected' => 'bg-danger',
+                'cancelled' => 'bg-secondary',
+                default => 'bg-light text-dark',
+            },
+            'detail_url' => route('requester-show', $item->id),
+        ])->all();
+
+        // Permintaan batch berikutnya dari UI (bukan reload halaman).
+        if ($request->boolean('json') || $request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'rows' => $mapped,
+                'has_more' => $hasMore,
+                'next_offset' => $offset + count($mapped),
+            ]);
         }
 
-        $bulan = request('bulan', 'semua');
-        $selectedMonth = $bulan && $bulan !== 'semua' && preg_match('/^\d{4}-\d{2}$/', $bulan)
-            ? Carbon::createFromFormat('Y-m-d', $bulan . '-01')->startOfMonth()
-            : null;
+        return view('requester.history_request', [
+            'title' => $title,
+            'historyRows' => $mapped,
+            'hasMore' => $hasMore,
+            'from' => $from?->toDateString(),
+            'to' => $to?->toDateString(),
+            'rangeNotice' => $notice,
+        ]);
+    }
 
-        $history = $base
-            ->with(['vehicle', 'authorizer', 'approvedRequest', 'transactionProof'])
-            ->when($selectedMonth, fn ($q) => $q->whereBetween('request_date', [$selectedMonth, $selectedMonth->copy()->endOfMonth()]))
-            ->orderByDesc(DB::raw('COALESCE((SELECT created_at FROM transaction_proofs tp WHERE tp.req_id = permohonans.id), request_date)'))
-            ->paginate(100)
-            ->withQueryString();
+    /**
+     * Normalisasi filter tanggal riwayat.
+     *
+     * @return array{0: ?Carbon, 1: ?Carbon, 2: ?string}
+     */
+    private function resolveHistoryDateRange(Request $request): array
+    {
+        $parse = function (?string $value): ?Carbon {
+            if ($value === null || trim($value) === '') {
+                return null;
+            }
 
-        return view('requester.history_request', compact('title', 'history', 'months', 'selectedMonth'));
+            try {
+                return Carbon::parse($value)->startOfDay();
+            } catch (\Throwable $e) {
+                return null;
+            }
+        };
+
+        $from = $parse($request->input('from') ?? $request->input('dari'));
+        $to = $parse($request->input('to') ?? $request->input('sampai'));
+        $notice = null;
+
+        // Driver tidak sengaja mengisi terbalik → pastikan selalu X ke Y.
+        if ($from && $to && $from->greaterThan($to)) {
+            [$from, $to] = [$to, $from];
+            $notice = 'Tanggal awal dan akhir terbalik, urutannya otomatis dibalik ('.$from->translatedFormat('d M Y').' s/d '.$to->translatedFormat('d M Y').').';
+        }
+
+        // Bila hanya satu sisi tanggal diisi, lengkapi menjadi jendela 30 hari
+        // agar query tetap terbatas dan tidak menarik seluruh riwayat.
+        if ($from && ! $to) {
+            $to = $from->copy()->addDays(29);
+            $notice = 'Tanggal akhir belum diisi; menampilkan maksimal 30 hari sejak '.$from->translatedFormat('d M Y').'.';
+        } elseif (! $from && $to) {
+            $from = $to->copy()->subDays(29);
+            $notice = 'Tanggal awal belum diisi; menampilkan maksimal 30 hari sampai '.$to->translatedFormat('d M Y').'.';
+        }
+
+        // Batasi rentang maksimal 30 hari inklusif.
+        if ($from && $to && $from->diffInDays($to) > 29) {
+            $to = $from->copy()->addDays(29);
+            $notice = 'Rentang tanggal dibatasi maksimal 30 hari. Menampilkan '.$from->translatedFormat('d M Y').' s/d '.$to->translatedFormat('d M Y').'.';
+        }
+
+        return [$from, $to, $notice];
     }
 
     /**

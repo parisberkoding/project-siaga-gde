@@ -84,7 +84,7 @@
                                 <td class="font-medium">{{ $row->nama_lengkap }}</td>
                                 <td class="text-muted-foreground">{{ $row->username }}</td>
                                 <td>{{ $row->unit?->name ?? 'Belum ada unit' }}</td>
-                                <td>{{ $row->roles->pluck('name')->join(', ') ?: ucfirst($row->role) }}</td>
+                                <td>{{ $row->roles->pluck('name')->join(', ') ?: $row->role }}</td>
                                 <td><x-ui.badge :variant="$row->is_active ? 'success' : 'danger'">{{ $row->is_active ? 'Aktif' : 'Nonaktif' }}</x-ui.badge></td>
                                 <td class="whitespace-nowrap text-muted-foreground">{{ $row->created_at?->translatedFormat('d M Y') ?? '-' }}</td>
                             </tr>

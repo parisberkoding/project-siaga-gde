@@ -13,6 +13,7 @@ use App\Models\VehicleAndToolsConsumers;
 use App\Models\User;
 use App\Models\TripValidation;
 use App\Exports\FinancialReportExport;
+use App\Services\UnitScope;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 /**
@@ -31,13 +32,26 @@ class VehicleCheckingSuperadminController extends Controller
     // ════════════════════════════════════════════════════════════════
     public function vehicleHealthIndex(Request $request)
     {
+        // Batas unit: superadmin unit hanya melihat kendaraan unitnya,
+        // superadmin Pusat/global melihat seluruh unit.
+        $unitId = UnitScope::for($request->user())->unitId();
+
         $vehicles = VehicleAndToolsConsumers::where('is_active', true)
+            ->inUnit($unitId)
             ->with(['checkings.details.itemResults'])
             ->orderBy('consumerial_code')
             ->get();
 
-        // Hitung health score per kendaraan
-        $vehicles = $vehicles->map(function ($v) {
+        // Hitung health score per kendaraan.
+        // Hitung VPR aktif sekaligus (GROUP BY) agar tidak N+1 per kendaraan.
+        $activeReplacementCounts = VehiclePartsReplacement::query()
+            ->activeRequests()
+            ->whereIn('vehicle_id', $vehicles->pluck('id'))
+            ->selectRaw('vehicle_id, COUNT(*) as total')
+            ->groupBy('vehicle_id')
+            ->pluck('total', 'vehicle_id');
+
+        $vehicles = $vehicles->map(function ($v) use ($activeReplacementCounts) {
             $allDetails = $v->checkings->flatMap->details;
             $allResults = $allDetails->flatMap->itemResults;
 
@@ -45,7 +59,7 @@ class VehicleCheckingSuperadminController extends Controller
             $okCount = $allResults->filter(fn($r) => in_array($r->status, ['ok', 'baik']))->count();
             $v->health_score = $total > 0 ? round(($okCount / $total) * 100, 1) : 100;
 
-            $v->active_replacement_count = VehiclePartsReplacement::forVehicle($v->id)->activeRequests()->count();
+            $v->active_replacement_count = (int) ($activeReplacementCounts[$v->id] ?? 0);
             $lastDetail = $allDetails->sortByDesc('checked_at')->first();
             $v->last_checked_at = $lastDetail?->checked_at;
 
@@ -90,9 +104,11 @@ class VehicleCheckingSuperadminController extends Controller
     //  VEHICLE HEALTH - SHOW (detail per kendaraan)
     //  View: superadmin/vehicle-health/show.blade.php
     // ════════════════════════════════════════════════════════════════
-    public function vehicleHealthShow($consumerialCode)
+    public function vehicleHealthShow(Request $request, $consumerialCode)
     {
-        $vehicle = VehicleAndToolsConsumers::where('consumerial_code', $consumerialCode)->firstOrFail();
+        $vehicle = VehicleAndToolsConsumers::where('consumerial_code', $consumerialCode)
+            ->inUnit(UnitScope::for($request->user())->unitId())
+            ->firstOrFail();
         $vehicleId = $vehicle->id;
 
         // Semua checking details kendaraan ini
@@ -192,25 +208,35 @@ class VehicleCheckingSuperadminController extends Controller
         $nextMonth = $startDate->copy()->addMonth()->format('Y-m');
         $currentMonthLabel = $startDate->translatedFormat('F Y');
 
-        $vehicles = VehicleAndToolsConsumers::orderBy('consumerial_code')->get();
+        // Batas unit: laporan keuangan hanya memuat kendaraan/transaksi unit user.
+        $unitId = UnitScope::for($request->user())->unitId();
+
+        $vehicles = VehicleAndToolsConsumers::inUnit($unitId)
+            ->orderBy('consumerial_code')
+            ->get();
 
         // Transactions query
         $trxQuery = VehiclePartsReplacementTransaction::with(['replacement.vehicle', 'driver', 'details'])
+            ->inUnit($unitId)
             ->whereBetween('service_date', [$startDate, $endDate]);
 
         if ($request->vehicle_id) {
             $trxQuery->whereHas('replacement', fn($q) => $q->where('vehicle_id', $request->vehicle_id));
         }
 
+        // Ambil koleksi penuh SEBELUM paginate() — paginate menambahkan
+        // limit/offset ke builder, sehingga clone setelahnya ikut terpotong
+        // dan total biaya bulan ini salah bila transaksi > 20 baris.
+        $allTrx       = (clone $trxQuery)->orderByDesc('service_date')->get();
         $transactions = $trxQuery->orderByDesc('service_date')->paginate(20);
-        $allTrx       = (clone $trxQuery)->get();
 
         $totalCost = $allTrx->sum('total_amount');
 
         // Bulan lalu comparison
         $prevStart = $startDate->copy()->subMonth()->startOfMonth();
         $prevEnd   = $prevStart->copy()->endOfMonth();
-        $prevCost  = VehiclePartsReplacementTransaction::whereBetween('service_date', [$prevStart, $prevEnd])->sum('total_amount');
+        $prevCost  = VehiclePartsReplacementTransaction::inUnit($unitId)
+            ->whereBetween('service_date', [$prevStart, $prevEnd])->sum('total_amount');
         $costChangePct = $prevCost > 0 ? round(($totalCost - $prevCost) / $prevCost * 100, 1) : 0;
 
         $trxIds     = $allTrx->pluck('id');
@@ -234,6 +260,7 @@ class VehicleCheckingSuperadminController extends Controller
                 DB::raw('SUM(vehicle_parts_replacement_transactions.total_amount) as total_cost')
             )
             ->join('vehicle_parts_replacements', 'vehicle_parts_replacement_transactions.vehicle_parts_replacement_id', '=', 'vehicle_parts_replacements.id')
+            ->inUnit($unitId)
             ->whereBetween('vehicle_parts_replacement_transactions.service_date', [$startDate, $endDate])
             ->groupBy('vehicle_parts_replacements.nopol')
             ->orderByDesc('total_cost')
@@ -255,7 +282,8 @@ class VehicleCheckingSuperadminController extends Controller
             $trendLabels[] = $m->translatedFormat('M Y');
             $mStart = $m->copy()->startOfMonth();
             $mEnd   = $m->copy()->endOfMonth();
-            $mQuery = VehiclePartsReplacementTransaction::whereBetween('service_date', [$mStart, $mEnd]);
+            $mQuery = VehiclePartsReplacementTransaction::inUnit($unitId)
+                ->whereBetween('service_date', [$mStart, $mEnd]);
             $trendCosts[]  = $mQuery->sum('total_amount');
             $trendCounts[] = (clone $mQuery)->count();
         }
@@ -283,7 +311,11 @@ class VehicleCheckingSuperadminController extends Controller
         $startDate = Carbon::parse($month . '-01')->startOfMonth();
         $endDate   = $startDate->copy()->endOfMonth();
 
+        // Batas unit juga berlaku untuk export (Excel & PDF).
+        $unitId = UnitScope::for($request->user())->unitId();
+
         $trxQuery = VehiclePartsReplacementTransaction::with(['replacement.vehicle', 'driver', 'details'])
+            ->inUnit($unitId)
             ->whereBetween('service_date', [$startDate, $endDate]);
 
         if ($request->vehicle_id) {
@@ -297,7 +329,8 @@ class VehicleCheckingSuperadminController extends Controller
 
         $prevStart = $startDate->copy()->subMonth()->startOfMonth();
         $prevEnd   = $prevStart->copy()->endOfMonth();
-        $prevCost  = VehiclePartsReplacementTransaction::whereBetween('service_date', [$prevStart, $prevEnd])->sum('total_amount');
+        $prevCost  = VehiclePartsReplacementTransaction::inUnit($unitId)
+            ->whereBetween('service_date', [$prevStart, $prevEnd])->sum('total_amount');
         $costChangePct = $prevCost > 0 ? round(($totalCost - $prevCost) / $prevCost * 100, 1) : 0;
 
         $summary = [
@@ -319,6 +352,7 @@ class VehicleCheckingSuperadminController extends Controller
             )
             ->join('vehicle_parts_replacements', 'vehicle_parts_replacement_transactions.vehicle_parts_replacement_id', '=', 'vehicle_parts_replacements.id')
             ->leftJoin('vehicle_and_tools_consumers as vehicles', 'vehicle_parts_replacements.vehicle_id', '=', 'vehicles.id')
+            ->inUnit($unitId)
             ->whereBetween('vehicle_parts_replacement_transactions.service_date', [$startDate, $endDate])
             ->groupBy('vehicle_parts_replacements.nopol', 'vehicles.consumerial_name')
             ->orderByDesc('total_cost')
@@ -333,7 +367,8 @@ class VehicleCheckingSuperadminController extends Controller
             $trendLabels[] = $m->translatedFormat('M Y');
             $mStart = $m->copy()->startOfMonth();
             $mEnd   = $m->copy()->endOfMonth();
-            $mQ = VehiclePartsReplacementTransaction::whereBetween('service_date', [$mStart, $mEnd]);
+            $mQ = VehiclePartsReplacementTransaction::inUnit($unitId)
+                ->whereBetween('service_date', [$mStart, $mEnd]);
             $trendCosts[]  = $mQ->sum('total_amount');
             $trendCounts[] = (clone $mQ)->count();
         }
@@ -372,9 +407,11 @@ class VehicleCheckingSuperadminController extends Controller
     // ════════════════════════════════════════════════════════════════
     public function transactionReportIndex(Request $request)
     {
+        $unitId = UnitScope::for($request->user())->unitId();
+
         $query = VehiclePartsReplacementTransaction::with([
             'replacement.vehicle', 'driver', 'details',
-        ])->orderByDesc('service_date');
+        ])->inUnit($unitId)->orderByDesc('service_date');
 
         if ($request->filled('vehicle_id')) {
             $query->whereHas('replacement', fn($q) => $q->where('vehicle_id', $request->vehicle_id));
@@ -396,17 +433,23 @@ class VehicleCheckingSuperadminController extends Controller
 
         $transactions = $query->paginate(20)->withQueryString();
 
-        $allQuery = VehiclePartsReplacementTransaction::query();
+        $totalTrx  = VehiclePartsReplacementTransaction::inUnit($unitId)->count();
+        $totalCost = VehiclePartsReplacementTransaction::inUnit($unitId)->sum('total_amount');
+
         $stats = [
-            'total'     => $allQuery->count(),
-            'completed' => VehiclePartsReplacementTransaction::whereHas('replacement', fn($q) => $q->completed())->count(),
-            'overdue'   => VehiclePartsReplacementTransaction::overdue()->count(),
-            'total_cost'=> $allQuery->sum('total_amount'),
-            'avg_cost'  => $allQuery->count() > 0 ? round($allQuery->sum('total_amount') / $allQuery->count()) : 0,
+            'total'     => $totalTrx,
+            'completed' => VehiclePartsReplacementTransaction::inUnit($unitId)
+                ->whereHas('replacement', fn($q) => $q->completed())->count(),
+            'overdue'   => VehiclePartsReplacementTransaction::inUnit($unitId)->overdue()->count(),
+            'total_cost'=> $totalCost,
+            'avg_cost'  => $totalTrx > 0 ? round($totalCost / $totalTrx) : 0,
         ];
 
-        $vehicles = VehicleAndToolsConsumers::orderBy('consumerial_code')->get();
-        $drivers  = User::where('role', 'requester')->orderBy('nama_lengkap')->get();
+        $vehicles = VehicleAndToolsConsumers::inUnit($unitId)->orderBy('consumerial_code')->get();
+        $drivers  = User::where('role', 'requester')
+            ->when($unitId !== null, fn ($q) => $q->where('unit_id', $unitId))
+            ->orderBy('nama_lengkap')
+            ->get();
 
         return view('superadmin.transaction-report.index', compact(
             'transactions', 'stats', 'vehicles', 'drivers'

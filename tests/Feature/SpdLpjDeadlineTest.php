@@ -195,3 +195,28 @@ it('tidak menampilkan notice overdue untuk surat yang belum lewat batas', functi
         ->assertStatus(200)
         ->assertDontSee('belum dibuatkan LPJ', false);
 });
+
+it('tidak menandai LPJ telat bila disubmit pada hari deadline', function () {
+    $driver = ($this->buatUser)('requester', 'requester');
+
+    $surat = ($this->buatSuratOverdue)($driver, [
+        'tanggal_berangkat' => now()->subDays(3)->toDateString(),
+        'tanggal_kembali'   => now()->subDays(1)->toDateString(),
+        'lpj_deadline'      => now()->toDateString(), // hari ini = hari deadline
+    ]);
+
+    $lpj = LpjPenggantian::create([
+        'surat_spd_id' => $surat->id,
+        'user_id'      => $driver->id,
+        'vehicle_id'   => $surat->vehicle_id,
+        'nomor_polisi' => $surat->vehicle->consumerial_code ?? '-',
+        'nama'         => 'Driver Uji',
+        'jabatan'      => 'Pengemudi',
+        'uraian'       => 'Submit tepat pada hari deadline',
+        'status'       => 'pending',
+    ]);
+
+    expect($lpj->due_date->toDateString())->toBe(now()->toDateString())
+        ->and($lpj->is_late)->toBeFalse()
+        ->and((int) $lpj->days_late)->toBe(0);
+});

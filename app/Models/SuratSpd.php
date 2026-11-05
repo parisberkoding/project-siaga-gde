@@ -313,11 +313,20 @@ class SuratSpd extends Model
     }
 
     /**
-     * Calculate total budget
+     * Hitung total budget dari budget per hari (kolom legacy).
+     *
+     * Saat ini budget utama disimpan pada baris `surat_spd_budgets` dan
+     * `total_budget` disinkronkan dari sana. Jangan reset `total_budget`
+     * ketika `budget_per_hari` kosong (mis. saat tanggal perpanjangan
+     * di-update), karena akan menghapus dana yang sudah tercatat.
      */
     public function calculateTotalBudget()
     {
-        $this->total_budget = $this->lama_perjalanan_hari * $this->budget_per_hari;
+        $perHari = (float) ($this->attributes['budget_per_hari'] ?? 0);
+
+        if ($perHari > 0) {
+            $this->total_budget = $this->lama_perjalanan_hari * $perHari;
+        }
     }
 
     /**
@@ -545,11 +554,52 @@ class SuratSpd extends Model
     }
 
     /**
-     * Scope: Surat milik user tertentu (termasuk extension)
+     * Scope: Surat milik user tertentu (termasuk extension).
+     *
+     * Surat hasil "Shortcut" bisa dibuat untuk pengemudi yang diambil dari
+     * Master Pekerja. Bila akun login pengemudi terhubung lewat
+     * `employee_defaults.user_id` (dan kolom `user_id` surat belum terisi),
+     * surat tetap harus muncul di POV driver agar ia bisa membuat LPJ.
      */
     public function scopeForUser($query, $userId)
     {
-        return $query->where('user_id', $userId);
+        return $query->where(function ($q) use ($userId) {
+            $q->where('surat_spds.user_id', $userId)
+                ->orWhereHas('employeeDefault', fn ($employee) => $employee->where('user_id', $userId));
+        });
+    }
+
+    /**
+     * Scope: surat SPD yang SEDANG berjalan pada tanggal tertentu.
+     *
+     * Dipakai untuk mengunci kendaraan: satu kendaraan yang sedang dipakai
+     * perjalanan dinas tidak boleh dipakai untuk permohonan BBM operasional.
+     * Status `approved` + rentang tanggal berangkat/kembali (inklusif).
+     */
+    public function scopeAktifPada($query, $tanggal = null)
+    {
+        $tanggal = $tanggal ? Carbon::parse($tanggal)->toDateString() : now()->toDateString();
+
+        return $query->where('surat_spds.status', 'approved')
+            ->whereDate('surat_spds.tanggal_berangkat', '<=', $tanggal)
+            ->whereDate('surat_spds.tanggal_kembali', '>=', $tanggal);
+    }
+
+    /**
+     * ID kendaraan yang sedang dipakai SPD aktif (unique).
+     *
+     * @return array<int, int>
+     */
+    public static function vehicleIdsAktifPada($tanggal = null): array
+    {
+        return static::query()
+            ->aktifPada($tanggal)
+            ->whereNotNull('vehicle_id')
+            ->pluck('vehicle_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**
@@ -588,6 +638,13 @@ class SuratSpd extends Model
         }
 
         if ($this->user_id !== null && (int) $this->user_id === (int) $user->id) {
+            return true;
+        }
+
+        // Pengemudi yang ditunjuk lewat Master Pekerja (shortcut) tetapi kolom
+        // user_id surat belum terisi tetap boleh melihat suratnya sendiri.
+        if ($this->employee_default_id !== null
+            && $this->employeeDefault()->where('user_id', $user->id)->exists()) {
             return true;
         }
 
@@ -896,10 +953,6 @@ class SuratSpd extends Model
         // perpanjangan muncul di queue unit yang benar (scopeInUnit).
         $unitId = $this->unit_id ?: $this->resolveUnit()?->id;
 
-        // Budget per hari diturunkan dari total_budget/lama perjalanan karena
-        // kolom budget_per_hari sudah tidak ada.
-        $budgetPerHari = $this->budget_per_hari_efektif;
-
         // `parent_surat_id` menunjuk ke surat IMMEDIATE SEBELUMNYA, bukan root,
         // sehingga perpanjangan #2 terhubung ke perpanjangan #1.
         $extensionSurat = self::createWithNumberedSurat([
@@ -926,11 +979,11 @@ class SuratSpd extends Model
             'status' => 'pending',
         ]);
 
-        // Kolom `budget_per_hari` sudah tidak ada di tabel surat_spds, jadi
-        // total budget extension dihitung langsung lalu disimpan eksplisit
-        // (aman untuk fresh install MySQL maupun SQLite).
+        // Perpanjangan TIDAK membawa nominal dari driver. Dana tambahan hanya
+        // dicatat Admin GA lewat Pemberian Dana Perpanjangan setelah surat
+        // disetujui, sehingga total awalnya nol.
         $extensionSurat->calculateLamaPerjalanan();
-        $extensionSurat->total_budget = $extensionSurat->lama_perjalanan_hari * $budgetPerHari;
+        $extensionSurat->total_budget = 0;
         $extensionSurat->save();
 
         // Copy details (nama penumpang + akun user bila ada)
@@ -952,13 +1005,14 @@ class SuratSpd extends Model
             'tanggal_kembali_original' => $this->tanggal_kembali,
             'tanggal_kembali_baru' => $tanggalKembaliBaru,
             'durasi_tambahan_hari' => $durasiTambahan,
-            'budget_tambahan' => $durasiTambahan * $budgetPerHari,
+            // Nominal ditentukan Admin GA, bukan dihitung/diminta driver.
+            'budget_tambahan' => 0,
             'alasan_perpanjangan' => $alasanPerpanjangan,
             'status' => 'pending',
         ]);
 
         // autoApprove tetap melewati approve() agar propagation chain
-        // (tanggal kembali, LPJ deadline, budget, fund addition) ikut jalan.
+        // (tanggal kembali + LPJ deadline) ikut jalan.
         if ($autoApprove) {
             $extensionRecord->approve(auth()->id());
             $extensionSurat->refresh();

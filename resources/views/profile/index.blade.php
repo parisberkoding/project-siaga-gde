@@ -26,10 +26,10 @@
                         <i class="bi bi-person-circle text-white" style="font-size: 80px;"></i>
                     </div>
                     <h2>{{ Auth::user()->nama_lengkap }}</h2>
-                    <h3 class="text-muted">{{ ucfirst(strtolower(Auth::user()->role)) }}</h3>
+                    <h3 class="text-muted">{{ Auth::user()->role }}</h3>
                     <div class="mt-3">
                         <span class="badge bg-{{ Auth::user()->role === 'superadmin' ? 'danger' : (Auth::user()->role === 'Admin' ? 'primary' : 'success') }} px-3 py-2">
-                            <i class="bi bi-shield-check"></i> {{ ucfirst(Auth::user()->role) }}
+                            <i class="bi bi-shield-check"></i> {{ Auth::user()->role }}
                         </span>
                     </div>
                 </div>
@@ -90,7 +90,7 @@
                                 <div class="col-lg-3 col-md-4 label fw-semibold">Role</div>
                                 <div class="col-lg-9 col-md-8">
                                     <span class="badge bg-{{ Auth::user()->role === 'superadmin' ? 'danger' : (Auth::user()->role === 'Admin' ? 'primary' : 'success') }}">
-                                        {{ ucfirst(Auth::user()->role) }}
+                                        {{ Auth::user()->role }}
                                     </span>
                                 </div>
                             </div>

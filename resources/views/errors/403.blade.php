@@ -220,7 +220,7 @@
                 </div>
                 <div class="info-item">
                     <span class="info-label">Role:</span>
-                    <span class="info-value">{{ ucfirst(Auth::user()->role) }}</span>
+                    <span class="info-value">{{ Auth::user()->role }}</span>
                 </div>
             </div>
             @endauth

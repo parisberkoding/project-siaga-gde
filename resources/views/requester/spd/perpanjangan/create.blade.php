@@ -26,7 +26,6 @@
                                     data-kembali="{{ $surat->tanggal_kembali->format('Y-m-d') }}"
                                     data-kembali-formatted="{{ $surat->tanggal_kembali->translatedFormat('d M Y') }}"
                                     data-lama="{{ $surat->lama_perjalanan_hari }}"
-                                    data-budget="{{ $surat->budget_per_hari }}"
                                     @selected(old('surat_spd_id', request('surat_id')) == $surat->id)>
                                     {{ $surat->nomor_surat }} - {{ Str::limit($surat->tempat_tujuan, 30) }}
                                     @if ($surat->getExtensionCount() > 0) (sudah {{ $surat->getExtensionCount() }}x perpanjangan) @endif
@@ -39,7 +38,7 @@
                         <div><span class="block text-xs text-muted-foreground">Tujuan</span><span id="infoTujuan">-</span></div>
                         <div><span class="block text-xs text-muted-foreground">Tanggal perjalanan</span><span id="infoTanggal">-</span></div>
                         <div><span class="block text-xs text-muted-foreground">Tanggal kembali sekarang</span><strong id="infoKembali" class="text-primary">-</strong></div>
-                        <div><span class="block text-xs text-muted-foreground">Budget per hari</span><strong id="infoBudget">-</strong></div>
+                        <div><span class="block text-xs text-muted-foreground">Dana perpanjangan</span><strong class="text-muted-foreground">Ditentukan Admin GA</strong></div>
                     </div>
 
                     <x-ui.field label="Tanggal Kembali Baru" for="tanggalKembaliBaru" required error="tanggal_kembali_baru" hint="Harus setelah tanggal kembali sebelumnya">
@@ -48,7 +47,7 @@
 
                     <div id="infoPerpanjangan" hidden class="grid divide-y rounded-lg border border-success/30 bg-success-soft text-center sm:grid-cols-3 sm:divide-x sm:divide-y-0">
                         <div class="p-3"><span class="block text-xs text-muted-foreground">Durasi tambahan</span><span class="text-xl font-bold text-success" id="durasiTambahan">-</span> <span class="text-xs">hari</span></div>
-                        <div class="p-3"><span class="block text-xs text-muted-foreground">Budget tambahan</span><span class="text-xl font-bold text-success" id="budgetTambahan">-</span></div>
+                        <div class="p-3"><span class="block text-xs text-muted-foreground">Dana perpanjangan</span><span class="block font-semibold text-muted-foreground">Diinput Admin GA</span><span class="text-xs text-muted-foreground">setelah disetujui</span></div>
                         <div class="p-3"><span class="block text-xs text-muted-foreground">Batas LPJ baru</span><span class="text-xl font-bold text-success" id="deadlineBaru">-</span></div>
                     </div>
 
@@ -75,6 +74,7 @@
                             <li>Surat lama tetap valid</li>
                             <li>Setiap surat memiliki LPJ masing-masing</li>
                             <li>Batas LPJ baru = tanggal kembali baru + 3 hari</li>
+                            <li>Driver hanya mengajukan perpanjangan; nominal dana diinput Admin GA</li>
                         </ul>
                     </x-ui.card-content>
                 </x-ui.card>

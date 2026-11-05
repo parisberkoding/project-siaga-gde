@@ -205,14 +205,18 @@ class LpjPenggantian extends Model
         }
 
         $tanggalLpj = Carbon::parse($this->tanggal_lpj);
-        $dueDate = Carbon::parse($this->due_date);
+        // Batas submit bersifat inklusif sampai AKHIR HARI deadline, sama
+        // dengan aturan pada SuratSpd. Tanpa ini, submit pada hari deadline
+        // (mis. 15:00) salah dihitung telat karena due_date tersimpan 00:00.
+        $dueDate = Carbon::parse($this->due_date)->endOfDay();
 
         if ($tanggalLpj->greaterThan($dueDate)) {
             $this->is_late = true;
             // Carbon 3: diffInDays() sudah bertanda. Hitung dari due_date ke
             // tanggal submit agar hasilnya POSITIF (sebelumnya bisa negatif
             // sehingga badge menampilkan "Terlambat -7 hari").
-            $this->days_late = (int) $dueDate->startOfDay()->diffInDays($tanggalLpj->startOfDay());
+            $this->days_late = (int) $dueDate->copy()->startOfDay()
+                ->diffInDays($tanggalLpj->copy()->startOfDay());
         } else {
             $this->is_late = false;
             $this->days_late = 0;

@@ -27,7 +27,7 @@
                             <th>Surat Original</th>
                             <th>Surat Perpanjangan</th>
                             <th>Perpanjangan</th>
-                            <th class="text-right">Budget Tambahan</th>
+                            <th class="text-right">Dana Perpanjangan</th>
                             <th>Status</th>
                             <th>Tanggal Ajukan</th>
                         </tr>
@@ -46,7 +46,7 @@
                                     <span class="font-medium">{{ $ext->tanggal_kembali_baru->translatedFormat('d M Y') }}</span>
                                     <x-ui.badge variant="info" class="mt-1 flex">+{{ $ext->durasi_tambahan_hari }} hari</x-ui.badge>
                                 </td>
-                                <td class="whitespace-nowrap text-right tabular-nums">Rp {{ number_format($ext->budget_tambahan, 0, ',', '.') }}</td>
+                                <td class="whitespace-nowrap text-right tabular-nums">@if ((float) $ext->budget_tambahan > 0)Rp {{ number_format($ext->budget_tambahan, 0, ',', '.') }}@else<span class="text-xs text-muted-foreground">Menunggu input Admin GA</span>@endif</td>
                                 <td>
                                     <x-spd.status-badge :status="$ext->status" />
                                     @if ($ext->status === 'approved' && ! $ext->is_acknowledged)

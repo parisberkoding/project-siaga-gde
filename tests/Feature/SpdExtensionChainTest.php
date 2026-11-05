@@ -74,7 +74,7 @@ it('membuat perpanjangan dengan unit yang sama dan muncul di queue unit', functi
     )->toBeTrue();
 });
 
-it('approve perpanjangan memindahkan tanggal kembali, deadline, dan budget ke chain', function () {
+it('approve perpanjangan memindahkan tanggal kembali & deadline tanpa menambah budget otomatis', function () {
     $extension = $this->original->createExtension(
         now()->addDays(4)->toDateString(),
         'Kebutuhan operasional tambahan di lokasi',
@@ -82,11 +82,11 @@ it('approve perpanjangan memindahkan tanggal kembali, deadline, dan budget ke ch
     );
 
     $record = $extension->extensionRecord;
-    $budgetTambahan = (float) $record->budget_tambahan;
     $totalAwal = (float) $this->original->fresh()->total_budget;
 
-    // Hanya record pending yang bisa diproses.
-    expect($budgetTambahan)->toBe(1000000.0);
+    // Driver hanya mengajukan perpanjangan: tidak ada nominal yang diminta
+    // dan tidak ada budget yang dihitung otomatis dari durasi.
+    expect((float) $record->budget_tambahan)->toBe(0.0);
 
     $record->approve($this->approver->id);
 
@@ -94,24 +94,20 @@ it('approve perpanjangan memindahkan tanggal kembali, deadline, dan budget ke ch
 
     expect($original->tanggal_kembali->format('Y-m-d'))->toBe(now()->addDays(4)->format('Y-m-d'))
         ->and($original->lpj_deadline->format('Y-m-d'))->toBe(now()->addDays(7)->format('Y-m-d'))
-        ->and((float) $original->total_budget)->toBe($totalAwal + $budgetTambahan)
+        // Budget tidak berubah otomatis — Admin GA yang mencatat dana.
+        ->and((float) $original->total_budget)->toBe($totalAwal)
         ->and((int) $original->extension_count)->toBe(1)
         ->and($extension->fresh()->status)->toBe('approved')
         ->and($record->fresh()->status)->toBe('approved');
 
-    $fundAddition = SuratSpdFundAddition::where('surat_spd_id', $this->original->id)->first();
-
-    expect($fundAddition)->not->toBeNull()
-        ->and((float) $fundAddition->nominal_tambahan)->toBe($budgetTambahan)
-        ->and($fundAddition->alasan)->toContain('Perpanjangan SPD')
-        ->and($fundAddition->created_by)->toBe($this->approver->id);
+    expect(SuratSpdFundAddition::where('surat_spd_id', $this->original->id)->count())->toBe(0);
 
     // Idempotent: approve dua kali tidak menambah budget/fund addition lagi.
     $record->fresh()->approve($this->approver->id);
 
-    expect((float) $this->original->fresh()->total_budget)->toBe($totalAwal + $budgetTambahan)
+    expect((float) $this->original->fresh()->total_budget)->toBe($totalAwal)
         ->and((int) $this->original->fresh()->extension_count)->toBe(1)
-        ->and(SuratSpdFundAddition::where('surat_spd_id', $this->original->id)->count())->toBe(1);
+        ->and(SuratSpdFundAddition::where('surat_spd_id', $this->original->id)->count())->toBe(0);
 });
 
 it('perpanjangan kedua menunjuk ke perpanjangan pertama sebagai parent', function () {
@@ -135,8 +131,7 @@ it('perpanjangan kedua menunjuk ke perpanjangan pertama sebagai parent', functio
         ->and($extensionKedua->getRootSurat()->id)->toBe($this->original->id)
         ->and($extensionKedua->getOriginalSurat()->id)->toBe($this->original->id);
 
-    // Approve extension kedua: root ikut terdorong, budget bertambah lagi.
-    $budgetTambahanKedua = (float) $extensionKedua->extensionRecord->budget_tambahan;
+    // Approve extension kedua: root ikut terdorong, budget TIDAK berubah.
     $totalSebelum = (float) $this->original->fresh()->total_budget;
 
     $extensionKedua->extensionRecord->approve($this->approver->id);
@@ -144,7 +139,7 @@ it('perpanjangan kedua menunjuk ke perpanjangan pertama sebagai parent', functio
     $original = $this->original->fresh();
     $pertama = $extensionPertama->fresh();
 
-    expect((float) $original->total_budget)->toBe($totalSebelum + $budgetTambahanKedua)
+    expect((float) $original->total_budget)->toBe($totalSebelum)
         ->and((int) $original->extension_count)->toBe(2)
         ->and($original->tanggal_kembali->format('Y-m-d'))->toBe(now()->addDays(6)->format('Y-m-d'))
         ->and($pertama->tanggal_kembali->format('Y-m-d'))->toBe(now()->addDays(6)->format('Y-m-d'))

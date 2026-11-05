@@ -16,7 +16,7 @@ class AuthentiactionController extends Controller
      */
     public function index()
     {
-        $title = "Login Siaga Patuha";
+        $title = "Login SIAGA";
         return view('authentication.login', compact('title'));
     }
 

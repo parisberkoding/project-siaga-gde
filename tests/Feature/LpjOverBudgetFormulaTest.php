@@ -110,6 +110,8 @@ it('tidak menandai over budget bila surat belum punya dana/pencairan', function 
         'tanggal_kembali'   => '2026-06-03',
         'lpj_deadline'      => '2026-06-06',
         'status'            => 'approved',
+        // Surat tanpa dana: total budget eksplisit 0 (bukan nilai default factory).
+        'total_budget'      => 0,
     ]);
 
     $this->actingAs($this->user)

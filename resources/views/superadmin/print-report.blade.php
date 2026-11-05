@@ -42,7 +42,7 @@
                             <x-ui.select name="authorizer_id" id="authorizerId">
                                 <option value="">Semua approver</option>
                                 @foreach ($approvers as $approver)
-                                    <option value="{{ $approver->id }}" @selected(old('authorizer_id') == $approver->id)>{{ $approver->nama_lengkap }} ({{ ucfirst($approver->role) }})</option>
+                                    <option value="{{ $approver->id }}" @selected(old('authorizer_id') == $approver->id)>{{ $approver->nama_lengkap }} ({{ $approver->role }})</option>
                                 @endforeach
                             </x-ui.select>
                         </x-ui.field>

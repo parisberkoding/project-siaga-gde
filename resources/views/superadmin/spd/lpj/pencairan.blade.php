@@ -39,7 +39,7 @@
                 <x-ui.card-content>
                     <x-ui.table>
                         <thead>
-                            <tr><th class="w-12">No</th><th>Tanggal</th><th>No. Referensi Perbankan</th><th class="text-right">Nominal</th><th>Bentuk</th><th>Rek. Tujuan</th><th class="text-right">Aksi</th></tr>
+                            <tr><th class="w-12">No</th><th>Tanggal</th><th>No. Referensi Perbankan</th><th class="text-right">Nominal</th><th>Bentuk</th><th>Sumber</th><th>Rek. Tujuan</th><th class="text-right">Aksi</th></tr>
                         </thead>
                         <tbody>
                             @forelse ($pencairans as $index => $pencairan)
@@ -49,6 +49,7 @@
                                     <td>{{ $pencairan->bank_reference ?: '-' }}</td>
                                     <td class="whitespace-nowrap text-right tabular-nums">{{ $rp($pencairan->nominal) }}</td>
                                     <td><x-ui.badge :variant="$pencairan->isTransfer() ? 'default' : 'secondary'">{{ $pencairan->bentuk_pencairan_label }}</x-ui.badge></td>
+                                    <td>@if ($pencairan->isPerpanjangan())<x-ui.badge variant="warning"><i class="bi bi-arrow-repeat"></i> Perpanjangan</x-ui.badge>@else<x-ui.badge variant="outline">{{ $pencairan->sumber_label }}</x-ui.badge>@endif</td>
                                     <td class="text-muted-foreground">{{ $pencairan->isTransfer() ? ($pencairan->rek_tujuan ?: '-') : '-' }}</td>
                                     <td>
                                         <div class="flex justify-end gap-1">
@@ -63,7 +64,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="7" class="py-8 text-center text-muted-foreground">Belum ada data pencairan.</td></tr>
+                                <tr><td colspan="8" class="py-8 text-center text-muted-foreground">Belum ada data pencairan.</td></tr>
                             @endforelse
                         </tbody>
                         @if ($pencairans->isNotEmpty())
@@ -71,7 +72,7 @@
                                 <tr class="border-t bg-muted/50 font-semibold">
                                     <td colspan="3" class="text-right">Grand Total</td>
                                     <td class="whitespace-nowrap text-right tabular-nums">{{ $rp($total) }}</td>
-                                    <td colspan="3"></td>
+                                    <td colspan="4"></td>
                                 </tr>
                             </tfoot>
                         @endif

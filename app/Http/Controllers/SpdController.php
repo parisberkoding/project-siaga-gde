@@ -291,7 +291,12 @@ class SpdController extends Controller
             'pencairans',
         ])->findOrFail($surat->id);
 
-        return view('superadmin.spd.surat.detail', compact('surat'));
+        return view('superadmin.spd.surat.detail', [
+            'surat' => $surat,
+            // Opsi pemberi tugas yang sama dengan form shortcut, agar nama &
+            // jabatan pada surat (dan template cetak) selalu seragam.
+            'pejabatOptions' => $this->pejabatOptions(),
+        ]);
     }
 
     /**
@@ -310,8 +315,15 @@ class SpdController extends Controller
                 ->with('error', 'Surat ini sudah diproses sebelumnya.');
         }
 
-        // Jika pemberi tugas belum diisi, wajib diisi saat approve
-        if (empty($surat->pemberi_tugas_nama)) {
+        // Pemberi tugas boleh dipilih dari Master Pekerja (sumber yang sama
+        // dengan template surat) atau diisi manual bila belum ada di master.
+        $request->validate([
+            'pemberi_employee_id' => 'nullable|exists:employee_defaults,id',
+        ]);
+
+        // Jika pemberi tugas belum diisi dan tidak memilih dari Master Pekerja,
+        // nama & jabatan wajib diisi saat approve.
+        if (empty($surat->pemberi_tugas_nama) && ! $request->filled('pemberi_employee_id')) {
             $request->validate([
                 'pemberi_tugas_nama' => 'required|string|max:255',
                 'pemberi_tugas_jabatan' => 'required|string|max:255',
@@ -323,8 +335,17 @@ class SpdController extends Controller
 
         DB::beginTransaction();
         try {
-            // Set pemberi tugas jika diisi dari form approve
-            if ($request->filled('pemberi_tugas_nama')) {
+            // Set pemberi tugas: prioritas data Master Pekerja supaya nama &
+            // jabatan yang tercetak pada template surat persis sama.
+            if ($request->filled('pemberi_employee_id')) {
+                $pejabat = EmployeeDefault::forUnit(UnitScope::for(Auth::user())->unitId())
+                    ->find($request->pemberi_employee_id);
+                if ($pejabat) {
+                    $surat->pemberi_tugas_nama = $pejabat->employee_name;
+                    $surat->pemberi_tugas_jabatan = $pejabat->position
+                        ?: ($request->pemberi_tugas_jabatan ?: $surat->pemberi_tugas_jabatan);
+                }
+            } elseif ($request->filled('pemberi_tugas_nama')) {
                 $surat->pemberi_tugas_nama = $request->pemberi_tugas_nama;
                 $surat->pemberi_tugas_jabatan = $request->pemberi_tugas_jabatan;
             }
@@ -348,8 +369,9 @@ class SpdController extends Controller
                 $surat->jenis_spd_lainnya = $request->jenis_spd === 'lainnya' ? ($request->jenis_spd_lainnya ?? null) : null;
             }
 
-            // Set LPJ deadline (3 hari setelah tanggal kembali)
-            $surat->lpj_deadline = Carbon::parse($surat->tanggal_kembali)->addDays(3);
+            // Set LPJ deadline: 3 hari setelah tanggal kembali (akhir hari,
+            // sehingga submit pada hari deadline masih dihitung tepat waktu).
+            $surat->lpj_deadline = Carbon::parse($surat->tanggal_kembali)->addDays(3)->endOfDay();
 
             $surat->save();
 
@@ -418,15 +440,50 @@ class SpdController extends Controller
             ->orderBy('consumerial_name')
             ->get();
 
-        // Pengemudi: dari Master Pekerja (boleh tanpa akun login)
-        $pengemudiOptions = EmployeeDefault::active()
+        return view('superadmin.spd.surat.create-shortcut', [
+            'vehicles' => $vehicles,
+            'pengemudiOptions' => $this->pengemudiOptions(),
+            'pejabatOptions' => $this->pejabatOptions(),
+        ]);
+    }
+
+    /**
+     * Karyawan Master Pekerja yang boleh muncul sebagai PENGEMUDI.
+     *
+     * Hanya akun dengan role Driver/Requester. Pegawai non-driver (staff,
+     * manager, operator, dsb.) tidak ditampilkan supaya dropdown pengemudi
+     * tidak tercampur dengan daftar seluruh karyawan.
+     */
+    private function pengemudiOptions()
+    {
+        // Batas unit: superadmin unit hanya melihat Master Pekerja unitnya.
+        $unitId = UnitScope::for(Auth::user())->unitId();
+
+        return EmployeeDefault::active()
+            ->forUnit($unitId)
             ->with('defaultSite')
+            ->whereHas('user', function ($query) {
+                $query->whereIn('role', ['requester', 'driver'])
+                    ->orWhereHas('roles', fn ($roles) => $roles->whereIn('code', ['requester', 'driver']));
+            })
             ->orderBy('employee_name')
             ->get();
+    }
 
-        // Pejabat pemberi tugas (level Assistant Manager / Manager) dari Master Pekerja.
-        // Bisa juga diisi manual di form (mode hibrid).
-        $pejabatOptions = EmployeeDefault::active()
+    /**
+     * Pejabat pemberi tugas (Assistant Manager / Manager) dari Master Pekerja.
+     *
+     * Sumber yang sama dipakai form shortcut dan form validasi GA, sehingga
+     * nama & jabatan yang tercetak pada template surat selalu identik dengan
+     * data Master Pekerja (bukan teks bebas yang bisa berbeda ejaan).
+     */
+    private function pejabatOptions()
+    {
+        // Batas unit: pemberi tugas hanya dari Master Pekerja unit user.
+        $unitId = UnitScope::for(Auth::user())->unitId();
+
+        return EmployeeDefault::active()
+            ->forUnit($unitId)
             ->where(function ($q) {
                 $q->where('position', 'like', '%manager%')
                     ->orWhere('position', 'like', '%Manager%')
@@ -435,8 +492,6 @@ class SpdController extends Controller
             })
             ->orderBy('employee_name')
             ->get();
-
-        return view('superadmin.spd.surat.create-shortcut', compact('vehicles', 'pengemudiOptions', 'pejabatOptions'));
     }
 
     /**
@@ -489,6 +544,7 @@ class SpdController extends Controller
         }
 
         // Scope unit: superadmin unit hanya memakai plat nomor unitnya.
+        $scope = UnitScope::for(Auth::user());
         $vehicle = VehicleAndToolsConsumers::find($request->vehicle_id);
         if ($vehicle && ! $vehicle->isVisibleTo(Auth::user())) {
             return redirect()->back()
@@ -506,19 +562,54 @@ class SpdController extends Controller
         $employeeId = null;
         $userId = null;
         if ($request->filled('pengemudi_employee_id')) {
-            $emp = EmployeeDefault::with('user')->find($request->pengemudi_employee_id);
-            if ($emp) {
-                $employeeId = $emp->id;
-                $userId = $emp->user_id; // boleh null
-                $pengemudiNama = $emp->employee_name;
+            $emp = EmployeeDefault::forUnit($scope->unitId())
+                ->with('user')
+                ->find($request->pengemudi_employee_id);
+
+            if (! $emp) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Pengemudi yang dipilih berada di luar unit Anda.');
+            }
+
+            $employeeId = $emp->id;
+            $userId = $emp->user_id; // boleh null
+            $pengemudiNama = $emp->employee_name;
+        } elseif (! empty($pengemudiNama)) {
+            // Pengemudi diisi manual: cocokkan dengan Master Pekerja berdasarkan
+            // nama (case-insensitive) supaya surat tetap muncul di POV driver
+            // yang memiliki akun tanpa admin harus memilih dropdown.
+            $empByName = EmployeeDefault::forUnit($scope->unitId())
+                ->with('user')
+                ->active()
+                ->whereRaw('LOWER(employee_name) = LOWER(?)', [trim($pengemudiNama)])
+                ->first();
+
+            if ($empByName) {
+                $employeeId = $empByName->id;
+                $userId = $empByName->user_id;
+                $pengemudiNama = $empByName->employee_name;
+            }
+        }
+
+        // Pemberi tugas: bila dipilih dari Master Pekerja, nama & jabatan
+        // diambil dari data master (bukan teks bebas) agar identik dengan
+        // template surat yang dicetak.
+        $pemberiNama = trim((string) $request->pemberi_tugas_nama);
+        $pemberiJabatan = trim((string) $request->pemberi_tugas_jabatan);
+        if ($request->filled('pemberi_employee_id')) {
+            $pejabat = EmployeeDefault::forUnit($scope->unitId())->find($request->pemberi_employee_id);
+            if ($pejabat) {
+                $pemberiNama = $pejabat->employee_name;
+                $pemberiJabatan = $pejabat->position ?: $pemberiJabatan;
             }
         }
 
         DB::beginTransaction();
         try {
             $surat = SuratSpd::createWithNumberedSurat([
-                'pemberi_tugas_nama' => $request->pemberi_tugas_nama,
-                'pemberi_tugas_jabatan' => $request->pemberi_tugas_jabatan,
+                'pemberi_tugas_nama' => $pemberiNama,
+                'pemberi_tugas_jabatan' => $pemberiJabatan,
                 'user_id' => $userId,
                 'employee_default_id' => $employeeId,
                 'pengemudi_nama' => $pengemudiNama,
@@ -536,7 +627,8 @@ class SpdController extends Controller
                 'approved_by' => Auth::id(),
                 'approved_at' => Carbon::now(),
                 'total_budget' => $totalBudget,
-                'lpj_deadline' => Carbon::parse($request->tanggal_kembali)->addDays(3),
+                // 3 hari setelah tanggal kembali (akhir hari).
+                'lpj_deadline' => Carbon::parse($request->tanggal_kembali)->addDays(3)->endOfDay(),
                 'unit_id' => Auth::user()->unit_id,
                 'jenis_spd' => $request->jenis_spd,
                 'jenis_spd_lainnya' => $request->jenis_spd === 'lainnya' ? $request->jenis_spd_lainnya : null,
@@ -731,6 +823,10 @@ class SpdController extends Controller
                 'rek_tujuan'       => $row['rek_tujuan'],
                 'catatan'          => $row['catatan'],
                 'urutan'           => ++$urutan,
+                // Sumber dana: awal (saat surat dibuat/validasi), tambahan,
+                // atau perpanjangan (diinput Admin GA setelah ETD disetujui).
+                'sumber'           => $row['sumber'] ?? SuratSpdBudget::SUMBER_AWAL,
+                'surat_spd_extension_id' => $row['surat_spd_extension_id'] ?? null,
             ]);
         }
 
@@ -1024,6 +1120,19 @@ class SpdController extends Controller
             ->inUnit($unitId)
             ->findOrFail($perpanjangan->id);
 
+        // Dana perpanjangan OPSIONAL saat approve. Admin GA boleh mencatat
+        // kapan & berapa dana diberikan; bila dikosongkan, dana bisa
+        // ditambahkan kemudian dari halaman detail surat perpanjangan.
+        $request->validate([
+            'catatan' => 'nullable|string|max:255',
+            'dana_tanggal' => 'nullable|date',
+            'dana_nominal' => 'nullable|numeric|min:0',
+            'dana_bentuk' => 'nullable|in:Tunai,Transfer',
+            'dana_bank_reference' => 'nullable|string|max:255|required_if:dana_bentuk,Transfer',
+            'dana_rek_tujuan' => 'nullable|string|max:255|required_if:dana_bentuk,Transfer',
+            'dana_catatan' => 'nullable|string|max:255',
+        ]);
+
         DB::beginTransaction();
         try {
             // Approve extension (ini juga akan approve surat extension & set lpj_deadline)
@@ -1032,6 +1141,25 @@ class SpdController extends Controller
             // Update catatan jika ada
             if ($request->filled('catatan')) {
                 $extension->update(['catatan' => $request->catatan]);
+            }
+
+            // Catat pemberian dana perpanjangan bila Admin GA mengisinya.
+            $nominalDana = (float) $request->input('dana_nominal', 0);
+            if ($nominalDana > 0 && $extension->extensionSurat) {
+                $bentuk = $request->input('dana_bentuk') === 'Transfer' ? 'Transfer' : 'Tunai';
+
+                $this->simpanPencairans($extension->extensionSurat, [[
+                    'tanggal' => $request->input('dana_tanggal') ?: now()->toDateString(),
+                    'nominal' => $nominalDana,
+                    'bentuk_pencairan' => $bentuk,
+                    'bank_reference' => $bentuk === 'Transfer' ? $request->input('dana_bank_reference') : null,
+                    'rek_tujuan' => $bentuk === 'Transfer' ? $request->input('dana_rek_tujuan') : null,
+                    'catatan' => $request->input('dana_catatan') ?: 'Dana perpanjangan',
+                    'sumber' => SuratSpdBudget::SUMBER_PERPANJANGAN,
+                    'surat_spd_extension_id' => $extension->id,
+                ]]);
+
+                $this->syncExtensionBudgetTotal($extension);
             }
 
             DB::commit();
@@ -1999,6 +2127,89 @@ class SpdController extends Controller
     }
 
     /**
+     * Catat Pemberian Dana (pencairan) untuk surat yang sudah disetujui.
+     *
+     * Dipakai Admin GA untuk menambahkan dana perpanjangan (ETD) setelah
+     * perpanjangan disetujui. Baris diberi sumber `perpanjangan` + relasi ke
+     * record perpanjangan, sehingga pada tabel/lembar Pemberian Dana terlihat
+     * KAPAN dana diberikan dan bahwa dana itu terkait perpanjangan.
+     */
+    public function storeSuratPencairan(Request $request, SuratSpd $surat)
+    {
+        UnitScope::for(Auth::user())->ensureUnit($surat->unit_id);
+
+        if (! in_array($surat->status, ['approved', 'completed'], true)) {
+            return redirect()->back()
+                ->with('error', 'Pemberian dana hanya dapat dicatat pada surat yang sudah disetujui.');
+        }
+
+        // Form baru memakai komponen Pemberian Dana (array `pencairans`);
+        // field tunggal tetap diterima untuk kompatibilitas.
+        $rows = $this->extractPencairans($request);
+
+        if ($rows === []) {
+            $data = $request->validate([
+                'tanggal' => 'required|date',
+                'nominal' => 'required|numeric|min:1',
+                'bentuk_pencairan' => 'required|in:Tunai,Transfer',
+                'bank_reference' => 'nullable|string|max:255|required_if:bentuk_pencairan,Transfer',
+                'rek_tujuan' => 'nullable|string|max:255|required_if:bentuk_pencairan,Transfer',
+                'catatan' => 'nullable|string|max:255',
+            ], [
+                'tanggal.required' => 'Tanggal pemberian dana wajib diisi.',
+                'nominal.required' => 'Nominal pemberian dana wajib diisi.',
+                'nominal.min' => 'Nominal pemberian dana harus lebih dari 0.',
+                'bentuk_pencairan.required' => 'Bentuk pemberian dana wajib dipilih.',
+                'bank_reference.required_if' => 'Nomor referensi bank wajib diisi untuk transfer.',
+                'rek_tujuan.required_if' => 'Rekening tujuan wajib diisi untuk transfer.',
+            ]);
+
+            $rows = [[
+                'tanggal' => $data['tanggal'],
+                'nominal' => $data['nominal'],
+                'bentuk_pencairan' => $data['bentuk_pencairan'],
+                'bank_reference' => $data['bentuk_pencairan'] === 'Transfer' ? ($data['bank_reference'] ?? null) : null,
+                'rek_tujuan' => $data['bentuk_pencairan'] === 'Transfer' ? ($data['rek_tujuan'] ?? null) : null,
+                'catatan' => $data['catatan'] ?? null,
+            ]];
+        } else {
+            $request->validate($this->pencairanRules());
+        }
+
+        // Surat perpanjangan selalu bertanda sumber perpanjangan.
+        $extension = $surat->is_extension ? $surat->extensionRecord : null;
+        $sumber = $surat->is_extension
+            ? SuratSpdBudget::SUMBER_PERPANJANGAN
+            : SuratSpdBudget::SUMBER_TAMBAHAN;
+
+        foreach ($rows as &$row) {
+            $row['sumber'] = $sumber;
+            $row['surat_spd_extension_id'] = $extension?->id;
+        }
+        unset($row);
+
+        $this->simpanPencairans($surat, $rows);
+
+        if ($extension) {
+            $this->syncExtensionBudgetTotal($extension);
+        }
+
+        return redirect()->back()->with('success', 'Pemberian dana berhasil dicatat'
+            .($extension ? ' sebagai dana perpanjangan.' : '.'));
+    }
+
+    /**
+     * Samakan `budget_tambahan` record perpanjangan dengan total dana yang
+     * benar-benar diberikan untuk perpanjangan tersebut.
+     */
+    private function syncExtensionBudgetTotal(SuratSpdExtension $extension): void
+    {
+        $total = (float) SuratSpdBudget::where('surat_spd_extension_id', $extension->id)->sum('nominal');
+
+        $extension->update(['budget_tambahan' => $total]);
+    }
+
+    /**
      * Update data keuangan LPJ (diisi admin GA / orang keuangan).
      * Driver tidak mengisi data ini saat membuat laporan harian.
      *
@@ -2107,6 +2318,7 @@ class SpdController extends Controller
 
         $employees = EmployeeDefault::query()
             ->active()
+            ->forUnit(UnitScope::for($request->user())->unitId())
             ->where('employee_name', 'like', '%'.$q.'%')
             ->orderBy('employee_name')
             ->limit(10)
@@ -2209,13 +2421,15 @@ class SpdController extends Controller
         $isAdmin = Auth::user()->role === 'superadmin' || Auth::user()->role === 'admin';
 
         if ($isAdmin) {
-            // Stats untuk superadmin
+            // Stats untuk superadmin/admin — dibatasi unit user.
+            $unitId = UnitScope::for(Auth::user())->unitId();
+
             $stats = [
-                'surat_pending' => SuratSpd::pending()->count(),
-                'perpanjangan_pending' => SuratSpdExtension::pending()->count(),
-                'lpj_pending' => LpjPenggantian::pending()->count(),
-                'lpj_late' => LpjPenggantian::late()->count(),
-                'lpj_over_budget' => LpjPenggantian::overBudget()->count(),
+                'surat_pending' => SuratSpd::pending()->inUnit($unitId)->count(),
+                'perpanjangan_pending' => SuratSpdExtension::pending()->inUnit($unitId)->count(),
+                'lpj_pending' => LpjPenggantian::pending()->inUnit($unitId)->count(),
+                'lpj_late' => LpjPenggantian::late()->inUnit($unitId)->count(),
+                'lpj_over_budget' => LpjPenggantian::overBudget()->inUnit($unitId)->count(),
             ];
         } else {
             // Stats untuk requester

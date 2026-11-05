@@ -1,172 +1,209 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 
 <head>
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
   <title>{{ $title }}</title>
-  <meta content="" name="description">
+  <meta content="Masuk ke SIAGA — Sistem Informasi Administrasi General Affairs PT Geo Dipa Energi (Persero)" name="description">
 
   <!-- Favicons -->
   <link href="{{ asset('DashboardTemplates/assets/img/geodipa-logo-croped.png') }}" rel="icon">
 
-  <!-- Google Fonts -->
+  <!-- Ikon (lokal, tanpa CDN) -->
+  <link href="{{ asset('gde-ui-templates/icons/bootstrap-icons.css') }}" rel="stylesheet">
 
-
-  <!-- Vendor CSS Files -->
-  <link href="{{ asset('DashboardTemplates/assets/vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
-  <link href="{{ asset('DashboardTemplates/assets/vendor/bootstrap-icons/bootstrap-icons.css') }}" rel="stylesheet">
-  <link href="{{asset('DashboardTemplates/assets/vendor/boxicons/css/boxicons.min.css')}}" rel="stylesheet">
-  <link href="{{ asset('DashboardTemplates/assets/vendor/simple-datatables/style.css') }}" rel="stylesheet">
-
-  <!-- Template Main CSS File -->
-  <link href="{{ asset('DashboardTemplates/assets/css/style.css') }}" rel="stylesheet">
-
-  <!-- GDE UI Templates — design system Geodipa (dimuat setelah NiceAdmin agar menimpanya) -->
-  <link href="{{ asset('gde-ui-templates/fonts/poppins.css') }}" rel="stylesheet">
-  <link href="{{ asset('gde-ui-templates/css/gde-tokens.css') }}" rel="stylesheet">
-  <link href="{{ asset('gde-ui-templates/css/gde-base.css') }}" rel="stylesheet">
-  <link href="{{ asset('gde-ui-templates/css/gde-components.css') }}" rel="stylesheet">
-  <link href="{{ asset('gde-ui-templates/css/gde-app.css') }}" rel="stylesheet">
-  <link href="{{ asset('gde-ui-templates/css/gde-compat.css') }}" rel="stylesheet">
+  <!-- GDE UI Templates — halaman berdiri sendiri: tanpa shell aplikasi & tanpa jembatan NiceAdmin -->
+  @include('partials.gde-head', ['gdeApp' => false, 'gdeCompat' => false])
 </head>
 
 <body>
 
-  <main>
-    <div class="container">
+  <main class="gde-auth">
 
-      <section class="section register min-vh-100 d-flex flex-column align-items-center justify-content-center py-4">
-        <div class="container">
-          <div class="row justify-content-center">
-            <div class="col-lg-4 col-md-6 d-flex flex-column align-items-center justify-content-center">
+    {{-- ── Panel merek ── --}}
+    <section class="gde-auth__brand" aria-label="Tentang SIAGA">
+      @include('partials.geothermal-scene')
 
-                <div class="d-flex justify-content-center py-4">
+      <div class="gde-auth__brand-top">
+        <img src="{{ asset('DashboardTemplates/assets/img/geodipa-logo.png') }}" alt="Geo Dipa Energi">
+        <span>PT Geo Dipa Energi (Persero)</span>
+      </div>
 
-                </div><!-- End Logo -->
+      <div class="gde-auth__intro">
+        <span class="gde-auth__eyebrow">SIAGA</span>
+        <h1 class="gde-auth__headline">Layanan General Affairs,<br><em>satu pintu.</em></h1>
+        <p class="gde-auth__lead">
+          Sistem Informasi Administrasi General Affairs — permohonan, persetujuan,
+          hingga pelaporan dalam satu platform.
+        </p>
+        <ul class="gde-auth__modules">
+          <li><i class="bi bi-fuel-pump"></i> BBM</li>
+          <li><i class="bi bi-briefcase"></i> Perjalanan Dinas</li>
+          <li><i class="bi bi-car-front"></i> Kendaraan</li>
+          <li><i class="bi bi-cup-hot"></i> Makan Siang</li>
+        </ul>
+      </div>
 
-                <!-- Alert Messages untuk error umum dan success -->
+      <div class="gde-auth__brand-foot">&copy; {{ date('Y') }} PT Geo Dipa Energi (Persero)</div>
+    </section>
+
+    {{-- ── Panel formulir ── --}}
+    <section class="gde-auth__panel">
+      <div class="gde-auth__card">
+
+        <h2 class="gde-auth__title">Selamat datang</h2>
+        <p class="gde-auth__sub">Masuk dengan akun SIAGA Anda untuk melanjutkan.</p>
+
+        <!-- Alert Messages untuk error umum dan success -->
         @if(session('success'))
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="bi bi-check-circle-fill me-2"></i>
-                {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
+          <div class="gde-alert gde-alert--success" role="status">
+            <i class="bi bi-check-circle-fill gde-alert__icon"></i>
+            <div class="gde-alert__body">{{ session('success') }}</div>
+          </div>
         @endif
 
         @if(session('error'))
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                {{ session('error') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
+          <div class="gde-alert gde-alert--danger" role="alert">
+            <i class="bi bi-exclamation-triangle-fill gde-alert__icon"></i>
+            <div class="gde-alert__body">{{ session('error') }}</div>
+          </div>
         @endif
         <!-- End Alert Messages -->
 
-                <div class="card mb-3">
-                    <div class="card-body">
+        {{-- Isian otomatis akun superadmin HANYA di lingkungan lokal (APP_ENV=local)
+             untuk mempercepat pengembangan. Jangan pernah aktif di staging/produksi. --}}
+        @php
+          $devPrefill = app()->isLocal();
+          $prefillUsername = old('username', $devPrefill ? 'superadmin_pusat' : '');
+        @endphp
 
-                  <div class="pt-4 pb-2">
-                    <img src="{{ asset('DashboardTemplates/assets/img/geodipa-logo.png') }}" class="d-block mx-auto" style="max-width: 35%;min-width:18%;">
-                    <h5 class="card-title text-center pb-0 fs-4">Siaga</h5>
-                    <p class="text-center small">PT. Geo Dipa Energi (Persero) Unit Patuha</p>
-                </div>
+        <form action="{{ route('login-process') }}" class="gde-auth__form" method="POST" id="loginForm" novalidate>
+          @csrf
 
-                  <form action="{{ route('login-process') }}" class="row g-3" method="POST">
-                    @csrf
-                    <div class="col-12">
-                      <div class="input-group has-validation">
-                        <span class="input-group-text" id="inputGroupPrepend"><i class="bi bi-person"></i></span>
-                        <input type="text"
-                               name="username"
-                               class="form-control @error('username') is-invalid @enderror"
-                               id="yourUsername"
-                               placeholder="Masukkan Username"
-                               value="{{ old('username') }}">
-                        @error('username')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                      </div>
-                    </div>
+          <div>
+            <label class="gde-label" for="yourUsername">Username</label>
+            <div class="gde-field">
+              <i class="bi bi-person"></i>
+              <input type="text"
+                     name="username"
+                     class="gde-input @error('username') is-invalid @enderror"
+                     id="yourUsername"
+                     placeholder="Masukkan username"
+                     value="{{ $prefillUsername }}"
+                     autocomplete="username"
+                     autocapitalize="none"
+                     spellcheck="false"
+                     @error('username') aria-invalid="true" aria-describedby="usernameError" @enderror
+                     @if($prefillUsername === '') autofocus @endif
+                     required>
+            </div>
+            @error('username')
+              <div class="gde-error" id="usernameError"><i class="bi bi-exclamation-circle"></i> {{ $message }}</div>
+            @enderror
+          </div>
 
-                    <div class="col-12">
-                        <div class="input-group has-validation">
-                            <span class="input-group-text" id="inputGroupPrepend">
-                                <i class="bi bi-lock"></i>
-                            </span>
-                            <input type="password"
-                                   name="password"
-                                   class="form-control @error('password') is-invalid @enderror"
-                                   id="yourPassword"
-                                   placeholder="Masukkan Password">
-                            @error('password')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </div>
-
-                    <div class="col-12">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="showPassword" onclick="togglePassword()">
-                            <label class="form-check-label" for="showPassword">
-                                Tampilkan Password
-                            </label>
-                        </div>
-                    </div>
-
-
-                    <div class="col-12">
-                      <button class="btn btn-primary w-100" type="submit">Login</button>
-                    </div>
-                    <div class="col-12 text-center mt-4">
-                      <p class="small mb-0 text-secondary">Tidak Memiliki Hak Akses? Hubungi Tim IT untuk mendapatkan Hak Akses</p>
-                    </div>
-                    <div class="col-12 text-center mt-4">
-                      <p style="font-size: 0.9rem;" class="mb-0 text-secondary"><a href="{{route('welcome')}}"> Kembali ke Halaman Utama </a></p>
-                    </div>
-                  </form>
-
-                </div>
-              </div>
-
-              <div class="credits">
-                {{-- Developed by <a href="https://github.com/FarisIftikharAlfarisi"><span>Faris Iftikhar Alfarisi</span></a> --}}
-              </div>
-
+          <div>
+            <label class="gde-label" for="yourPassword">Password</label>
+            <div class="gde-field gde-field--action">
+              <i class="bi bi-lock"></i>
+              <input type="password"
+                     name="password"
+                     class="gde-input @error('password') is-invalid @enderror"
+                     id="yourPassword"
+                     placeholder="Masukkan password"
+                     autocomplete="current-password"
+                     @error('password') aria-invalid="true" aria-describedby="passwordError" @enderror
+                     @if($prefillUsername !== '') autofocus @endif
+                     required>
+              <button type="button" class="gde-field__action" id="togglePassword" aria-label="Tampilkan password" aria-pressed="false">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+            @error('password')
+              <div class="gde-error" id="passwordError"><i class="bi bi-exclamation-circle"></i> {{ $message }}</div>
+            @enderror
+            <div class="gde-auth__capslock" id="capsLockHint" role="status">
+              <i class="bi bi-capslock-fill"></i> Caps Lock aktif
             </div>
           </div>
+
+          <div class="gde-auth__row">
+            <label class="gde-check">
+              <input type="checkbox" name="remember" value="1"> Ingat saya
+            </label>
+          </div>
+
+          <button class="gde-btn gde-btn--primary gde-btn--block gde-auth__submit" type="submit" id="loginButton">
+            <span class="gde-spinner" aria-hidden="true"></span>
+            <span class="gde-auth__submit-text">Masuk</span>
+            <i class="bi bi-arrow-right"></i>
+          </button>
+
+          @if(config('sso.enabled'))
+            <div class="gde-auth__divider">atau</div>
+            <a href="{{ route('sso.redirect') }}" class="gde-btn gde-btn--outline gde-btn--block gde-auth__submit">
+              <i class="bi bi-shield-lock"></i> Masuk dengan SSO Geodipa
+            </a>
+          @endif
+        </form>
+
+        <div class="gde-auth__help">
+          <i class="bi bi-info-circle"></i>
+          <div>Tidak memiliki hak akses? Hubungi Tim IT untuk mendapatkan hak akses SIAGA.</div>
         </div>
 
-      </section>
+        <a href="{{ route('welcome') }}" class="gde-auth__back">
+          <i class="bi bi-arrow-left"></i> Kembali ke halaman utama
+        </a>
 
-    </div>
-  </main><!-- End #main -->
+      </div>
+    </section>
 
-  <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+  </main>
 
-   <!-- Vendor JS Files -->
-   <script src="{{ asset('DashboardTemplates/assets/vendor/apexcharts/apexcharts.min.js') }}"></script>
-   <script src="{{ asset('DashboardTemplates/assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-   <script src="{{ asset('DashboardTemplates/assets/vendor/chart.js/chart.umd.js') }}"></script>
-   <script src="{{ asset('DashboardTemplates/assets/vendor/echarts/echarts.min.js') }}"></script>
-   <script src="{{ asset('DashboardTemplates/assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
-   <script src="{{ asset('DashboardTemplates/assets/vendor/php-email-form/validate.js') }}"></script>
+  <script>
+    (function () {
+      var passwordField = document.getElementById('yourPassword');
+      var toggle = document.getElementById('togglePassword');
+      var capsHint = document.getElementById('capsLockHint');
+      var form = document.getElementById('loginForm');
+      var button = document.getElementById('loginButton');
 
-   <!-- Template Main JS File -->
-   <script src="{{ asset('DashboardTemplates/assets/js/main.js') }}"></script>
-   <script>
-    function togglePassword() {
-        var passwordField = document.getElementById("yourPassword");
-        var checkbox = document.getElementById("showPassword");
+      // Tampilkan / sembunyikan password
+      toggle.addEventListener('click', function () {
+        var show = passwordField.type === 'password';
+        passwordField.type = show ? 'text' : 'password';
+        toggle.setAttribute('aria-pressed', show ? 'true' : 'false');
+        toggle.setAttribute('aria-label', show ? 'Sembunyikan password' : 'Tampilkan password');
+        toggle.querySelector('.bi').className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+        passwordField.focus();
+      });
 
-        if (checkbox.checked) {
-            passwordField.type = "text";
-        } else {
-            passwordField.type = "password";
+      // Peringatan Caps Lock
+      function checkCaps(e) {
+        if (typeof e.getModifierState === 'function') {
+          capsHint.classList.toggle('is-on', e.getModifierState('CapsLock'));
         }
-    }
-    </script>
+      }
+      passwordField.addEventListener('keydown', checkCaps);
+      passwordField.addEventListener('keyup', checkCaps);
+      passwordField.addEventListener('blur', function () { capsHint.classList.remove('is-on'); });
+
+      // Status memuat + cegah kirim ganda
+      form.addEventListener('submit', function () {
+        button.classList.add('is-loading');
+        button.querySelector('.gde-auth__submit-text').textContent = 'Memproses…';
+      });
+
+      // Bila halaman dipulihkan dari bfcache (tombol Back), kembalikan tombol
+      window.addEventListener('pageshow', function () {
+        button.classList.remove('is-loading');
+        button.querySelector('.gde-auth__submit-text').textContent = 'Masuk';
+      });
+    })();
+  </script>
 
 </body>
 

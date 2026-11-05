@@ -1,4 +1,4 @@
-{{-- Detail perpanjangan: menampilkan surat terkait dan aksi validasi dengan budget per hari. --}}
+{{-- Detail perpanjangan: menampilkan surat terkait dan aksi validasi (dana perpanjangan diinput Admin GA). --}}
 @php
     $isApproved = in_array($surat->status, ['approved', 'completed'], true);
     $rp = fn ($value) => 'Rp ' . number_format((float) $value, 0, ',', '.');
@@ -116,17 +116,13 @@
                         <p class="flex items-center gap-2 font-semibold"><i class="bi bi-shield-check"></i> Aksi Validasi</p>
                     </div>
                     <x-ui.card-content>
-                        <form action="{{ route('surat.superadmin.approve', $surat) }}" method="POST" id="approveForm" data-lama="{{ $surat->lama_perjalanan_hari }}" class="grid gap-4">
+                        {{-- Driver tidak mengajukan nominal; dana perpanjangan dicatat Admin GA saat approve
+                             (modal di daftar perpanjangan) atau setelahnya lewat detail surat perpanjangan. --}}
+                        <form action="{{ route('perpanjangan.superadmin.approve', $extension) }}" method="POST" id="approveForm" class="grid gap-4">
                             @csrf
                             <p class="text-sm text-muted-foreground">Periksa detail surat dengan teliti sebelum memvalidasi.</p>
-                            <x-ui.field label="Budget Per Hari (Rp)" for="budgetPerHari" required hint="Tentukan budget harian untuk perjalanan ini">
-                                <x-ui.input type="number" name="budget_per_hari" id="budgetPerHari" min="1" step="1000" required placeholder="Contoh: 500000" />
-                            </x-ui.field>
-                            <div class="grid grid-cols-2 divide-x rounded-lg border text-center">
-                                <div class="p-3"><span class="block text-xs text-muted-foreground">Lama perjalanan</span><strong class="text-lg">{{ $surat->lama_perjalanan_hari }}</strong> <span class="text-xs">hari</span></div>
-                                <div class="p-3"><span class="block text-xs text-muted-foreground">Total budget</span><strong class="text-lg tabular-nums text-success" id="totalBudgetCalc">Rp 0</strong></div>
-                            </div>
-                            <x-ui.button type="submit" variant="success"><i class="bi bi-check-circle"></i> Setujui Surat Tugas</x-ui.button>
+                            <x-ui.alert variant="info">Menyetujui perpanjangan hanya memindahkan tanggal kembali dan tenggat LPJ. Nominal dana perpanjangan diinput Admin GA.</x-ui.alert>
+                            <x-ui.button type="submit" variant="success"><i class="bi bi-check-circle"></i> Setujui Perpanjangan</x-ui.button>
                             <x-ui.button variant="outline" class="text-destructive hover:bg-destructive-soft hover:text-destructive" data-dialog-open="rejectModal"><i class="bi bi-x-circle"></i> Tolak Surat Tugas</x-ui.button>
                         </form>
                     </x-ui.card-content>

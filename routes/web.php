@@ -533,6 +533,9 @@ Route::middleware(['auth', 'permission:spd.manage'])->prefix('surat')->name('sur
     Route::get('/{surat}/print', [SpdController::class, 'printSurat'])->name('print');
     Route::post('/{surat}/save-mendadak-budget', [SpdController::class, 'saveMendadakBudget'])->name('save-mendadak-budget');
     Route::post('/{surat}/fund-additions', [SpdController::class, 'storeFundAddition'])->name('fund-additions.store');
+    // Pemberian dana tambahan setelah surat disetujui — termasuk dana
+    // perpanjangan (ETD) yang diinput Admin GA, bukan otomatis dari driver.
+    Route::post('/{surat}/pencairan', [SpdController::class, 'storeSuratPencairan'])->name('pencairan.store');
     Route::get('/report/spending', [SpdController::class, 'reportSpending'])->name('report');
 });
 

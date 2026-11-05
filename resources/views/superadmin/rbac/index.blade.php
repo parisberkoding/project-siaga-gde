@@ -50,7 +50,7 @@
                                     @if ($r->is_system)<x-ui.badge variant="warning"><i class="bi bi-lock-fill"></i> Sistem</x-ui.badge>@endif
                                     @unless ($r->is_active)<x-ui.badge variant="danger">Nonaktif</x-ui.badge>@endunless
                                 </div>
-                                <code class="text-xs text-muted-foreground">{{ $r->code }}</code>
+                                @if ($r->name !== $r->code)<code class="text-xs text-muted-foreground">{{ $r->code }}</code>@endif
                                 <p class="line-clamp-2 text-sm text-muted-foreground">{{ $r->description ?: 'Belum ada deskripsi.' }}</p>
                             </div>
                         </div>

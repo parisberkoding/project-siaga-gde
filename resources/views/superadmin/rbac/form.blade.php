@@ -27,8 +27,8 @@
                         <x-ui.field label="Kode role" for="code" required error="code" hint="Huruf kecil, angka, garis bawah. Tidak bisa diubah setelah dibuat.">
                             <x-ui.input id="code" name="code" :value="old('code', $role->code ?? '')" placeholder="Contoh: bbm_officer" :readonly="$editing" required pattern="[a-z0-9_]+" />
                         </x-ui.field>
-                        <x-ui.field label="Nama role" for="name" required error="name">
-                            <x-ui.input id="name" name="name" :value="old('name', $role->name ?? '')" placeholder="Contoh: BBM Officer" required />
+                        <x-ui.field label="Nama role" for="name" required error="name" hint="Huruf kecil semua; spasi otomatis menjadi underscore.">
+                            <x-ui.input id="name" name="name" :value="old('name', $role->name ?? '')" placeholder="Contoh: bbm_officer" required />
                         </x-ui.field>
                     </div>
                     <x-ui.field label="Cakupan unit" for="unit_id" error="unit_id" hint="Global berlaku di semua unit. Pilih unit untuk role yang hanya bisa diberikan ke pengguna unit itu.">
@@ -118,7 +118,7 @@
             </x-ui.card>
             <x-ui.alert variant="info" title="Tips">
                 <ul class="list-inside list-disc text-sm">
-                    <li>Buat role sesuai fungsi, misalnya BBM Officer yang hanya mengajukan BBM.</li>
+                    <li>Buat role sesuai fungsi, misalnya bbm_officer yang hanya mengajukan BBM.</li>
                     <li>Role baca saja cukup permission berakhiran .view.</li>
                     <li>Role sistem tidak bisa diubah atau dihapus.</li>
                 </ul>

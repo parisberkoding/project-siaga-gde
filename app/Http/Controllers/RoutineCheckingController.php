@@ -13,6 +13,7 @@ use App\Models\VehicleCheckingSchedule;
 use App\Models\VehiclePart;
 use App\Models\VehicleAndToolsConsumers;
 use App\Models\User;
+use App\Services\UnitScope;
 
 class RoutineCheckingController extends Controller
 {
@@ -26,8 +27,12 @@ class RoutineCheckingController extends Controller
      */
     public function index(Request $request)
     {
+        // Batas unit: daftar hanya kendaraan unit user.
+        $unitId = UnitScope::for($request->user())->unitId();
+
         $query = VehicleCheckingDetail::with(['vehicleChecking.vehicle', 'dispatcher', 'currentDriver'])
             ->routine()
+            ->inUnit($unitId)
             ->orderBy('checked_at', 'desc');
 
         // Filter by kendaraan
@@ -53,6 +58,7 @@ class RoutineCheckingController extends Controller
         $checkings = $query->paginate(15)->withQueryString();
 
         $vehicles = VehicleAndToolsConsumers::where('is_active', true)
+            ->inUnit($unitId)
             ->orderBy('consumerial_code')
             ->get();
 
@@ -69,12 +75,16 @@ class RoutineCheckingController extends Controller
      */
     public function create(Request $request)
     {
+        $unitId = UnitScope::for($request->user())->unitId();
+
         $vehicles = VehicleAndToolsConsumers::where('is_active', true)
+            ->inUnit($unitId)
             ->orderBy('consumerial_code')
             ->get();
 
         // Ambil semua user dengan role requester (driver)
         $drivers = User::where('role', 'requester')
+            ->when($unitId !== null, fn ($q) => $q->where('unit_id', $unitId))
             ->orderBy('nama_lengkap')
             ->get();
 
@@ -135,11 +145,26 @@ class RoutineCheckingController extends Controller
             'items.*.status.required' => 'Status setiap item harus diisi',
         ]);
 
+        $scope = UnitScope::for($request->user());
+
+        $vehicle = VehicleAndToolsConsumers::findOrFail($request->vehicle_id);
+        if (! $vehicle->isVisibleTo($request->user())) {
+            return back()->withInput()->withErrors([
+                'vehicle_id' => 'Kendaraan yang dipilih berada di luar unit Anda.',
+            ]);
+        }
+
+        $driver = User::findOrFail($request->current_driver_id);
+        if (! $scope->allowsUnit($driver->unit_id)) {
+            return back()->withInput()->withErrors([
+                'current_driver_id' => 'Driver yang dipilih berada di luar unit Anda.',
+            ]);
+        }
+
         try {
             DB::beginTransaction();
 
             // 1. Cari atau buat header periode bulan ini
-            $vehicle = VehicleAndToolsConsumers::findOrFail($request->vehicle_id);
             $nopol = $vehicle->consumerial_code;
             $now = Carbon::now();
 
@@ -233,7 +258,8 @@ class RoutineCheckingController extends Controller
             'currentDriver',
             'itemResults.vehiclePart',
             'partsReplacement',
-        ])->where('checking_detail_code', $checkingDetailCode)
+        ])->inUnit(UnitScope::for(request()->user())->unitId())
+          ->where('checking_detail_code', $checkingDetailCode)
           ->where('type', 'routine')
           ->firstOrFail();
 
@@ -264,6 +290,14 @@ class RoutineCheckingController extends Controller
     public function getVehicleScheduleInfo(Request $request)
     {
         $request->validate(['vehicle_id' => 'required|exists:vehicle_and_tools_consumers,id']);
+
+        $vehicle = VehicleAndToolsConsumers::findOrFail($request->vehicle_id);
+        if (! $vehicle->isVisibleTo($request->user())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kendaraan berada di luar unit Anda.',
+            ], 403);
+        }
 
         $schedules = VehicleCheckingSchedule::where('vehicle_id', $request->vehicle_id)
             ->whereIn('check_frequency', ['daily', 'weekly', 'monthly'])

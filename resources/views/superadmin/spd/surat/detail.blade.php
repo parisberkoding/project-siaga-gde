@@ -32,6 +32,14 @@
                         @if ($isPending && empty($surat->pemberi_tugas_nama))
                             <div class="grid gap-4">
                                 <x-ui.alert variant="warning">Data pemberi tugas belum diisi. Silakan isi sebelum menyetujui.</x-ui.alert>
+                                <x-ui.field label="Ambil dari Master Pekerja (opsional)" for="pemberiEmployeeApproval" hint="Nama dan jabatan otomatis mengikuti Master Pekerja, sehingga sama dengan yang tercetak pada template surat.">
+                                    <x-ui.select id="pemberiEmployeeApproval" name="pemberi_employee_id">
+                                        <option value="">Input manual</option>
+                                        @foreach (($pejabatOptions ?? collect()) as $pejabat)
+                                            <option value="{{ $pejabat->id }}" data-nama="{{ $pejabat->employee_name }}" data-jabatan="{{ $pejabat->position ?? '' }}" @selected(old('pemberi_employee_id') == $pejabat->id)>{{ $pejabat->employee_name }} · {{ $pejabat->position ?? 'Tanpa jabatan' }}</option>
+                                        @endforeach
+                                    </x-ui.select>
+                                </x-ui.field>
                                 <div class="grid gap-4 sm:grid-cols-2">
                                     <x-ui.field label="Nama" for="pemberi_tugas_nama" required>
                                         <x-ui.input id="pemberi_tugas_nama" name="pemberi_tugas_nama" :value="old('pemberi_tugas_nama')" required placeholder="Nama lengkap pemberi tugas" />
@@ -141,7 +149,7 @@
                         <x-ui.card-content>
                             <x-ui.table>
                                 <thead>
-                                    <tr><th>No</th><th>Tanggal</th><th class="text-right">Nominal</th><th>Bentuk</th><th>No. Referensi / Rek. Tujuan</th></tr>
+                                    <tr><th>No</th><th>Tanggal</th><th class="text-right">Nominal</th><th>Bentuk</th><th>Sumber</th><th>No. Referensi / Rek. Tujuan</th></tr>
                                 </thead>
                                 <tbody>
                                     @foreach ($surat->pencairans as $index => $budget)
@@ -150,6 +158,7 @@
                                             <td class="whitespace-nowrap">{{ $budget->tanggal?->translatedFormat('d F Y') ?? '-' }}</td>
                                             <td class="whitespace-nowrap text-right tabular-nums">{{ $rp($budget->nominal) }}</td>
                                             <td><x-ui.badge :variant="$budget->isTransfer() ? 'default' : 'secondary'">{{ $budget->bentuk_pencairan_label }}</x-ui.badge></td>
+                                            <td>@if ($budget->isPerpanjangan())<x-ui.badge variant="warning"><i class="bi bi-arrow-repeat"></i> Perpanjangan</x-ui.badge>@else<x-ui.badge variant="outline">{{ $budget->sumber_label }}</x-ui.badge>@endif</td>
                                             <td class="text-xs">
                                                 @if ($budget->isTransfer())
                                                     {{ $budget->bank_reference ?: '-' }}
@@ -168,7 +177,7 @@
                                     <tr class="border-t bg-muted/50 font-semibold">
                                         <td colspan="2" class="text-right">Total Dana Diberikan</td>
                                         <td class="whitespace-nowrap text-right tabular-nums">{{ $rp($surat->pencairans->sum('nominal')) }}</td>
-                                        <td colspan="2"></td>
+                                        <td colspan="3"></td>
                                     </tr>
                                 </tfoot>
                             </x-ui.table>
@@ -179,6 +188,19 @@
                         Belum ada rincian per pencairan. Lengkapi lewat halaman LPJ (Lampiran Pemberian Dana).
                     </x-ui.alert>
                 @endif
+
+                {{-- Tambah pemberian dana (termasuk dana perpanjangan ETD). Driver tidak mengisi nominal;
+                     Admin GA mencatat kapan dan berapa dana yang benar-benar diberikan. --}}
+                <x-ui.card>
+                    <x-ui.card-header title="Tambah Pemberian Dana" icon="bi bi-plus-circle" :description="($surat->is_extension ? 'Surat perpanjangan: baris otomatis ditandai Perpanjangan. ' : '') . 'Catat tanggal dan nominal dana yang benar-benar diberikan.'" />
+                    <x-ui.card-content>
+                        <form action="{{ route('surat.superadmin.pencairan.store', $surat) }}" method="POST" data-loading class="grid gap-4">
+                            @csrf
+                            <x-spd.pencairan-input :tanggal-default="now()->toDateString()" />
+                            <div><x-ui.button type="submit" variant="success" size="sm"><i class="bi bi-save"></i> Simpan Pemberian Dana</x-ui.button></div>
+                        </form>
+                    </x-ui.card-content>
+                </x-ui.card>
             @endif
 
             @if ($surat->catatan)
@@ -332,7 +354,7 @@
         </x-ui.dialog>
     @endif
 
-    @if ($isPending)
+    @if ($isPending || $isApproved)
         @push('scripts')
             @vite('resources/js/pages/spd/surat-detail.js')
         @endpush

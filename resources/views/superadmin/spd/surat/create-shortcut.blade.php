@@ -38,7 +38,7 @@
             <x-ui.card class="transition-shadow focus-within:border-primary/40 focus-within:shadow-md">
                 <x-ui.card-header title="Pengemudi" step="2" />
                 <x-ui.card-content class="grid gap-4 sm:grid-cols-2">
-                    <x-ui.field label="Ambil dari Master Pekerja (opsional)" for="pengemudiEmployee" hint="Pilih dari Master Pekerja atau biarkan untuk input manual.">
+                    <x-ui.field label="Ambil dari Master Pekerja (opsional)" for="pengemudiEmployee" hint="Pengemudi lain (tanpa akun) tetap bisa diisi manual. Pengemudi yang dipilih akan melihat surat ini di menu Perjalanan Dinas dan dapat membuat LPJ.">
                         <x-ui.select name="pengemudi_employee_id" id="pengemudiEmployee">
                             <option value="">Input manual</option>
                             @foreach ($pengemudiOptions as $peng)

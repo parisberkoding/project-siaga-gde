@@ -899,3 +899,89 @@ Untuk input ISO yang **sudah benar** `2026-06-25`, regex ini cocok pada ekor str
 - Smoke test `CateringExport` menghasilkan file XLSX valid (9.881 bytes, signature ZIP).
 
 **Verifikasi:** `php artisan test` → **397 passed (1662 assertions)**.
+
+---
+
+## 41. Penegasan Scope Unit pada Seluruh Halaman Data (superadmin unit / admin pusat / superadmin pusat)
+
+**Kebutuhan:** data yang ter-query harus mengikuti unit user yang login:
+- superadmin unit (unit non-Pusat) → hanya data unitnya;
+- admin Pusat (role non-superadmin di unit `is_central`) → hanya data unit Pusat;
+- superadmin Pusat → seluruh unit.
+
+Aturan inti sudah ada di `User::hasGlobalUnitScope()` + `App\Services\UnitScope`; pekerjaan ini menutup halaman/laporan yang masih query tanpa scope.
+
+**Model — scope baru:**
+- `VehicleCheckingDetail::scopeInUnit()` dan `VehicleChecking::scopeInUnit()` (via `vehicleChecking.vehicle.unit_id` / `vehicle.unit_id`).
+- `VehiclePartsReplacementTransaction::scopeInUnit()` (via `replacement.vehicle.unit_id`).
+- `TripValidation::scopeInUnit()` (via `transactionProofPrevious.permohonan.unit_id`).
+
+**Controller yang di-scope (daftar/statistik/detail/export):**
+- `VehicleCheckingSuperadminController` — vehicle health matrix & show, laporan keuangan service, export Excel/PDF, laporan transaksi sparepart.
+- `VehicleSparepartRequestRepairController` — daftar/approve/reject/schedule/complete VPR, jadwal service, monitoring transaksi.
+- `DispatcherAdministrationController` — dashboard jadwal, generate periode, assign dispatcher, riwayat pengecekan, VPR, 7 export (checklist/routine/body/Excel).
+- `Daily/Weekly/Monthly/Body/RoutineCheckingController` — daftar, form create, simpan, detail/show (termasuk penolakan kendaraan & driver unit lain).
+- `VehicleHealthHistoryController` — hasil scan & unduh QR (single/ZIP).
+- `SuperadminController` — vehicle activation & bulk, approval kendaraan, CRUD kendaraan/detail (baca, edit, update, hapus, restore, approve/reject) + validasi unit tujuan, analisis trip (`index`, validate, bulk validate, recalculate), API statistik dashboard/analytics, `getDashboardStats()` kini mendelegasikan ke `getDashboardStatsData()` (sekaligus memperbaiki `$period/$startDate/$endDate` yang belum terisi).
+- `SpdController::getDashboardStats()` — statistik admin dibatasi unit.
+- `ReportingController` — `vehicleBudget` & `analyzeStruk` hanya untuk kendaraan/permohonan milik user.
+- `Api\DataMartContextController` — `ensureUnit($unitId)` sebelum dump konteks DM per unit.
+
+**Bug lain yang ikut diperbaiki:**
+- `orderByRaw("FIELD(...)")` (MySQL-only) diganti `CASE WHEN` agar jalan di SQLite/test.
+- `FinancialReportExport` yang dipanggil controller tetapi tidak ada → dibuat (`app/Exports/FinancialReportExport.php`) + view PDF `superadmin/financial-report/export-pdf.blade.php`.
+- Filter `consumerial_type = 'Kendaraan'` disamakan menjadi `UPPER(...) = 'KENDARAAN'` agar tidak kosong di SQLite.
+
+**Tes baru:** `tests/Feature/UnitReportScopeTest.php` (7 kasus) — matriks superadmin unit / superadmin Pusat / admin Pusat pada laporan kendaraan, keuangan, transaksi, VPR, pengecekan harian; 404 untuk detail/edit/hapus lintas unit; export Excel+PDF; DataMart lintas unit 403.
+
+**Verifikasi:** `php artisan test` → **556 passed (2428 assertions)**.
+
+---
+
+## 42. Format Label Role (lowercase snake_case) & Pembersihan Teks Form Shortcut SPD
+
+**Kebutuhan:** hapus kalimat "Hanya akun ber-role Driver / Requester yang tampil." pada section **Pengemudi** di form shortcut SPD, dan seragamkan penulisan label role menjadi huruf kecil semua (spasi/simbol → underscore).
+
+**Perubahan:**
+- `resources/views/superadmin/spd/surat/create-shortcut.blade.php` — kalimat "Hanya akun ber-role ..." dihapus; keterangan pengemudi manual tetap.
+- `database/seeders/RbacSeeder.php` — nama role disamakan dengan kode: `superadmin`, `general_affairs`, `dispatcher`, `requester`, `manager`, `view_only`, `vendor`, `developers`, `pengguna_spd`, `pegawai`.
+- Migrasi `2026_11_03_000002_normalize_role_names` — normalisasi nama role yang sudah ada di DB (role sistem memakai kode; role custom di-slug: lowercase, non-alfanumerik → underscore).
+- `App\Models\Role::normalizeLabel()` + `RbacController` store/update — role baru otomatis dinormalkan (contoh "BBM Officer" → `bbm_officer`).
+- Tampilan role langsung (`Auth::user()->role`, `$approver->role`, fallback daftar user) tidak lagi memakai `ucfirst()` sehingga tetap lowercase (`profile`, `navbar`, `403`, `print-report`, `dashboard-bisnis`, dashboard modules).
+- `superadmin/rbac/index` — baris `code:` hanya ditampilkan bila nama role berbeda dari kode; form RBAC memakai placeholder `bbm_officer` + hint format.
+
+**Tes baru:** `tests/Feature/RoleLabelFormatTest.php` (4 kasus) — semua nama role cocok regex snake_case; halaman tambah user menampilkan `requester` (bukan "Driver / Requester"); role baru "BBM Officer" tersimpan `bbm_officer`; form shortcut SPD tidak lagi memuat kalimat "Hanya akun ber-role".
+
+**Verifikasi:** migrasi dijalankan ke DB dev (10 role ternormalisasi). `php artisan test` → **559 passed, 1 failed (2457 assertions)**; satu-satunya kegagalan adalah `SpdDailyReportTest` yang memanggil API Gemini eksternal dan saat pengecekan endpoint mengembalikan **HTTP 503 (model high demand)** — bukan regresi dari perubahan ini.
+
+---
+
+## 43. Audit Query: Larangan `Model::all()` & Scope Unit Wajib
+
+**Kebutuhan:** semua query harus optimal — tidak boleh ada `all()` yang mengambil seluruh tabel, dan query data minimal dibatasi per unit user (Patuha/Dieng/Pusat).
+
+**Penghapusan `Model::all()`:**
+- `GasolineType::all()` (2 tempat) → `orderBy('gasoline_name')->get()`.
+- `UnitFeatureAccess::all()` → `query()->get()`.
+- `VehicleAndToolsConsumers::all()` & `Unit::all()` di seeder → `query()->get()`.
+- **0** pemakaian `Model::all()` di `app/`, `database/seeders/`, dan `routes/`. Test statis `tests/Feature/QueryHygieneTest.php` menjaga agar tidak muncul lagi.
+- Catatan: `->all()` yang tersisa (±87) semuanya konversi Collection (`pluck(...)->all()`, `values()->all()`), bukan query tanpa batas.
+
+**Scope unit yang ditutup pada audit ini:**
+- `SpdController` — dropdown Pengemudi & Pemberi Tugas (`pengemudiOptions`, `pejabatOptions`), autocomplete penumpang (`passengerLookup`), validasi employee saat store shortcut & approve surat memakai `EmployeeDefault::forUnit()`.
+- `EmployeeDefault` — scope baru `forUnit(?int $unitId)` (kolom `unit_id` atau unit site default).
+- `MasterGasolineController::index` — daftar kendaraan memakai `visibleTo()`.
+- `App\Services\GeminiAssistantService` — fallback function calling (`dashboardStats`, `driverStatistics`, `vehicleKmPerformance`) memakai `DataMartScope` user.
+- `App\Exports\CateringExport` — distribusi, forecast, tamu, dan absensi difilter per `site_id`/`siteIds` (sebelumnya menarik semua site).
+- `VehicleCheckingSuperadminController::financialReportIndex` — `prevCost` ikut `inUnit()`.
+- `SuperadminController::generateTripAnalysis` & `getVehicleFuelConsumptionData` — ikut unit (kode lama/tidak dirutekan).
+- `Superadmin/FinancialReportController` (dead code) — urutan query diperbaiki agar konsisten bila dihidupkan.
+
+**Optimasi yang ditemukan saat audit:**
+- **Bug ringkasan laporan keuangan service:** `paginate(20)` dijalankan sebelum `(clone $trxQuery)->get()`, sehingga total biaya hanya menghitung 20 baris pertama. Koleksi penuh kini diambil lebih dulu (ditutup test 25 transaksi).
+- **N+1 di Vehicle Health:** hitung VPR aktif per kendaraan diganti satu query `GROUP BY vehicle_id`.
+- `CateringExport` tidak lagi menarik seluruh distribusi/forecast/tamu lintas site per tanggal.
+
+**Tes baru:** `QueryHygieneTest` (1) + tambahan `UnitReportScopeTest` (dropdown SPD, master harga BBM, ringkasan >20 transaksi) → total 10 kasus di file tersebut.
+
+**Verifikasi:** `php artisan test` → **564 passed (2469 assertions)**.

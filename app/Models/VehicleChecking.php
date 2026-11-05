@@ -89,6 +89,20 @@ class VehicleChecking extends Model
         return $query->where('vehicle_id', $vehicleId);
     }
 
+    /**
+     * Scope unit bisnis: periode pengecekan milik kendaraan pada unit tertentu.
+     * Null = tanpa scope (global / Pusat).
+     */
+    public function scopeInUnit($query, ?int $unitId)
+    {
+        if ($unitId === null) {
+            return $query;
+        }
+
+        return $query->whereHas('vehicle', fn ($q) => $q
+            ->where('vehicle_and_tools_consumers.unit_id', $unitId));
+    }
+
     // ========================================
     // HELPERS
     // ========================================

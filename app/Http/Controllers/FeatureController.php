@@ -110,7 +110,7 @@ class FeatureController extends Controller
             ->get();
 
         // Map: unit_id => [feature_id => baris akses]
-        $access = UnitFeatureAccess::all()->groupBy('unit_id');
+        $access = UnitFeatureAccess::query()->get()->groupBy('unit_id');
 
         return view('superadmin.features.on_unit', compact('title', 'units', 'features', 'access'));
     }

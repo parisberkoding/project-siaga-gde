@@ -35,7 +35,7 @@
                             $info = ['nomor' => $orig->nomor_surat, 'driver' => 'Driver: ' . $orig->pengemudi_nama, 'durasi' => 'Tambahan: +' . $ext->durasi_tambahan_hari . ' hari'];
                         @endphp
                         <x-ui.queue-card :name="$orig->pengemudi_nama" :subtitle="($ext->nomor_surat_extension ?? $ext->extensionSurat?->nomor_surat ?? '-') . ' · dari ' . $orig->nomor_surat" :since="$ext->created_at" :note="$ext->alasan_perpanjangan"
-                            figure-label="Tambahan" :figure="'+' . $ext->durasi_tambahan_hari . ' hari'" :figure-hint="$rp($ext->budget_tambahan)">
+                            figure-label="Tambahan" :figure="'+' . $ext->durasi_tambahan_hari . ' hari'" :figure-hint="(float) $ext->budget_tambahan > 0 ? 'Dana: ' . $rp($ext->budget_tambahan) : 'Dana: diinput Admin GA'">
                             <p class="flex min-w-0 items-center gap-2">
                                 <i class="bi bi-geo-alt text-muted-foreground"></i>
                                 <span class="truncate font-semibold" title="{{ $orig->tempat_tujuan }}">{{ $orig->tempat_tujuan }}</span>
@@ -193,6 +193,24 @@
                     <x-ui.field label="Catatan (opsional)">
                         <x-ui.textarea name="catatan" rows="2" placeholder="Catatan tambahan" />
                     </x-ui.field>
+                @endif
+                @if ($id === 'modalApprove')
+                    {{-- Dana perpanjangan: nominal tidak diminta dari driver. Baris ini tampil sebagai
+                         "Perpanjangan" pada Pemberian Dana surat perpanjangan; bisa ditambah lagi nanti. --}}
+                    <fieldset class="grid gap-3 rounded-lg border bg-muted/40 p-3">
+                        <legend class="px-1 text-sm font-semibold"><i class="bi bi-cash-stack text-success"></i> Pemberian Dana Perpanjangan <span class="font-normal text-muted-foreground">(opsional)</span></legend>
+                        <p class="text-xs text-muted-foreground">Isi bila dana tambahan diberikan bersamaan dengan persetujuan. Dapat ditambahkan lagi dari detail surat perpanjangan.</p>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <x-ui.field label="Tanggal diberikan"><x-ui.input type="date" name="dana_tanggal" :value="now()->toDateString()" /></x-ui.field>
+                            <x-ui.field label="Nominal (Rp)"><x-ui.input type="number" name="dana_nominal" min="0" step="1000" placeholder="0" /></x-ui.field>
+                            <x-ui.field label="Bentuk">
+                                <x-ui.select name="dana_bentuk"><option value="Tunai">Tunai</option><option value="Transfer">Transfer</option></x-ui.select>
+                            </x-ui.field>
+                            <x-ui.field label="No. referensi bank" hint="Untuk transfer"><x-ui.input name="dana_bank_reference" maxlength="255" /></x-ui.field>
+                            <x-ui.field label="Rekening tujuan" hint="Untuk transfer" class="sm:col-span-2"><x-ui.input name="dana_rek_tujuan" maxlength="255" /></x-ui.field>
+                            <x-ui.field label="Catatan dana" class="sm:col-span-2"><x-ui.input name="dana_catatan" maxlength="255" placeholder="Contoh: tambahan biaya akomodasi perpanjangan" /></x-ui.field>
+                        </div>
+                    </fieldset>
                 @endif
                 <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <x-ui.button variant="outline" data-dialog-close>Batal</x-ui.button>

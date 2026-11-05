@@ -88,6 +88,20 @@ class VehiclePartsReplacementTransaction extends Model
         return $query->where('driver_id', $driverId);
     }
 
+    /**
+     * Scope unit bisnis: transaksi service dari VPR kendaraan pada unit tertentu.
+     * Null = tanpa scope (global / Pusat).
+     */
+    public function scopeInUnit($query, ?int $unitId)
+    {
+        if ($unitId === null) {
+            return $query;
+        }
+
+        return $query->whereHas('replacement.vehicle', fn ($q) => $q
+            ->where('vehicle_and_tools_consumers.unit_id', $unitId));
+    }
+
     // ========================================
     // HELPERS
     // ========================================
