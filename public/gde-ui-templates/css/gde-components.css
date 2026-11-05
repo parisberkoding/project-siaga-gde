@@ -650,7 +650,51 @@
   display: flex; flex-direction: column; justify-content: center; align-items: center;
   padding: var(--gde-sp-10) var(--gde-sp-6);
 }
-.gde-auth__card { width: 100%; max-width: 400px; animation: gde-rise .5s ease both; }
+.gde-auth__card { position: relative; overflow: hidden; width: 100%; max-width: 400px; animation: gde-rise .5s ease both; }
+/* Garis aksen merek (biru ke hijau) di tepi atas kartu */
+.gde-auth__card::before {
+  content: ''; position: absolute; inset: 0 0 auto; height: 4px;
+  background: linear-gradient(90deg, var(--gde-blue) 0%, var(--gde-blue-l) 55%, var(--gde-green) 100%);
+}
+/* Kepala kartu: ikon di samping judul (hemat tinggi dibanding ditumpuk) */
+.gde-auth__head { display: flex; align-items: center; gap: var(--gde-sp-4); margin-bottom: var(--gde-sp-6); }
+.gde-auth__head .gde-auth__sub { margin: 0; }
+.gde-auth__badge {
+  display: inline-flex; flex: none; align-items: center; justify-content: center; width: 48px; height: 48px;
+  font-size: 1.35rem; color: #fff; border-radius: var(--gde-r-lg);
+  background: linear-gradient(135deg, var(--gde-blue) 0%, var(--gde-blue-d2) 100%);
+  box-shadow: 0 10px 22px -10px rgba(11, 80, 161, .7), inset 0 1px 0 rgba(255, 255, 255, .25);
+}
+/* Layar lebar: latar panel bertekstur titik + pendaran warna merek, formulir di dalam kartu */
+@media (min-width: 992px) {
+  .gde-auth__panel {
+    position: relative; isolation: isolate;
+    background:
+      radial-gradient(ellipse 60% 45% at 100% 0%, rgba(11, 80, 161, .10), transparent 70%),
+      radial-gradient(ellipse 55% 40% at 0% 100%, rgba(141, 198, 63, .14), transparent 70%),
+      var(--gde-surface-2);
+  }
+  .gde-auth__panel::before {
+    content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background-image: radial-gradient(rgba(11, 80, 161, .16) 1px, transparent 1px); background-size: 22px 22px;
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, #000 20%, transparent 80%);
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, #000 20%, transparent 80%);
+  }
+  /* Tinggi halaman = tinggi layar: bila layar pendek, hanya panel kanan yang bergulir (panel merek tetap). */
+  .gde-auth { height: 100vh; height: 100dvh; }
+  .gde-auth__panel { position: relative; justify-content: flex-start; overflow-y: auto; padding: var(--gde-sp-6); }
+  .gde-auth .gde-auth__form { gap: var(--gde-sp-4); }
+  .gde-auth .gde-auth__help { margin-top: var(--gde-sp-5); padding: var(--gde-sp-3) var(--gde-sp-4); }
+  /* Tautan kembali di atas kartu (rata kanan, dalam alur) supaya tidak menimpa kartu di layar pendek. */
+  .gde-auth .gde-auth__back { order: -1; align-self: flex-end; margin: 0; }
+  .gde-auth .gde-field .gde-input { padding-top: .7rem; padding-bottom: .7rem; }
+  .gde-auth__card {
+    flex: none; margin-block: auto; max-width: 440px; padding: var(--gde-sp-8);
+    background: var(--gde-surface); border: 1px solid var(--gde-line); border-radius: var(--gde-r-xl);
+    box-shadow: 0 24px 48px -24px rgba(4, 28, 58, .28), var(--gde-sh-1);
+  }
+  .gde-auth .gde-auth__help { background: var(--gde-surface-2); }
+}
 .gde-auth__title { margin: 0 0 var(--gde-sp-1); font-size: var(--gde-fs-3xl); font-weight: var(--gde-fw-bold); letter-spacing: var(--gde-ls-tight); color: var(--gde-ink); }
 .gde-auth__sub { margin: 0 0 var(--gde-sp-8); font-size: var(--gde-fs-base); color: var(--gde-muted); }
 .gde-auth__form { display: flex; flex-direction: column; gap: var(--gde-sp-5); }
@@ -682,11 +726,21 @@
 .gde-auth__row { display: flex; align-items: center; justify-content: space-between; gap: var(--gde-sp-3); flex-wrap: wrap; }
 .gde-auth__row .gde-check { font-size: var(--gde-fs-sm); color: var(--gde-ink-2); }
 .gde-auth__submit { padding: .9rem 1.25rem; font-size: var(--gde-fs-md); border-radius: var(--gde-r-md); }
+.gde-auth__submit.gde-btn--primary {
+  background: linear-gradient(135deg, var(--gde-blue) 0%, var(--gde-blue-d) 100%);
+  box-shadow: 0 10px 22px -10px rgba(11, 80, 161, .75);
+  transition: transform var(--gde-t-fast), box-shadow var(--gde-t-fast), filter var(--gde-t-fast);
+}
+.gde-auth__submit.gde-btn--primary:hover { transform: translateY(-1px); filter: brightness(1.06); box-shadow: 0 14px 26px -12px rgba(11, 80, 161, .85); }
+.gde-auth__submit.gde-btn--primary:active { transform: none; }
+.gde-auth__submit .bi-arrow-right { transition: transform var(--gde-t-fast); }
+.gde-auth__submit:hover .bi-arrow-right { transform: translateX(3px); }
 .gde-auth__submit .gde-spinner { display: none; }
 .gde-auth__submit.is-loading { pointer-events: none; opacity: .85; }
 .gde-auth__submit.is-loading .gde-spinner { display: inline-block; }
 .gde-auth__submit.is-loading .bi { display: none; }
 .gde-auth__divider { display: flex; align-items: center; gap: var(--gde-sp-3); font-size: var(--gde-fs-xs); color: var(--gde-muted); text-transform: uppercase; letter-spacing: var(--gde-ls-wide); }
+.gde-auth__sso-hint { display: flex; align-items: center; gap: var(--gde-sp-1); margin: calc(var(--gde-sp-3) * -1) 0 0; font-size: var(--gde-fs-xs); color: var(--gde-muted); }
 .gde-auth__divider::before, .gde-auth__divider::after { content: ''; flex: 1; height: 1px; background: var(--gde-line); }
 .gde-auth__help {
   display: flex; gap: var(--gde-sp-3); align-items: flex-start; margin-top: var(--gde-sp-8);
@@ -729,7 +783,7 @@
   .gde-geo__labels { display: none; }
   .gde-auth__panel { justify-content: flex-start; padding: 0 var(--gde-sp-4) var(--gde-sp-10); }
   .gde-auth__card { margin-top: calc(var(--gde-sp-8) * -1); padding: var(--gde-sp-6) var(--gde-sp-5); background: var(--gde-surface); border-radius: var(--gde-r-xl); box-shadow: var(--gde-sh-3); position: relative; }
-  .gde-auth__sub { margin-bottom: var(--gde-sp-6); }
+  .gde-auth__head { margin-bottom: var(--gde-sp-5); }
   .gde-auth__help { margin-top: var(--gde-sp-6); background: var(--gde-surface-2); }
 }
 @media (max-width: 575.98px) {
@@ -737,6 +791,7 @@
   .gde-auth__eyebrow { margin-bottom: var(--gde-sp-3); }
 }
 @media (prefers-reduced-motion: reduce) {
+  .gde-auth__submit.gde-btn--primary:hover, .gde-auth__submit:hover .bi-arrow-right { transform: none; }
   .gde-auth__card, .gde-geo, .gde-geo *,
   .gde-auth__brand-top, .gde-auth__intro > *, .gde-auth__modules li, .gde-auth__brand-foot,
   .gde-auth__headline em { animation: none; }

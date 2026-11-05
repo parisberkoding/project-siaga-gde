@@ -1,5 +1,5 @@
-<x-layouts.app title="Approval Permohonan BBM" :breadcrumbs="['Permohonan BBM' => route('admin-dashboard'), 'Approval' => null]">
-    <x-ui.page-header kicker="Permohonan BBM" title="Approval Permohonan BBM" description="Setujui atau tolak permohonan BBM yang menunggu.">
+<x-layouts.app title="Persetujuan Permohonan BBM" :breadcrumbs="['BBM Operasional' => route('admin-dashboard'), 'Persetujuan' => null]">
+    <x-ui.page-header kicker="Persetujuan" title="Persetujuan Permohonan BBM" description="Setujui atau tolak permohonan BBM yang menunggu.">
         <x-slot:actions>
             <x-ui.button variant="outline" :href="request()->fullUrl()"><i class="bi bi-arrow-clockwise"></i> Muat ulang</x-ui.button>
         </x-slot:actions>

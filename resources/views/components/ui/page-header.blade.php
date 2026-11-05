@@ -17,6 +17,7 @@
         </div>
     </div>
     @isset($actions)
-        <div class="flex flex-wrap items-center gap-2">{{ $actions }}</div>
+        {{-- HP: baris penuh, jadi tombol ber-kelas flex-1 bisa berbagi lebar sama rata. --}}
+        <div class="flex w-full flex-wrap items-center gap-2 sm:w-auto">{{ $actions }}</div>
     @endisset
 </div>

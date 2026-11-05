@@ -453,6 +453,9 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('permission:users.create')->group(function () {
         Route::get('users/create', [SuperadminController::class, 'createUser'])->name('users.create');
         Route::post('users/store', [SuperadminController::class, 'storeUser'])->name('users.store');
+        // Sinkron akun dari GATE HCIS (pratinjau: dry_run=1). Nonaktif selama GATE_SYNC_ENABLED=false.
+        Route::post('users/sync-gate', [\App\Http\Controllers\GateSyncController::class, 'sync'])
+            ->middleware('throttle:6,1')->name('users.sync-gate');
     });
     Route::middleware('permission:users.update')->group(function () {
         Route::post('users/{id}/update', [SuperadminController::class, 'updateUser'])->name('users.update');

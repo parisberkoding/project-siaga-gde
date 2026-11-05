@@ -39,6 +39,8 @@
     $canUpdate = $authUser->hasPermission('users.update');
     $canDelete = $authUser->hasPermission('users.delete');
     $canCreate = $authUser->hasPermission('users.create');
+    $gateEnabled = (bool) config('gate.enabled');
+    $gateResult = session('gate_sync');
     $soon = '<span class="ml-1 rounded-full bg-muted px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Segera</span>';
 @endphp
 
@@ -47,6 +49,14 @@
         description="Kelola akun, peran, unit, dan akses login setiap pengguna SIAGA.">
         <x-slot:actions>
             <x-ui.button variant="outline" disabled title="Ekspor daftar pengguna belum tersedia"><i class="bi bi-file-earmark-spreadsheet"></i> Ekspor {!! $soon !!}</x-ui.button>
+            {{-- Sinkron GATE HCIS: hanya aktif bila GATE_SYNC_ENABLED=true (lokal: nonaktif, tanpa request ke GATE). --}}
+            @if ($canCreate)
+                @if ($gateEnabled)
+                    <x-ui.button variant="outline" data-dialog-open="gateSyncDialog"><i class="bi bi-arrow-repeat"></i> Sync dari GATE</x-ui.button>
+                @else
+                    <x-ui.button variant="outline" disabled title="Sinkron GATE dinonaktifkan di lingkungan ini (GATE_SYNC_ENABLED=false)"><i class="bi bi-arrow-repeat"></i> Sync dari GATE <span class="ml-1 rounded-full bg-muted px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Nonaktif</span></x-ui.button>
+                @endif
+            @endif
             @if ($canCreate)
                 <x-ui.button :href="route('users.create')"><i class="bi bi-person-plus"></i> Tambah Pengguna</x-ui.button>
             @endif
@@ -59,6 +69,46 @@
         <x-ui.stat-card label="Akun Nonaktif" :value="$stats['nonaktif']" icon="bi bi-person-slash" tone="warning" hint="Login diblokir" />
         <x-ui.stat-card label="Terhapus" :value="$deletedUsers->total()" icon="bi bi-trash3" tone="danger" hint="Bisa dipulihkan" :href="$canDelete ? route('users', ['tab' => 'deleted']) : null" />
     </div>
+
+    {{-- Hasil sinkron GATE (pratinjau = belum disimpan, bisa langsung dijalankan dari sini). --}}
+    @if ($gateResult)
+        <x-ui.card @class(['gap-4', 'border-warning/40' => $gateResult['dry_run']])>
+            <x-ui.card-header :title="$gateResult['dry_run'] ? 'Pratinjau sync GATE (belum disimpan)' : 'Sync GATE selesai'"
+                :icon="$gateResult['dry_run'] ? 'bi bi-eye' : 'bi bi-check2-circle'"
+                :description="$gateResult['total'] . ' pegawai dari GATE · ' . number_format($gateResult['duration_ms'] / 1000, 1, ',', '.') . ' detik'">
+                @if ($gateResult['dry_run'] && $canCreate)
+                    <x-slot:action>
+                        <form method="POST" action="{{ route('users.sync-gate') }}" data-loading data-confirm="Simpan hasil sinkron GATE ke data Pengguna?" data-confirm-title="Jalankan sync GATE">
+                            @csrf
+                            <x-ui.button type="submit" size="sm" data-loading-text="Menyinkronkan…"><i class="bi bi-arrow-repeat"></i> Jalankan sync</x-ui.button>
+                        </form>
+                    </x-slot:action>
+                @endif
+            </x-ui.card-header>
+            <x-ui.card-content class="grid gap-4">
+                <dl class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                    @foreach ([[$gateResult['dry_run'] ? 'Akan dibuat' : 'Akun dibuat', $gateResult['created']], ['Diperbarui', $gateResult['updated']], ['Dinonaktifkan', $gateResult['deactivated']], ['Tidak berubah', $gateResult['unchanged']], ['Dilewati', count($gateResult['skipped'])]] as [$label, $count])
+                        <div class="rounded-lg border bg-muted/40 p-3">
+                            <dt class="text-xs text-muted-foreground">{{ $label }}</dt>
+                            <dd class="text-xl font-semibold tabular-nums">{{ $count }}</dd>
+                        </div>
+                    @endforeach
+                </dl>
+                @foreach (['skipped' => 'Dilewati', 'warnings' => 'Catatan'] as $key => $heading)
+                    @if (count($gateResult[$key]))
+                        <details class="rounded-lg border text-sm">
+                            <summary class="cursor-pointer px-3 py-2 font-medium">{{ $heading }} ({{ count($gateResult[$key]) }})</summary>
+                            <ul class="grid gap-1 border-t px-3 py-2 text-muted-foreground">
+                                @foreach ($gateResult[$key] as [$who, $why])
+                                    <li><span class="font-medium text-foreground">{{ $who }}</span>: {{ $why }}</li>
+                                @endforeach
+                            </ul>
+                        </details>
+                    @endif
+                @endforeach
+            </x-ui.card-content>
+        </x-ui.card>
+    @endif
 
     <x-ui.tabs-list>
         <x-ui.tabs-link :href="route('users', ['tab' => 'list'])" :active="$tab !== 'deleted'"><i class="bi bi-people"></i> Daftar Pengguna</x-ui.tabs-link>
@@ -237,6 +287,35 @@
     @endif
 
     {{-- Detail & hak akses efektif (gabungan permission dari semua role pengguna). --}}
+    @if ($canCreate && $gateEnabled)
+        @php $lastGateSync = \Illuminate\Support\Facades\Cache::get(\App\Services\Gate\GateEmployeeSync::CACHE_KEY); @endphp
+        <x-ui.dialog id="gateSyncDialog" title="Sync pengguna dari GATE" description="Data pegawai diambil dari GATE HCIS dan dicocokkan berdasarkan username SSO.">
+            <ul class="grid gap-2.5 text-sm">
+                <li class="flex gap-2"><i class="bi bi-person-badge text-primary"></i><span><b>Yang disimpan hanya</b> nama lengkap, jabatan, unit bisnis (dari lokasi kerja), dan username SSO.</span></li>
+                <li class="flex gap-2"><i class="bi bi-person-plus text-primary"></i><span>Pegawai yang belum punya akun dibuat dengan role <b>Pegawai</b>; role akun lama tidak diubah.</span></li>
+                <li class="flex gap-2"><i class="bi bi-person-dash text-primary"></i><span>Pegawai nonaktif di GATE akan <b>dinonaktifkan</b> (tidak dihapus).</span></li>
+            </ul>
+            <p class="text-xs text-muted-foreground">
+                @if ($lastGateSync)
+                    Sync terakhir: {{ \Illuminate\Support\Carbon::parse($lastGateSync['finished_at'])->translatedFormat('d M Y H:i') }}, {{ $lastGateSync['created'] }} dibuat, {{ $lastGateSync['updated'] }} diperbarui.
+                @else
+                    Belum pernah disinkronkan. Mulai dengan Pratinjau untuk melihat hasilnya tanpa menyimpan.
+                @endif
+            </p>
+            <x-slot:footer>
+                <form method="POST" action="{{ route('users.sync-gate') }}" data-loading>
+                    @csrf
+                    <input type="hidden" name="dry_run" value="1">
+                    <x-ui.button type="submit" variant="outline" data-loading-text="Memuat…"><i class="bi bi-eye"></i> Pratinjau</x-ui.button>
+                </form>
+                <form method="POST" action="{{ route('users.sync-gate') }}" data-loading data-confirm="Simpan hasil sinkron GATE ke data Pengguna?" data-confirm-title="Jalankan sync GATE">
+                    @csrf
+                    <x-ui.button type="submit" data-loading-text="Menyinkronkan…"><i class="bi bi-arrow-repeat"></i> Jalankan sync</x-ui.button>
+                </form>
+            </x-slot:footer>
+        </x-ui.dialog>
+    @endif
+
     <x-ui.dialog id="userDetailDialog" title="Detail pengguna" size="lg">
         <div class="grid gap-5" data-role-perms="{{ $rolePerms->toJson() }}">
             <div class="flex items-center gap-3">

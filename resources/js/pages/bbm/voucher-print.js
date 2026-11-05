@@ -1,4 +1,4 @@
-// Cetak voucher BBM (dialog requester/partials/voucher-print-modal): dipakai halaman Permohonan Baru dan Detail.
+// Cetak voucher BBM (dialog requester/partials/voucher-print-modal): dipakai halaman Permohonan Aktif dan Detail.
 import { confirmDialog, alertDialog } from '../../ui/dialog';
 
 document.addEventListener('click', async (event) => {

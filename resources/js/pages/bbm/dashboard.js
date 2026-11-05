@@ -1,4 +1,4 @@
-// Dashboard BBM: grafik (Chart.js), pencarian & export tabel, layar tunggu cetak PDF.
+// Dashboard BBM: grafik (Chart.js), pemilih periode kustom, layar tunggu cetak PDF.
 import Chart, { compact, chartEmptyState as emptyState } from '../../lib/chart';
 import { rupiah, pageData, isoDate } from '../../lib/format';
 
@@ -22,8 +22,9 @@ function expenseSeries(data) {
         const from = new Date(range.start || sorted[0]);
         const to = new Date(range.end || sorted[sorted.length - 1]);
         axis = [];
-        // ponytail: rentang "Semua waktu" yang sangat panjang tetap per hari; ganti ke per bulan bila datanya bertahun-tahun.
         for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) axis.push(isoDate(d));
+        // Lebih dari ~2 bulan per hari terlalu rapat dibaca: rangkum per bulan.
+        if (axis.length > 62) return monthlySeries(data);
     }
     // Kunci yang tidak cocok dengan sumbu (mis. format bulan berbeda) tetap ditampilkan di akhir.
     const extra = keys.filter((k) => !axis.includes(k));
@@ -34,28 +35,57 @@ function expenseSeries(data) {
     return { labels: labels.map(label), values: labels.map((k) => data[k] ?? 0) };
 }
 
+function monthlySeries(data) {
+    const sums = {};
+    Object.entries(data).forEach(([key, value]) => { sums[key.slice(0, 7)] = (sums[key.slice(0, 7)] ?? 0) + value; });
+    const months = Object.keys(sums).sort();
+    const axis = [];
+    if (months.length) {
+        for (let d = new Date(`${months[0]}-01T00:00:00`); iso7(d) <= months[months.length - 1]; d.setMonth(d.getMonth() + 1)) axis.push(iso7(d));
+    }
+    return {
+        labels: axis.map((k) => `${MONTHS[Number(k.slice(5, 7)) - 1]} ` + k.slice(2, 4)),
+        values: axis.map((k) => sums[k] ?? 0),
+    };
+}
+const iso7 = (d) => isoDate(d).slice(0, 7);
+
 const expense = stats.expenseOverTime ?? {};
 const expenseCanvas = document.getElementById('expenseChart');
 if (Object.values(expense).some((v) => v > 0)) {
     const { labels, values } = expenseSeries(expense);
+    // Grafik garis untuk tren (lebih tenang dibaca daripada batang yang rapat); titik hanya tampil saat disorot
+    // kecuali datanya sedikit. responsive + maintainAspectRatio false: tinggi dari wadah (h-72), lebar ikut kartu.
+    const ctx = expenseCanvas.getContext('2d');
+    const fill = ctx.createLinearGradient(0, 0, 0, expenseCanvas.parentElement.clientHeight || 288);
+    fill.addColorStop(0, 'rgb(11 80 161 / 0.22)');
+    fill.addColorStop(1, 'rgb(11 80 161 / 0)');
     new Chart(expenseCanvas, {
-        type: 'bar',
+        type: 'line',
         data: {
             labels,
             datasets: [{
                 data: values,
-                backgroundColor: 'rgb(11 80 161 / 0.85)',
-                hoverBackgroundColor: primary,
-                borderRadius: 4,
-                maxBarThickness: 32,
+                borderColor: primary,
+                backgroundColor: fill,
+                fill: true,
+                borderWidth: 2,
+                tension: 0.35,
+                cubicInterpolationMode: 'monotone',
+                pointRadius: values.length <= 14 ? 3 : 0,
+                pointHoverRadius: 5,
+                pointBackgroundColor: primary,
             }],
         },
         options: {
+            responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => rupiah(ctx.parsed.y) } } },
+            interaction: { mode: 'index', intersect: false },
+            animation: matchMedia('(prefers-reduced-motion: reduce)').matches ? false : undefined,
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => rupiah(c.parsed.y) } } },
             scales: {
-                x: { grid: { display: false }, ticks: { autoSkip: true, maxRotation: 0, autoSkipPadding: 12 } },
-                y: { beginAtZero: true, border: { display: false }, ticks: { callback: compact, maxTicksLimit: 6 } },
+                x: { grid: { display: false }, ticks: { autoSkip: true, maxRotation: 0, autoSkipPadding: 16 } },
+                y: { beginAtZero: true, border: { display: false }, ticks: { callback: compact, maxTicksLimit: 5 } },
             },
         },
     });
@@ -90,33 +120,6 @@ if (Object.keys(gasoline).length) {
 } else {
     emptyState(gasolineCanvas, 'Belum ada data');
 }
-
-// Pencarian baris pada halaman tabel yang sedang tampil.
-document.querySelectorAll('[data-table-search]').forEach((input) => {
-    input.addEventListener('input', () => {
-        const query = input.value.toLowerCase();
-        document.querySelectorAll(`#${input.dataset.tableSearch} tbody tr`).forEach((row) => {
-            row.hidden = !row.textContent.toLowerCase().includes(query);
-        });
-    });
-});
-
-// Export baris yang tampil ke CSV.
-document.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-export-table]');
-    if (!button) return;
-
-    const table = document.getElementById(button.dataset.exportTable);
-    const cell = (el) => `"${el.textContent.trim().replace(/\s+/g, ' ').replace(/"/g, '""')}"`;
-    const header = [...table.querySelectorAll('thead th')].map(cell).join(',');
-    const rows = [...table.querySelectorAll('tbody tr:not([hidden])')]
-        .filter((row) => !row.querySelector('td[colspan]'))
-        .map((row) => [...row.cells].map(cell).join(','));
-    const blob = new Blob(['﻿' + [header, ...rows].join('\r\n')], { type: 'text/csv;charset=utf-8;' });
-    const link = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: button.dataset.filename });
-    link.click();
-    URL.revokeObjectURL(link.href);
-});
 
 // Cetak PDF: progres perkiraan sampai server memasang cookie download_ready_<token>.
 const printForm = document.getElementById('formPrintReport');
@@ -161,11 +164,10 @@ printForm?.addEventListener('submit', () => {
 // jadi pilih sesuai panjang rentang.
 const customRange = document.querySelector('[data-custom-range]');
 if (customRange) {
-    const from = customRange.elements.start_date;
-    const to = customRange.elements.end_date;
-    from.addEventListener('change', () => { to.min = from.value; });
     customRange.addEventListener('submit', () => {
-        const days = (new Date(to.value) - new Date(from.value)) / 86_400_000;
+        const from = customRange.querySelector('[data-range-from]').value;
+        const to = customRange.querySelector('[data-range-to]').value;
+        const days = (new Date(to) - new Date(from)) / 86_400_000;
         customRange.elements.period.value = days < 1 ? 'day' : days <= 62 ? 'month' : 'year';
     });
 }

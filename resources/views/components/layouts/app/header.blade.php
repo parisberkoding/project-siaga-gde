@@ -34,8 +34,9 @@
         <nav aria-label="breadcrumb" class="min-w-0">
             <ol class="flex items-center gap-1.5 text-sm text-muted-foreground">
                 @foreach ($breadcrumbs as $label => $url)
+                    {{-- HP: hanya crumb terakhir tampil, jadi pemisah crumb tengah ikut disembunyikan. --}}
                     @if (! $loop->first)
-                        <li aria-hidden="true" class="text-xs"><i class="bi bi-chevron-right"></i></li>
+                        <li aria-hidden="true" @class(['text-xs', 'hidden sm:block' => ! $loop->last])><i class="bi bi-chevron-right"></i></li>
                     @endif
                     <li @class(['truncate', 'hidden sm:block' => ! $loop->last])>
                         @if ($url && ! $loop->last)

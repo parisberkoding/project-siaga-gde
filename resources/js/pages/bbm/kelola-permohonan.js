@@ -2,6 +2,7 @@
 import { openDialog } from '../../ui/dialog';
 import { rupiah } from '../../lib/format';
 import { initDecisions } from '../../lib/decisions';
+import { selectRoot, selectValue, setSelectOptions, setSelectValue } from '../../lib/select-menu';
 
 // Setujui/Tolak lewat dialog (satu per satu atau massal).
 initDecisions();
@@ -9,32 +10,33 @@ initDecisions();
 const MAX_NOMINAL = 850000;
 const NOMINAL_STEP = 50000;
 
+// Dialog Ubah permohonan memakai <x-ui.select-menu> (shadcn Select); budget full tank per kendaraan dari JSON.
+const budgets = JSON.parse(document.getElementById('vehicle-budgets')?.textContent || '{}');
+const vehicleRoot = selectRoot('editVehicleId');
+const fuelRoot = selectRoot('editGasolineType');
+const billRoot = selectRoot('editBillAmounts');
+
 // Opsi nominal mengikuti budget full tank kendaraan (maksimal 850.000).
-function refreshNominalOptions() {
-    const vehicle = document.getElementById('editVehicleId');
-    const bill = document.getElementById('editBillAmounts');
+function refreshNominalOptions(raw = selectValue(billRoot)) {
+    // Nilai dari DB bisa "900000.00"; samakan dengan nilai opsi (bilangan bulat).
+    const current = raw ? String(Math.round(Number(raw))) : '';
     const info = document.getElementById('editVehicleBudgetInfo');
-    const budget = parseFloat(vehicle.selectedOptions[0]?.dataset.budget) || 0;
-    const previous = bill.value;
+    const budget = Number(budgets[selectValue(vehicleRoot)]) || 0;
 
     info.textContent = budget > 0
         ? `Budget full tank ${rupiah(budget)}`
         : 'Budget full tank kendaraan belum diisi di Master Vehicle.';
 
     const max = budget > 0 ? Math.min(budget, MAX_NOMINAL) : MAX_NOMINAL;
-    bill.innerHTML = '';
-    for (let value = NOMINAL_STEP; value <= max; value += NOMINAL_STEP) {
-        bill.add(new Option(rupiah(value), value));
-    }
-    if (previous && parseFloat(previous) <= max) {
-        bill.value = previous;
-    } else if (previous) {
-        // Nilai lama di luar rentang tetap dipertahankan supaya tidak berubah diam-diam saat disimpan.
-        bill.add(new Option(`${rupiah(previous)} (nilai saat ini)`, previous, true, true));
-    }
+    const options = [];
+    for (let value = NOMINAL_STEP; value <= max; value += NOMINAL_STEP) options.push({ value, label: rupiah(value) });
+    // Nilai lama di luar rentang tetap dipertahankan supaya tidak berubah diam-diam saat disimpan.
+    if (current && Number(current) > max) options.push({ value: current, label: `${rupiah(current)} (nilai saat ini)` });
+    setSelectOptions(billRoot, options);
+    if (current) setSelectValue(billRoot, current);
 }
 
-document.getElementById('editVehicleId')?.addEventListener('change', refreshNominalOptions);
+vehicleRoot?.addEventListener('select:change', () => refreshNominalOptions());
 
 document.addEventListener('click', (event) => {
     const editPermohonan = event.target.closest('[data-edit-permohonan]');
@@ -42,13 +44,11 @@ document.addEventListener('click', (event) => {
         const d = editPermohonan.dataset;
         document.getElementById('editPermohonanForm').action = d.updateUrl;
         document.getElementById('editRequestNumber').textContent = d.requestNumber;
-        document.getElementById('editVehicleId').value = d.vehicleId;
-        document.getElementById('editGasolineType').value = d.gasolineType;
+        setSelectValue(vehicleRoot, d.vehicleId);
+        setSelectValue(fuelRoot, d.gasolineType);
         document.getElementById('editRequesterNotes').value = d.requesterNotes;
         document.getElementById('editAuthorizerNotes').value = d.authorizerNotes;
-        // Nominal diisi dulu supaya tetap terpilih setelah opsi disusun ulang.
-        document.getElementById('editBillAmounts').add(new Option('', d.billAmounts, true, true));
-        refreshNominalOptions();
+        refreshNominalOptions(d.billAmounts);
         openDialog('editPermohonanDialog');
         return;
     }
@@ -67,7 +67,8 @@ document.addEventListener('click', (event) => {
 
     const viewStruk = event.target.closest('[data-view-struk]');
     if (viewStruk) {
-        document.getElementById('viewStrukDialog-title').textContent = `Struk BBM ${viewStruk.dataset.transactionId}`;
+        // data-view-title: judul lain untuk foto yang sama-sama dibuka di dialog ini (mis. odometer).
+        document.getElementById('viewStrukDialog-title').textContent = `${viewStruk.dataset.viewTitle ?? 'Struk BBM'} ${viewStruk.dataset.transactionId}`;
         document.getElementById('strukImage').src = viewStruk.dataset.imageUrl;
         document.getElementById('downloadStruk').href = viewStruk.dataset.imageUrl;
         openDialog('viewStrukDialog');

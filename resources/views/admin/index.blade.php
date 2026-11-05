@@ -1,5 +1,5 @@
-<x-layouts.app title="Approval BBM" :breadcrumbs="['Permohonan BBM' => route('admin-dashboard'), 'Approval BBM' => null]">
-    <x-ui.page-header kicker="Permohonan BBM" title="Approval BBM" description="Proses permohonan BBM, pantau riwayat, laporan transaksi, dan voucher yang terbit.">
+<x-layouts.app title="Permohonan Masuk" :breadcrumbs="['BBM Operasional' => route('admin-dashboard'), 'Permohonan Masuk' => null]">
+    <x-ui.page-header kicker="Persetujuan" title="Permohonan Masuk" description="Proses permohonan BBM, pantau riwayat, laporan transaksi, dan voucher yang terbit.">
         <x-slot:actions>
             <x-ui.button variant="outline" :href="request()->fullUrl()"><i class="bi bi-arrow-clockwise"></i> Muat ulang</x-ui.button>
         </x-slot:actions>
@@ -8,10 +8,13 @@
     @include('admin.partials.stats')
 
     <x-ui.tabs default="pending">
-        <x-ui.tabs-list>
-            <x-ui.tabs-trigger value="pending"><i class="bi bi-hourglass-split"></i> Menunggu ({{ $stats['pending'] }})</x-ui.tabs-trigger>
-            <x-ui.tabs-trigger value="my-approvals"><i class="bi bi-person-check"></i> Riwayat Approval Saya</x-ui.tabs-trigger>
-            <x-ui.tabs-trigger value="history"><i class="bi bi-clock-history"></i> Semua History & Laporan</x-ui.tabs-trigger>
+        {{-- HP: grid 2x2 (tanpa geser ke samping); layar lebar: satu baris. --}}
+        <x-ui.tabs-list class="max-sm:grid max-sm:w-full max-sm:grid-cols-2">
+            <x-ui.tabs-trigger value="pending"><i class="bi bi-hourglass-split"></i> Menunggu
+                <span class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warning px-1.5 text-[11px] font-semibold tabular-nums text-white">{{ $stats['pending'] }}</span>
+            </x-ui.tabs-trigger>
+            <x-ui.tabs-trigger value="my-approvals"><i class="bi bi-person-check"></i> Riwayat Saya</x-ui.tabs-trigger>
+            <x-ui.tabs-trigger value="history"><i class="bi bi-clock-history"></i> Semua Riwayat</x-ui.tabs-trigger>
             <x-ui.tabs-trigger value="vouchers"><i class="bi bi-ticket-perforated"></i> Voucher Terbit</x-ui.tabs-trigger>
         </x-ui.tabs-list>
 
@@ -20,15 +23,15 @@
         </x-ui.tabs-content>
 
         <x-ui.tabs-content value="my-approvals">
-            <x-ui.card class="py-4"><x-ui.card-content class="px-4">@include('admin.myapproval')</x-ui.card-content></x-ui.card>
+            @include('admin.myapproval')
         </x-ui.tabs-content>
 
         <x-ui.tabs-content value="history">
-            <x-ui.card class="py-4"><x-ui.card-content class="px-4">@include('admin.requester_reports')</x-ui.card-content></x-ui.card>
+            @include('admin.requester_reports')
         </x-ui.tabs-content>
 
         <x-ui.tabs-content value="vouchers">
-            <x-ui.card class="py-4"><x-ui.card-content class="px-4">@include('admin.voucher-on-publish')</x-ui.card-content></x-ui.card>
+            @include('admin.voucher-on-publish')
         </x-ui.tabs-content>
     </x-ui.tabs>
 

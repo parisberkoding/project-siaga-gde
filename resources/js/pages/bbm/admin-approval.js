@@ -3,8 +3,87 @@
 import { openDialog, alertDialog } from '../../ui/dialog';
 import { rupiah, escapeHtml } from '../../lib/format';
 import { initDecisions } from '../../lib/decisions';
+import { selectRoot, selectValue } from '../../lib/select-menu';
 
 initDecisions();
+
+/* ── Tab Menunggu: cari, filter BBM, urutan, 10 kartu per halaman ─────────── */
+// Daftar halaman ringkas: 1 … 4 5 6 … 13 (tetangga 1 di kiri-kanan halaman aktif).
+const pageList = (current, total) => {
+    const pages = [...new Set([1, current - 1, current, current + 1, total])].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b);
+    return pages.flatMap((p, i) => (i && p - pages[i - 1] > 1 ? ['…', p] : [p]));
+};
+
+const pendingList = document.querySelector('[data-pending-list]');
+if (pendingList) {
+    const PER_PAGE = 10;
+    const cards = [...pendingList.querySelectorAll('[data-decision-item]')];
+    const pager = document.querySelector('[data-pending-pager]');
+    const empty = document.querySelector('[data-pending-empty]');
+    const count = document.querySelector('[data-pending-count]');
+    const state = { query: '', fuel: '', sort: 'oldest', page: 1 };
+    const sorters = {
+        oldest: (a, b) => a.dataset.date - b.dataset.date,
+        newest: (a, b) => b.dataset.date - a.dataset.date,
+        amount: (a, b) => b.dataset.amount - a.dataset.amount,
+    };
+
+    const link = (label, page, { current = false, disabled = false, aria } = {}) =>
+        `<li class="datatable-pagination-list-item${current ? ' datatable-active' : ''}${disabled ? ' datatable-disabled' : ''}">
+            <button type="button" class="datatable-pagination-list-item-link" data-page="${page}" ${aria ? `aria-label="${aria}"` : ''} ${current ? 'aria-current="page"' : ''} ${disabled ? 'disabled' : ''}>${label}</button></li>`;
+
+    function render() {
+        const matches = cards
+            .filter((card) => (!state.query || card.dataset.search.includes(state.query)) && (!state.fuel || card.dataset.fuel === state.fuel))
+            .sort(sorters[state.sort]);
+        const pages = Math.max(1, Math.ceil(matches.length / PER_PAGE));
+        state.page = Math.min(state.page, pages);
+        const start = (state.page - 1) * PER_PAGE;
+        const shown = new Set(matches.slice(start, start + PER_PAGE));
+
+        pendingList.append(...matches); // urutan DOM mengikuti urutan pilihan
+        cards.forEach((card) => { card.hidden = !shown.has(card); });
+        empty.hidden = matches.length > 0;
+        count.textContent = matches.length === cards.length ? `${cards.length} permohonan` : `${matches.length} dari ${cards.length} permohonan`;
+
+        pager.hidden = matches.length <= PER_PAGE;
+        pager.innerHTML = `<p class="datatable-info">Menampilkan ${start + 1} sampai ${Math.min(start + PER_PAGE, matches.length)} dari ${matches.length} permohonan</p>
+            <ul class="datatable-pagination-list">
+                ${link('<i class="bi bi-chevron-left"></i>', state.page - 1, { disabled: state.page === 1, aria: 'Halaman sebelumnya' })}
+                ${pageList(state.page, pages).map((p) => (p === '…'
+                    ? '<li class="datatable-pagination-list-item datatable-ellipsis"><span class="datatable-pagination-list-item-link" aria-hidden="true">…</span></li>'
+                    : link(p, p, { current: p === state.page, aria: `Halaman ${p}` }))).join('')}
+                ${link('<i class="bi bi-chevron-right"></i>', state.page + 1, { disabled: state.page === pages, aria: 'Halaman berikutnya' })}
+            </ul>`;
+        document.getElementById('bulkApprovalForm').dispatchEvent(new Event('decisions:refresh'));
+    }
+
+    let timer;
+    document.querySelector('[data-pending-search]').addEventListener('input', (event) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => { state.query = event.target.value.trim().toLowerCase(); state.page = 1; render(); }, 150);
+    });
+    document.getElementById('pendingFuel').closest('[data-select]').addEventListener('select:change', (event) => { state.fuel = event.detail.value; state.page = 1; render(); });
+    document.getElementById('pendingSort').closest('[data-select]').addEventListener('select:change', (event) => { state.sort = event.detail.value; state.page = 1; render(); });
+    pager.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-page]');
+        if (!button || button.disabled) return;
+        state.page = Number(button.dataset.page);
+        render();
+        pendingList.closest('[role="tabpanel"], form')?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+    });
+    render();
+}
+
+/* ── Semua Riwayat: kontrol (cari/per halaman/filter prognosa) sebaris dengan sub-tab ─ */
+// ui/datatable.js memindahkan toolbar tabel ke [data-history-controls]; di sini hanya milik sub-tab aktif yang tampil.
+const historyTabs = document.querySelector('[data-history-tabs]');
+if (historyTabs) {
+    const sync = (value) => historyTabs.querySelectorAll('[data-history-controls] > [data-controls-for]')
+        .forEach((el) => { el.hidden = el.dataset.controlsFor !== value; });
+    historyTabs.addEventListener('tabs:change', (event) => { if (event.target === historyTabs) sync(event.detail.value); });
+    sync(historyTabs.querySelector('[data-tabs-trigger][data-state="active"]')?.dataset.tabsTrigger);
+}
 
 /* ── Foto laporan transaksi (dimuat saat dibuka) ─────────────────── */
 document.addEventListener('click', async (event) => {
@@ -64,7 +143,7 @@ const voucherPanel = document.getElementById('voucherPanel');
 
 if (voucherPanel) {
     const dateInput = document.getElementById('voucherDate');
-    const statusSelect = document.getElementById('voucherStatus');
+    const statusRoot = selectRoot('voucherStatus'); // x-ui.select-menu (shadcn Select)
     const tbody = document.getElementById('voucherBody');
     const selectAll = document.getElementById('voucherSelectAll');
 
@@ -95,7 +174,7 @@ if (voucherPanel) {
 
     async function loadVouchers() {
         const url = new URL(voucherPanel.dataset.listUrl);
-        url.search = new URLSearchParams({ date: dateInput.value, status: statusSelect.value });
+        url.search = new URLSearchParams({ date: dateInput.value, status: selectValue(statusRoot) });
         try {
             const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).then((r) => r.json());
             tbody.innerHTML = res.data?.length ? res.data.map(rowHtml).join('') : emptyRow;
@@ -109,7 +188,7 @@ if (voucherPanel) {
     }
 
     dateInput.addEventListener('change', loadVouchers);
-    statusSelect.addEventListener('change', loadVouchers);
+    statusRoot.addEventListener('change', loadVouchers);
     selectAll.addEventListener('change', () => {
         tbody.querySelectorAll('.voucher-check').forEach((cb) => { cb.checked = selectAll.checked; });
         updateSelected();
@@ -129,7 +208,7 @@ if (voucherPanel) {
         }
 
         document.getElementById('exportDate').value = dateInput.value;
-        document.getElementById('exportStatus').value = statusSelect.value;
+        document.getElementById('exportStatus').value = selectValue(statusRoot);
         document.getElementById('exportIdsContainer').innerHTML = button.dataset.voucherExport === 'selected'
             ? ids.map((id) => `<input type="hidden" name="ids[]" value="${escapeHtml(id)}">`).join('')
             : '';

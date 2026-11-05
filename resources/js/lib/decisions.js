@@ -31,6 +31,8 @@ export function initDecisions() {
     const bar = document.getElementById('bulkActionBar');
     const items = () => [...document.querySelectorAll('[data-decision-item]')];
     const selected = () => items().filter((item) => item.querySelector('[data-select]')?.checked);
+    // "Pilih semua" hanya untuk item yang tampil (daftar bisa difilter / dibagi per halaman).
+    const visible = () => items().filter((item) => !item.hidden);
     const confirmButton = dialog.querySelector('[data-decision-confirm]');
     let pending = { items: [], status: 'approve' };
 
@@ -41,8 +43,10 @@ export function initDecisions() {
         if (counter) counter.textContent = count;
         const all = document.querySelector('[data-select-all]');
         if (all) {
-            all.checked = count > 0 && count === items().length;
-            all.indeterminate = count > 0 && count < items().length;
+            const shown = visible();
+            const shownSelected = shown.filter((item) => item.querySelector('[data-select]')?.checked).length;
+            all.checked = shown.length > 0 && shownSelected === shown.length;
+            all.indeterminate = shownSelected > 0 && shownSelected < shown.length;
         }
     }
 
@@ -95,10 +99,12 @@ export function initDecisions() {
 
     document.addEventListener('change', (event) => {
         if (event.target.matches('[data-select-all]')) {
-            items().forEach((item) => { item.querySelector('[data-select]').checked = event.target.checked; });
+            visible().forEach((item) => { item.querySelector('[data-select]').checked = event.target.checked; });
         }
         if (event.target.matches('[data-select], [data-select-all]')) renderSelection();
     });
 
     renderSelection();
+    // Dipanggil halaman setelah daftar difilter / pindah halaman, supaya status "Pilih semua" ikut.
+    form.addEventListener('decisions:refresh', renderSelection);
 }

@@ -1,5 +1,5 @@
-<x-layouts.app title="Cetak Laporan BBM" :breadcrumbs="['Permohonan BBM' => route('admin-dashboard'), 'Cetak Laporan' => null]">
-    <x-ui.page-header kicker="Laporan" title="Cetak Laporan BBM" description="Buat laporan transaksi BBM dalam format PDF sesuai filter." />
+<x-layouts.app title="Cetak Laporan BBM" :breadcrumbs="['BBM Operasional' => route('admin-dashboard'), 'Cetak Laporan' => null]">
+    <x-ui.page-header kicker="Laporan & Analisis" title="Cetak Laporan BBM" description="Buat laporan transaksi BBM dalam format PDF sesuai filter." />
 
     <div class="grid gap-6 lg:grid-cols-3">
         <x-ui.card class="lg:col-span-2">

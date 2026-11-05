@@ -2,8 +2,9 @@
 // dengan analisis struk AI. Foto yang gagal dianalisis (kuota AI habis atau error) diisi manual.
 import { alertDialog } from '../../ui/dialog';
 import { rupiah, escapeHtml, pageData } from '../../lib/format';
+import { selectRoot, selectValue } from '../../lib/select-menu';
 
-const { analyzeUrl, csrfToken } = pageData();
+const { analyzeUrl, csrfToken, vouchers = {} } = pageData();
 
 const KATEGORI_LABEL = { BBM: 'Struk BBM', Tol: 'Struk Tol', Parkir: 'Struk Parkir', Lainnya: 'Struk Lainnya', Tambahan: 'Tambahan' };
 const KATEGORI_BADGE = {
@@ -39,31 +40,42 @@ document.querySelectorAll('[data-mode]').forEach((card) => card.addEventListener
 const wantsOperational = params.get('mode') === 'operational' || params.has('permohonan_id');
 activateMode(wantsOperational || !panelSpd ? 'operational' : 'spd', false);
 
-/* ── Pilih permohonan ───────────────────────────────────────────── */
-const selectPermohonan = document.getElementById('selectPermohonan');
+/* ── Langkah 1: pilih voucher (x-ui.select-menu) + kartu voucher ─ */
+const permohonanRoot = selectRoot('selectPermohonan');
 const infoPermohonan = document.getElementById('infoPermohonan');
+const voucherCard = document.getElementById('voucherCard');
+const dateFormat = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
-selectPermohonan?.addEventListener('change', () => {
-    const option = selectPermohonan.selectedOptions[0];
-    if (!option?.value) {
-        infoPermohonan.textContent = '';
-        return;
-    }
-    const budget = option.dataset.budget ? rupiah(option.dataset.budget) : 'belum diisi';
-    infoPermohonan.innerHTML = `Kendaraan <strong class="text-foreground">${escapeHtml(option.dataset.vehicle || '-')}</strong>, ` +
-        `jenis BBM <strong class="text-foreground">${escapeHtml(option.dataset.gasoline || '-')}</strong>, ` +
-        `budget full tank <strong class="text-foreground">${budget}</strong>`;
-});
+function renderVoucher() {
+    const v = vouchers[selectValue(permohonanRoot)];
+    if (!voucherCard) return;
+    voucherCard.hidden = !v;
+    if (!v) return;
+    const set = (key, text) => { voucherCard.querySelector(`[data-v="${key}"]`).textContent = text || '-'; };
+    set('voucher', v.voucher || v.number);
+    set('number', v.voucher ? v.number : '');
+    set('amount', rupiah(v.amount));
+    set('vehicle', v.vehicle);
+    set('gasoline', v.gasoline);
+    set('validity', v.validUntil ? `s.d. ${dateFormat.format(new Date(v.validUntil))}` : '-');
+    infoPermohonan.innerHTML = `${escapeHtml(v.vehicleName || '')}${v.vehicleName ? ', ' : ''}budget full tank <strong class="text-foreground">${v.budget ? rupiah(v.budget) : 'belum diisi'}</strong>`;
+}
+permohonanRoot?.addEventListener('select:change', renderVoucher);
+// ?permohonan_id= dari tombol "Lapor Pembelian" sudah dipilih di server; tampilkan kartunya.
+if (selectValue(permohonanRoot)) renderVoucher();
 
-// ?permohonan_id= dari tombol "Lapor Pembelian" di halaman Permohonan BBM.
-const presetId = params.get('permohonan_id');
-if (presetId && selectPermohonan) {
-    if (selectPermohonan.querySelector(`option[value="${CSS.escape(presetId)}"]`)) {
-        selectPermohonan.value = presetId;
-        selectPermohonan.dispatchEvent(new Event('change'));
-    } else {
-        infoPermohonan.innerHTML = '<span class="text-warning">Permohonan ini sudah dilaporkan atau belum disetujui. Pilih permohonan lain.</span>';
-    }
+/* ── Ringkasan laporan (panel kanan) ────────────────────────────── */
+const summary = (key) => document.querySelector(`[data-sum="${key}"]`);
+const longDate = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+function renderSummary() {
+    if (!summary('nominal')) return;
+    const nominal = num(document.getElementById('nominalOp')?.value);
+    const volume = num(document.getElementById('volumeOp')?.value);
+    const date = document.getElementById('purchaseDateOp')?.value;
+    summary('nominal').textContent = rupiah(nominal);
+    summary('volume').textContent = volume > 0 ? `${volume.toLocaleString('id-ID')} L` : '-';
+    summary('date').textContent = date ? longDate.format(new Date(`${date}T00:00`)) : '-';
+    summary('files').textContent = String(document.getElementById('fotoFilesOp')?.files.length ?? 0);
 }
 
 /* ── Unggah foto + analisis AI ──────────────────────────────────── */
@@ -73,6 +85,11 @@ const statusEl = document.getElementById('aiStatusOp');
 const fieldsWrap = document.getElementById('fileFieldsWrap');
 const validationAlert = document.getElementById('strukValidationAlertOp');
 const limitAlert = document.getElementById('aiLimitAlertOp');
+const dropzone = document.querySelector('[data-dropzone]');
+if (dropzone) {
+    ['dragenter', 'dragover'].forEach((type) => dropzone.addEventListener(type, () => { dropzone.dataset.drag = 'true'; }));
+    ['dragleave', 'drop'].forEach((type) => dropzone.addEventListener(type, () => { delete dropzone.dataset.drag; }));
+}
 
 // State per indeks file: { status:'ai_ok'|'manual', kategori, nominal, volume, tanggal, platNomor, text, el }
 let fileState = {};
@@ -123,6 +140,7 @@ function recomputeTotals() {
     // Kode lama hanya menyinkronkan sekali setelah analisis AI, sehingga isian manual
     // (kategori, nominal) tidak ikut terkirim dan nominal tersimpan Rp 0 (BUG-BBM-002).
     syncHiddenFields();
+    renderSummary();
 }
 
 // Field utama (tanggal, volume, nominal) dipindah dari input tersembunyi ke panel rekap yang terlihat.
@@ -307,12 +325,17 @@ function enableManualEntry(message) {
 fileInput?.addEventListener('change', async () => {
     const files = [...fileInput.files];
 
-    // Permohonan wajib dipilih dulu supaya struk bisa dicocokkan dengan permohonan.
-    if (!selectPermohonan.value) {
+    // Voucher wajib dipilih dulu supaya struk bisa dicocokkan dengan permohonan.
+    if (!selectValue(permohonanRoot)) {
         fileInput.value = '';
-        setStatus('Pilih permohonan BBM terlebih dahulu sebelum mengunggah struk.', 'destructive');
+        setStatus('Pilih voucher terlebih dahulu sebelum mengunggah struk.', 'destructive');
+        permohonanRoot?.querySelector('[data-select-trigger]').setAttribute('aria-invalid', 'true');
+        renderSummary();
         return;
     }
+    const label = dropzone?.querySelector('[data-dropzone-label]');
+    if (label) label.textContent = files.length ? `${files.length} foto dipilih. Ketuk untuk mengganti.` : 'JPG, PNG, atau WEBP. Bisa beberapa foto sekaligus.';
+    renderSummary();
 
     resultsBox.innerHTML = '';
     fieldsWrap.innerHTML = '';
@@ -328,7 +351,7 @@ fileInput?.addEventListener('change', async () => {
 
     const body = new FormData();
     files.forEach((file) => body.append('images[]', file));
-    body.append('permohonan_id', selectPermohonan.value);
+    body.append('permohonan_id', selectValue(permohonanRoot));
 
     let response;
     try {
@@ -447,3 +470,5 @@ document.getElementById('formOperational')?.addEventListener('submit', (event) =
         });
     }
 });
+
+renderSummary();

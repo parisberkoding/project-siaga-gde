@@ -24,7 +24,7 @@ beforeEach(function () {
 
 it('menyediakan dashboard untuk setiap modul dan menjadikannya halaman pendarat modul', function () {
     $expected = [
-        'bbm' => ['modules.dashboard.bbm', 'Dashboard BBM & Permohonan'],
+        'bbm' => ['modules.dashboard.bbm', 'Dashboard BBM Operasional'],
         'spd' => ['modules.dashboard.spd', 'Dashboard SPD & LPJ'],
         'vehicle' => ['modules.dashboard.vehicle', 'Dashboard Kendaraan & Alat'],
         'lunch' => ['lunch.dashboard', 'Dashboard Lunch Management'],
@@ -67,6 +67,6 @@ it('menampilkan dashboard BBM dengan judul modul, bukan dashboard bisnis generik
     $this->actingAs($this->superadmin)
         ->get(route('modules.dashboard.bbm'))
         ->assertOk()
-        ->assertSee('Dashboard BBM & Permohonan')
+        ->assertSee('Dashboard BBM Operasional')
         ->assertDontSee('<li class="breadcrumb-item active">Dashboard Bisnis</li>', false);
 });

@@ -1,8 +1,50 @@
-<x-layouts.app title="Pelaporan BBM & SPD" :breadcrumbs="['Pelaporan' => null]">
-    <x-ui.page-header kicker="Pelaporan" title="Pelaporan BBM & SPD" description="Laporkan pengisian BBM operasional atau pengeluaran surat tugas SPD." />
+{{--
+  Pelaporan (pelaporan.index): satu halaman untuk dua alur, BBM operasional (lapor pembelian voucher) dan SPD (LPJ).
+  Bila mode sudah dipilih (?mode= atau ?permohonan_id= dari tombol Lapor Pembelian), judul, breadcrumb, dan isi
+  halaman mengikuti mode itu saja. Interaksi + analisis struk AI: resources/js/pages/bbm/pelaporan.js.
+--}}
+@php
+    $mode = request('mode') ?? (request()->filled('permohonan_id') ? 'operational' : null);
+    $isOperational = ($modeLocked ?? false) && $mode !== 'spd';
+    $isSpd = ($modeLocked ?? false) && $mode === 'spd';
+    [$pageTitle, $kicker, $description, $crumbs] = match (true) {
+        $isOperational => ['Lapor Pembelian BBM', 'Pengajuan Saya', 'Laporkan pengisian BBM dari voucher yang sudah disetujui.',
+            ['BBM Operasional' => route('requester-index'), 'Permohonan Aktif' => route('requester-index'), 'Lapor Pembelian' => null]],
+        $isSpd => ['Laporan SPD (LPJ)', 'Perjalanan Dinas', 'Laporkan pengeluaran surat tugas SPD.', ['Pelaporan' => null]],
+        default => ['Pelaporan BBM & SPD', 'Pelaporan', 'Laporkan pengisian BBM operasional atau pengeluaran surat tugas SPD.', ['Pelaporan' => null]],
+    };
 
-    {{-- Pilihan mode, tersimpan di URL (?mode=spd|operational). Disembunyikan bila mode sudah dipilih
-         (mis. dari kartu modul BBM atau tautan voucher "Lapor"), supaya tidak muncul lagi di tengah alur. --}}
+    // Data voucher per permohonan untuk kartu voucher di Langkah 1 (dibaca JS).
+    $activePermohonan->loadMissing('approvedRequest');
+    $voucherData = $activePermohonan->mapWithKeys(fn ($p) => [$p->id => [
+        'number' => $p->request_number,
+        'voucher' => $p->approvedRequest?->voucher_code,
+        'validUntil' => $p->approvedRequest?->valid_until ? \Illuminate\Support\Carbon::parse($p->approvedRequest->valid_until)->toIso8601String() : null,
+        'vehicle' => $p->vehicle?->consumerial_code,
+        'vehicleName' => $p->vehicle?->consumerial_name,
+        'gasoline' => $p->gasoline_type,
+        'amount' => (float) $p->bill_amounts,
+        'budget' => $p->vehicle?->detail?->nominal_full_tank,
+    ]]);
+    $voucherOptions = $activePermohonan->map(fn ($p) => [
+        'value' => (string) $p->id,
+        'label' => ($p->approvedRequest?->voucher_code ?? $p->request_number) . ' · ' . ($p->vehicle?->consumerial_code ?? '-') . ' · Rp ' . number_format($p->bill_amounts, 0, ',', '.'),
+    ])->values()->all();
+    $presetId = (string) request('permohonan_id', $activePermohonan->count() === 1 ? $activePermohonan->first()->id : '');
+    $presetValid = $presetId !== '' && $voucherData->has((int) $presetId);
+    $step = 'flex size-7 shrink-0 items-center justify-center rounded-lg bg-linear-to-br text-xs font-bold text-white shadow-sm';
+@endphp
+
+<x-layouts.app :title="$pageTitle" :breadcrumbs="$crumbs">
+    <x-ui.page-header :kicker="$kicker" :title="$pageTitle" :description="$description">
+        @if ($isOperational)
+            <x-slot:actions>
+                <x-ui.button variant="outline" :href="route('requester-index')"><i class="bi bi-arrow-left"></i> Kembali</x-ui.button>
+            </x-slot:actions>
+        @endif
+    </x-ui.page-header>
+
+    {{-- Pilihan mode, tersimpan di URL (?mode=spd|operational). Disembunyikan bila mode sudah dipilih. --}}
     @unless ($modeLocked ?? false)
     <div class="grid gap-4 md:grid-cols-2">
         @if ($spdMode)
@@ -28,11 +70,12 @@
     </div>
     @endunless
 
-    @unless ($spdMode)
+    {{-- Peringatan SPD hanya relevan di alur SPD, bukan saat melapor pembelian BBM. --}}
+    @if (! $spdMode && ! $isOperational)
         <x-ui.alert variant="warning" dismissible>
             Tidak ada surat tugas SPD yang perlu dilaporkan. LPJ hanya bisa dibuat untuk surat yang sudah disetujui dan belum ada laporannya.
         </x-ui.alert>
-    @endunless
+    @endif
 
     @if ($spdMode)
         <section id="panel-spd" hidden>
@@ -90,37 +133,86 @@
         </section>
     @endif
 
-    <section id="panel-operational" hidden class="grid gap-6 lg:grid-cols-3">
-        <x-ui.card class="lg:col-span-2">
-            <x-ui.card-header title="Laporan BBM Operasional" icon="bi bi-fuel-pump" />
-            <x-ui.card-content>
-                @if ($activePermohonan->isEmpty())
-                    <x-ui.empty-state icon="bi bi-inbox" title="Tidak ada permohonan untuk dilaporkan" description="Belum ada permohonan BBM yang disetujui dan belum dilaporkan." />
-                @else
-                    <form action="{{ route('pelaporan.operational.store') }}" method="POST" id="formOperational" enctype="multipart/form-data" class="grid gap-5">
-                        @csrf
+    {{-- grid-cols-1 = minmax(0,1fr): label voucher panjang tidak memaksa halaman melebar di HP. --}}
+    <section id="panel-operational" hidden class="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+        @if ($activePermohonan->isEmpty())
+            <x-ui.card class="lg:col-span-3">
+                <x-ui.card-content>
+                    <x-ui.empty-state icon="bi bi-ticket-perforated" title="Tidak ada voucher untuk dilaporkan"
+                                      description="Laporan bisa dibuat untuk voucher yang sudah disetujui dan belum dilaporkan.">
+                        <x-ui.button class="mt-2" variant="outline" :href="route('requester-index')"><i class="bi bi-arrow-left"></i> Ke Permohonan Aktif</x-ui.button>
+                    </x-ui.empty-state>
+                </x-ui.card-content>
+            </x-ui.card>
+        @else
+            <form action="{{ route('pelaporan.operational.store') }}" method="POST" id="formOperational" enctype="multipart/form-data" class="grid min-w-0 grid-cols-1 gap-6 lg:col-span-2">
+                @csrf
 
-                        <x-ui.field label="Permohonan BBM" for="selectPermohonan" required>
-                            <x-ui.select name="permohonan_id" id="selectPermohonan" required>
-                                <option value="">Pilih permohonan</option>
-                                @foreach ($activePermohonan as $p)
-                                    <option value="{{ $p->id }}"
-                                            data-vehicle="{{ $p->vehicle?->consumerial_code }}"
-                                            data-gasoline="{{ $p->gasoline_type }}"
-                                            data-budget="{{ $p->vehicle?->detail?->nominal_full_tank }}">
-                                        {{ $p->request_number }} - {{ $p->vehicle?->consumerial_code }} ({{ $p->gasoline_type }}) - Rp {{ number_format($p->bill_amounts, 0, ',', '.') }}
-                                    </option>
-                                @endforeach
-                            </x-ui.select>
-                            <p id="infoPermohonan" class="text-xs text-muted-foreground"></p>
+                {{-- Langkah 1: voucher yang dilaporkan --}}
+                <x-ui.card class="ornament-corner gap-4" style="--ornament: var(--primary)">
+                    <div class="flex items-start gap-3 px-6">
+                        <span class="{{ $step }} from-primary to-indigo-500">1</span>
+                        <div>
+                            <h2 class="font-semibold leading-7">Voucher yang dilaporkan</h2>
+                            <p class="text-sm text-muted-foreground">Pilih voucher yang dipakai saat mengisi BBM.</p>
+                        </div>
+                    </div>
+                    <x-ui.card-content class="grid gap-3">
+                        <x-ui.field label="Voucher" for="selectPermohonan" required>
+                            <x-ui.select-menu id="selectPermohonan" name="permohonan_id" :options="$voucherOptions" :value="$presetValid ? $presetId : ''"
+                                              placeholder="Pilih voucher" icon="bi bi-ticket-perforated" required class="[&_[data-select-trigger]]:h-11" />
+                            <p id="infoPermohonan" class="text-xs text-muted-foreground empty:hidden">
+                                @if ($presetId !== '' && ! $presetValid)
+                                    <span class="text-warning">Voucher ini sudah dilaporkan atau belum disetujui. Pilih voucher lain.</span>
+                                @endif
+                            </p>
                         </x-ui.field>
 
-                        <x-ui.field label="Foto struk dan tambahan" for="fotoFilesOp" required
-                                    hint="Unggah satu atau beberapa foto sekaligus (struk BBM, odometer, dashboard). AI menganalisis setiap foto.">
-                            <x-ui.input type="file" name="foto_files[]" id="fotoFilesOp" accept="image/jpeg,image/png,image/webp" multiple required />
-                        </x-ui.field>
+                        {{-- Kartu voucher terpilih (diisi JS dari data voucher) --}}
+                        <div id="voucherCard" hidden class="overflow-hidden rounded-xl border bg-linear-to-br from-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/20">
+                            {{-- HP: kode dan nominal bertumpuk supaya kode voucher tidak terpotong. --}}
+                            <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 p-4">
+                                <div class="min-w-0">
+                                    <p class="text-xs text-white/75">Kode voucher</p>
+                                    <p data-v="voucher" class="break-all font-mono text-base font-bold tracking-wider sm:text-lg"></p>
+                                    <p data-v="number" class="text-xs text-white/75"></p>
+                                </div>
+                                <div class="shrink-0 sm:text-right">
+                                    <p class="text-xs text-white/75">Nominal</p>
+                                    <p data-v="amount" class="text-lg font-bold tabular-nums"></p>
+                                </div>
+                            </div>
+                            <dl class="grid grid-cols-2 gap-px bg-white/15 text-xs sm:grid-cols-3">
+                                <div class="bg-emerald-700/60 px-4 py-2.5"><dt class="text-white/70">Kendaraan</dt><dd data-v="vehicle" class="truncate font-semibold"></dd></div>
+                                <div class="bg-emerald-700/60 px-4 py-2.5"><dt class="text-white/70">BBM</dt><dd data-v="gasoline" class="truncate font-semibold"></dd></div>
+                                <div class="col-span-2 bg-emerald-700/60 px-4 py-2.5 sm:col-span-1"><dt class="text-white/70">Berlaku</dt><dd data-v="validity" class="truncate font-semibold"></dd></div>
+                            </dl>
+                        </div>
+                    </x-ui.card-content>
+                </x-ui.card>
 
-                        <div id="aiResultsOp" class="grid gap-2"></div>
+                {{-- Langkah 2: foto struk & tambahan --}}
+                <x-ui.card class="ornament-corner gap-4" style="--ornament: var(--module-bbm)">
+                    <div class="flex items-start gap-3 px-6">
+                        <span class="{{ $step }} from-orange-500 to-amber-500">2</span>
+                        <div>
+                            <h2 class="font-semibold leading-7">Foto struk dan tambahan</h2>
+                            <p class="text-sm text-muted-foreground">Struk BBM wajib. Foto odometer atau dashboard boleh ditambahkan. AI membaca setiap foto.</p>
+                        </div>
+                    </div>
+                    <x-ui.card-content class="grid gap-4">
+                        {{-- Area unggah: input file asli menutupi area (ketuk atau seret foto ke sini). --}}
+                        <label for="fotoFilesOp" data-dropzone
+                               class="relative grid cursor-pointer place-items-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/30 px-4 py-8 text-center transition-colors hover:border-primary/50 hover:bg-primary/5 has-[:focus-visible]:border-ring has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50 data-[drag=true]:border-primary data-[drag=true]:bg-primary/5">
+                            <span class="flex size-12 items-center justify-center rounded-full bg-primary/10 text-xl text-primary"><i class="bi bi-cloud-arrow-up"></i></span>
+                            <span class="text-sm font-medium">Ketuk untuk pilih foto, atau seret ke sini</span>
+                            <span data-dropzone-label class="text-xs text-muted-foreground">JPG, PNG, atau WEBP. Bisa beberapa foto sekaligus.</span>
+                            <input type="file" name="foto_files[]" id="fotoFilesOp" accept="image/jpeg,image/png,image/webp" multiple required
+                                   class="absolute inset-0 size-full cursor-pointer opacity-0" aria-describedby="aiStatusOp">
+                        </label>
+
+                        <div id="aiResultsOp" class="grid gap-2 empty:hidden"></div>
+                        <p id="aiStatusOp" class="text-sm empty:hidden" aria-live="polite"></p>
 
                         <x-ui.alert id="strukValidationAlertOp" variant="destructive" title="Struk berbeda" hidden>
                             <span id="strukValidationMsgOp"></span>
@@ -138,32 +230,46 @@
                         <input type="hidden" name="volume_bbm" id="volumeOp" value="{{ old('volume_bbm') }}" required>
                         <input type="hidden" name="nominal" id="nominalOp" value="{{ old('nominal') }}">
                         <div id="fileFieldsWrap"></div>
+                    </x-ui.card-content>
+                </x-ui.card>
+            </form>
 
-                        <p id="aiStatusOp" class="text-sm" aria-live="polite"></p>
+            {{-- Ringkasan + kirim (HP: di bawah form). Angka ikut hasil AI / isian manual. --}}
+            <aside class="grid min-w-0 gap-4 lg:sticky lg:top-4">
+                <x-ui.card class="gap-0 overflow-hidden py-0">
+                    <div class="relative overflow-hidden border-b border-emerald-100 bg-linear-to-br from-emerald-50 via-teal-50 to-card px-6 py-5">
+                        <i class="bi bi-receipt pointer-events-none absolute -right-3 -top-2 text-7xl text-emerald-600/10" aria-hidden="true"></i>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-emerald-700">Ringkasan laporan</p>
+                        <p data-sum="nominal" class="mt-2 text-3xl font-bold tabular-nums tracking-tight">Rp 0</p>
+                        <p class="mt-1 text-xs text-muted-foreground">Total nominal dari struk</p>
+                    </div>
+                    <dl class="grid gap-3 p-6 text-sm">
+                        <div class="flex items-center justify-between gap-3"><dt class="text-muted-foreground"><i class="bi bi-droplet-half"></i> Volume</dt><dd data-sum="volume" class="font-semibold tabular-nums">-</dd></div>
+                        <div class="flex items-center justify-between gap-3"><dt class="text-muted-foreground"><i class="bi bi-calendar3"></i> Tanggal isi</dt><dd data-sum="date" class="font-semibold">-</dd></div>
+                        <div class="flex items-center justify-between gap-3"><dt class="text-muted-foreground"><i class="bi bi-images"></i> Foto</dt><dd data-sum="files" class="font-semibold tabular-nums">0</dd></div>
+                    </dl>
+                    <div class="border-t p-6 pt-4">
+                        <x-ui.button type="submit" form="formOperational" variant="success" size="lg" class="w-full shadow-lg shadow-success/25">
+                            <i class="bi bi-send"></i> Kirim Laporan BBM
+                        </x-ui.button>
+                        <p class="mt-2 text-center text-xs text-muted-foreground">Satu voucher hanya punya satu laporan.</p>
+                    </div>
+                </x-ui.card>
 
-                        <div>
-                            <x-ui.button type="submit" variant="success"><i class="bi bi-send"></i> Kirim Laporan BBM</x-ui.button>
-                        </div>
-                    </form>
-                @endif
-            </x-ui.card-content>
-        </x-ui.card>
-
-        <x-ui.card class="self-start">
-            <x-ui.card-header title="Cara melapor" icon="bi bi-info-circle" />
-            <x-ui.card-content>
-                <ol class="grid list-inside list-decimal gap-2 text-sm text-muted-foreground">
-                    <li>Pilih permohonan yang sudah disetujui.</li>
-                    <li>Unggah foto struk dan foto tambahan. Foto odometer atau dashboard otomatis masuk kategori Tambahan.</li>
-                    <li>Periksa hasil analisis AI.</li>
-                    <li>Bila AI mencapai batas atau gagal, isi data manual pada foto yang ditandai kuning.</li>
-                    <li>Klik Kirim Laporan. Satu permohonan hanya punya satu laporan BBM.</li>
-                </ol>
-            </x-ui.card-content>
-        </x-ui.card>
+                <x-ui.card class="gap-3 py-4">
+                    <x-ui.card-content class="px-4">
+                        <ul class="grid gap-2.5 text-xs text-muted-foreground">
+                            <li class="flex gap-2.5"><span class="flex size-6 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-700"><i class="bi bi-stars"></i></span><span class="pt-0.5">AI membaca nominal, volume, dan tanggal dari struk.</span></li>
+                            <li class="flex gap-2.5"><span class="flex size-6 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-700"><i class="bi bi-pencil-square"></i></span><span class="pt-0.5">Bila AI gagal atau mencapai batas, isi data pada foto yang ditandai kuning.</span></li>
+                            <li class="flex gap-2.5"><span class="flex size-6 shrink-0 items-center justify-center rounded-md bg-rose-50 text-rose-700"><i class="bi bi-shield-exclamation"></i></span><span class="pt-0.5">Struk harus sesuai voucher (nominal dan plat nomor).</span></li>
+                        </ul>
+                    </x-ui.card-content>
+                </x-ui.card>
+            </aside>
+        @endif
     </section>
 
-    <script type="application/json" id="page-data">@json(['analyzeUrl' => route('pelaporan.analyze-struk'), 'csrfToken' => csrf_token()])</script>
+    <script type="application/json" id="page-data">@json(['analyzeUrl' => route('pelaporan.analyze-struk'), 'csrfToken' => csrf_token(), 'vouchers' => $voucherData])</script>
 
     @push('scripts')
         @vite('resources/js/pages/bbm/pelaporan.js')

@@ -2,7 +2,7 @@
     // Filter & periode lewat query string. Catatan: controller hanya membatasi angka ringkasan dengan
     // start_date/end_date ("period" hanya mengatur pengelompokan grafik), jadi tombol periode di sini
     // mengirim rentang tanggal supaya angka sesuai label.
-    $base = request()->except(['page', 'pivot_page', 'driver_page', 'vehicle_page', 'trip_page']);
+    $base = request()->except(['page']);
     $urlWith = function (array $params) use ($base) {
         $query = http_build_query(array_filter(array_merge($base, $params), fn ($value) => filled($value)));
 
@@ -20,7 +20,7 @@
     $activePreset = (! $start && ! $end) ? 'all'
         : (collect($presets)->search(fn ($preset) => $preset[1] === $start && $preset[2] === $end) ?: 'custom');
     $rangeLabel = ($start && $end)
-        ? \Illuminate\Support\Carbon::parse($start)->translatedFormat('d M Y') . ' - ' . \Illuminate\Support\Carbon::parse($end)->translatedFormat('d M Y')
+        ? \Illuminate\Support\Carbon::parse($start)->translatedFormat('d M Y') . ' – ' . \Illuminate\Support\Carbon::parse($end)->translatedFormat('d M Y')
         : 'Semua waktu';
 
     $filterKeys = ['status', 'gasoline_type', 'vehicle_id', 'requester_id', 'nominal_range'];
@@ -36,12 +36,22 @@
         'nominal_range' => ['Nominal', fn ($v) => $nominalLabels[$v] ?? $v],
     ])->filter(fn ($cfg, $key) => request()->filled($key))
       ->map(fn ($cfg, $key) => ['label' => $cfg[0], 'value' => ($cfg[1])(request($key)), 'url' => $urlWith([$key => null])]);
-    $segment = 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground aria-[current=true]:bg-card aria-[current=true]:text-foreground aria-[current=true]:shadow-sm';
+    $segment = 'inline-flex items-center gap-1.5 justify-center whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium text-muted-foreground sm:py-1.5 transition-colors hover:text-foreground aria-[current=true]:bg-card aria-[current=true]:text-foreground aria-[current=true]:shadow-sm';
+    // Opsi Select filter (x-ui.select-menu).
+    $opts = fn ($all, $pairs) => [['value' => '', 'label' => $all], ...collect($pairs)->map(fn ($label, $value) => ['value' => (string) $value, 'label' => $label])->values()->all()];
+    $filterSelects = [
+        ['status', 'Status', $opts('Semua status', $statusLabels), false],
+        ['gasoline_type', 'Jenis BBM', $opts('Semua jenis', array_combine($gasolineTypes, $gasolineTypes)), false],
+        ['vehicle_id', 'Kendaraan', $opts('Semua kendaraan', collect($vehicles ?? [])->mapWithKeys(fn ($v) => [$v->id => $v->consumerial_code . ' - ' . $v->consumerial_name])), true],
+        ['requester_id', 'Driver / pemohon', $opts('Semua driver', collect($drivers ?? [])->mapWithKeys(fn ($d) => [$d->id => $d->nama_lengkap])), false],
+        ['nominal_range', 'Nominal', $opts('Semua nominal', $nominalLabels), false],
+    ];
 
     $gasolineData = $stats['gasolineExpenseDistribution'] ?? [];
     $gasolineTotal = array_sum($gasolineData);
-    $rupiah = fn ($value) => 'Rp ' . number_format($value ?? 0, 0, ',', '.');
-    $compact = fn ($value) => $value >= 1_000_000 ? 'Rp ' . number_format($value / 1_000_000, 1, ',', '.') . ' jt' : $rupiah($value);
+    // Spasi tak terputus: "Rp" tidak terpisah dari angkanya saat kartu sempit.
+    $rupiah = fn ($value) => "Rp\u{00A0}" . number_format($value ?? 0, 0, ',', '.');
+    $compact = fn ($value) => $value >= 1_000_000 ? "Rp " . number_format($value / 1_000_000, 1, ',', '.') . ' jt' : $rupiah($value);
 
     // Grafik: warna tetap per jenis BBM; ringkasan tren (total & titik tertinggi) dari data per periode.
     $gasolineColors = ['Pertamax' => '#0b50a1', 'Pertalite' => '#71a62f', 'Pertamina Dex' => '#ff771d'];
@@ -72,10 +82,10 @@
     <x-ui.page-header :kicker="$activeModule?->name" :icon="$activeModule?->icon" :title="$title" description="Ringkasan pengeluaran, konsumsi, dan pelaporan BBM.">
         <x-slot:actions>
             @if (Auth::user()->hasPermission('vehicle.report'))
-                <x-ui.button variant="outline" :href="route('superadmin.trip-analysis.index')"><i class="bi bi-signpost-2"></i> Trip Analysis</x-ui.button>
+                <x-ui.button variant="outline" class="flex-1 sm:flex-none" :href="route('superadmin.trip-analysis.index')"><i class="bi bi-signpost-2"></i> <span class="sm:hidden">Analisis Trip</span><span class="max-sm:hidden">Analisis Efisiensi Trip</span></x-ui.button>
             @endif
             @if (Auth::user()->role === 'superadmin')
-                <x-ui.button data-dialog-open="printReportDialog"><i class="bi bi-printer"></i> Cetak Laporan Transaksi</x-ui.button>
+                <x-ui.button class="flex-1 sm:flex-none" data-dialog-open="printReportDialog"><i class="bi bi-printer"></i> <span class="sm:hidden">Cetak Laporan</span><span class="max-sm:hidden">Cetak Laporan Transaksi</span></x-ui.button>
             @endif
         </x-slot:actions>
     </x-ui.page-header>
@@ -83,96 +93,57 @@
     {{-- Toolbar periode + filter (pola shadcn data-table toolbar). Semua lewat GET; filter diterapkan
          dengan tombol, bukan tiap isian berubah, supaya halaman tidak dimuat ulang berkali-kali. --}}
     <x-ui.card class="gap-0 py-0">
-        <div class="flex flex-wrap items-center gap-3 p-3">
-            <div class="inline-flex flex-wrap items-center gap-0.5 rounded-lg bg-muted p-1" role="group" aria-label="Periode">
+        <div class="flex flex-wrap items-center gap-2 p-3">
+            {{-- Periode: segmen preset (tautan) + segmen "Kustom" yang membuka kalender rentang. --}}
+            {{-- HP: grid 6 kolom = 2 baris rata (3 preset di atas, Semua waktu + Kustom di bawah), tanpa geser ke samping. --}}
+            <div class="grid w-full grid-cols-6 gap-0.5 rounded-lg bg-muted p-1 sm:inline-flex sm:w-auto sm:flex-wrap sm:items-center" role="group" aria-label="Periode">
                 @foreach ($presets as $key => [$label, $from, $to])
-                    <a href="{{ $urlWith(['start_date' => $from, 'end_date' => $to, 'period' => $key]) }}" class="{{ $segment }}"
+                    <a href="{{ $urlWith(['period' => $key, 'start_date' => $from, 'end_date' => $to]) }}" class="{{ $segment }} col-span-2"
                        aria-current="{{ $activePreset === $key ? 'true' : 'false' }}">{{ $label }}</a>
                 @endforeach
-                <a href="{{ $urlWith(['start_date' => null, 'end_date' => null, 'period' => null]) }}" class="{{ $segment }}"
+                <a href="{{ $urlWith(['start_date' => null, 'end_date' => null, 'period' => null]) }}" class="{{ $segment }} col-span-3"
                    aria-current="{{ $activePreset === 'all' ? 'true' : 'false' }}">Semua waktu</a>
 
-                <details data-menu class="relative">
-                    <summary class="{{ $segment }} cursor-pointer list-none [&::-webkit-details-marker]:hidden" aria-current="{{ $activePreset === 'custom' ? 'true' : 'false' }}">
+                <form method="GET" action="{{ url()->current() }}" data-custom-range class="col-span-3">
+                    @foreach ($filterKeys as $key)
+                        @if (request()->filled($key))<input type="hidden" name="{{ $key }}" value="{{ request($key) }}">@endif
+                    @endforeach
+                    <input type="hidden" name="period" value="month">
+                    <x-ui.date-range-picker id="customRange" :from="$start" :to="$end" :max="$today" :trigger-class="$segment . ' w-full cursor-pointer sm:w-auto'" :current="$activePreset === 'custom'">
                         <i class="bi bi-calendar-range"></i> Kustom
-                    </summary>
-                    <form method="GET" action="{{ url()->current() }}" data-custom-range
-                          class="absolute left-0 z-40 mt-2 grid w-72 gap-3 rounded-lg border bg-popover p-4 text-popover-foreground shadow-lg">
-                        @foreach ($filterKeys as $key)
-                            @if (request()->filled($key))<input type="hidden" name="{{ $key }}" value="{{ request($key) }}">@endif
-                        @endforeach
-                        <input type="hidden" name="period" value="month">
-                        <p class="text-sm font-semibold">Rentang tanggal</p>
-                        <x-ui.field label="Dari" for="range_start">
-                            <x-ui.input type="date" id="range_start" name="start_date" :value="$start" :max="$today" required />
-                        </x-ui.field>
-                        <x-ui.field label="Sampai" for="range_end">
-                            <x-ui.input type="date" id="range_end" name="end_date" :value="$end" :max="$today" required />
-                        </x-ui.field>
-                        <x-ui.button type="submit" size="sm"><i class="bi bi-check2"></i> Terapkan</x-ui.button>
-                    </form>
-                </details>
+                    </x-ui.date-range-picker>
+                </form>
             </div>
 
-            <span class="inline-flex items-center gap-1.5 text-sm text-muted-foreground"><i class="bi bi-calendar3"></i> {{ $rangeLabel }}</span>
+            <span class="inline-flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground"><i class="bi bi-calendar3"></i> <span class="truncate">{{ $rangeLabel }}</span></span>
 
-            <details data-menu class="relative ml-auto">
+            <details data-menu class="relative ml-auto shrink-0">
                 <summary class="inline-flex h-9 cursor-pointer list-none items-center gap-2 rounded-md border bg-card px-3 text-sm font-medium shadow-xs transition-colors hover:bg-accent [&::-webkit-details-marker]:hidden">
                     <i class="bi bi-funnel"></i> Filter
                     @if ($chips->isNotEmpty())
                         <span class="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs text-primary-foreground">{{ $chips->count() }}</span>
                     @endif
                 </summary>
+                {{-- HP: bottom sheet (latar gelap + panel dari bawah); layar lebar: panel dropdown di bawah tombol. --}}
+                <div data-menu-close aria-hidden="true" class="fixed inset-0 z-40 bg-black/40 sm:hidden"></div>
                 <form method="GET" action="{{ url()->current() }}"
-                      data-clean-query class="absolute right-0 z-40 mt-2 grid w-[min(24rem,calc(100vw-2rem))] gap-4 rounded-lg border bg-popover p-4 text-popover-foreground shadow-lg">
+                      data-clean-query class="fixed inset-x-0 bottom-0 z-50 grid max-h-[85dvh] gap-4 overflow-y-auto rounded-t-2xl border bg-popover p-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-popover-foreground shadow-lg sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:z-40 sm:mt-2 sm:max-h-none sm:w-96 sm:overflow-visible sm:rounded-lg sm:pb-4">
                     @foreach (['start_date', 'end_date', 'period'] as $key)
                         @if (request()->filled($key))<input type="hidden" name="{{ $key }}" value="{{ request($key) }}">@endif
                     @endforeach
-                    <div>
-                        <p class="text-sm font-semibold">Filter transaksi</p>
-                        <p class="text-xs text-muted-foreground">Berlaku untuk ringkasan, grafik, dan ranking.</p>
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-sm font-semibold">Filter transaksi</p>
+                            <p class="text-xs text-muted-foreground">Berlaku untuk ringkasan, grafik, dan ranking.</p>
+                        </div>
+                        <button type="button" data-menu-close aria-label="Tutup filter" class="-m-1 inline-flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground sm:hidden"><i class="bi bi-x-lg"></i></button>
                     </div>
                     <div class="grid gap-3 sm:grid-cols-2">
-                        <x-ui.field label="Status" for="filter_status">
-                            <x-ui.select name="status" id="filter_status">
-                                <option value="">Semua status</option>
-                                @foreach ($statusLabels as $value => $label)
-                                    <option value="{{ $value }}" @selected(request('status') == $value)>{{ $label }}</option>
-                                @endforeach
-                            </x-ui.select>
-                        </x-ui.field>
-                        <x-ui.field label="Jenis BBM" for="filter_gasoline">
-                            <x-ui.select name="gasoline_type" id="filter_gasoline">
-                                <option value="">Semua jenis</option>
-                                @foreach ($gasolineTypes as $gt)
-                                    <option value="{{ $gt }}" @selected(request('gasoline_type') == $gt)>{{ $gt }}</option>
-                                @endforeach
-                            </x-ui.select>
-                        </x-ui.field>
-                        <x-ui.field label="Kendaraan" for="filter_vehicle" class="sm:col-span-2">
-                            <x-ui.select name="vehicle_id" id="filter_vehicle">
-                                <option value="">Semua kendaraan</option>
-                                @foreach ($vehicles ?? [] as $vehicle)
-                                    <option value="{{ $vehicle->id }}" @selected(request('vehicle_id') == $vehicle->id)>{{ $vehicle->consumerial_code }} - {{ $vehicle->consumerial_name }}</option>
-                                @endforeach
-                            </x-ui.select>
-                        </x-ui.field>
-                        <x-ui.field label="Driver / pemohon" for="filter_requester">
-                            <x-ui.select name="requester_id" id="filter_requester">
-                                <option value="">Semua driver</option>
-                                @foreach ($drivers ?? [] as $driver)
-                                    <option value="{{ $driver->id }}" @selected(request('requester_id') == $driver->id)>{{ $driver->nama_lengkap }}</option>
-                                @endforeach
-                            </x-ui.select>
-                        </x-ui.field>
-                        <x-ui.field label="Nominal" for="filter_nominal">
-                            <x-ui.select name="nominal_range" id="filter_nominal">
-                                <option value="">Semua nominal</option>
-                                @foreach ($nominalLabels as $value => $label)
-                                    <option value="{{ $value }}" @selected(request('nominal_range') == $value)>{{ $label }}</option>
-                                @endforeach
-                            </x-ui.select>
-                        </x-ui.field>
+                        @foreach ($filterSelects as [$key, $label, $options, $wide])
+                            <x-ui.field :label="$label" :for="'filter_' . $key" :class="$wide ? 'sm:col-span-2' : ''">
+                                <x-ui.select-menu :id="'filter_' . $key" :name="$key" :value="request($key, '')" :options="$options" />
+                            </x-ui.field>
+                        @endforeach
                     </div>
                     <div class="flex items-center justify-between gap-2 border-t pt-3">
                         <x-ui.button variant="ghost" size="sm" :href="$urlWith(array_fill_keys($filterKeys, null))">Reset</x-ui.button>
@@ -202,17 +173,18 @@
         <span class="text-sm text-muted-foreground">{{ $rangeLabel }}@if ($chips->isNotEmpty()) &middot; {{ $chips->count() }} filter aktif @endif</span>
     </div>
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <x-ui.stat-card label="Total transaksi" :value="$stats['totalTransactions'] ?? $stats['total'] ?? 0" :hint="request('status') ? 'Status ' . ($statusLabels[request('status')] ?? request('status')) : 'Semua status'" icon="bi bi-receipt" />
-        <x-ui.stat-card label="Total pengeluaran" :value="$rupiah($stats['totalExpense'])" hint="Disetujui dan selesai" icon="bi bi-cash-stack" tone="success" />
-        <x-ui.stat-card label="Rata-rata nilai permohonan" :value="$rupiah($stats['avgRequestValue'] ?? 0)" hint="Per permohonan" icon="bi bi-currency-exchange" tone="warning" />
-        <x-ui.stat-card label="Rata-rata frekuensi" :value="$stats['avgRequestFrequency']['value']" :hint="$stats['avgRequestFrequency']['label']" icon="bi bi-graph-up" />
+    {{-- HP: 2 kolom dengan angka ringkas (short) supaya tidak menumpuk 4 kartu ke bawah. --}}
+    <div class="grid grid-cols-2 gap-3 sm:gap-4 2xl:grid-cols-4">
+        <x-ui.stat-card label="Total transaksi" :value="$stats['totalTransactions'] ?? $stats['total'] ?? 0" short :hint="request('status') ? 'Status ' . ($statusLabels[request('status')] ?? request('status')) : 'Semua status'" icon="bi bi-receipt" />
+        <x-ui.stat-card label="Total pengeluaran" :value="$rupiah($stats['totalExpense'])" :short="$compact($stats['totalExpense'])" hint="Disetujui dan selesai" icon="bi bi-cash-stack" tone="success" />
+        <x-ui.stat-card label="Rata-rata nilai permohonan" :value="$rupiah($stats['avgRequestValue'] ?? 0)" :short="$compact($stats['avgRequestValue'] ?? 0)" hint="Per permohonan" icon="bi bi-currency-exchange" tone="warning" />
+        <x-ui.stat-card label="Rata-rata frekuensi" :value="$stats['avgRequestFrequency']['value']" short :hint="$stats['avgRequestFrequency']['label']" icon="bi bi-graph-up" />
     </div>
 
     <div class="grid gap-4 lg:grid-cols-3">
-        <x-ui.card class="gap-4 lg:col-span-2">
-            <x-ui.card-header title="Tren pengeluaran" icon="bi bi-bar-chart-line"
-                :description="'Disetujui dan selesai, ' . $periodUnit" />
+        <x-ui.card class="min-w-0 gap-4 lg:col-span-2">
+            <x-ui.card-header title="Tren pengeluaran" icon="bi bi-graph-up"
+                description="Pengeluaran yang disetujui dan selesai" />
             <x-ui.card-content class="grid gap-4">
                 @if ($expenseTotal > 0)
                     <div class="flex flex-wrap gap-x-8 gap-y-2">
@@ -221,17 +193,17 @@
                             <p class="text-xl font-bold tabular-nums tracking-tight">{{ $rupiah($expenseTotal) }}</p>
                         </div>
                         <div>
-                            <p class="text-xs text-muted-foreground">Tertinggi</p>
+                            <p class="text-xs text-muted-foreground">Tertinggi {{ $periodUnit }}</p>
                             <p class="text-xl font-bold tabular-nums tracking-tight">{{ $rupiah($expensePeak[1]) }}
                                 <span class="text-sm font-normal text-muted-foreground">{{ $expensePeak[0] }}</span></p>
                         </div>
                     </div>
                 @endif
-                <div class="relative h-72"><canvas id="expenseChart" aria-label="Grafik tren pengeluaran BBM" role="img"></canvas></div>
+                <div class="relative h-60 w-full min-w-0 sm:h-72"><canvas id="expenseChart" aria-label="Grafik tren pengeluaran BBM" role="img"></canvas></div>
             </x-ui.card-content>
         </x-ui.card>
 
-        <x-ui.card class="gap-4">
+        <x-ui.card class="min-w-0 gap-4">
             <x-ui.card-header title="Distribusi jenis BBM" icon="bi bi-pie-chart" description="Porsi pengeluaran per jenis BBM" />
             <x-ui.card-content class="grid gap-5">
                 <div class="relative mx-auto size-48">
@@ -264,21 +236,21 @@
         </x-ui.card>
     </div>
 
-    {{-- Top 10: dua daftar berperingkat berdampingan (lebih mudah dibaca daripada grafik batang horizontal). --}}
+    {{-- Top 5 per kategori: ringkas, cukup untuk melihat siapa/apa penyumbang pengeluaran terbesar. --}}
     <div class="grid gap-4 lg:grid-cols-2">
         @foreach ([
-            ['title' => 'Top 10 kendaraan', 'icon' => 'bi bi-truck', 'data' => $stats['vehicleExpense'] ?? [], 'bar' => 'bg-module-bbm'],
-            ['title' => 'Top 10 driver', 'icon' => 'bi bi-person', 'data' => $stats['driverExpense'] ?? [], 'bar' => 'bg-primary'],
+            ['title' => 'Top 5 kendaraan', 'icon' => 'bi bi-truck', 'data' => $stats['vehicleExpense'] ?? [], 'bar' => 'bg-module-bbm'],
+            ['title' => 'Top 5 driver', 'icon' => 'bi bi-person', 'data' => $stats['driverExpense'] ?? [], 'bar' => 'bg-primary'],
         ] as $ranking)
             @php $max = max(1, ...array_values($ranking['data'] ?: [0])); @endphp
-            <x-ui.card class="gap-4">
+            <x-ui.card class="min-w-0 gap-4">
                 <x-ui.card-header :title="$ranking['title']" :icon="$ranking['icon']" description="Pengeluaran BBM terbesar pada periode ini" />
                 <x-ui.card-content>
                     @if (empty($ranking['data']))
                         <x-ui.empty-state icon="bi bi-trophy" title="Belum ada data" description="Tidak ada pengeluaran pada periode dan filter ini." />
                     @else
                         <ol class="grid gap-3.5">
-                            @foreach ($ranking['data'] as $name => $total)
+                            @foreach (array_slice($ranking['data'], 0, 5, true) as $name => $total)
                                 <li class="grid grid-cols-[1.75rem_1fr] items-center gap-x-3 gap-y-1.5">
                                     <span @class([
                                         'row-span-2 flex size-7 items-center justify-center rounded-full text-xs font-bold',
@@ -300,135 +272,6 @@
             </x-ui.card>
         @endforeach
     </div>
-
-    <x-ui.card class="gap-4">
-        <x-ui.card-header title="Daftar transaksi" icon="bi bi-table" description="Seluruh permohonan BBM terbaru, tidak terpengaruh periode dan filter di atas.">
-            <x-slot:action>
-                <div class="flex gap-2">
-                    <x-ui.input type="search" class="w-48" data-table-search="pivotTable" placeholder="Cari di halaman ini" aria-label="Cari" />
-                    @if (Auth::user()->hasPermission('bbm.export'))
-                        <x-ui.button variant="outline" data-export-table="pivotTable" data-filename="pivot_data.csv"><i class="bi bi-file-earmark-spreadsheet"></i> CSV</x-ui.button>
-                    @endif
-                </div>
-            </x-slot:action>
-        </x-ui.card-header>
-        <x-ui.card-content class="grid gap-4">
-            <x-ui.table id="pivotTable">
-                <thead>
-                    <tr>
-                        <th>Nomor</th>
-                        <th>Driver</th>
-                        <th>Kendaraan</th>
-                        <th>Tgl pengajuan</th>
-                        <th class="text-right">Nominal</th>
-                        <th>Status</th>
-                        <th>Tgl pengisian</th>
-                        <th class="text-right">Volume</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($pivotData as $row)
-                        <tr>
-                            <td><code class="text-xs">{{ $row['requestNumber'] }}</code></td>
-                            <td>{{ $row['driverName'] }}</td>
-                            <td>{{ $row['vehicleDisplay'] }}</td>
-                            <td class="whitespace-nowrap">{{ $row['requestAt']->format('d/m/Y') }}</td>
-                            <td class="whitespace-nowrap text-right font-medium tabular-nums">{{ $rupiah($row['nominal']) }}</td>
-                            <td><x-bbm.status-badge :status="$row['status']" /></td>
-                            <td class="whitespace-nowrap">{{ $row['tanggalPengisian']?->format('d/m/Y') ?? '-' }}</td>
-                            <td class="text-right tabular-nums">{{ $row['volumePengisian'] > 0 ? $row['volumePengisian'] . ' L' : '-' }}</td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="8" class="py-10 text-center text-muted-foreground">Tidak ada transaksi.</td></tr>
-                    @endforelse
-                </tbody>
-            </x-ui.table>
-            {{ $pivotData->links('vendor.pagination.shadcn') }}
-        </x-ui.card-content>
-    </x-ui.card>
-
-    <x-ui.card class="gap-4">
-        <x-ui.card-header title="Statistik per driver" icon="bi bi-person-check" description="Seluruh waktu, tidak terpengaruh periode dan filter di atas.">
-            <x-slot:action>
-                <x-ui.input type="search" class="w-56" data-table-search="driverStatsTable" placeholder="Cari driver" aria-label="Cari driver" />
-            </x-slot:action>
-        </x-ui.card-header>
-        <x-ui.card-content class="grid gap-4">
-            <x-ui.table id="driverStatsTable">
-                <thead>
-                    <tr>
-                        <th>Driver</th>
-                        <th class="text-center">Total</th>
-                        <th class="text-center">Ditolak</th>
-                        <th class="text-center">Selesai</th>
-                        <th class="text-center">Disetujui</th>
-                        <th class="text-center">Menunggu</th>
-                        <th class="text-center">Pelaporan</th>
-                        <th class="text-right">Rata-rata nominal</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($driverStats as $driver)
-                        <tr>
-                            <td class="font-medium">{{ $driver['driver'] }}</td>
-                            <td class="text-center tabular-nums">{{ $driver['total'] }}</td>
-                            <td class="text-center"><x-ui.badge variant="danger">{{ $driver['rejected'] }}</x-ui.badge></td>
-                            <td class="text-center"><x-ui.badge variant="info">{{ $driver['completed'] }}</x-ui.badge></td>
-                            <td class="text-center"><x-ui.badge variant="success">{{ $driver['approved'] }}</x-ui.badge></td>
-                            <td class="text-center"><x-ui.badge variant="warning">{{ $driver['pending'] }}</x-ui.badge></td>
-                            <td>
-                                <div class="mx-auto flex w-28 items-center gap-2">
-                                    <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"><div @class(['h-full rounded-full', 'bg-success' => $driver['reportRate'] >= 80, 'bg-warning' => $driver['reportRate'] >= 40 && $driver['reportRate'] < 80, 'bg-destructive' => $driver['reportRate'] < 40]) style="width: {{ min(100, $driver['reportRate']) }}%"></div></div>
-                                    <span class="w-10 text-right text-xs tabular-nums">{{ $driver['reportRate'] }}%</span>
-                                </div>
-                            </td>
-                            <td class="whitespace-nowrap text-right font-medium tabular-nums" title="Tertinggi {{ $rupiah($driver['maxNominal']) }}, terendah {{ $rupiah($driver['minNominal']) }}">
-                                {{ $rupiah($driver['avgNominal']) }}
-                            </td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="8" class="py-10 text-center text-muted-foreground">Tidak ada data driver.</td></tr>
-                    @endforelse
-                </tbody>
-            </x-ui.table>
-            {{ $driverStats->links('vendor.pagination.shadcn') }}
-        </x-ui.card-content>
-    </x-ui.card>
-
-    <x-ui.card class="gap-4">
-        <x-ui.card-header title="Performa KM kendaraan" icon="bi bi-speedometer2" description="Seluruh waktu, tidak terpengaruh periode dan filter di atas." />
-        <x-ui.card-content class="grid gap-4">
-            <x-ui.table>
-                <thead>
-                    <tr>
-                        <th>Kendaraan</th>
-                        <th class="text-right">Rata-rata KM</th>
-                        <th class="text-right">Total trip</th>
-                        <th class="text-right">KM tertinggi</th>
-                        <th class="text-right">KM terendah</th>
-                        <th class="text-right">Odometer terakhir</th>
-                        <th class="text-right">Update terakhir</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($kmPerformance as $vehicle)
-                        <tr>
-                            <td class="font-medium">{{ $vehicle['vehicleDisplay'] }}</td>
-                            <td class="text-right tabular-nums">{{ $vehicle['avgKmDiff'] }} km</td>
-                            <td class="text-right tabular-nums">{{ $vehicle['totalTrips'] }}</td>
-                            <td class="text-right tabular-nums">{{ $vehicle['maxKm'] }} km</td>
-                            <td class="text-right tabular-nums">{{ $vehicle['minKm'] }} km</td>
-                            <td class="text-right font-medium tabular-nums">{{ number_format($vehicle['latestOdo'], 0, ',', '.') }} km</td>
-                            <td class="whitespace-nowrap text-right text-muted-foreground">{{ $vehicle['lastUpdate']->format('d/m/Y H:i') }}</td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="7" class="py-10 text-center text-muted-foreground">Belum ada data odometer.</td></tr>
-                    @endforelse
-                </tbody>
-            </x-ui.table>
-            {{ $kmPerformance->links('vendor.pagination.shadcn') }}
-        </x-ui.card-content>
-    </x-ui.card>
 
     @if (Auth::user()->role === 'superadmin')
         <x-ui.dialog id="printReportDialog" title="Cetak laporan transaksi BBM" description="Pilih rentang tanggal dan status transaksi. PDF dibuka di tab baru." size="lg">

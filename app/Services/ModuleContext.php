@@ -103,6 +103,11 @@ class ModuleContext
             'superadmin.permohonan*',
             'superadmin.laporan.*',
             'superadmin.print-report*',
+            // Analisis Trip = efisiensi BBM antar pengisian voucher, jadi milik modul BBM
+            // (dulu di modul vehicle, sehingga tombol di Dashboard BBM terlempar ke All Modules).
+            'superadmin.trip-analysis.*',
+            'superadmin.trip-validations.*',
+            'trip-validations.*',
         ],
 
         'spd' => [
@@ -134,9 +139,6 @@ class ModuleContext
             'superadmin.vehicle-health.*',
             'superadmin.financial-report.*',
             'superadmin.transaction-report.*',
-            'superadmin.trip-analysis.*',
-            'superadmin.trip-validations.*',
-            'trip-validations.*',
             'dispatcher.*',
             'admin.replacement-approval.*',
             'admin.service-scheduling.*',

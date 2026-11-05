@@ -49,7 +49,7 @@
         ->sortBy(fn ($item) => $item['module'] === $activeCode ? 0 : 1)
         ->values();
     $total = $items->sum('count');
-    $moduleNames = ['bbm' => 'BBM & Permohonan', 'spd' => 'Perjalanan Dinas'];
+    $moduleNames = ['bbm' => 'BBM Operasional', 'spd' => 'Perjalanan Dinas'];
     $tones = [
         'warning' => 'bg-warning-soft text-warning',
         'danger' => 'bg-destructive-soft text-destructive',

@@ -40,6 +40,8 @@ document.querySelectorAll('form[data-autosubmit]').forEach((form) => {
         clearTimeout(timer);
         timer = setTimeout(() => form.requestSubmit(), 400);
     });
+    // <x-ui.select-menu> (shadcn Select) di dalam form autosubmit: kirim saat pilihan berubah.
+    form.addEventListener('select:change', () => form.requestSubmit());
     form.addEventListener('change', (event) => {
         if (event.target.matches('select, input[type="date"], input[type="checkbox"], input[type="radio"]')) {
             form.requestSubmit();

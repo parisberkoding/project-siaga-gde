@@ -24,13 +24,15 @@ document.addEventListener('click', (event) => {
 
 document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
+    // Esc di dalam daftar pilihan (popover) cukup menutup daftar itu, bukan panel filter induknya.
+    if (document.querySelector(':popover-open')) return;
     setOpen(false);
     document.querySelectorAll('details[data-menu][open]').forEach((menu) => { menu.open = false; });
 });
 
-// Menu akun (<details data-menu>): tutup saat klik di luar.
+// Menu akun (<details data-menu>): tutup saat klik di luar, atau di [data-menu-close] (latar/tombol tutup bottom sheet).
 document.addEventListener('click', (event) => {
     document.querySelectorAll('details[data-menu][open]').forEach((menu) => {
-        if (!menu.contains(event.target)) menu.open = false;
+        if (!menu.contains(event.target) || event.target.closest('[data-menu-close]')) menu.open = false;
     });
 });

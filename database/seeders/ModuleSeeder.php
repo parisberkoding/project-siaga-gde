@@ -34,8 +34,8 @@ class ModuleSeeder extends Seeder
     private const MODULES = [
         [
             'code' => 'bbm',
-            'name' => 'BBM & Permohonan',
-            'description' => 'Siklus BBM: permohonan -> approval -> bukti pembelian -> penarikan laporan.',
+            'name' => 'BBM Operasional',
+            'description' => 'Siklus BBM operasional: permohonan voucher -> persetujuan -> laporan pembelian -> analisis efisiensi.',
             'icon' => 'bi bi-fuel-pump',
             'order' => 1,
             'is_gateable' => true,

@@ -3,20 +3,19 @@
     $voucherDate ??= now()->subDay()->toDateString();
 @endphp
 
-<div class="grid gap-4" id="voucherPanel" data-list-url="{{ route('admin.vouchers.list') }}">
-    <div class="flex flex-wrap items-end justify-between gap-3">
+<div class="grid gap-3" id="voucherPanel" data-list-url="{{ route('admin.vouchers.list') }}">
+    {{-- Kartu filter (judul, tanggal, status, export) terpisah dari kartu tabel. --}}
+    <div class="grid gap-3 rounded-xl border bg-card p-3 shadow-xs xl:flex xl:items-end xl:justify-between">
         <div>
             <h3 class="font-medium">Voucher terbit dan tracking approval</h3>
             <p class="text-sm text-muted-foreground">Bawaan menampilkan voucher kemarin. Data berubah otomatis saat filter diganti.</p>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-            <x-ui.input type="date" id="voucherDate" :value="$voucherDate" inline aria-label="Tanggal" />
-            <x-ui.select id="voucherStatus" inline aria-label="Status">
-                <option value="all">Semua status</option>
-                <option value="active">Aktif</option>
-                <option value="expired">Kedaluwarsa</option>
-            </x-ui.select>
-            <x-ui.button variant="outline" data-voucher-export="selected"><i class="bi bi-file-earmark-spreadsheet"></i> Export terpilih</x-ui.button>
+        {{-- HP: tanggal & status masing-masing selebar layar (label tanggal panjang), dua tombol export sama lebar. --}}
+        <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+            <x-ui.date-picker id="voucherDate" :value="$voucherDate" :max="now()->toDateString()" class="col-span-2 sm:w-64" aria-label="Tanggal voucher terbit" />
+            <x-ui.select-menu id="voucherStatus" name="voucher_status" value="all" icon="bi bi-funnel" class="col-span-2 sm:w-44" aria-label="Status voucher"
+                :options="[['value' => 'all', 'label' => 'Semua status'], ['value' => 'active', 'label' => 'Aktif'], ['value' => 'expired', 'label' => 'Kedaluwarsa']]" />
+            <x-ui.button variant="outline" data-voucher-export="selected"><i class="bi bi-file-earmark-spreadsheet"></i> <span>Export <span class="max-sm:hidden">terpilih</span><span class="sm:hidden">pilihan</span></span></x-ui.button>
             <x-ui.button variant="success" data-voucher-export="all"><i class="bi bi-file-earmark-spreadsheet-fill"></i> Export semua</x-ui.button>
         </div>
     </div>
@@ -28,7 +27,8 @@
         <div id="exportIdsContainer"></div>
     </form>
 
-    <x-ui.table id="voucherTable">
+    <x-ui.card data-table-card class="gap-0 overflow-hidden py-0">
+    <x-ui.table id="voucherTable" class="max-sm:[&_td]:whitespace-nowrap">
         <thead>
             <tr>
                 <th class="w-10"><x-ui.checkbox id="voucherSelectAll" aria-label="Pilih semua" /></th>
@@ -82,8 +82,9 @@
         </tbody>
     </x-ui.table>
 
-    <div class="flex justify-between text-sm text-muted-foreground">
+    <div class="flex justify-between border-t px-4 py-3 text-sm text-muted-foreground">
         <span><span id="voucherCount">{{ $approvedVouchers->count() }}</span> voucher</span>
         <span><span id="voucherSelectedCount">0</span> dipilih</span>
     </div>
+    </x-ui.card>
 </div>

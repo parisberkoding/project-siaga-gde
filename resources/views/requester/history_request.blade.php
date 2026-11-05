@@ -1,7 +1,7 @@
 {{-- Riwayat permohonan BBM driver. Server mengirim 100 baris per batch (controller requester_history);
      resources/js/pages/bbm/history.js menampilkan 10 per halaman dan meminta batch berikutnya lewat ?json=1&offset=. --}}
-<x-layouts.app title="Riwayat Permohonan BBM" :breadcrumbs="['Permohonan BBM' => route('requester-index'), 'Riwayat' => null]">
-    <x-ui.page-header kicker="Permohonan BBM" title="Riwayat Permohonan" description="Dimuat 100 data per batch, 10 per halaman. Saring dengan rentang tanggal maksimal 30 hari." />
+<x-layouts.app title="Riwayat Permohonan BBM" :breadcrumbs="['BBM Operasional' => route('requester-index'), 'Riwayat' => null]">
+    <x-ui.page-header kicker="Pengajuan Saya" title="Riwayat Permohonan" description="Dimuat 100 data per batch, 10 per halaman. Saring dengan rentang tanggal maksimal 30 hari." />
 
     <x-ui.card class="gap-4">
         <x-ui.card-content class="grid gap-4">

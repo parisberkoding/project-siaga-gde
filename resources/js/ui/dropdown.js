@@ -1,4 +1,4 @@
-// <x-ui.dropdown-menu>: Popover API (top layer) + posisi menempel di bawah-kanan tombol pemicunya.
+// <x-ui.dropdown-menu> & <x-ui.select-menu>: Popover API (top layer) + posisi menempel di bawah-kanan tombol pemicunya.
 const GAP = 4;
 
 const triggerOf = (menu) => document.querySelector(`[popovertarget="${menu.id}"]`);
@@ -13,9 +13,12 @@ document.addEventListener('beforetoggle', (event) => {
         ? { left: `${Math.max(8, rect.left)}px` }
         : { right: `${Math.max(8, window.innerWidth - rect.right)}px` };
     Object.assign(menu.style, { inset: 'auto', top: `${rect.bottom + GAP}px`, ...horizontal });
+    // Select (listbox) minimal selebar tombolnya, seperti shadcn Select.
+    if (menu.getAttribute('role') === 'listbox') menu.style.minWidth = `${rect.width}px`;
 }, true);
 
-const visibleItems = (menu) => [...menu.querySelectorAll('[role="menuitem"]')].filter((item) => item.checkVisibility());
+const ITEMS = '[role="menuitem"], [role="option"]';
+const visibleItems = (menu) => [...menu.querySelectorAll(ITEMS)].filter((item) => item.checkVisibility());
 
 // Setelah tampil (ukuran sudah diketahui): balik ke atas tombol bila tidak muat di bawah.
 document.addEventListener('toggle', (event) => {
@@ -29,16 +32,19 @@ document.addEventListener('toggle', (event) => {
         menu.style.left = `${Math.max(8, window.innerWidth - 8 - menu.offsetWidth)}px`;
     }
     const items = visibleItems(menu);
-    (items.find((item) => item.hasAttribute('aria-current')) ?? items[0])?.focus();
+    (items.find((item) => item.hasAttribute('aria-current') || item.getAttribute('aria-selected') === 'true') ?? items[0])?.focus();
 }, true);
 
 // Pilih item menutup menu; menggulir halaman juga menutup (posisi tidak lagi pas).
 document.addEventListener('click', (event) => {
-    const item = event.target.closest('[data-dropdown] [role="menuitem"]');
+    const item = event.target.closest(`[data-dropdown] :is(${ITEMS})`);
     if (item) item.closest('[data-dropdown]').hidePopover();
 });
-window.addEventListener('scroll', () => {
-    document.querySelectorAll('[data-dropdown]:popover-open').forEach((menu) => menu.hidePopover());
+window.addEventListener('scroll', (event) => {
+    // Menggulir isi daftar itu sendiri (daftar pilihan panjang) tidak menutupnya.
+    document.querySelectorAll('[data-dropdown]:popover-open').forEach((menu) => {
+        if (!menu.contains(event.target)) menu.hidePopover();
+    });
 }, true);
 
 // Navigasi panah atas/bawah di dalam menu.

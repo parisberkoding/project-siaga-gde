@@ -1,6 +1,6 @@
 {{--
   Layout aplikasi (Tailwind + komponen x-ui). Pemakaian:
-      <x-layouts.app title="Riwayat Permohonan" :breadcrumbs="['Permohonan BBM' => route('requester-index'), 'Riwayat' => null]">
+      <x-layouts.app title="Riwayat Permohonan" :breadcrumbs="['BBM Operasional' => route('requester-index'), 'Riwayat' => null]">
           ...
       </x-layouts.app>
   Script halaman: @push('scripts') @vite('resources/js/pages/...') @endpush

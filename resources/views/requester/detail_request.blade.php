@@ -41,7 +41,7 @@
     }
 @endphp
 
-<x-layouts.app title="Detail {{ $request->request_number }}" :breadcrumbs="['Permohonan BBM' => route('requester-index'), 'Riwayat' => route('requester-history'), $request->request_number => null]">
+<x-layouts.app title="Detail {{ $request->request_number }}" :breadcrumbs="['BBM Operasional' => route('requester-index'), 'Riwayat' => route('requester-history'), $request->request_number => null]">
     {{-- Hero: nomor, status, nominal, dan aksi di atas gradien brand. --}}
     <section class="bg-brand-gradient ornament-corner relative overflow-hidden rounded-xl px-6 py-6 text-white shadow-lg shadow-primary/20 md:px-8" style="--ornament: #fff; --ornament-dot: #fff">
         <i class="bi bi-fuel-pump pointer-events-none absolute -bottom-8 right-4 text-[9rem] leading-none text-white/[0.07]" aria-hidden="true"></i>

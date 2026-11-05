@@ -71,7 +71,7 @@
     // Dashboard: ketika berada di dalam modul, dashboard yang ditampilkan
     // adalah dashboard modul itu (bukan dashboard BBM milik modul lain).
     $moduleDashboardItem = $activeModule ? match ($activeModule->code) {
-        'bbm' => ['label' => 'Dashboard BBM', 'icon' => 'bi bi-speedometer2', 'route' => 'modules.dashboard.bbm', 'active' => ['modules.dashboard.bbm'], 'module' => 'bbm', 'perms' => ['bbm.view', 'bbm.approve', 'bbm.export', 'bbm.request', 'bbm.report', 'pelaporan.view', 'pelaporan.create']],
+        'bbm' => ['label' => 'Dashboard', 'icon' => 'bi bi-speedometer2', 'route' => 'modules.dashboard.bbm', 'active' => ['modules.dashboard.bbm'], 'module' => 'bbm', 'perms' => ['bbm.view', 'bbm.approve', 'bbm.export', 'bbm.request', 'bbm.report', 'pelaporan.view', 'pelaporan.create']],
         'spd' => ['label' => 'Dashboard SPD', 'icon' => 'bi bi-speedometer2', 'route' => 'modules.dashboard.spd', 'active' => ['modules.dashboard.spd'], 'module' => 'spd', 'perms' => ['spd.view', 'spd.create', 'spd.update', 'spd.delete', 'spd.approve', 'spd.assign', 'spd.manage', 'spd.validate_trip', 'lpj.view', 'lpj.create', 'lpj.update', 'lpj.delete', 'lpj.validate', 'lpj.validate_management', 'lpj.export', 'lpj.pencairan', 'pelaporan.view', 'pelaporan.create']],
         'vehicle' => ['label' => 'Dashboard Kendaraan', 'icon' => 'bi bi-speedometer2', 'route' => 'modules.dashboard.vehicle', 'active' => ['modules.dashboard.vehicle'], 'module' => 'vehicle', 'perms' => ['vehicle.view', 'vehicle.create', 'vehicle.update', 'vehicle.delete', 'vehicle.approve', 'vehicle.checking', 'vehicle.scan', 'vehicle.acknowledge', 'vehicle.export', 'vehicle.report', 'vehicle.master', 'vehicle.sparepart']],
         'lunch' => ['label' => 'Dashboard', 'icon' => 'bi bi-speedometer2', 'route' => 'lunch.dashboard', 'active' => ['lunch.dashboard'], 'module' => 'lunch', 'perms' => ['lunch.view']],
@@ -120,12 +120,19 @@
     $menuDef = array_values(array_filter([
         $dashboardItem ? ['label' => $dashboardItem['label'], 'icon' => $dashboardItem['icon'], 'route' => $dashboardItem['route'], 'active' => $dashboardItem['active'], 'module' => $dashboardItem['module'] ?? null, 'perms' => $dashboardItem['perms'] ?? []] : null,
 
-        // ── BBM / Permohonan ──
-        ['label' => 'Permohonan BBM', 'icon' => 'bi bi-fuel-pump', 'id' => 'bbm-nav', 'module' => 'bbm', 'active' => ['requester-index', 'requester-history', 'admin-dashboard', 'superadmin.permohonan*'], 'children' => [
-            ['label' => 'Permohonan Baru', 'icon' => 'bi bi-plus-circle', 'section' => 'Permohonan', 'route' => 'requester-index', 'active' => ['requester-index'], 'perms' => ['bbm.request']],
-            ['label' => 'Riwayat Permohonan', 'icon' => 'bi bi-clock-history', 'section' => 'Permohonan', 'route' => 'requester-history', 'active' => ['requester-history'], 'perms' => ['bbm.request', 'bbm.report'], 'hideIfPerms' => ['bbm.approve']],
-            ['label' => 'Approval BBM', 'icon' => 'bi bi-check2-square', 'section' => 'Admin', 'route' => 'admin-dashboard', 'active' => ['admin-dashboard'], 'perms' => ['bbm.approve']],
-            ['label' => 'Kelola Permohonan', 'icon' => 'bi bi-pencil-square', 'section' => 'Admin', 'route' => 'superadmin.permohonan', 'active' => ['superadmin.permohonan*'], 'perms' => ['bbm.approve']],
+        // ── BBM Operasional ──
+        // Urutan mengikuti alur kerja: driver mengajukan dan memakai voucher, Admin GA menyetujui,
+        // lalu rekap dan analisis. Badge hanya untuk hal yang menunggu tindakan: voucher yang belum
+        // dilaporkan (milik sendiri) dan permohonan yang menunggu persetujuan (scope unit, sama dengan lonceng).
+        ['label' => 'BBM Operasional', 'icon' => 'bi bi-fuel-pump', 'id' => 'bbm-nav', 'module' => 'bbm', 'active' => ['requester-index', 'requester-history', 'requester-show', 'admin-dashboard', 'superadmin.permohonan*', 'superadmin.print-report*', 'superadmin.trip-analysis.*'], 'children' => [
+            ['label' => 'Permohonan Aktif', 'icon' => 'bi bi-ticket-perforated', 'section' => 'Pengajuan Saya', 'route' => 'requester-index', 'active' => ['requester-index'], 'perms' => ['bbm.request'],
+                'badge' => fn () => \App\Models\Permohonan::where('requester_id', $user->id)->where('status', 'approved')->count()],
+            ['label' => 'Riwayat Permohonan', 'icon' => 'bi bi-clock-history', 'section' => 'Pengajuan Saya', 'route' => 'requester-history', 'active' => ['requester-history', 'requester-show'], 'perms' => ['bbm.request', 'bbm.report'], 'hideIfPerms' => ['bbm.approve']],
+            ['label' => 'Permohonan Masuk', 'icon' => 'bi bi-inbox', 'section' => 'Persetujuan', 'route' => 'admin-dashboard', 'active' => ['admin-dashboard'], 'perms' => ['bbm.approve'],
+                'badge' => fn () => \App\Models\Permohonan::inUnit(\App\Services\UnitScope::for($user)->unitId())->where('status', 'pending')->count()],
+            ['label' => 'Koreksi Transaksi', 'icon' => 'bi bi-pencil-square', 'section' => 'Persetujuan', 'route' => 'superadmin.permohonan', 'active' => ['superadmin.permohonan*'], 'perms' => ['bbm.approve']],
+            ['label' => 'Analisis Efisiensi Trip', 'icon' => 'bi bi-signpost-2', 'section' => 'Laporan & Analisis', 'route' => 'superadmin.trip-analysis.index', 'active' => ['superadmin.trip-analysis.*'], 'perms' => ['vehicle.report']],
+            ['label' => 'Cetak Laporan', 'icon' => 'bi bi-printer', 'section' => 'Laporan & Analisis', 'route' => 'superadmin.print-report', 'active' => ['superadmin.print-report*'], 'perms' => ['bbm.export']],
         ]],
 
         // ── Pelaporan BBM & SPD (SEMENTARA DISEMBUNYIKAN dari navigasi) ──
@@ -134,11 +141,11 @@
         // pemilihan mode. Alur driver kini lewat SPD Management → "SPD Berjalan".
         // ['label' => 'Pelaporan BBM & SPD', 'icon' => 'bi bi-journal-text', 'route' => 'pelaporan.index', 'active' => ['pelaporan.*'], 'perms' => ['pelaporan.view', 'pelaporan.create']],
 
-        // ── SPD Management (anak di-filter per permission) ──
+        // ── Perjalanan Dinas (SPD), anak di-filter per permission ──
         // Urutan mengikuti alur: ajukan surat, perjalanan, LPJ, lalu tahap persetujuan.
         // Menu "Saya" memakai izin membuat, bukan izin lihat: halamannya hanya memuat dokumen milik
         // sendiri, jadi penumpang (pegawai) dan admin tidak melihat halaman yang selalu kosong.
-        ['label' => 'SPD Management', 'icon' => 'bi bi-envelope-paper', 'id' => 'spd-nav', 'module' => 'spd', 'active' => ['requester.surat.*', 'requester.spd.berjalan', 'requester.lpj.*', 'requester.perpanjangan.*', 'surat.superadmin.*', 'perpanjangan.superadmin.*', 'lpj.superadmin.*', 'lpj.pengguna.*', 'lpj.management.*'], 'children' => [
+        ['label' => 'Perjalanan Dinas', 'icon' => 'bi bi-envelope-paper', 'id' => 'spd-nav', 'module' => 'spd', 'active' => ['requester.surat.*', 'requester.spd.berjalan', 'requester.lpj.*', 'requester.perpanjangan.*', 'surat.superadmin.*', 'perpanjangan.superadmin.*', 'lpj.superadmin.*', 'lpj.pengguna.*', 'lpj.management.*'], 'children' => [
             // Driver / Requester
             ['label' => 'Ajukan Surat Tugas', 'icon' => 'bi bi-plus-circle', 'section' => 'Perjalanan Saya', 'route' => 'requester.surat.create', 'active' => ['requester.surat.create'], 'perms' => ['spd.create'], 'hideIfPerms' => ['spd.manage']],
             ['label' => 'Surat Tugas Saya', 'icon' => 'bi bi-file-earmark-text', 'section' => 'Perjalanan Saya', 'route' => 'requester.surat.index', 'active' => ['requester.surat.index', 'requester.surat.show', 'requester.perpanjangan.*'], 'perms' => ['spd.create'], 'hideIfPerms' => ['spd.manage']],
@@ -244,12 +251,9 @@
             ['label' => 'Custom Purchase', 'icon' => 'bi bi-bag-plus', 'route' => 'lunch.custom-purchases.index', 'active' => ['lunch.custom-purchases.*'], 'perms' => ['lunch.manage']],
         ]],
 
-        // ── Cetak Laporan BBM (admin/superadmin) ──
-        ['label' => 'Cetak Laporan BBM', 'icon' => 'bi bi-printer', 'section' => 'Admin', 'module' => 'bbm', 'route' => 'superadmin.print-report', 'active' => ['superadmin.print-report*'], 'perms' => ['bbm.export']],
 
         // ── Laporan & Analisis (superadmin) ──
-        ['label' => 'Laporan & Analisis', 'icon' => 'bi bi-graph-up-arrow', 'id' => 'laporan-nav', 'module' => 'vehicle', 'active' => ['trip-analysis*', 'superadmin.financial-report.*', 'superadmin.transaction-report.*', 'superadmin.vehicle-health.*'], 'children' => [
-            ['label' => 'Analisis Trip & Efisiensi BBM', 'icon' => 'bi bi-graph-up-arrow', 'route' => 'superadmin.trip-analysis.index', 'active' => ['trip-analysis*'], 'perms' => ['vehicle.report']],
+        ['label' => 'Laporan & Analisis', 'icon' => 'bi bi-graph-up-arrow', 'id' => 'laporan-nav', 'module' => 'vehicle', 'active' => ['superadmin.financial-report.*', 'superadmin.transaction-report.*', 'superadmin.vehicle-health.*'], 'children' => [
             ['label' => 'Lap. Keuangan Service', 'icon' => 'bi bi-cash-stack', 'route' => 'superadmin.financial-report.index', 'active' => ['superadmin.financial-report.*'], 'perms' => ['vehicle.report']],
             ['label' => 'Lap. Transaksi Sparepart', 'icon' => 'bi bi-clipboard-data', 'route' => 'superadmin.transaction-report.index', 'active' => ['superadmin.transaction-report.*'], 'perms' => ['vehicle.report']],
             ['label' => 'Vehicle Health', 'icon' => 'bi bi-heart-pulse', 'route' => 'superadmin.vehicle-health.index', 'active' => ['superadmin.vehicle-health.*'], 'perms' => ['vehicle.report']],

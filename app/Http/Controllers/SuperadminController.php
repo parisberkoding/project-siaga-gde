@@ -589,7 +589,7 @@ class SuperadminController extends Controller
         //  - modules.dashboard.bbm : dashboard modul BBM (setelah pilih modul)
         //  - superadmin.dashboard.bisnis / dashboard-bisnis : dashboard legacy
         $title = $request->routeIs('modules.dashboard.bbm')
-            ? 'Dashboard BBM & Permohonan'
+            ? 'Dashboard BBM Operasional'
             : 'Dashboard Bisnis';
         $period = $request->get('period', 'month');
 

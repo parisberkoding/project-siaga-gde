@@ -1,14 +1,16 @@
 // Halaman Permohonan BBM (requester-index): pencarian kendaraan, opsi nominal, cetak voucher.
 import './voucher-print';
 import { rupiah, escapeHtml, pageData } from '../../lib/format';
+import { selectRoot, selectValue, setSelectOptions, setSelectValue } from '../../lib/select-menu';
 
 const { vehicles = [], fallbackOptions = [] } = pageData();
 
 const search = document.getElementById('vehicle_search');
 const vehicleId = document.getElementById('vehicle_id');
 const suggestions = document.getElementById('vehicleSuggestions');
-const billPayment = document.getElementById('bill_payment');
-const fuelSelect = document.getElementById('gasoline_type');
+// Jenis BBM & Nominal memakai <x-ui.select-menu> (shadcn Select): diakses lewat lib/select-menu.
+const billRoot = selectRoot('bill_payment');
+const fuelRoot = selectRoot('gasoline_type');
 const vehicleInfo = document.getElementById('vehicleBudgetInfo');
 const billInfo = document.getElementById('billPaymentInfo');
 
@@ -16,21 +18,18 @@ const NOMINAL_STEP = 50000;
 const fallbackMin = fallbackOptions[0];
 const fallbackMax = fallbackOptions[fallbackOptions.length - 1];
 
-function populateBillPayment(min, max) {
+function populateBillPayment(min, max, benchmark = null) {
     if (!min || !max || min > max) {
-        billPayment.innerHTML = '<option value="">Pilih nominal</option>';
+        setSelectOptions(billRoot, []);
         billInfo.textContent = 'Nominal belum tersedia. Hubungi tim IT untuk melengkapi data kendaraan.';
         return;
     }
-
-    const previous = Number(billPayment.value);
-    let html = '<option value="">Pilih nominal</option>';
+    const options = [];
     for (let value = min; value <= max; value += NOMINAL_STEP) {
-        html += `<option value="${value}">${rupiah(value)}</option>`;
+        options.push({ value, label: rupiah(value) + (value === benchmark ? ' (benchmark)' : '') });
     }
-    billPayment.innerHTML = html;
+    setSelectOptions(billRoot, options); // nilai sebelumnya dipertahankan bila masih dalam rentang
     billInfo.textContent = '';
-    if (previous >= min && previous <= max) billPayment.value = previous;
 }
 
 // Kisi ringkasan kendaraan terpilih (Jenis, BBM, Tangki, Benchmark).
@@ -49,7 +48,7 @@ function renderVehicleInfo(vehicle, benchmark) {
 function selectVehicle(vehicle) {
     if (!vehicle) {
         vehicleId.value = '';
-        fuelSelect.value = '';
+        setSelectValue(fuelRoot, '');
         vehicleInfo.textContent = 'Ketik untuk memilih kendaraan atau alat.';
         renderVehicleInfo(null);
         populateBillPayment(fallbackMin, fallbackMax);
@@ -60,20 +59,16 @@ function selectVehicle(vehicle) {
     const benchmark = vehicle.benchmark ? parseInt(vehicle.benchmark, 10) : null;
     const range = vehicle.range?.min && vehicle.range?.max ? vehicle.range : null;
 
-    if (range) populateBillPayment(range.min, range.max);
+    if (range) populateBillPayment(range.min, range.max, benchmark);
     else populateBillPayment(fallbackMin, fallbackMax);
 
     // Jenis BBM mengikuti master kendaraan (tidak peka huruf besar/kecil).
     const fuel = (vehicle.fuel || '').toLowerCase();
-    const match = [...fuelSelect.options].find((option) => option.value && option.value.toLowerCase() === fuel);
-    if (match) fuelSelect.value = match.value;
+    const match = [...fuelRoot.querySelectorAll('[role="option"]')].find((o) => o.dataset.value.toLowerCase() === fuel);
+    if (match) setSelectValue(fuelRoot, match.dataset.value);
 
     // Nominal mengikuti benchmark (selalu kelipatan 50.000 di dalam rentang).
-    if (benchmark && range && benchmark >= range.min && benchmark <= range.max) {
-        billPayment.value = benchmark;
-        const option = billPayment.querySelector(`option[value="${benchmark}"]`);
-        if (option) option.textContent += ' (benchmark)';
-    }
+    if (benchmark && range && benchmark >= range.min && benchmark <= range.max) setSelectValue(billRoot, benchmark);
 
     renderVehicleInfo(vehicle, benchmark);
     vehicleInfo.textContent = benchmark
@@ -81,38 +76,58 @@ function selectVehicle(vehicle) {
         : 'Data tangki atau harga belum lengkap, memakai rentang umum 50.000 sampai 3.000.000.';
 }
 
-// Tautan "Ajukan permohonan" di slot kosong: gulir ke form lalu fokus ke pencarian kendaraan.
-document.addEventListener('click', (event) => {
-    if (!event.target.closest('[data-focus-vehicle]') || !search) return;
-    event.preventDefault();
-    search.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    search.focus({ preventScroll: true });
-});
+// Daftar saran = popover manual (top layer) yang ditempel di bawah input, jadi tidak tertutup kartu
+// lain (setiap kartu ornament-corner punya stacking context sendiri). Ditata ulang saat gulir/ubah ukuran.
+const isOpen = () => suggestions.matches(':popover-open');
+function placeSuggestions() {
+    const rect = search.getBoundingClientRect();
+    Object.assign(suggestions.style, { inset: 'auto', top: `${rect.bottom + 4}px`, left: `${rect.left}px`, width: `${rect.width}px` });
+}
+function toggleSuggestions(open) {
+    if (open === isOpen()) return;
+    if (open) {
+        placeSuggestions();
+        suggestions.showPopover();
+    } else {
+        suggestions.hidePopover();
+    }
+    search.setAttribute('aria-expanded', String(open));
+}
+
+function chooseVehicle(item) {
+    search.value = item.label;
+    toggleSuggestions(false);
+    selectVehicle(item);
+    renderSummary();
+    search.focus();
+}
 
 function renderSuggestions(items) {
     suggestions.replaceChildren(
         ...items.map((item) => {
             const option = document.createElement('button');
             option.type = 'button';
-            option.className = 'flex w-full flex-col items-start rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent';
+            option.setAttribute('role', 'option');
+            option.className = 'flex w-full flex-col items-start rounded-sm px-2 py-1.5 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent';
             option.innerHTML = `<span class="font-medium">${escapeHtml(item.code)}</span>` +
                 `<span class="text-xs text-muted-foreground">${escapeHtml(item.name)} (${escapeHtml(item.type)})</span>`;
-            option.addEventListener('click', () => {
-                search.value = item.label;
-                suggestions.hidden = true;
-                selectVehicle(item);
-            });
+            option.addEventListener('click', () => chooseVehicle(item));
             return option;
         }),
     );
-    suggestions.hidden = items.length === 0;
+    toggleSuggestions(items.length > 0);
 }
 
 if (search) {
+    window.addEventListener('resize', () => isOpen() && placeSuggestions());
+    window.addEventListener('scroll', (event) => {
+        if (isOpen() && !suggestions.contains(event.target)) placeSuggestions();
+    }, true);
+
     search.addEventListener('input', () => {
         const query = search.value.trim().toLowerCase();
         if (!query) {
-            suggestions.hidden = true;
+            toggleSuggestions(false);
             selectVehicle(null);
             return;
         }
@@ -122,31 +137,52 @@ if (search) {
     });
 
     document.addEventListener('click', (event) => {
-        if (!suggestions.contains(event.target) && event.target !== search) suggestions.hidden = true;
+        if (!suggestions.contains(event.target) && event.target !== search) toggleSuggestions(false);
+    });
+
+    // Keyboard: panah bawah dari input masuk ke daftar, panah atas/bawah berpindah, Esc menutup.
+    const options = () => [...suggestions.querySelectorAll('[role="option"]')];
+    search.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown' && options().length) {
+            event.preventDefault();
+            toggleSuggestions(true);
+            options()[0].focus();
+        } else if (event.key === 'Escape') {
+            toggleSuggestions(false);
+        }
+    });
+    suggestions.addEventListener('keydown', (event) => {
+        const list = options();
+        const index = list.indexOf(document.activeElement);
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            const next = index + (event.key === 'ArrowDown' ? 1 : -1);
+            (next < 0 ? search : list[Math.min(next, list.length - 1)]).focus();
+        } else if (event.key === 'Escape') {
+            toggleSuggestions(false);
+            search.focus();
+        }
     });
 
     // Isi ulang setelah gagal validasi (old('vehicle_id')).
     const preselected = vehicles.find((v) => String(v.id) === vehicleId.value);
     if (preselected) search.value = preselected.label;
+    const oldNominal = selectValue(billRoot);
     selectVehicle(preselected ?? null);
+    if (oldNominal) setSelectValue(billRoot, oldNominal);
 }
 
 // Ringkasan di panel kanan mengikuti isian form.
-const summary = {
-    nominal: document.getElementById('summaryNominal'),
-    fuel: document.getElementById('summaryFuel'),
-    vehicle: document.getElementById('summaryVehicle'),
-};
 function renderSummary() {
-    if (!summary.nominal) return;
-    summary.nominal.textContent = rupiah(billPayment.value || 0);
-    summary.vehicle.textContent = vehicleId.value ? search.value : '-';
-    summary.fuel.textContent = vehicleId.value
-        ? (fuelSelect.value || 'Jenis BBM belum dipilih')
+    const nominal = document.getElementById('summaryNominal');
+    if (!nominal) return;
+    nominal.textContent = rupiah(selectValue(billRoot) || 0);
+    document.getElementById('summaryVehicle').textContent = vehicleId.value ? search.value : '-';
+    document.getElementById('summaryFuel').textContent = vehicleId.value
+        ? (selectValue(fuelRoot) || 'Jenis BBM belum dipilih')
         : 'Pilih kendaraan terlebih dahulu';
 }
-billPayment?.addEventListener('change', renderSummary);
-fuelSelect?.addEventListener('change', renderSummary);
+billRoot?.addEventListener('change', renderSummary);
+fuelRoot?.addEventListener('change', renderSummary);
 search?.addEventListener('input', renderSummary);
-suggestions?.addEventListener('click', () => setTimeout(renderSummary));
 renderSummary();

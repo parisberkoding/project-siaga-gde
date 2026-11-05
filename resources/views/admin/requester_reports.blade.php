@@ -1,13 +1,30 @@
 {{-- Tab "Semua History & Laporan": semua permohonan, laporan transaksi, prognosa voucher. --}}
-<x-ui.tabs default="all-requests">
-    <x-ui.tabs-list>
-        <x-ui.tabs-trigger value="all-requests"><i class="bi bi-list-check"></i> Semua Permohonan</x-ui.tabs-trigger>
-        <x-ui.tabs-trigger value="reports"><i class="bi bi-file-earmark-check"></i> Laporan Transaksi</x-ui.tabs-trigger>
-        <x-ui.tabs-trigger value="prognosis"><i class="bi bi-journal-check"></i> Prognosa Transaksi</x-ui.tabs-trigger>
+<x-ui.tabs default="all-requests" data-history-tabs>
+    {{-- Satu baris: sub-tab (kiri) + kontrol tab aktif (kanan: cari & per halaman, atau filter & export prognosa).
+         Kontrol tabel dipindah ke [data-history-controls] oleh ui/datatable.js (controlsTarget). HP: bertumpuk. --}}
+    <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card p-3 shadow-xs">
+    <x-ui.tabs-list class="max-sm:grid max-sm:w-full max-sm:grid-cols-3">
+        <x-ui.tabs-trigger value="all-requests" class="max-sm:px-1 max-sm:text-xs"><i class="bi bi-list-check max-sm:hidden"></i> Permohonan</x-ui.tabs-trigger>
+        <x-ui.tabs-trigger value="reports" class="max-sm:px-1 max-sm:text-xs"><i class="bi bi-file-earmark-check max-sm:hidden"></i> Laporan<span class="max-sm:hidden">Transaksi</span></x-ui.tabs-trigger>
+        <x-ui.tabs-trigger value="prognosis" class="max-sm:px-1 max-sm:text-xs"><i class="bi bi-journal-check max-sm:hidden"></i> Prognosa</x-ui.tabs-trigger>
     </x-ui.tabs-list>
+        <div data-history-controls data-table-controls class="flex flex-wrap items-center justify-end gap-2 max-sm:w-full">
+            {{-- Kontrol Prognosa (tabel biasa, bukan datatable) --}}
+            <div data-controls-for="prognosis" class="flex flex-wrap items-center gap-2 max-sm:grid max-sm:w-full">
+                <div class="grid grid-cols-3 rounded-md border bg-card p-0.5 shadow-xs" role="group" aria-label="Filter status">
+                    @foreach (['all' => 'Semua', 'approved' => 'Aktif', 'cancelled' => 'Kedaluwarsa'] as $value => $label)
+                        <button type="button" data-prognosis-filter="{{ $value }}" aria-pressed="{{ $value === 'all' ? 'true' : 'false' }}"
+                                class="rounded-sm px-3 py-1 text-sm text-muted-foreground max-sm:px-1 max-sm:text-xs aria-pressed:bg-accent aria-pressed:font-medium aria-pressed:text-accent-foreground">{{ $label }}</button>
+                    @endforeach
+                </div>
+                <x-ui.button variant="outline" id="exportPrognosis"><i class="bi bi-file-earmark-spreadsheet"></i> Export CSV</x-ui.button>
+            </div>
+        </div>
+    </div>
 
     <x-ui.tabs-content value="all-requests">
-        <x-ui.table id="allRequestsTable" :datatable="['columns' => [['select' => 2, 'sort' => 'desc']]]">
+        <x-ui.card data-table-card class="gap-0 overflow-hidden py-0">
+        <x-ui.table id="allRequestsTable" class="max-sm:[&_td]:whitespace-nowrap" :datatable="['controlsTarget' => '[data-history-controls]', 'columns' => [['select' => 2, 'sort' => 'desc']]]">
             <thead>
                 <tr>
                     <th>Nomor</th>
@@ -46,10 +63,12 @@
                 @endforelse
             </tbody>
         </x-ui.table>
+        </x-ui.card>
     </x-ui.tabs-content>
 
     <x-ui.tabs-content value="reports">
-        <x-ui.table id="reportsTable" :datatable="['columns' => [['select' => 9, 'sort' => 'desc'], ['select' => 8, 'sortable' => false]]]">
+        <x-ui.card data-table-card class="gap-0 overflow-hidden py-0">
+        <x-ui.table id="reportsTable" class="max-sm:[&_td]:whitespace-nowrap" :datatable="['controlsTarget' => '[data-history-controls]', 'columns' => [['select' => 9, 'sort' => 'desc'], ['select' => 8, 'sortable' => false]]]">
             <thead>
                 <tr>
                     <th>ID Transaksi</th>
@@ -107,26 +126,19 @@
                 @endforelse
             </tbody>
         </x-ui.table>
+        </x-ui.card>
     </x-ui.tabs-content>
 
-    <x-ui.tabs-content value="prognosis" class="grid gap-4">
-        <div class="flex flex-wrap items-end justify-between gap-3">
+    <x-ui.tabs-content value="prognosis">
+        <x-ui.card data-table-card class="gap-0 overflow-hidden py-0">
+        <div class="border-b px-4 py-3">
             <div>
                 <h3 class="font-medium">Daftar voucher yang sudah terbit</h3>
                 <p class="text-sm text-muted-foreground">Voucher aktif dan kedaluwarsa untuk dicocokkan dengan transaksi SPBU.</p>
             </div>
-            <div class="flex flex-wrap items-center gap-2">
-                <div class="inline-flex rounded-md border bg-card p-0.5 shadow-xs" role="group" aria-label="Filter status">
-                    @foreach (['all' => 'Semua', 'approved' => 'Aktif', 'cancelled' => 'Kedaluwarsa'] as $value => $label)
-                        <button type="button" data-prognosis-filter="{{ $value }}" aria-pressed="{{ $value === 'all' ? 'true' : 'false' }}"
-                                class="rounded-sm px-3 py-1 text-sm text-muted-foreground aria-pressed:bg-accent aria-pressed:font-medium aria-pressed:text-accent-foreground">{{ $label }}</button>
-                    @endforeach
-                </div>
-                <x-ui.button variant="outline" size="sm" id="exportPrognosis"><i class="bi bi-file-earmark-spreadsheet"></i> Export CSV</x-ui.button>
-            </div>
         </div>
 
-        <x-ui.table id="prognosisTable">
+        <x-ui.table id="prognosisTable" class="max-sm:[&_td]:whitespace-nowrap">
             <thead>
                 <tr>
                     <th>Pemohon</th>
@@ -176,6 +188,7 @@
                 @endforelse
             </tbody>
         </x-ui.table>
+        </x-ui.card>
     </x-ui.tabs-content>
 </x-ui.tabs>
 
