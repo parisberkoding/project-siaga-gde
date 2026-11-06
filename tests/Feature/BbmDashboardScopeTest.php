@@ -91,10 +91,9 @@ it('membatasi dashboard BBM ke unit user: Admin GA tidak melihat driver/kendaraa
     $this->actingAs($adminPatuha)
         ->get(route('modules.dashboard.bbm'))
         ->assertOk()
-        ->assertSee('REQ-PATUHA-SCOPED')
+        // Dashboard kini ringkasan saja (Top 5 driver & kendaraan), nomor permohonan tidak lagi tampil.
         ->assertSee('Driver Patuha Terlihat')
         ->assertSee('B-PTHU-SCOPED')
-        ->assertDontSee('REQ-DIENG-SCOPED')
         ->assertDontSee('Driver Dieng Rahasia')
         ->assertDontSee('B-DIENG-RAHASIA');
 });
@@ -116,7 +115,6 @@ it('user global tetap melihat seluruh unit pada dashboard BBM', function () {
     $this->actingAs($superadmin)
         ->get(route('modules.dashboard.bbm'))
         ->assertOk()
-        ->assertSee('REQ-DIENG-GLOBAL')
         ->assertSee('Driver Dieng Global')
         ->assertSee('B-DIENG-GLOBAL');
 });
@@ -176,7 +174,7 @@ it('tautan periode tetap berada di dashboard modul BBM', function () {
         ->assertDontSee(route('superadmin.dashboard.bisnis', ['period' => 'day']), false);
 });
 
-it('menyembunyikan Export CSV dan Trip Analysis saat user tidak punya permission', function () {
+it('menyembunyikan Export CSV dan Analisis Efisiensi Trip saat user tidak punya permission', function () {
     $role = Role::where('code', 'general_affairs')->firstOrFail();
     $role->permissions()->detach(
         Permission::whereIn('code', ['bbm.export', 'vehicle.report'])->pluck('id')->all()
@@ -189,12 +187,12 @@ it('menyembunyikan Export CSV dan Trip Analysis saat user tidak punya permission
     $this->actingAs($adminPatuha)
         ->get(route('modules.dashboard.bbm'))
         ->assertOk()
-        ->assertSee('Tabel Pivot: Data Lengkap')
+        ->assertSee('Ringkasan')
         ->assertDontSee('Export CSV')
-        ->assertDontSee('Trip Analysis');
+        ->assertDontSee('Analisis Efisiensi Trip');
 });
 
-it('menampilkan Trip Analysis saat user punya permission vehicle.report', function () {
+it('menampilkan Analisis Efisiensi Trip saat user punya permission vehicle.report', function () {
     $superadmin = ($this->buatUser)('superadmin', null, [
         'nama_lengkap' => 'Superadmin Berhak',
     ]);
@@ -204,5 +202,5 @@ it('menampilkan Trip Analysis saat user punya permission vehicle.report', functi
     $this->actingAs($superadmin)
         ->get(route('modules.dashboard.bbm'))
         ->assertOk()
-        ->assertSee('Trip Analysis');
+        ->assertSee('Analisis Efisiensi Trip');
 });

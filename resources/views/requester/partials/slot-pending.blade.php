@@ -1,192 +1,85 @@
-<div class="card border-warning">
-    <div class="card-header bg-warning text-white">
-        <h6 class="mb-0">
-            <i class="bi bi-hourglass-split"></i> Slot {{ $slotNum }} -
-            @if($request->status === 'pending_vehicle_approval')
-                Menunggu Approval Kendaraan
-            @else
-                Pending
-            @endif
-        </h6>
+{{-- Slot permohonan yang menunggu persetujuan + dialog pembatalan. --}}
+@php
+    $isVehicle = strtolower($request->vehicle->consumerial_type ?? '') === 'kendaraan';
+@endphp
+
+<article class="flex flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+    <div class="relative overflow-hidden border-b border-amber-100 bg-linear-to-br from-amber-50 via-orange-50 to-card px-5 pb-5 pt-4">
+        <i class="bi bi-hourglass-split pointer-events-none absolute -right-2 bottom-0 text-7xl leading-none text-amber-500/10" aria-hidden="true"></i>
+        <div class="relative flex items-center justify-between gap-3">
+            <span class="text-xs font-semibold uppercase tracking-wider text-amber-800">Slot {{ $slotNum }}</span>
+            <x-bbm.status-badge :status="$request->status" />
+        </div>
+        <p class="relative mt-3 flex items-center gap-2 text-sm font-medium text-amber-900">
+            <span class="relative flex size-2.5">
+                <span class="absolute inline-flex size-full rounded-full bg-amber-400 opacity-75 motion-safe:animate-ping"></span>
+                <span class="relative inline-flex size-2.5 rounded-full bg-amber-500"></span>
+            </span>
+            {{ $request->status === 'pending_vehicle_approval' ? 'Menunggu persetujuan kendaraan' : 'Menunggu persetujuan Admin GA' }}
+        </p>
+        <p class="relative mt-2 text-2xl font-bold tabular-nums tracking-tight">Rp {{ number_format($request->bill_amounts, 0, ',', '.') }}</p>
+        <p class="relative mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground"><i class="bi bi-fuel-pump text-orange-600"></i> {{ $request->gasoline_type }}</p>
     </div>
-    <div class="card-body">
-        <p class="mb-1"><strong>Nomor:</strong> <code>{{ $request->request_number }}</code></p>
 
-        {{-- Kendaraan/Alat Info --}}
-        <p class="mb-1"><strong>Kendaraan/Alat:</strong><br>
-            <small>{{ $request->vehicle->consumerial_code ?? 'N/A' }} - {{ $request->vehicle->consumerial_name ?? 'N/A' }}</small>
-        </p>
+    <div class="grid gap-3 px-5 py-4 text-sm">
+        <div class="flex items-center gap-3">
+            <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                <i class="bi {{ $isVehicle ? 'bi-car-front' : 'bi-tools' }}"></i>
+            </span>
+            <div class="min-w-0">
+                <p class="truncate font-medium">{{ $request->vehicle->consumerial_code ?? 'N/A' }}</p>
+                <p class="truncate text-xs text-muted-foreground">{{ $request->vehicle->consumerial_name ?? '-' }}</p>
+            </div>
+        </div>
 
-        {{-- Tipe dengan indicator approval status --}}
-        <p class="mb-1">
-            <strong>Tipe:</strong>
-            <span class="badge bg-secondary">{{ $request->vehicle->consumerial_type ?? 'N/A' }}</span>
-
-            @if($request->vehicle && !$request->vehicle->is_approved)
-                <span class="badge bg-danger" title="Kendaraan belum disetujui Superadmin">
-                    <i class="bi bi-exclamation-circle"></i> Belum Approved
-                </span>
-            @endif
-        </p>
-
-        <p class="mb-1"><strong>BBM:</strong> {{ $request->gasoline_type }}</p>
-        <p class="mb-1"><strong>Nominal:</strong> Rp {{ number_format($request->bill_amounts, 0, ',', '.') }}</p>
-
-        {{-- Catatan jika ada --}}
-        @if($request->requester_notes)
-        <p class="mb-1 small text-muted">
-            <strong>Catatan:</strong> {{ Str::limit($request->requester_notes, 50) }}
-        </p>
+        @if ($request->vehicle && ! $request->vehicle->is_approved)
+            <x-ui.badge variant="danger"><i class="bi bi-exclamation-circle"></i> Kendaraan belum disetujui</x-ui.badge>
         @endif
 
-        <p class="mb-1 text-muted small">
-            <i class="bi bi-clock"></i> {{ $request->request_date->diffForHumans() }}
-        </p>
-
-        <hr>
-
-        {{-- Status Badge dengan penjelasan --}}
-        @if($request->status === 'pending_vehicle_approval')
-            <div class="alert alert-warning mb-2 py-2 px-2 small">
-                <i class="bi bi-info-circle"></i>
-                <strong>Kendaraan rental sedang menunggu persetujuan Superadmin.</strong>
-                <br>Setelah kendaraan disetujui, permohonan akan diproses oleh Admin.
-            </div>
-            <span class="badge bg-warning w-100 mb-2">
-                <i class="bi bi-truck"></i> Menunggu Approval Kendaraan
-            </span>
-        @else
-            <span class="badge bg-warning w-100 mb-2">
-                <i class="bi bi-clock-history"></i> Menunggu Approval Admin
-            </span>
-        @endif
-
-        {{-- ✅ Tombol Cancel --}}
-        @can('permission', 'bbm.request')
-        <button type="button"
-                class="btn btn-danger btn-sm w-100 mt-2"
-                data-bs-toggle="modal"
-                data-bs-target="#cancelModal{{ $slotNum }}">
-            <i class="bi bi-x-circle"></i> Batalkan Permohonan
-        </button>
-        @endcan
-    </div>
-</div>
-
-{{-- ✅ Modal Cancel Confirmation --}}
-<div class="modal fade" id="cancelModal{{ $slotNum }}" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">
-                    <i class="bi bi-exclamation-triangle"></i> Batalkan Permohonan
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-
-            <form action="{{ route('requester.cancel-request', $request->id) }}"
-                  method="POST"
-                  id="cancelForm{{ $slotNum }}">
-                @csrf
-                @method('PUT')
-
-                <div class="modal-body">
-                    <div class="alert alert-warning">
-                        <i class="bi bi-info-circle"></i>
-                        <strong>Perhatian!</strong> Permohonan yang dibatalkan tidak dapat dikembalikan.
-                    </div>
-
-                    <div class="mb-3">
-                        <p class="mb-2"><strong>Detail Permohonan:</strong></p>
-                        <ul class="small text-muted mb-0">
-                            <li>Nomor: <code>{{ $request->request_number }}</code></li>
-                            <li>Kendaraan: {{ $request->vehicle->consumerial_code ?? 'N/A' }}</li>
-                            <li>Nominal: Rp {{ number_format($request->bill_amounts, 0, ',', '.') }}</li>
-                        </ul>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="cancellation_reason{{ $slotNum }}" class="form-label">
-                            Alasan Pembatalan <span class="text-danger">*</span>
-                        </label>
-                        <textarea class="form-control @error('cancellation_reason') is-invalid @enderror"
-                                  id="cancellation_reason{{ $slotNum }}"
-                                  name="cancellation_reason"
-                                  rows="4"
-                                  required
-                                  placeholder="Contoh: Salah input nominal, Salah pilih kendaraan, dll">{{ old('cancellation_reason') }}</textarea>
-                        <small class="text-muted">Minimal 10 karakter</small>
-                        @error('cancellation_reason')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="bi bi-x"></i> Batal
-                    </button>
-                    <button type="submit" class="btn btn-danger" id="confirmCancelBtn{{ $slotNum }}">
-                        <i class="bi bi-check-circle"></i> Ya, Batalkan Permohonan
-                    </button>
-                </div>
-            </form>
+        <div class="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+            <a href="{{ route('requester-show', $request->id) }}" class="truncate font-mono hover:text-foreground hover:underline">{{ $request->request_number }}</a>
+            <span class="shrink-0"><i class="bi bi-clock"></i> {{ $request->request_date->diffForHumans() }}</span>
         </div>
     </div>
-</div>
 
-<style>
-.btn-danger:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
-    transition: all 0.3s ease;
-}
-</style>
+    <div class="mt-auto flex items-center gap-2 border-t bg-muted/30 px-4 py-2.5">
+        <x-ui.button variant="ghost" size="sm" :href="route('requester-show', $request->id)">
+            <i class="bi bi-eye"></i> Detail
+        </x-ui.button>
+        @can('permission', 'bbm.request')
+            <x-ui.button variant="ghost" size="sm" class="ml-auto text-destructive hover:bg-destructive-soft hover:text-destructive" data-dialog-open="cancel-request-{{ $request->id }}">
+                <i class="bi bi-x-circle"></i> Batalkan
+            </x-ui.button>
+        @endcan
+    </div>
+</article>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const cancelForm{{ $slotNum }} = document.getElementById('cancelForm{{ $slotNum }}');
-    const cancelBtn{{ $slotNum }} = document.getElementById('confirmCancelBtn{{ $slotNum }}');
-    const reasonTextarea{{ $slotNum }} = document.getElementById('cancellation_reason{{ $slotNum }}');
+@can('permission', 'bbm.request')
+    <x-ui.dialog id="cancel-request-{{ $request->id }}" title="Batalkan permohonan?" description="Permohonan yang dibatalkan tidak bisa dikembalikan.">
+        <form action="{{ route('requester.cancel-request', $request->id) }}" method="POST" id="cancel-form-{{ $request->id }}" data-loading class="grid gap-4">
+            @csrf
+            @method('PUT')
 
-    // ✅ Validasi minimal 10 karakter
-    if (cancelForm{{ $slotNum }}) {
-        cancelForm{{ $slotNum }}.addEventListener('submit', function(e) {
-            const reason = reasonTextarea{{ $slotNum }}.value.trim();
+            <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-lg bg-muted/60 p-3 text-sm">
+                <dt class="text-muted-foreground">Nomor</dt>
+                <dd><code>{{ $request->request_number }}</code></dd>
+                <dt class="text-muted-foreground">Kendaraan</dt>
+                <dd>{{ $request->vehicle->consumerial_code ?? 'N/A' }}</dd>
+                <dt class="text-muted-foreground">Nominal</dt>
+                <dd>Rp {{ number_format($request->bill_amounts, 0, ',', '.') }}</dd>
+            </dl>
 
-            if (reason.length < 10) {
-                e.preventDefault();
-                alert('Alasan pembatalan minimal 10 karakter');
-                reasonTextarea{{ $slotNum }}.focus();
-                return false;
-            }
+            <x-ui.field label="Alasan pembatalan" for="cancellation_reason_{{ $request->id }}" required hint="Minimal 10 karakter." error="cancellation_reason">
+                <x-ui.textarea id="cancellation_reason_{{ $request->id }}" name="cancellation_reason" rows="4" required minlength="10"
+                               placeholder="Contoh: salah input nominal atau salah pilih kendaraan">{{ old('cancellation_reason') }}</x-ui.textarea>
+            </x-ui.field>
+        </form>
 
-            // Konfirmasi final
-            if (!confirm('Apakah Anda yakin ingin membatalkan permohonan ini?')) {
-                e.preventDefault();
-                return false;
-            }
-
-            // Disable button untuk prevent double submit
-            cancelBtn{{ $slotNum }}.disabled = true;
-            cancelBtn{{ $slotNum }}.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Membatalkan...';
-        });
-    }
-
-    // ✅ Real-time character counter
-    if (reasonTextarea{{ $slotNum }}) {
-        reasonTextarea{{ $slotNum }}.addEventListener('input', function() {
-            const length = this.value.trim().length;
-            const minLength = 10;
-
-            if (length < minLength) {
-                this.classList.add('is-invalid');
-                this.classList.remove('is-valid');
-            } else {
-                this.classList.add('is-valid');
-                this.classList.remove('is-invalid');
-            }
-        });
-    }
-});
-</script>
+        <x-slot:footer>
+            <x-ui.button variant="outline" data-dialog-close>Kembali</x-ui.button>
+            <x-ui.button type="submit" form="cancel-form-{{ $request->id }}" variant="destructive" data-loading-text="Membatalkan...">
+                Ya, batalkan permohonan
+            </x-ui.button>
+        </x-slot:footer>
+    </x-ui.dialog>
+@endcan

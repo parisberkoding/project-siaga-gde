@@ -1,308 +1,113 @@
-@extends('templates.main')
+<x-layouts.app title="Ajukan Surat Tugas" :breadcrumbs="['Surat Tugas Saya' => route('requester.surat.index'), 'Ajukan' => null]">
+    <x-ui.page-header kicker="Surat Tugas" title="Ajukan Surat Tugas Perjalanan Dinas" description="Isi data perjalanan, budget ditentukan admin saat persetujuan." />
 
-@section('content')
-<div class="pagetitle">
-    <h1>Buat Surat Tugas Perjalanan Dinas</h1>
-    <nav>
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="">Home</a></li>
-            <li class="breadcrumb-item">SPD</li>
-            <li class="breadcrumb-item active">Buat Surat</li>
-        </ol>
-    </nav>
-</div>
-
-<section class="section">
-    {{-- Alert Messages --}}
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-circle me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    @if($errors->any())
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-circle me-2"></i>
-            <strong>Terjadi kesalahan:</strong>
-            <ul class="mb-0 mt-2">
-                @foreach($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    <form action="{{ route('requester.surat.store') }}" method="POST" id="formSurat">
+    <form action="{{ route('requester.surat.store') }}" method="POST" id="formSurat" data-loading class="grid items-start gap-6 lg:grid-cols-3">
         @csrf
-        <div class="row">
-            {{-- Form Utama (Left Column) --}}
-            <div class="col-lg-8">
-                {{-- Informasi Perjalanan --}}
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-geo-alt"></i> Informasi Perjalanan</h5>
 
-                        <div class="mb-3">
-                            <label class="form-label">Tempat Tujuan <span class="text-danger">*</span></label>
-                            <textarea class="form-control @error('tempat_tujuan') is-invalid @enderror"
-                                      name="tempat_tujuan" rows="2" required placeholder="Contoh: Kantor PLN Bandung, Jl. Asia Afrika No. 123">{{ old('tempat_tujuan') }}</textarea>
-                            @error('tempat_tujuan')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
+        <div class="grid gap-6 lg:col-span-2">
+            <x-ui.card class="transition-shadow focus-within:border-primary/40 focus-within:shadow-md">
+                <x-ui.card-header title="Informasi Perjalanan" step="1" />
+                <x-ui.card-content class="grid gap-4">
+                    <x-ui.field label="Tempat Tujuan" for="tempat_tujuan" required error="tempat_tujuan">
+                        <x-ui.textarea id="tempat_tujuan" name="tempat_tujuan" rows="2" required placeholder="Contoh: Kantor PLN Bandung, Jl. Asia Afrika No. 123">{{ old('tempat_tujuan') }}</x-ui.textarea>
+                    </x-ui.field>
 
-                        <div class="mb-3">
-                            <label class="form-label">Jenis SPD <span class="text-danger">*</span></label>
-                            <select class="form-select @error('jenis_spd') is-invalid @enderror" name="jenis_spd" id="jenis_spd">
-                                <option value="">-- Pilih Jenis SPD --</option>
-                                <option value="luar_kota" @if(old('jenis_spd') == 'luar_kota') selected @endif>SPD Luar Kota</option>
-                                <option value="dalam_kota" @if(old('jenis_spd') == 'dalam_kota') selected @endif>SPD Dalam Kota</option>
-                                <option value="lainnya" @if(old('jenis_spd') == 'lainnya') selected @endif>Lainnya</option>
-                            </select>
-                            @error('jenis_spd')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <x-ui.field label="Jenis SPD" for="jenis_spd" required error="jenis_spd">
+                            <x-ui.select id="jenis_spd" name="jenis_spd">
+                                <option value="">Pilih jenis SPD</option>
+                                <option value="luar_kota" @selected(old('jenis_spd') === 'luar_kota')>SPD Luar Kota</option>
+                                <option value="dalam_kota" @selected(old('jenis_spd') === 'dalam_kota')>SPD Dalam Kota</option>
+                                <option value="lainnya" @selected(old('jenis_spd') === 'lainnya')>Lainnya</option>
+                            </x-ui.select>
+                        </x-ui.field>
 
-                        <div class="mb-3" id="jenis_spd_lainnya_wrapper" style="display: none;">
-                            <label class="form-label">Jenis SPD Lainnya</label>
-                            <input type="text" class="form-control" name="jenis_spd_lainnya"
-                                   placeholder="Contoh: Dinas Internasional" value="{{ old('jenis_spd_lainnya') }}">
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Melayani Bidang <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control @error('melayani_bidang') is-invalid @enderror"
-                                       name="melayani_bidang" value="{{ old('melayani_bidang') }}" required
-                                       placeholder="Contoh: Operasional, Teknik, dll">
-                                @error('melayani_bidang')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Jumlah Pemakai <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control @error('jumlah_pemakai') is-invalid @enderror"
-                                       name="jumlah_pemakai" value="{{ old('jumlah_pemakai', 1) }}"
-                                       min="1" max="7" required id="jumlahPemakai">
-                                @error('jumlah_pemakai')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Kendaraan <span class="text-danger">*</span></label>
-                            <select class="form-select @error('vehicle_id') is-invalid @enderror"
-                                    name="vehicle_id" required>
-                                <option value="">-- Pilih Kendaraan --</option>
-                                @foreach($vehicles as $vehicle)
-                                    <option value="{{ $vehicle->id }}" {{ old('vehicle_id') == $vehicle->id ? 'selected' : '' }}>
-                                        {{ $vehicle->consumerial_code ?? $vehicle->plat_nomor }} - {{ $vehicle->consumerial_name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('vehicle_id')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
+                        <x-ui.field label="Jenis SPD Lainnya" for="jenis_spd_lainnya" id="jenis_spd_lainnya_wrapper" hidden>
+                            <x-ui.input id="jenis_spd_lainnya" name="jenis_spd_lainnya" placeholder="Contoh: Dinas Internasional" :value="old('jenis_spd_lainnya')" />
+                        </x-ui.field>
                     </div>
-                </div>
 
-                {{-- Jadwal --}}
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-calendar-check"></i> Jadwal Perjalanan</h5>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <x-ui.field label="Melayani Bidang" for="melayani_bidang" required error="melayani_bidang">
+                            <x-ui.input id="melayani_bidang" name="melayani_bidang" :value="old('melayani_bidang')" required placeholder="Contoh: Operasional, Teknik" />
+                        </x-ui.field>
+                        <x-ui.field label="Jumlah Pemakai" for="jumlahPemakai" required error="jumlah_pemakai" hint="Maksimal 7 orang">
+                            <x-ui.input type="number" id="jumlahPemakai" name="jumlah_pemakai" :value="old('jumlah_pemakai', 1)" min="1" max="7" required />
+                        </x-ui.field>
+                    </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Tanggal Berangkat <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control @error('tanggal_berangkat') is-invalid @enderror"
-                                       name="tanggal_berangkat" value="{{ old('tanggal_berangkat') }}"
-                                       required id="tanggalBerangkat" min="{{ date('Y-m-d') }}">
-                                @error('tanggal_berangkat')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                    <x-ui.field label="Kendaraan" for="vehicle_id" required error="vehicle_id">
+                        <x-ui.select id="vehicle_id" name="vehicle_id" required>
+                            <option value="">Pilih kendaraan</option>
+                            @foreach ($vehicles as $vehicle)
+                                <option value="{{ $vehicle->id }}" @selected(old('vehicle_id') == $vehicle->id)>
+                                    {{ $vehicle->consumerial_code ?? $vehicle->plat_nomor }} - {{ $vehicle->consumerial_name }}
+                                </option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                </x-ui.card-content>
+            </x-ui.card>
 
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Tanggal Kembali <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control @error('tanggal_kembali') is-invalid @enderror"
-                                       name="tanggal_kembali" value="{{ old('tanggal_kembali') }}"
-                                       required id="tanggalKembali">
-                                @error('tanggal_kembali')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+            <x-ui.card class="transition-shadow focus-within:border-primary/40 focus-within:shadow-md">
+                <x-ui.card-header title="Jadwal Perjalanan" step="2" />
+                <x-ui.card-content class="grid gap-4">
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <x-ui.field label="Tanggal Berangkat" for="tanggalBerangkat" required error="tanggal_berangkat">
+                            <x-ui.date-picker id="tanggalBerangkat" name="tanggal_berangkat" :value="old('tanggal_berangkat')" required :min="date('Y-m-d')" />
+                        </x-ui.field>
+                        <x-ui.field label="Tanggal Kembali" for="tanggalKembali" required error="tanggal_kembali">
+                            <x-ui.date-picker id="tanggalKembali" name="tanggal_kembali" :value="old('tanggal_kembali')" required />
+                        </x-ui.field>
+                    </div>
+                    <x-ui.alert variant="info" id="infoLama" hidden>Lama perjalanan: <strong id="lamaHari">0</strong> hari</x-ui.alert>
+                </x-ui.card-content>
+            </x-ui.card>
+
+            <x-ui.card class="transition-shadow focus-within:border-primary/40 focus-within:shadow-md">
+                <x-ui.card-header title="Daftar Nama Pemakai" step="3" description="Ketik minimal 2 huruf untuk mencari dari data pekerja, atau tulis nama manual." />
+                <x-ui.card-content class="grid gap-2">
+                    @for ($i = 1; $i <= 7; $i++)
+                        <div data-row-nama="{{ $i }}" class="flex items-center gap-2" @if ($i > 1) hidden @endif>
+                            <span class="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-sm font-medium text-muted-foreground">{{ $i }}</span>
+                            <x-ui.input name="nama_lengkap_{{ $i }}" data-pemakai-input data-index="{{ $i }}" :data-lookup-url="route('spd.passenger.lookup')"
+                                autocomplete="off" placeholder="Ketik nama pemakai ke-{{ $i }}" :value="old('nama_lengkap_' . $i)" />
+                            <input type="hidden" name="user_id_{{ $i }}" id="userId{{ $i }}" value="{{ old('user_id_' . $i) }}">
                         </div>
+                    @endfor
+                </x-ui.card-content>
+            </x-ui.card>
 
-                        <div class="alert alert-info py-2" id="infoLama" style="display: none;">
-                            <i class="bi bi-info-circle"></i> Lama perjalanan: <strong id="lamaHari">0</strong> hari
-                        </div>
+            <x-ui.card class="transition-shadow focus-within:border-primary/40 focus-within:shadow-md">
+                <x-ui.card-header title="Catatan" step="4" description="Opsional" />
+                <x-ui.card-content>
+                    <x-ui.textarea name="catatan" rows="3" placeholder="Catatan tambahan jika diperlukan">{{ old('catatan') }}</x-ui.textarea>
+                </x-ui.card-content>
+            </x-ui.card>
+        </div>
+
+        {{-- Kolom kanan setinggi form: alur ikut tergulir, ringkasan + tombol kirim tetap terlihat. --}}
+        <div class="flex flex-col gap-6 lg:self-stretch">
+            <x-spd.flow-steps :steps="[
+                ['bi-send', 'Ajukan surat tugas', 'Isi form ini lalu kirim.'],
+                ['bi-shield-check', 'Validasi admin GA', 'Pemberi tugas dan dana ditetapkan.'],
+                ['bi-car-front', 'Perjalanan dinas', 'Upload struk selama perjalanan.'],
+                ['bi-receipt', 'Kirim LPJ', 'Paling lambat <strong>3 hari</strong> setelah kembali.'],
+            ]" />
+
+            <div class="lg:sticky lg:top-20">
+                <x-spd.surat-summary badge="Menunggu validasi GA">
+                    <x-ui.alert variant="info">Budget ditentukan admin saat persetujuan.</x-ui.alert>
+                    <div class="grid gap-2">
+                        <x-ui.button type="submit" variant="success" data-loading-text="Mengirim..."><i class="bi bi-send"></i> Ajukan Surat Tugas</x-ui.button>
+                        <x-ui.button variant="ghost" :href="route('requester.surat.index')"><i class="bi bi-arrow-left"></i> Batal</x-ui.button>
                     </div>
-                </div>
-
-                {{-- Daftar Nama Pemakai --}}
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-people"></i> Daftar Nama Pemakai</h5>
-                        <p class="text-muted small">Masukkan nama lengkap pemakai kendaraan (maksimal 7 orang)</p>
-
-                        <div id="containerNama">
-                            @for($i = 1; $i <= 7; $i++)
-                                <div class="mb-2 row-nama" id="rowNama{{ $i }}" style="{{ $i > 1 ? 'display: none;' : '' }}">
-                                    <div class="input-group">
-                                        <span class="input-group-text">{{ $i }}.</span>
-                                        <input type="text" class="form-control pemakai-input" name="nama_lengkap_{{ $i }}"
-                                               data-index="{{ $i }}" autocomplete="off"
-                                               placeholder="Ketik nama pemakai ke-{{ $i }}…"
-                                               value="{{ old('nama_lengkap_' . $i) }}">
-                                        <input type="hidden" name="user_id_{{ $i }}" id="userId{{ $i }}"
-                                               value="{{ old('user_id_' . $i) }}">
-                                    </div>
-                                </div>
-                            @endfor
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Catatan --}}
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-journal-text"></i> Catatan (Opsional)</h5>
-
-                        <textarea class="form-control" name="catatan" rows="3"
-                                  placeholder="Catatan tambahan jika diperlukan...">{{ old('catatan') }}</textarea>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Sidebar (Right Column) --}}
-            <div class="col-lg-4">
-                {{-- Ringkasan --}}
-                <div class="card border-primary">
-                    <div class="card-header bg-primary text-white">
-                        <h6 class="mb-0"><i class="bi bi-file-earmark-text"></i> Ringkasan Pengajuan</h6>
-                    </div>
-                    <div class="card-body">
-                        <table class="table table-sm table-borderless mb-3">
-                            <tr>
-                                <td class="text-muted">Lama Perjalanan:</td>
-                                <td class="text-end"><strong id="summaryLama">-</strong></td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted">Jumlah Pemakai:</td>
-                                <td class="text-end"><strong id="summaryPemakai">1 orang</strong></td>
-                            </tr>
-                        </table>
-
-                        <div class="alert alert-info py-2 mb-3">
-                            <small><i class="bi bi-info-circle"></i> Budget akan ditentukan oleh Superadmin saat persetujuan</small>
-                        </div>
-
-                        <button type="submit" class="btn btn-success w-100 mb-2">
-                            <i class="bi bi-send"></i> Ajukan Surat Tugas
-                        </button>
-
-                        <a href="{{ route('requester.surat.index') }}" class="btn btn-secondary w-100">
-                            <i class="bi bi-arrow-left"></i> Batal
-                        </a>
-                    </div>
-                </div>
-
-                {{-- Info --}}
-                <div class="card">
-                    <div class="card-body">
-                        <h6 class="card-title"><i class="bi bi-info-circle"></i> Informasi</h6>
-                        <ul class="small text-muted mb-0">
-                            <li>Surat akan diproses oleh Superadmin</li>
-                            <li>Budget per hari akan ditentukan saat persetujuan</li>
-                            <li>Setelah disetujui, deadline LPJ adalah <strong>3 hari</strong> setelah tanggal kembali</li>
-                            <li>Pastikan data yang diisi sudah benar</li>
-                        </ul>
-                    </div>
-                </div>
+                </x-spd.surat-summary>
             </div>
         </div>
     </form>
-</section>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const tanggalBerangkat = document.getElementById('tanggalBerangkat');
-    const tanggalKembali = document.getElementById('tanggalKembali');
-    const jumlahPemakai = document.getElementById('jumlahPemakai');
-    const infoLama = document.getElementById('infoLama');
-    const lamaHari = document.getElementById('lamaHari');
-    const jenisSpd = document.getElementById('jenis_spd');
-    const jenisSpdLainnya = document.getElementById('jenis_spd_lainnya_wrapper');
-
-    // Toggle input "Lainnya" pada dropdown jenis SPD
-    function updateJenisSpd() {
-        if (jenisSpd && jenisSpdLainnya) {
-            jenisSpdLainnya.style.display = jenisSpd.value === 'lainnya' ? 'block' : 'none';
-        }
-    }
-    if (jenisSpd) {
-        jenisSpd.addEventListener('change', updateJenisSpd);
-        updateJenisSpd();
-    }
-
-    // Summary elements
-    const summaryLama = document.getElementById('summaryLama');
-    const summaryPemakai = document.getElementById('summaryPemakai');
-
-    // Calculate lama perjalanan
-    function calculate() {
-        const berangkat = new Date(tanggalBerangkat.value);
-        const kembali = new Date(tanggalKembali.value);
-
-        if (tanggalBerangkat.value && tanggalKembali.value && kembali >= berangkat) {
-            const diffTime = Math.abs(kembali - berangkat);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-
-            lamaHari.textContent = diffDays;
-            infoLama.style.display = 'block';
-
-            // Update summary
-            summaryLama.textContent = diffDays + ' hari';
-        } else {
-            infoLama.style.display = 'none';
-            summaryLama.textContent = '-';
-        }
-    }
-
-    // Show/hide nama rows based on jumlah pemakai
-    function updateNamaRows() {
-        const count = parseInt(jumlahPemakai.value) || 1;
-        for (let i = 1; i <= 7; i++) {
-            const row = document.getElementById('rowNama' + i);
-            row.style.display = i <= count ? 'block' : 'none';
-        }
-        summaryPemakai.textContent = count + ' orang';
-    }
-
-    // Set min date for tanggal kembali
-    tanggalBerangkat.addEventListener('change', function() {
-        tanggalKembali.min = this.value;
-        if (tanggalKembali.value && tanggalKembali.value < this.value) {
-            tanggalKembali.value = this.value;
-        }
-        calculate();
-    });
-
-    tanggalKembali.addEventListener('change', calculate);
-    jumlahPemakai.addEventListener('change', updateNamaRows);
-
-    // Initialize
-    updateNamaRows();
-    calculate();
-});
-</script>
-
-{{-- Autocomplete nama pemakai (Master Pekerja) --}}
-@include('partials.pemakai-autocomplete')
-@endsection
+    @push('scripts')
+        @vite('resources/js/pages/spd/surat-create.js')
+    @endpush
+</x-layouts.app>

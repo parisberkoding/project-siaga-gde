@@ -1772,9 +1772,12 @@ class SpdController extends Controller
     {
         $unitId = UnitScope::for(Auth::user())->unitId();
 
+        // BUG-LPJ-004: hanya LPJ perjalanan yang diikuti user ini (pemohon atau penumpang, boleh
+        // lintas unit), sama dengan yang boleh ia konfirmasi. Sebelumnya semua LPJ satu unit tampil.
+        $userId = Auth::id();
         $pending_list = LpjPenggantian::pending()
-            ->inUnit($unitId)
             ->whereNull('approved_by_pengguna')
+            ->whereHas('suratSpd', fn ($q) => $q->where(fn ($s) => $s->where('user_id', $userId)->orWhereHas('details', fn ($d) => $d->where('user_id', $userId))))
             ->with(['user', 'suratSpd.vehicle'])
             ->orderBy('created_at', 'desc')
             ->get();

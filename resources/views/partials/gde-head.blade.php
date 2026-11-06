@@ -16,16 +16,17 @@
 {{-- 1. Tipografi lokal (tanpa CDN) --}}
 <link href="{{ asset('gde-ui-templates/fonts/poppins.css') }}" rel="stylesheet">
 
-{{-- 2. Design system GDE --}}
-<link href="{{ asset('gde-ui-templates/css/gde-tokens.css') }}" rel="stylesheet">
-<link href="{{ asset('gde-ui-templates/css/gde-base.css') }}" rel="stylesheet">
-<link href="{{ asset('gde-ui-templates/css/gde-components.css') }}" rel="stylesheet">
+{{-- 2. Design system GDE (?v= waktu ubah file: cache browser langsung diperbarui saat CSS berubah) --}}
+@php($gdeCss = fn ($file) => asset("gde-ui-templates/css/$file") . '?v=' . @filemtime(public_path("gde-ui-templates/css/$file")))
+<link href="{{ $gdeCss('gde-tokens.css') }}" rel="stylesheet">
+<link href="{{ $gdeCss('gde-base.css') }}" rel="stylesheet">
+<link href="{{ $gdeCss('gde-components.css') }}" rel="stylesheet">
 
 @if ($gdeApp ?? true)
-  <link href="{{ asset('gde-ui-templates/css/gde-app.css') }}" rel="stylesheet">
+  <link href="{{ $gdeCss('gde-app.css') }}" rel="stylesheet">
 @endif
 
 @if ($gdeCompat ?? true)
   {{-- Jembatan: menyeragamkan gaya Bootstrap 5 + NiceAdmin tanpa mengubah markup lama --}}
-  <link href="{{ asset('gde-ui-templates/css/gde-compat.css') }}" rel="stylesheet">
+  <link href="{{ $gdeCss('gde-compat.css') }}" rel="stylesheet">
 @endif

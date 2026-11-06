@@ -1,312 +1,174 @@
-@extends('templates.main')
+<x-layouts.app title="Persetujuan Surat Tugas" :breadcrumbs="['Persetujuan Surat Tugas' => null]">
+    <x-ui.page-header kicker="Admin SPD" title="Persetujuan Surat Tugas" description="Periksa pengajuan surat tugas, tentukan dana, lalu setujui atau tolak.">
+        @can('permission', 'spd.manage')
+            <x-slot:actions>
+                <x-ui.button :href="route('surat.superadmin.create-shortcut')"><i class="bi bi-plus-lg"></i> Buat Surat Tugas</x-ui.button>
+            </x-slot:actions>
+        @endcan
+    </x-ui.page-header>
 
-@section('content')
-<div class="pagetitle">
-    <h1>Validasi Surat Tugas</h1>
-    <nav>
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('superadmin-dashboard') }}">Home</a></li>
-            <li class="breadcrumb-item">SPD</li>
-            <li class="breadcrumb-item active">Validasi Surat</li>
-        </ol>
-    </nav>
-</div>
-
-<section class="section dashboard">
-    {{-- Alert Messages --}}
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-circle me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    {{-- Stats Cards --}}
-    <div class="row mb-4">
-        <div class="col-xxl-4 col-md-6">
-            <div class="card info-card warning-card">
-                <div class="card-body">
-                    <h5 class="card-title">Menunggu Validasi</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-hourglass-split"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ $pending_count }}</h6>
-                            <span class="text-muted small pt-2">Surat pending</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xxl-4 col-md-6">
-            <div class="card info-card revenue-card">
-                <div class="card-body">
-                    <h5 class="card-title">Disetujui</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-check-circle"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ $approved_count }}</h6>
-                            <span class="text-muted small pt-2">Surat disetujui</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xxl-4 col-md-6">
-            <div class="card info-card danger-card">
-                <div class="card-body">
-                    <h5 class="card-title">Ditolak</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-x-circle"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ $rejected_count }}</h6>
-                            <span class="text-muted small pt-2">Surat ditolak</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="grid gap-4 sm:grid-cols-3">
+        <x-ui.stat-card label="Menunggu Validasi" :value="$pending_count" icon="bi bi-hourglass-split" :tone="$pending_count ? 'warning' : 'muted'" hint="Surat pending" />
+        <x-ui.stat-card label="Disetujui" :value="$approved_count" icon="bi bi-check-circle" tone="success" hint="Surat disetujui" />
+        <x-ui.stat-card label="Ditolak" :value="$rejected_count" icon="bi bi-x-circle" tone="danger" hint="Surat ditolak" />
     </div>
 
-    {{-- Main Card with Tabs --}}
-    <div class="card">
-        <div class="card-body">
-            <h5 class="card-title">
-                <i class="bi bi-file-earmark-text"></i> Daftar Surat Tugas Perjalanan Dinas
-            </h5>
+    <x-ui.tabs default="pending">
+        <x-ui.tabs-list>
+            <x-ui.tabs-trigger value="pending"><i class="bi bi-clock-history"></i> Menunggu Validasi
+                @if ($pending_count > 0)<x-ui.badge variant="warning" class="rounded-full">{{ $pending_count }}</x-ui.badge>@endif
+            </x-ui.tabs-trigger>
+            <x-ui.tabs-trigger value="approved"><i class="bi bi-check-circle"></i> Disetujui</x-ui.tabs-trigger>
+            <x-ui.tabs-trigger value="rejected"><i class="bi bi-x-circle"></i> Ditolak</x-ui.tabs-trigger>
+        </x-ui.tabs-list>
 
-            {{-- Tabs --}}
-            <ul class="nav nav-tabs nav-tabs-bordered" id="suratTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active position-relative" id="pending-tab" data-bs-toggle="tab"
-                            data-bs-target="#pending" type="button" role="tab">
-                        <i class="bi bi-clock-history"></i> Menunggu Validasi
-                        @if($pending_count > 0)
-                            <span class="badge bg-warning text-dark ms-1">{{ $pending_count }}</span>
-                        @endif
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="approved-tab" data-bs-toggle="tab"
-                            data-bs-target="#approved" type="button" role="tab">
-                        <i class="bi bi-check-circle"></i> Disetujui
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="rejected-tab" data-bs-toggle="tab"
-                            data-bs-target="#rejected" type="button" role="tab">
-                        <i class="bi bi-x-circle"></i> Ditolak
-                    </button>
-                </li>
-            </ul>
-
-            {{-- Tab Content --}}
-            <div class="tab-content pt-3" id="suratTabsContent">
-                {{-- Pending Tab --}}
-                <div class="tab-pane fade show active" id="pending" role="tabpanel">
-                    @if($pending_list->isEmpty())
-                        <div class="text-center py-5">
-                            <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
-                            <p class="text-muted mt-3 mb-0">Tidak ada surat yang menunggu validasi</p>
-                        </div>
-                    @else
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>No. Surat</th>
-                                        <th>Pengaju</th>
-                                        <th>Tujuan</th>
-                                        <th>Tanggal</th>
-                                        <th>Kendaraan</th>
-                                        <th class="text-center">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($pending_list as $surat)
-                                        <tr>
-                                            <td>
-                                                <span class="fw-semibold">{{ $surat->nomor_surat }}</span>
-                                                @if($surat->is_extension)
-                                                    <br><span class="badge bg-info">Perpanjangan</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                {{ $surat->pengemudi_nama }}
-                                                <br><small class="text-muted">{{ $surat->user->email ?? '' }}</small>
-                                            </td>
-                                            <td>{{ Str::limit($surat->tempat_tujuan, 30) }}</td>
-                                            <td>
-                                                {{ $surat->tanggal_berangkat->translatedFormat('d M Y') }} - {{ $surat->tanggal_kembali->translatedFormat('d M Y') }}
-                                                <br><span class="badge bg-secondary">{{ $surat->lama_perjalanan_hari }} hari</span>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-dark">{{ $surat->vehicle->consumerial_code ?? $surat->vehicle->plat_nomor }}</span>
-                                                <br><small>{{ $surat->vehicle->consumerial_name ?? '' }}</small>
-                                            </td>
-                                            <td class="text-center">
-                                                <a href="{{ route('surat.superadmin.show', $surat) }}"
-                                                   class="btn btn-sm btn-primary">
-                                                    <i class="bi bi-eye"></i> Detail & Validasi
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @endif
+        {{-- Antrian: kartu; persetujuan butuh isian di halaman detail (pemberi tugas, kode GL, dana). --}}
+        <x-ui.tabs-content value="pending">
+            @if ($pending_list->isEmpty())
+                <x-ui.empty-state icon="bi bi-check2-all" title="Tidak ada surat yang menunggu validasi" description="Semua pengajuan surat tugas sudah diproses." class="bg-card" />
+            @else
+                <div class="grid gap-4 xl:grid-cols-2">
+                    @foreach ($pending_list->sortBy('created_at') as $surat)
+                        @php
+                            $info = ['nomor' => $surat->nomor_surat, 'driver' => $surat->pengemudi_nama . ' · ' . $surat->tempat_tujuan];
+                        @endphp
+                        <x-ui.queue-card :name="$surat->pengemudi_nama" :subtitle="$surat->nomor_surat" :since="$surat->created_at" :note="$surat->catatan"
+                            figure-label="Lama perjalanan" :figure="$surat->lama_perjalanan_hari . ' hari'" :figure-hint="$surat->jumlah_pemakai . ' pemakai'">
+                            <p class="flex min-w-0 items-center gap-2">
+                                <i class="bi bi-geo-alt text-muted-foreground"></i>
+                                <span class="truncate font-semibold" title="{{ $surat->tempat_tujuan }}">{{ $surat->tempat_tujuan }}</span>
+                                @if ($surat->is_extension)<x-ui.badge variant="info">Perpanjangan</x-ui.badge>@endif
+                            </p>
+                            <p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
+                                <span class="inline-flex items-center gap-1.5"><i class="bi bi-calendar3"></i> <span class="text-foreground">{{ $surat->tanggal_berangkat->translatedFormat('d M') }} - {{ $surat->tanggal_kembali->translatedFormat('d M Y') }}</span></span>
+                                <span class="size-1 rounded-full bg-border"></span>
+                                <span class="inline-flex min-w-0 items-center gap-1.5"><i class="bi bi-truck"></i> <span class="truncate">{{ $surat->vehicle->consumerial_code ?? $surat->vehicle->plat_nomor }}</span></span>
+                            </p>
+                            <x-slot:actions>
+                                <x-ui.button variant="outline" size="sm" class="text-destructive hover:bg-destructive-soft hover:text-destructive"
+                                    data-action-dialog="rejectSuratDialog" :data-url="route('surat.superadmin.reject', $surat)" :data-info="json_encode($info)">
+                                    <i class="bi bi-x-circle"></i> Tolak
+                                </x-ui.button>
+                                <x-ui.button size="sm" :href="route('surat.superadmin.show', $surat)"><i class="bi bi-clipboard-check"></i> Periksa & Validasi</x-ui.button>
+                            </x-slot:actions>
+                        </x-ui.queue-card>
+                    @endforeach
                 </div>
+            @endif
+        </x-ui.tabs-content>
 
-                {{-- Approved Tab --}}
-                <div class="tab-pane fade" id="approved" role="tabpanel">
-                    @if($approved_list->isEmpty())
-                        <div class="text-center py-5">
-                            <p class="text-muted mb-0">Belum ada surat yang disetujui</p>
-                        </div>
+        <x-ui.tabs-content value="approved">
+            <x-ui.card class="py-4">
+                <x-ui.card-content class="px-4">
+                    @if ($approved_list->isEmpty())
+                        <x-ui.empty-state icon="bi bi-inbox" title="Belum ada surat yang disetujui" />
                     @else
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead class="table-light">
+                        <x-ui.table :datatable="['perPage' => 10]">
+                            <thead>
+                                <tr><th>No. Surat</th><th>LPJ</th><th>Pengaju</th><th>Tujuan</th><th>Tanggal</th><th>Batas LPJ</th><th>Disetujui</th><th class="w-20 text-center">Aksi</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($approved_list as $surat)
+                                    @php $lpj = $surat->lpjPenggantian; @endphp
                                     <tr>
-                                        <th>Jenis</th>
-                                        <th>No. Surat</th>
-                                        <th>Pengaju</th>
-                                        <th>Tujuan</th>
-                                        <th>Tanggal</th>
-                                        <th>Deadline LPJ</th>
-                                        <th>Disetujui</th>
-                                        <th class="text-center">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($approved_list as $surat)
-                                        <tr>
-                                            <td>
-                                                <span class="badge bg-primary">Surat Tugas</span>
-                                                @if($surat->is_extension)
-                                                    <br><span class="badge bg-info mt-1">Perpanjangan</span>
-                                                @endif
-                                                <br>
-                                                @php
-                                                    $lpj = $surat->lpjPenggantian;
-                                                @endphp
-                                                @if($lpj)
-                                                    @if($lpj->status == 'approved')
-                                                        <span class="badge bg-success mt-1">LPJ Disetujui</span>
-                                                    @elseif($lpj->status == 'pending')
-                                                        <span class="badge bg-warning text-dark mt-1">LPJ Menunggu</span>
-                                                    @elseif($lpj->status == 'rejected')
-                                                        <span class="badge bg-danger mt-1">LPJ Ditolak</span>
-                                                    @endif
+                                        <td>
+                                            <span class="whitespace-nowrap font-medium">{{ $surat->nomor_surat }}</span>
+                                            @if ($surat->is_extension)<x-ui.badge variant="info" class="mt-1 flex">Perpanjangan</x-ui.badge>@endif
+                                        </td>
+                                        <td>
+                                            @if ($lpj)
+                                                <x-spd.status-badge :status="$lpj->status" />
+                                            @else
+                                                <x-ui.badge variant="muted">Belum</x-ui.badge>
+                                            @endif
+                                        </td>
+                                        <td class="whitespace-nowrap">{{ $surat->pengemudi_nama }}</td>
+                                        <td class="max-w-48 truncate text-muted-foreground" title="{{ $surat->tempat_tujuan }}">{{ $surat->tempat_tujuan }}</td>
+                                        <td data-order="{{ $surat->tanggal_berangkat->timestamp }}" class="whitespace-nowrap">{{ $surat->tanggal_berangkat->translatedFormat('d M') }} - {{ $surat->tanggal_kembali->translatedFormat('d M Y') }}</td>
+                                        <td data-order="{{ $surat->lpj_deadline?->timestamp ?? 0 }}" class="whitespace-nowrap">
+                                            @if ($surat->lpj_deadline)
+                                                @if ($surat->isLpjDeadlineOverdue() && ! $surat->hasLpj())
+                                                    <span class="text-destructive"><i class="bi bi-exclamation-triangle"></i> {{ $surat->lpj_deadline->translatedFormat('d M Y') }}</span>
                                                 @else
-                                                    <span class="badge bg-secondary mt-1">LPJ Belum</span>
+                                                    {{ $surat->lpj_deadline->translatedFormat('d M Y') }}
                                                 @endif
-                                            </td>
-                                            <td>
-                                                <span class="fw-semibold">{{ $surat->nomor_surat }}</span>
-                                            </td>
-                                            <td>{{ $surat->pengemudi_nama }}</td>
-                                            <td>{{ Str::limit($surat->tempat_tujuan, 25) }}</td>
-                                            <td>{{ $surat->tanggal_berangkat->translatedFormat('d M') }} - {{ $surat->tanggal_kembali->translatedFormat('d M Y') }}</td>
-                                            <td>
-                                                @if($surat->lpj_deadline)
-                                                    @if($surat->isLpjDeadlineOverdue() && !$surat->hasLpj())
-                                                        <span class="text-danger">
-                                                            <i class="bi bi-exclamation-triangle"></i>
-                                                            {{ $surat->lpj_deadline->translatedFormat('d M Y') }}
-                                                        </span>
-                                                    @else
-                                                        {{ $surat->lpj_deadline->translatedFormat('d M Y') }}
-                                                    @endif
-                                                @else
-                                                    -
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                        <td data-order="{{ $surat->approved_at->timestamp }}" class="whitespace-nowrap">
+                                            {{ $surat->approver->nama_lengkap ?? $surat->approver->name ?? '-' }}
+                                            <span class="block text-xs text-muted-foreground">{{ $surat->approved_at->translatedFormat('d M Y H:i') }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <x-ui.dropdown-menu :id="'aksi-surat-' . $surat->id" label="Aksi surat">
+                                                <div class="px-2.5 pb-1.5 pt-1 text-xs text-muted-foreground"><code>{{ $surat->nomor_surat }}</code></div>
+                                                <x-ui.dropdown-item icon="bi bi-eye" :href="route('surat.superadmin.show', $surat)">Lihat detail</x-ui.dropdown-item>
+                                                <x-ui.dropdown-item icon="bi bi-printer" :href="route('surat.superadmin.print', $surat)" target="_blank">Cetak surat tugas</x-ui.dropdown-item>
+                                                @if ($lpj)
+                                                    <x-ui.dropdown-separator />
+                                                    <x-ui.dropdown-item icon="bi bi-receipt" :href="route('lpj.superadmin.show', $lpj)">Buka LPJ</x-ui.dropdown-item>
+                                                    <x-ui.dropdown-item icon="bi bi-file-earmark-pdf" :href="route('spd.laporan.export', $lpj)" target="_blank">Cetak SPD + LPJ</x-ui.dropdown-item>
                                                 @endif
-                                            </td>
-                                            <td>
-                                                {{ $surat->approver->nama_lengkap ?? $surat->approver->name ?? '-' }}
-                                                <br><small class="text-muted">{{ $surat->approved_at->translatedFormat('d M Y H:i') }}</small>
-                                            </td>
-                                            <td class="text-center">
-                                                <div class="btn-group">
-                                                    <a href="{{ route('surat.superadmin.show', $surat) }}"
-                                                       class="btn btn-sm btn-outline-primary" title="Detail">
-                                                        <i class="bi bi-eye"></i>
-                                                    </a>
-                                                    <a href="{{ route('surat.superadmin.print', $surat) }}"
-                                                       class="btn btn-sm btn-outline-success" target="_blank" title="Cetak">
-                                                        <i class="bi bi-printer"></i>
-                                                    </a>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @endif
-                </div>
-
-                {{-- Rejected Tab --}}
-                <div class="tab-pane fade" id="rejected" role="tabpanel">
-                    @if($rejected_list->isEmpty())
-                        <div class="text-center py-5">
-                            <p class="text-muted mb-0">Tidak ada surat yang ditolak</p>
-                        </div>
-                    @else
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>No. Surat</th>
-                                        <th>Pengaju</th>
-                                        <th>Tujuan</th>
-                                        <th>Ditolak Oleh</th>
-                                        <th>Alasan</th>
-                                        <th class="text-center">Aksi</th>
+                                            </x-ui.dropdown-menu>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($rejected_list as $surat)
-                                        <tr>
-                                            <td><span class="fw-semibold">{{ $surat->nomor_surat }}</span></td>
-                                            <td>{{ $surat->pengemudi_nama }}</td>
-                                            <td>{{ Str::limit($surat->tempat_tujuan, 25) }}</td>
-                                            <td>
-                                                {{ $surat->rejector->nama_lengkap ?? $surat->rejector->name ?? '-' }}
-                                                <br><small class="text-muted">{{ optional($surat->rejected_at)->translatedFormat('d M Y') ?? '-' }}</small>
-                                            </td>
-                                            
-                                            <td>{{ Str::limit($surat->rejection_reason, 40) }}</td>
-                                            <td class="text-center">
-                                                <a href="{{ route('surat.superadmin.show', $surat) }}"
-                                                   class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-eye"></i> Detail
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+                                @endforeach
+                            </tbody>
+                        </x-ui.table>
                     @endif
-                </div>
+                </x-ui.card-content>
+            </x-ui.card>
+        </x-ui.tabs-content>
+
+        <x-ui.tabs-content value="rejected">
+            <x-ui.card class="py-4">
+                <x-ui.card-content class="px-4">
+                    @if ($rejected_list->isEmpty())
+                        <x-ui.empty-state icon="bi bi-inbox" title="Tidak ada surat yang ditolak" />
+                    @else
+                        <x-ui.table :datatable="['perPage' => 10]">
+                            <thead>
+                                <tr><th>No. Surat</th><th>Pengaju</th><th>Tujuan</th><th>Ditolak Oleh</th><th>Alasan</th><th class="w-20 text-center">Aksi</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($rejected_list as $surat)
+                                    <tr>
+                                        <td class="whitespace-nowrap font-medium">{{ $surat->nomor_surat }}</td>
+                                        <td class="whitespace-nowrap">{{ $surat->pengemudi_nama }}</td>
+                                        <td class="max-w-48 truncate text-muted-foreground" title="{{ $surat->tempat_tujuan }}">{{ $surat->tempat_tujuan }}</td>
+                                        <td class="whitespace-nowrap">
+                                            {{ $surat->rejector->nama_lengkap ?? $surat->rejector->name ?? '-' }}
+                                            <span class="block text-xs text-muted-foreground">{{ optional($surat->rejected_at)->translatedFormat('d M Y') ?? '-' }}</span>
+                                        </td>
+                                        <td class="max-w-64 truncate text-destructive" title="{{ $surat->rejection_reason }}">{{ $surat->rejection_reason }}</td>
+                                        <td class="text-center">
+                                            <x-ui.button variant="outline" size="icon-sm" :href="route('surat.superadmin.show', $surat)" title="Lihat detail" aria-label="Lihat detail"><i class="bi bi-eye"></i></x-ui.button>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </x-ui.table>
+                    @endif
+                </x-ui.card-content>
+            </x-ui.card>
+        </x-ui.tabs-content>
+    </x-ui.tabs>
+
+    <x-ui.dialog id="rejectSuratDialog" title="Tolak Surat Tugas" description="Surat yang ditolak dikembalikan ke pengaju beserta alasannya.">
+        <form method="POST" data-loading class="grid gap-4">
+            @csrf
+            <div class="grid gap-0.5 rounded-lg border bg-muted/40 p-3 text-sm">
+                <p class="font-medium" data-info="nomor">-</p>
+                <p class="text-muted-foreground" data-info="driver">-</p>
             </div>
-        </div>
-    </div>
-</section>
-@endsection
+            <x-ui.field label="Alasan Penolakan" for="queue_rejection_reason" required hint="Minimal 10 karakter">
+                <x-ui.textarea id="queue_rejection_reason" name="rejection_reason" rows="3" required minlength="10" class="h-24 resize-none" placeholder="Jelaskan alasan penolakan" />
+            </x-ui.field>
+            <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <x-ui.button variant="outline" data-dialog-close>Batal</x-ui.button>
+                <x-ui.button type="submit" variant="destructive"><i class="bi bi-x-circle"></i> Ya, Tolak Surat</x-ui.button>
+            </div>
+        </form>
+    </x-ui.dialog>
+</x-layouts.app>

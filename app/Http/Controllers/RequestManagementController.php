@@ -546,8 +546,8 @@ class RequestManagementController extends Controller
 
         $maxSlots = $baseSlots + $totalAdjustment;
 
-        // Min 1 slot, max 6 slots
-        return max(1, min(6, $maxSlots));
+        // Min 1 slot, max 7 slots (5 dasar + bonus tepat waktu maksimal 2)
+        return max(1, min(7, $maxSlots));
     }
 
     /**

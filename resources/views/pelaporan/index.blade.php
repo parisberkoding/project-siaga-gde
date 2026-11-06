@@ -1,885 +1,277 @@
-@extends('templates.main')
+{{--
+  Pelaporan (pelaporan.index): satu halaman untuk dua alur, BBM operasional (lapor pembelian voucher) dan SPD (LPJ).
+  Bila mode sudah dipilih (?mode= atau ?permohonan_id= dari tombol Lapor Pembelian), judul, breadcrumb, dan isi
+  halaman mengikuti mode itu saja. Interaksi + analisis struk AI: resources/js/pages/bbm/pelaporan.js.
+--}}
+@php
+    $mode = request('mode') ?? (request()->filled('permohonan_id') ? 'operational' : null);
+    $isOperational = ($modeLocked ?? false) && $mode !== 'spd';
+    $isSpd = ($modeLocked ?? false) && $mode === 'spd';
+    [$pageTitle, $kicker, $description, $crumbs] = match (true) {
+        $isOperational => ['Lapor Pembelian BBM', 'Pengajuan Saya', 'Laporkan pengisian BBM dari voucher yang sudah disetujui.',
+            ['BBM Operasional' => route('requester-index'), 'Permohonan Aktif' => route('requester-index'), 'Lapor Pembelian' => null]],
+        $isSpd => ['Laporan SPD (LPJ)', 'Perjalanan Dinas', 'Laporkan pengeluaran surat tugas SPD.', ['Pelaporan' => null]],
+        default => ['Pelaporan BBM & SPD', 'Pelaporan', 'Laporkan pengisian BBM operasional atau pengeluaran surat tugas SPD.', ['Pelaporan' => null]],
+    };
 
-@section('title', 'Pelaporan BBM & SPD')
+    // Data voucher per permohonan untuk kartu voucher di Langkah 1 (dibaca JS).
+    $activePermohonan->loadMissing('approvedRequest');
+    $voucherData = $activePermohonan->mapWithKeys(fn ($p) => [$p->id => [
+        'number' => $p->request_number,
+        'voucher' => $p->approvedRequest?->voucher_code,
+        'validUntil' => $p->approvedRequest?->valid_until ? \Illuminate\Support\Carbon::parse($p->approvedRequest->valid_until)->toIso8601String() : null,
+        'vehicle' => $p->vehicle?->consumerial_code,
+        'vehicleName' => $p->vehicle?->consumerial_name,
+        'gasoline' => $p->gasoline_type,
+        'amount' => (float) $p->bill_amounts,
+        'budget' => $p->vehicle?->detail?->nominal_full_tank,
+    ]]);
+    $voucherOptions = $activePermohonan->map(fn ($p) => [
+        'value' => (string) $p->id,
+        'label' => ($p->approvedRequest?->voucher_code ?? $p->request_number) . ' · ' . ($p->vehicle?->consumerial_code ?? '-') . ' · Rp ' . number_format($p->bill_amounts, 0, ',', '.'),
+    ])->values()->all();
+    $presetId = (string) request('permohonan_id', $activePermohonan->count() === 1 ? $activePermohonan->first()->id : '');
+    $presetValid = $presetId !== '' && $voucherData->has((int) $presetId);
+    $step = 'flex size-7 shrink-0 items-center justify-center rounded-lg bg-linear-to-br text-xs font-bold text-white shadow-sm';
+@endphp
 
-@section('content')
-<div class="pagetitle">
-    <h1><i class="bi bi-journal-text"></i> Pelaporan BBM & SPD</h1>
-    <nav>
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="">Home</a></li>
-            <li class="breadcrumb-item active">Pelaporan</li>
-        </ol>
-    </nav>
-</div>
-
-<section class="section">
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    @if(session('info'))
-        <div class="alert alert-info alert-dismissible fade show" role="alert">
-            <i class="bi bi-info-circle me-2"></i>{{ session('info') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    @if($errors->any())
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-triangle me-2"></i>
-            <strong>Terjadi kesalahan:</strong>
-            <ul class="mb-0 mt-2">
-                @foreach($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    {{-- Mode selector — disembunyikan bila mode sudah dipilih (mis. dari kartu
-         modul BBM atau tautan voucher "Lapor"), supaya tidak muncul lagi kartu
-         SPD/BBM di tengah alur pelaporan. --}}
-    @if(!$modeLocked)
-    <div class="row g-3 mb-4">
-        @if($spdMode)
-        <div class="col-md-6">
-            <button type="button" class="card w-100 text-start border-primary shadow-sm mode-card" data-mode="spd" id="modeSpdCard">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <div class="rounded-circle bg-primary bg-opacity-10 p-3">
-                        <i class="bi bi-file-earmark-text text-primary fs-3"></i>
-                    </div>
-                    <div>
-                        <h5 class="mb-1 fw-bold">Laporan SPD (LPJ)</h5>
-                        <small class="text-muted">Laporkan pengeluaran dalam satu halaman: input struk (maks 5 gambar/kirim) → segmentasi draft/final → validasi untuk membuat LPJ</small>
-                    </div>
-                    <i class="bi bi-chevron-right ms-auto text-muted"></i>
-                </div>
-            </button>
-        </div>
+<x-layouts.app :title="$pageTitle" :breadcrumbs="$crumbs">
+    <x-ui.page-header :kicker="$kicker" :title="$pageTitle" :description="$description">
+        @if ($isOperational)
+            <x-slot:actions>
+                <x-ui.button variant="outline" :href="route('requester-index')"><i class="bi bi-arrow-left"></i> Kembali</x-ui.button>
+            </x-slot:actions>
         @endif
-        <div class="col-md-6">
-            <button type="button" class="card w-100 text-start border shadow-sm mode-card" data-mode="operational" id="modeOpCard">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <div class="rounded-circle bg-success bg-opacity-10 p-3">
-                        <i class="bi bi-fuel-pump text-success fs-3"></i>
-                    </div>
-                    <div>
-                        <h5 class="mb-1 fw-bold">BBM Operasional</h5>
-                        <small class="text-muted">Laporkan pengisian BBM harian dengan upload struk + AI</small>
-                    </div>
-                    <i class="bi bi-chevron-right ms-auto text-muted"></i>
-                </div>
+    </x-ui.page-header>
+
+    {{-- Pilihan mode, tersimpan di URL (?mode=spd|operational). Disembunyikan bila mode sudah dipilih. --}}
+    @unless ($modeLocked ?? false)
+    <div class="grid gap-4 md:grid-cols-2">
+        @if ($spdMode)
+            <button type="button" data-mode="spd" aria-pressed="false"
+                    class="flex items-center gap-4 rounded-xl border bg-card p-5 text-left shadow-sm transition hover:border-primary/50 aria-pressed:border-primary aria-pressed:ring-[3px] aria-pressed:ring-ring/20">
+                <span class="flex size-12 shrink-0 items-center justify-center rounded-lg bg-module-spd/10 text-2xl text-module-spd"><i class="bi bi-file-earmark-text"></i></span>
+                <span class="grid gap-1">
+                    <span class="font-semibold">Laporan SPD (LPJ)</span>
+                    <span class="text-sm text-muted-foreground">Input struk dalam satu halaman validasi, simpan sebagai draft, lalu kirim sebagai LPJ.</span>
+                </span>
+                <i class="bi bi-chevron-right ml-auto text-muted-foreground"></i>
             </button>
-        </div>
+        @endif
+        <button type="button" data-mode="operational" aria-pressed="false"
+                class="flex items-center gap-4 rounded-xl border bg-card p-5 text-left shadow-sm transition hover:border-primary/50 aria-pressed:border-primary aria-pressed:ring-[3px] aria-pressed:ring-ring/20">
+            <span class="flex size-12 shrink-0 items-center justify-center rounded-lg bg-module-bbm/10 text-2xl text-module-bbm"><i class="bi bi-fuel-pump"></i></span>
+            <span class="grid gap-1">
+                <span class="font-semibold">BBM Operasional</span>
+                <span class="text-sm text-muted-foreground">Laporkan pengisian BBM harian dengan unggah struk dan analisis AI.</span>
+            </span>
+            <i class="bi bi-chevron-right ml-auto text-muted-foreground"></i>
+        </button>
     </div>
+    @endunless
+
+    {{-- Peringatan SPD hanya relevan di alur SPD, bukan saat melapor pembelian BBM. --}}
+    @if (! $spdMode && ! $isOperational)
+        <x-ui.alert variant="warning" dismissible>
+            Tidak ada surat tugas SPD yang perlu dilaporkan. LPJ hanya bisa dibuat untuk surat yang sudah disetujui dan belum ada laporannya.
+        </x-ui.alert>
     @endif
 
-    @if(!$spdMode)
-    <div class="alert alert-warning alert-dismissible fade show" role="alert">
-        <i class="bi bi-info-circle me-2"></i>
-        Tidak ada surat tugas SPD yang perlu dilaporkan saat ini. Anda hanya bisa membuat LPJ untuk surat yang sudah disetujui dan belum ada laporannya.
-    </div>
-    @endif
-
-    {{-- ═══════════════ MODE SPD ═══════════════ --}}
-    @if($spdMode)
-    <div id="panel-spd" style="display:none;">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-file-earmark-text"></i> Surat Tugas SPD</h5>
-
-                <div class="alert alert-info py-2">
-                    <i class="bi bi-info-circle me-1"></i>
-                    <small>Laporkan pengeluaran lewat <strong>satu halaman validasi</strong>: struk selama SPD berjalan tersimpan otomatis sebagai <strong>draft</strong>; setelah SPD selesai cukup bulk-upload sisa struk (maks 5 gambar per kirim, bisa 5 lagi dst) lalu <strong>"Submit sebagai LPJ"</strong>.</small>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
+    @if ($spdMode)
+        <section id="panel-spd" hidden>
+            <x-ui.card class="gap-4">
+                <x-ui.card-header title="Surat Tugas SPD" icon="bi bi-file-earmark-text"
+                                  description="Struk selama perjalanan tersimpan sebagai draft. Setelah SPD selesai, unggah sisa struk (maksimal 5 gambar per kirim) lalu pilih Submit sebagai LPJ." />
+                <x-ui.card-content>
+                    <x-ui.table>
                         <thead>
                             <tr>
-                                <th>Surat Tugas</th>
+                                <th>Surat tugas</th>
                                 <th>Jadwal</th>
                                 <th>Kendaraan</th>
-                                <th>Laporan Harian</th>
-                                <th>Aksi</th>
+                                <th>Laporan harian</th>
+                                <th class="text-right">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($suratList as $surat)
-                            <tr>
-                                <td>
-                                    <strong>{{ $surat->nomor_surat }}</strong>
-                                    @if($surat->is_extension)
-                                        <span class="badge bg-secondary">Perpanjangan</span>
-                                    @endif
-                                    <br>
-                                    <small class="text-muted">{{ $surat->tempat_tujuan }}</small>
-                                </td>
-                                <td>
-                                    <small>
-                                        {{ $surat->tanggal_berangkat->translatedFormat('l, d F Y') }} s/d<br>
+                            @forelse ($suratList as $surat)
+                                <tr>
+                                    <td>
+                                        <span class="font-medium">{{ $surat->nomor_surat }}</span>
+                                        @if ($surat->is_extension)<x-ui.badge variant="secondary">Perpanjangan</x-ui.badge>@endif
+                                        <span class="block text-xs text-muted-foreground">{{ $surat->tempat_tujuan }}</span>
+                                    </td>
+                                    <td class="text-xs">
+                                        {{ $surat->tanggal_berangkat->translatedFormat('l, d F Y') }} sampai<br>
                                         {{ $surat->tanggal_kembali->translatedFormat('l, d F Y') }}
-                                    </small>
-                                </td>
-                                <td><small>{{ $surat->vehicle?->consumerial_code ?? '-' }}</small></td>
-                                <td>
-                                    @if($surat->daily_reports_available)
-                                        <span class="badge bg-success">{{ $surat->daily_submitted_count }} hari terkirim</span>
-                                        <small class="text-muted d-block">· {{ $surat->daily_item_count }} item</small>
-                                        @if($surat->has_draft_daily)
-                                            <span class="badge bg-warning text-dark">ada draft</span>
+                                    </td>
+                                    <td>{{ $surat->vehicle?->consumerial_code ?? '-' }}</td>
+                                    <td>
+                                        @if ($surat->daily_reports_available)
+                                            <div class="flex flex-wrap gap-1">
+                                                <x-ui.badge variant="success">{{ $surat->daily_submitted_count }} hari terkirim</x-ui.badge>
+                                                @if ($surat->has_draft_daily)<x-ui.badge variant="warning">ada draft</x-ui.badge>@endif
+                                            </div>
+                                            <span class="text-xs text-muted-foreground">{{ $surat->daily_item_count }} item</span>
+                                        @else
+                                            <x-ui.badge variant="muted">belum ada</x-ui.badge>
                                         @endif
-                                    @else
-                                        <span class="badge bg-light text-muted">belum ada</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    <a href="{{ route('pelaporan.spd.validasi', $surat) }}" class="btn btn-sm btn-outline-primary mb-1">
-                                        <i class="bi bi-calendar3"></i> Lapor & Validasi SPD
-                                    </a>
-                                </td>
-                            </tr>
+                                    </td>
+                                    <td class="text-right">
+                                        <x-ui.button variant="outline" size="sm" :href="route('pelaporan.spd.validasi', $surat)">
+                                            <i class="bi bi-calendar3"></i> Lapor & Validasi
+                                        </x-ui.button>
+                                    </td>
+                                </tr>
                             @empty
-                            <tr>
-                                <td colspan="5" class="text-center text-muted py-4">
-                                    <i class="bi bi-inbox" style="font-size:2rem;"></i><br>
-                                    Tidak ada surat SPD yang perlu dilaporkan.
-                                </td>
-                            </tr>
+                                <tr><td colspan="5" class="py-10 text-center text-muted-foreground">Tidak ada surat SPD yang perlu dilaporkan.</td></tr>
                             @endforelse
                         </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
+                    </x-ui.table>
+                </x-ui.card-content>
+            </x-ui.card>
+        </section>
     @endif
 
-    {{-- ═══════════════ MODE OPERASIONAL ═══════════════ --}}
-    <div id="panel-operational" style="display:none;">
-        <div class="row">
-            <div class="col-lg-8">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-fuel-pump"></i> Laporan BBM Operasional</h5>
+    {{-- grid-cols-1 = minmax(0,1fr): label voucher panjang tidak memaksa halaman melebar di HP. --}}
+    <section id="panel-operational" hidden class="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+        @if ($activePermohonan->isEmpty())
+            <x-ui.card class="lg:col-span-3">
+                <x-ui.card-content>
+                    <x-ui.empty-state icon="bi bi-ticket-perforated" title="Tidak ada voucher untuk dilaporkan"
+                                      description="Laporan bisa dibuat untuk voucher yang sudah disetujui dan belum dilaporkan.">
+                        <x-ui.button class="mt-2" variant="outline" :href="route('requester-index')"><i class="bi bi-arrow-left"></i> Ke Permohonan Aktif</x-ui.button>
+                    </x-ui.empty-state>
+                </x-ui.card-content>
+            </x-ui.card>
+        @else
+            <form action="{{ route('pelaporan.operational.store') }}" method="POST" id="formOperational" enctype="multipart/form-data" class="grid min-w-0 grid-cols-1 gap-6 lg:col-span-2">
+                @csrf
 
-                        @if($activePermohonan->isEmpty())
-                            <div class="text-center text-muted py-5">
-                                <i class="bi bi-inbox" style="font-size: 3rem;"></i>
-                                <p class="mt-3 mb-0">Tidak ada permohonan BBM yang disetujui dan belum dilaporkan.</p>
-                            </div>
-                        @else
-                        <form action="{{ route('pelaporan.operational.store') }}" method="POST" id="formOperational" enctype="multipart/form-data">
-                            @csrf
-                            <div class="mb-3">
-                                <label class="form-label">Permohonan BBM <span class="text-danger">*</span></label>
-                                <select class="form-select" name="permohonan_id" id="selectPermohonan" required>
-                                    <option value="">-- Pilih Permohonan --</option>
-                                    @foreach($activePermohonan as $p)
-                                        <option value="{{ $p->id }}"
-                                                data-vehicle="{{ $p->vehicle?->consumerial_code }}"
-                                                data-plate="{{ $p->vehicle?->consumerial_code }}"
-                                                data-bill="{{ $p->bill_amounts }}"
-                                                data-gasoline="{{ $p->gasoline_type }}"
-                                                data-budget="{{ $p->vehicle?->detail?->nominal_full_tank }}">
-                                            {{ $p->request_number }} - {{ $p->vehicle?->consumerial_code }} ({{ $p->gasoline_type }}) - Rp {{ number_format($p->bill_amounts, 0, ',', '.') }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <div class="form-text" id="infoPermohonan"></div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label">Foto Struk / Tambahan <span class="text-danger">*</span></label>
-                                <input type="file" class="form-control" name="foto_files[]" id="fotoFilesOp"
-                                       accept="image/jpeg,image/png,image/webp" multiple required>
-                                <small class="text-muted">Upload 1 foto atau banyak foto sekaligus (struk BBM, odometer, dashboard, dll). AI akan menganalisis tiap foto.</small>
-                            </div>
-
-                            {{-- Preview & hasil AI per file --}}
-                            <div id="aiResultsOp" class="d-flex flex-column gap-2 mb-3"></div>
-
-                            {{-- Validasi struk vs permohonan --}}
-                            <div id="strukValidationAlertOp" class="alert alert-danger py-2 small d-none">
-                                <strong><i class="bi bi-exclamation-triangle"></i> Struk berbeda.</strong>
-                                <span id="strukValidationMsgOp"></span>
-                            </div>
-
-                            {{-- Peringatan API limit --}}
-                            <div id="aiLimitAlertOp" class="alert alert-warning py-2 small d-none">
-                                <strong><i class="bi bi-exclamation-triangle"></i> Layanan AI (Gemini) sedang mencapai batas kuota.</strong>
-                                Silakan isi data struk secara manual pada foto yang ditandai, lalu kirim laporan seperti biasa.
-                            </div>
-
-                            {{-- Panel rekap manual (muncul hanya saat ada foto yang perlu diisi manual) --}}
-                            <div id="manualRekapOp" class="border border-warning rounded p-2 mb-3 d-none bg-warning-subtle">
-                                <div class="small fw-semibold mb-1"><i class="bi bi-pencil-square"></i> Rekap Laporan — koreksi/isi manual</div>
-                                <div class="row g-2" id="manualRekapFieldsOp"></div>
-                            </div>
-
-                            {{-- Field auto-filled (hidden, dari AI) --}}
-                            <input type="hidden" name="purchase_date" id="purchaseDateOp"
-                                   value="{{ old('purchase_date', now()->format('Y-m-d')) }}">
-                            <input type="hidden" name="volume_bbm" id="volumeOp" value="{{ old('volume_bbm') }}" required>
-                            <input type="hidden" name="nominal" id="nominalOp" value="{{ old('nominal') }}">
-                            {{-- Hidden fields per-file (diisi JS) --}}
-                            <div id="fileFieldsWrap"></div>
-
-                            <div id="aiStatusOp" class="small mb-2"></div>
-
-                            <button type="submit" class="btn btn-success">
-                                <i class="bi bi-send"></i> Kirim Laporan BBM
-                            </button>
-                        </form>
-                        @endif
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-lg-4">
-                <div class="card">
-                    <div class="card-body">
-                        <h6 class="card-title"><i class="bi bi-info-circle"></i> Informasi</h6>
-                        <ul class="small text-muted mb-0">
-                            <li>Pilih permohonan yang sudah disetujui</li>
-                            <li>Upload foto struk & tambahan (odometer, dashboard) — AI otomatis mengkategorikan</li>
-                            <li>Foto odometer/dashboard = <span class="badge bg-warning text-dark">Tambahan</span> (bukan struk)</li>
-                            <li>Periksa hasil AI, lalu klik <strong>Kirim Laporan</strong></li>
-                            <li>Bila AI limit/gagal analisis, <strong>isi manual</strong> pada foto yang ditandai kuning — laporan tetap bisa dikirim</li>
-                            <li>1 permohonan = 1 laporan BBM</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<script>
-    const analyzeUrl = @json(route('pelaporan.analyze-struk'));
-    const csrfToken = @json(csrf_token());
-</script>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    function formatRupiah(num) {
-        return 'Rp ' + new Intl.NumberFormat('id-ID').format(num || 0);
-    }
-
-    // Label & warna badge per kategori struk
-    const kategoriLabels = { 'BBM': 'Struk BBM', 'Tol': 'Struk Tol', 'Parkir': 'Struk Parkir', 'Lainnya': 'Struk Lainnya', 'Tambahan': 'Tambahan' };
-    const kategoriBadges = { 'BBM': 'bg-danger', 'Tol': 'bg-primary', 'Parkir': 'bg-info', 'Lainnya': 'bg-secondary', 'Tambahan': 'bg-warning text-dark' };
-
-    // ── Mode switching (persist di URL supaya refresh tidak lompat) ──
-    const cards = document.querySelectorAll('.mode-card');
-    const panelSpd = document.getElementById('panel-spd');
-    const panelOp = document.getElementById('panel-operational');
-
-    function activateMode(mode, persistUrl = true) {
-        const wantSpd = mode === 'spd';
-        if (panelSpd) panelSpd.style.display = wantSpd ? 'block' : 'none';
-        if (panelOp) panelOp.style.display = wantSpd ? 'none' : 'block';
-
-        cards.forEach(c => {
-            const active = c.dataset.mode === mode;
-            c.classList.toggle('border-primary', active);
-            c.classList.toggle('shadow-sm', active);
-        });
-
-        if (persistUrl) {
-            const url = new URL(window.location.href);
-            url.searchParams.set('mode', mode);
-            history.replaceState(null, '', url);
-        }
-    }
-
-    cards.forEach(c => c.addEventListener('click', () => activateMode(c.dataset.mode)));
-
-    // Baca mode dari URL (?mode=operational) supaya refresh tetap di pilihan user
-    const urlMode = new URLSearchParams(window.location.search).get('mode');
-    if (urlMode === 'operational' || (urlMode === 'spd' && panelSpd)) {
-        activateMode(urlMode, false);
-    } else {
-        activateMode(panelSpd ? 'spd' : 'operational', false);
-    }
-
-    // ── Operasional: dropdown info ──
-    const selectPermohonan = document.getElementById('selectPermohonan');
-    if (selectPermohonan) {
-        selectPermohonan.addEventListener('change', function() {
-            const opt = this.options[this.selectedIndex];
-            const info = document.getElementById('infoPermohonan');
-            if (!opt.value) { info.textContent = ''; return; }
-            const budget = opt.dataset.budget ? formatRupiah(opt.dataset.budget) : 'belum diisi';
-            info.innerHTML = `Kendaraan: <strong>${opt.dataset.vehicle || '-'}</strong> • Jenis BBM: <strong>${opt.dataset.gasoline || '-'}</strong> • Budget full tank: <strong>${budget}</strong>`;
-        });
-    }
-
-    // ── Pre-select permohonan & paksa mode operasional dari ?permohonan_id= ──
-    const permohonanId = new URLSearchParams(window.location.search).get('permohonan_id');
-    if (permohonanId) {
-        activateMode('operational', false);
-        if (selectPermohonan) {
-            const presetOpt = selectPermohonan.querySelector(`option[value="${permohonanId}"]`);
-            if (presetOpt) {
-                selectPermohonan.value = permohonanId;
-                selectPermohonan.dispatchEvent(new Event('change'));
-            } else {
-                const info = document.getElementById('infoPermohonan');
-                if (info) info.innerHTML = '<span class="text-warning">Permohonan ini sudah dilaporkan atau belum disetujui. Pilih permohonan lain di bawah.</span>';
-            }
-        }
-    }
-
-    // ── Operasional: multi-file upload + batch AI analysis ──
-    const fotoFilesOp = document.getElementById('fotoFilesOp');
-    // State per indeks file:
-    // { status:'ai_ok'|'manual', kategori, nominal, volume, tanggal, platNomor, el:{...} }
-    let fileState = {};
-    let strukValidationFailed = false;
-
-    function num(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
-
-    function effKategori(s) { return s.status === 'ai_ok' ? (s.kategori || 'Lainnya') : (s.kategori || ''); }
-
-    function setMainField(id, value) {
-        const el = document.getElementById(id);
-        if (!el || el.dataset.userEdited === '1') return;
-        el.value = value;
-    }
-
-    function recomputeTotals() {
-        let totalNominal = 0, totalVolume = 0, mainTanggal = null;
-
-        Object.values(fileState).forEach(s => {
-            if (!s) return;
-            const kat = effKategori(s);
-            if (!kat) return;
-            if (kat === 'BBM') {
-                totalNominal += num(s.nominal);
-                totalVolume += num(s.volume);
-                if (!mainTanggal && s.tanggal) mainTanggal = s.tanggal;
-            } else if (kat !== 'Tambahan') {
-                totalNominal += num(s.nominal);
-            }
-        });
-
-        setMainField('nominalOp', totalNominal > 0 ? totalNominal : '');
-        setMainField('volumeOp', totalVolume > 0 ? totalVolume : '');
-
-        if (mainTanggal) {
-            const d = new Date(mainTanggal);
-            if (!isNaN(d)) setMainField('purchaseDateOp', d.toISOString().slice(0, 10));
-        }
-    }
-
-    // Pindahkan field utama (tanggal/volume/nominal) dari hidden ke panel rekap
-    // yang terlihat — hanya saat ada foto yang harus diisi manual.
-    function buildManualRekap() {
-        const panel = document.getElementById('manualRekapOp');
-        const wrap = document.getElementById('manualRekapFieldsOp');
-        if (!panel || !wrap || wrap.childElementCount > 0) return;
-        panel.classList.remove('d-none');
-
-        const specs = [
-            { id: 'purchaseDateOp', label: 'Tanggal Pengisian', type: 'date', required: true },
-            { id: 'volumeOp', label: 'Volume BBM (liter)', type: 'number', step: '0.01', min: '0', required: true },
-            { id: 'nominalOp', label: 'Nominal Total (Rp)', type: 'number', min: '0', step: '1', required: false },
-        ];
-        specs.forEach(sp => {
-            const el = document.getElementById(sp.id);
-            el.type = sp.type;
-            el.className = 'form-control form-control-sm';
-            if (sp.step) el.step = sp.step;
-            if (sp.min !== undefined) el.min = sp.min;
-            const col = document.createElement('div');
-            col.className = 'col-12 col-md-4';
-            col.innerHTML = `<label class="form-label small mb-1">${sp.label} ${sp.required ? '<span class="text-danger">*</span>' : ''}</label>`;
-            col.appendChild(el);
-            wrap.appendChild(col);
-
-            el.addEventListener('input', () => { el.dataset.userEdited = '1'; });
-        });
-    }
-
-    function syncHiddenFields(fieldsWrap) {
-        // Look up by id bila tidak diberikan, supaya helper ini aman dipanggil
-        // dari event handler mana pun (termasuk submit handler).
-        fieldsWrap = fieldsWrap || document.getElementById('fileFieldsWrap');
-        if (!fieldsWrap) return;
-
-        fieldsWrap.innerHTML = '';
-        Object.keys(fileState).sort((a, b) => a - b).forEach(i => {
-            const s = fileState[i];
-            if (!s) return;
-            const kat = effKategori(s);
-            const nom = s.status === 'ai_ok' ? (s.nominal || 0) : (s.nominal === '' ? '' : s.nominal);
-            // Keterangan hanya diisi user (hasil OCR AI tidak lagi ditulis ke field keterangan).
-            const ket = '';
-            const meta = JSON.stringify({
-                kategori: kat,
-                metadata: {
-                    tanggal: s.tanggal || null,
-                    nominal: nom === '' ? null : num(nom),
-                    volume: num(s.volume) || null,
-                    plat_nomor: s.platNomor || null,
-                },
-                text: s.status === 'ai_ok' ? (s.text || '') : '',
-                source: s.status,
-            });
-            const div = document.createElement('div');
-            div.innerHTML =
-                `<input type="hidden" name="struk_kategoris[${i}]" value="${kat}">` +
-                `<input type="hidden" name="nominals[${i}]" value="${nom}">` +
-                `<input type="hidden" name="keterangan_s[${i}]" value="${ket.replace(/"/g, '&quot;')}">` +
-                `<input type="hidden" name="kategori_sources[${i}]" value="${s.status === 'ai_ok' ? 'ai' : 'manual'}">` +
-                `<input type="hidden" name="metadata_s[${i}]" value='${meta.replace(/'/g, '&#39;')}'>`;
-            fieldsWrap.appendChild(div);
-        });
-    }
-
-    // ── Fallback manual saat AI gagal ────────────────────────────────────
-    // Satu tempat untuk SEMUA kegagalan (rate limit, respons invalid, error
-    // jaringan, hasil parsial): setiap foto yang belum berhasil dianalisis
-    // diberi form isian manual, panel rekap dibuka, dan laporan tetap bisa
-    // dikirim. Tidak boleh ada jalur yang hanya menampilkan pesan error.
-    function markFileManual(idx, badgeText) {
-        const card = document.getElementById('fileCard' + idx);
-        if (!card) return;
-
-        const prev = fileState[idx];
-
-        // Jangan menimpa hasil AI yang sudah OK.
-        if (prev && prev.status === 'ai_ok') return;
-
-        const sudahAdaForm = !!(prev && prev.el);
-
-        fileState[idx] = {
-            status: 'manual',
-            kategori: prev ? (prev.kategori || '') : '',
-            nominal: prev ? (prev.nominal ?? '') : '',
-            volume: prev ? (prev.volume ?? '') : '',
-            tanggal: prev ? (prev.tanggal || '') : '',
-            platNomor: prev ? (prev.platNomor || '') : '',
-            text: '',
-            el: sudahAdaForm ? prev.el : null,
-        };
-
-        card.classList.remove('border-light');
-        card.classList.add('needs-manual', 'border-warning');
-
-        const badge = card.querySelector('.file-ai-badge');
-        if (badge) {
-            badge.textContent = badgeText || 'Isi Manual';
-            badge.className = 'badge file-ai-badge bg-warning text-dark';
-        }
-
-        if (!sudahAdaForm) {
-            const nominalEl = card.querySelector('.file-ai-nominal');
-            if (nominalEl) nominalEl.textContent = '';
-            const textEl = card.querySelector('.file-ai-text');
-            if (textEl) textEl.textContent = '';
-        }
-
-        const statusEl = card.querySelector('.file-ai-status');
-        if (statusEl) {
-            statusEl.textContent = '⚠';
-            statusEl.className = 'file-ai-status text-warning ms-1';
-        }
-
-        if (!sudahAdaForm) {
-            renderManualInputs(card, idx);
-        }
-    }
-
-    function enableManualEntry(message) {
-        const files = Array.from((fotoFilesOp && fotoFilesOp.files) || []);
-        const indexes = files.length
-            ? files.map((_, i) => i)
-            : Object.keys(fileState).map(Number);
-
-        indexes.forEach(i => markFileManual(i, 'AI Gagal — Isi Manual'));
-
-        const alertEl = document.getElementById('aiLimitAlertOp');
-        if (alertEl) {
-            alertEl.innerHTML = '<strong><i class="bi bi-exclamation-triangle"></i> Analisis AI tidak tersedia.</strong> '
-                + (message ? message + ' ' : '')
-                + 'Lengkapi kategori &amp; nominal tiap foto serta rekap di bawah, lalu kirim laporan seperti biasa.';
-            alertEl.classList.remove('d-none');
-        }
-
-        buildManualRekap();
-        syncHiddenFields(document.getElementById('fileFieldsWrap'));
-        recomputeTotals();
-
-        const status = document.getElementById('aiStatusOp');
-        if (status) {
-            status.textContent = 'Mode manual aktif — isi data struk lalu kirim laporan.';
-            status.className = 'small text-warning';
-        }
-    }
-
-    function renderManualInputs(card, idx) {        const detailEl = card.querySelector('.file-ai-detail');
-        detailEl.innerHTML = `
-            <div class="row g-1 mt-1">
-                <div class="col-12 col-md-5">
-                    <select class="form-select form-select-sm m-kategori">
-                        <option value="">-- Pilih Kategori --</option>
-                        <option value="BBM">Struk BBM</option>
-                        <option value="Tol">Struk Tol</option>
-                        <option value="Parkir">Struk Parkir</option>
-                        <option value="Makan">Struk Makan / Konsumsi</option>
-                        <option value="Hotel">Struk Hotel / Penginapan</option>
-                        <option value="Lainnya">Struk Lainnya</option>
-                        <option value="Tambahan">Tambahan (bukan struk)</option>
-                    </select>
-                </div>
-                <div class="col-6 col-md-3">
-                    <input type="number" min="0" step="1" class="form-control form-control-sm m-nominal" placeholder="Nominal (Rp)">
-                </div>
-                <div class="col-6 col-md-2 m-volume-wrap d-none">
-                    <input type="number" min="0" step="0.01" class="form-control form-control-sm m-volume" placeholder="Liter">
-                </div>
-                <div class="col-6 offset-md-2 col-md-2">
-                    <input type="date" class="form-control form-control-sm m-tanggal" title="Tanggal transaksi">
-                </div>
-            </div>`;
-
-        const st = fileState[idx];
-        st.el = {
-            kategori: detailEl.querySelector('.m-kategori'),
-            nominal: detailEl.querySelector('.m-nominal'),
-            volume: detailEl.querySelector('.m-volume'),
-            tanggal: detailEl.querySelector('.m-tanggal'),
-            volWrap: detailEl.querySelector('.m-volume-wrap'),
-        };
-
-        st.el.kategori.addEventListener('change', function() {
-            st.kategori = this.value;
-            const isBbm = this.value === 'BBM';
-            st.el.volWrap.classList.toggle('d-none', !isBbm);
-            if (!isBbm) st.volume = '';
-            recomputeTotals();
-            // ✅ BUG-BBM-002: salin isian manual ke hidden input yang dikirim.
-            syncHiddenFields();
-        });
-        st.el.nominal.addEventListener('input', function() {
-            st.nominal = this.value;
-            recomputeTotals();
-            syncHiddenFields();
-        });
-        st.el.volume.addEventListener('input', function() {
-            st.volume = this.value;
-            recomputeTotals();
-            syncHiddenFields();
-        });
-        st.el.tanggal.addEventListener('change', function() {
-            st.tanggal = this.value;
-            recomputeTotals();
-            syncHiddenFields();
-        });
-    }
-
-    if (fotoFilesOp) {
-        fotoFilesOp.addEventListener('change', async function() {
-            const files = Array.from(this.files);
-            const container = document.getElementById('aiResultsOp');
-            const status = document.getElementById('aiStatusOp');
-            const fieldsWrap = document.getElementById('fileFieldsWrap');
-
-            // Wajib pilih permohonan dulu agar validasi struk bisa dijalankan.
-            if (selectPermohonan && !selectPermohonan.value) {
-                this.value = '';
-                status.textContent = 'Pilih Permohonan BBM terlebih dahulu sebelum upload struk.';
-                status.className = 'small text-danger';
-                return;
-            }
-
-            // Reset
-            container.innerHTML = '';
-            fieldsWrap.innerHTML = '';
-            status.textContent = '';
-            status.className = 'small';
-            fileState = {};
-            strukValidationFailed = false;
-            document.getElementById('aiLimitAlertOp').classList.add('d-none');
-            const valAlertReset = document.getElementById('strukValidationAlertOp');
-            if (valAlertReset) valAlertReset.classList.add('d-none');
-
-            if (files.length === 0) return;
-
-            // Buat card preview untuk setiap file
-            files.forEach((file, idx) => {
-                const card = document.createElement('div');
-                card.className = 'card border-light shadow-sm';
-                card.id = 'fileCard' + idx;
-                card.innerHTML = `
-                    <div class="card-body p-2">
-                        <div class="d-flex align-items-start gap-2">
-                            <div class="flex-shrink-0">
-                                <img class="file-preview-img" style="max-height:70px; max-width:90px; border-radius:4px; object-fit:cover;" alt="Preview">
-                            </div>
-                            <div class="flex-grow-1 small">
-                                <div class="d-flex align-items-center gap-1 mb-1">
-                                    <span class="badge file-ai-badge bg-secondary">-</span>
-                                    <strong class="file-ai-nominal text-dark">Rp 0</strong>
-                                    <span class="file-ai-status text-muted ms-1"></span>
-                                </div>
-                                <div class="file-ai-detail text-muted" style="font-size:0.75rem;"></div>
-                                <details class="mt-1">
-                                    <summary class="text-muted" style="font-size:0.7rem;">OCR</summary>
-                                    <pre class="file-ai-text small mt-1 mb-0" style="white-space:pre-wrap; overflow-wrap:break-word; word-break:break-word; max-height:80px; overflow-y:auto; background:#F8FAFC; padding:4px; border-radius:3px; font-size:0.7rem;"></pre>
-                                </details>
-                            </div>
+                {{-- Langkah 1: voucher yang dilaporkan --}}
+                <x-ui.card class="ornament-corner gap-4" style="--ornament: var(--primary)">
+                    <div class="flex items-start gap-3 px-6">
+                        <span class="{{ $step }} from-primary to-indigo-500">1</span>
+                        <div>
+                            <h2 class="font-semibold leading-7">Voucher yang dilaporkan</h2>
+                            <p class="text-sm text-muted-foreground">Pilih voucher yang dipakai saat mengisi BBM.</p>
                         </div>
                     </div>
-                `;
-                container.appendChild(card);
+                    <x-ui.card-content class="grid gap-3">
+                        <x-ui.field label="Voucher" for="selectPermohonan" required>
+                            <x-ui.select-menu id="selectPermohonan" name="permohonan_id" :options="$voucherOptions" :value="$presetValid ? $presetId : ''"
+                                              placeholder="Pilih voucher" icon="bi bi-ticket-perforated" required class="[&_[data-select-trigger]]:h-11" />
+                            <p id="infoPermohonan" class="text-xs text-muted-foreground empty:hidden">
+                                @if ($presetId !== '' && ! $presetValid)
+                                    <span class="text-warning">Voucher ini sudah dilaporkan atau belum disetujui. Pilih voucher lain.</span>
+                                @endif
+                            </p>
+                        </x-ui.field>
 
-                // Preview image
-                const reader = new FileReader();
-                const imgEl = card.querySelector('.file-preview-img');
-                reader.onload = e => { imgEl.src = e.target.result; };
-                reader.readAsDataURL(file);
-            });
+                        {{-- Kartu voucher terpilih (diisi JS dari data voucher) --}}
+                        <div id="voucherCard" hidden class="overflow-hidden rounded-xl border bg-linear-to-br from-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/20">
+                            {{-- HP: kode dan nominal bertumpuk supaya kode voucher tidak terpotong. --}}
+                            <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 p-4">
+                                <div class="min-w-0">
+                                    <p class="text-xs text-white/75">Kode voucher</p>
+                                    <p data-v="voucher" class="break-all font-mono text-base font-bold tracking-wider sm:text-lg"></p>
+                                    <p data-v="number" class="text-xs text-white/75"></p>
+                                </div>
+                                <div class="shrink-0 sm:text-right">
+                                    <p class="text-xs text-white/75">Nominal</p>
+                                    <p data-v="amount" class="text-lg font-bold tabular-nums"></p>
+                                </div>
+                            </div>
+                            <dl class="grid grid-cols-2 gap-px bg-white/15 text-xs sm:grid-cols-3">
+                                <div class="bg-emerald-700/60 px-4 py-2.5"><dt class="text-white/70">Kendaraan</dt><dd data-v="vehicle" class="truncate font-semibold"></dd></div>
+                                <div class="bg-emerald-700/60 px-4 py-2.5"><dt class="text-white/70">BBM</dt><dd data-v="gasoline" class="truncate font-semibold"></dd></div>
+                                <div class="col-span-2 bg-emerald-700/60 px-4 py-2.5 sm:col-span-1"><dt class="text-white/70">Berlaku</dt><dd data-v="validity" class="truncate font-semibold"></dd></div>
+                            </dl>
+                        </div>
+                    </x-ui.card-content>
+                </x-ui.card>
 
-            // Kirim semua file ke server (batch)
-            status.textContent = `Menganalisis ${files.length} foto...`;
-            status.className = 'small text-primary';
+                {{-- Langkah 2: foto struk & tambahan --}}
+                <x-ui.card class="ornament-corner gap-4" style="--ornament: var(--module-bbm)">
+                    <div class="flex items-start gap-3 px-6">
+                        <span class="{{ $step }} from-orange-500 to-amber-500">2</span>
+                        <div>
+                            <h2 class="font-semibold leading-7">Foto struk dan tambahan</h2>
+                            <p class="text-sm text-muted-foreground">Struk BBM wajib. Foto odometer atau dashboard boleh ditambahkan. AI membaca setiap foto.</p>
+                        </div>
+                    </div>
+                    <x-ui.card-content class="grid gap-4">
+                        {{-- Area unggah: input file asli menutupi area (ketuk atau seret foto ke sini). --}}
+                        <label for="fotoFilesOp" data-dropzone
+                               class="relative grid cursor-pointer place-items-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/30 px-4 py-8 text-center transition-colors hover:border-primary/50 hover:bg-primary/5 has-[:focus-visible]:border-ring has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50 data-[drag=true]:border-primary data-[drag=true]:bg-primary/5">
+                            <span class="flex size-12 items-center justify-center rounded-full bg-primary/10 text-xl text-primary"><i class="bi bi-cloud-arrow-up"></i></span>
+                            <span class="text-sm font-medium">Ketuk untuk pilih foto, atau seret ke sini</span>
+                            <span data-dropzone-label class="text-xs text-muted-foreground">JPG, PNG, atau WEBP. Bisa beberapa foto sekaligus.</span>
+                            <input type="file" name="foto_files[]" id="fotoFilesOp" accept="image/jpeg,image/png,image/webp" multiple required
+                                   class="absolute inset-0 size-full cursor-pointer opacity-0" aria-describedby="aiStatusOp">
+                        </label>
 
-            const fd = new FormData();
-            files.forEach(f => fd.append('images[]', f));
-            if (selectPermohonan && selectPermohonan.value) {
-                fd.append('permohonan_id', selectPermohonan.value);
-            }
+                        <div id="aiResultsOp" class="grid gap-2 empty:hidden"></div>
+                        <p id="aiStatusOp" class="text-sm empty:hidden" aria-live="polite"></p>
 
-            try {
-                const res = await fetch(analyzeUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }, body: fd });
+                        <x-ui.alert id="strukValidationAlertOp" variant="destructive" title="Struk berbeda" hidden>
+                            <span id="strukValidationMsgOp"></span>
+                        </x-ui.alert>
+                        <x-ui.alert id="aiLimitAlertOp" variant="warning" hidden><span id="aiLimitMsgOp"></span></x-ui.alert>
 
-                if (res.status === 429) {
-                    enableManualEntry('Permintaan analisis sedang dibatasi (rate limit).');
-                    return;
-                }
+                        {{-- Rekap manual, muncul bila ada foto yang harus diisi manual --}}
+                        <div id="manualRekapOp" hidden class="grid gap-3 rounded-lg border border-warning/40 bg-warning-soft p-4">
+                            <p class="text-sm font-medium text-warning"><i class="bi bi-pencil-square"></i> Rekap laporan, koreksi atau isi manual</p>
+                            <div id="manualRekapFieldsOp" class="grid gap-3 sm:grid-cols-3"></div>
+                        </div>
 
-                let data;
-                try {
-                    data = await res.json();
-                } catch (e) {
-                    enableManualEntry('Respons server tidak valid.');
-                    return;
-                }
+                        {{-- Diisi otomatis dari hasil AI (atau dari rekap manual) --}}
+                        <input type="hidden" name="purchase_date" id="purchaseDateOp" value="{{ old('purchase_date', now()->format('Y-m-d')) }}">
+                        <input type="hidden" name="volume_bbm" id="volumeOp" value="{{ old('volume_bbm') }}" required>
+                        <input type="hidden" name="nominal" id="nominalOp" value="{{ old('nominal') }}">
+                        <div id="fileFieldsWrap"></div>
+                    </x-ui.card-content>
+                </x-ui.card>
+            </form>
 
-                if (!(data.success && data.results)) {
-                    enableManualEntry(data.message || '');
-                    return;
-                }
+            {{-- Ringkasan + kirim (HP: di bawah form). Angka ikut hasil AI / isian manual. --}}
+            <aside class="grid min-w-0 gap-4 lg:sticky lg:top-4">
+                <x-ui.card class="gap-0 overflow-hidden py-0">
+                    <div class="relative overflow-hidden border-b border-emerald-100 bg-linear-to-br from-emerald-50 via-teal-50 to-card px-6 py-5">
+                        <i class="bi bi-receipt pointer-events-none absolute -right-3 -top-2 text-7xl text-emerald-600/10" aria-hidden="true"></i>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-emerald-700">Ringkasan laporan</p>
+                        <p data-sum="nominal" class="mt-2 text-3xl font-bold tabular-nums tracking-tight">Rp 0</p>
+                        <p class="mt-1 text-xs text-muted-foreground">Total nominal dari struk</p>
+                    </div>
+                    <dl class="grid gap-3 p-6 text-sm">
+                        <div class="flex items-center justify-between gap-3"><dt class="text-muted-foreground"><i class="bi bi-droplet-half"></i> Volume</dt><dd data-sum="volume" class="font-semibold tabular-nums">-</dd></div>
+                        <div class="flex items-center justify-between gap-3"><dt class="text-muted-foreground"><i class="bi bi-calendar3"></i> Tanggal isi</dt><dd data-sum="date" class="font-semibold">-</dd></div>
+                        <div class="flex items-center justify-between gap-3"><dt class="text-muted-foreground"><i class="bi bi-images"></i> Foto</dt><dd data-sum="files" class="font-semibold tabular-nums">0</dd></div>
+                    </dl>
+                    <div class="border-t p-6 pt-4">
+                        <x-ui.button type="submit" form="formOperational" variant="success" size="lg" class="w-full shadow-lg shadow-success/25">
+                            <i class="bi bi-send"></i> Kirim Laporan BBM
+                        </x-ui.button>
+                        <p class="mt-2 text-center text-xs text-muted-foreground">Satu voucher hanya punya satu laporan.</p>
+                    </div>
+                </x-ui.card>
 
-                let hasApiLimit = !!data.has_api_limit;
-                let hasApiError = false;
+                <x-ui.card class="gap-3 py-4">
+                    <x-ui.card-content class="px-4">
+                        <ul class="grid gap-2.5 text-xs text-muted-foreground">
+                            <li class="flex gap-2.5"><span class="flex size-6 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-700"><i class="bi bi-stars"></i></span><span class="pt-0.5">AI membaca nominal, volume, dan tanggal dari struk.</span></li>
+                            <li class="flex gap-2.5"><span class="flex size-6 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-700"><i class="bi bi-pencil-square"></i></span><span class="pt-0.5">Bila AI gagal atau mencapai batas, isi data pada foto yang ditandai kuning.</span></li>
+                            <li class="flex gap-2.5"><span class="flex size-6 shrink-0 items-center justify-center rounded-md bg-rose-50 text-rose-700"><i class="bi bi-shield-exclamation"></i></span><span class="pt-0.5">Struk harus sesuai voucher (nominal dan plat nomor).</span></li>
+                        </ul>
+                    </x-ui.card-content>
+                </x-ui.card>
+            </aside>
+        @endif
+    </section>
 
-                data.results.forEach((r, idx) => {
-                    const card = document.getElementById('fileCard' + idx);
-                    if (!card) return;
+    <script type="application/json" id="page-data">@json(['analyzeUrl' => route('pelaporan.analyze-struk'), 'csrfToken' => csrf_token(), 'vouchers' => $voucherData])</script>
 
-                    const statusOk = r.status === 'ok';
-
-                    if (statusOk) {
-                        const kategori = r.kategori || 'Lainnya';
-                        const metadata = r.metadata || {};
-                        const text = r.text || '';
-
-                        fileState[idx] = {
-                            status: 'ai_ok',
-                            kategori,
-                            nominal: metadata.nominal || 0,
-                            volume: metadata.volume || 0,
-                            tanggal: metadata.tanggal || '',
-                            platNomor: metadata.plat_nomor || '',
-                            text,
-                            el: null,
-                        };
-
-                        // Badge & nominal
-                        const badge = card.querySelector('.file-ai-badge');
-                        badge.textContent = kategoriLabels[kategori] || kategori;
-                        badge.className = 'badge file-ai-badge ' + (kategoriBadges[kategori] || 'bg-secondary');
-                        card.querySelector('.file-ai-nominal').textContent = formatRupiah(metadata.nominal || 0);
-
-                        // Detail
-                        const detailEl = card.querySelector('.file-ai-detail');
-                        let detailParts = [];
-                        if (metadata.volume) detailParts.push(metadata.volume + ' L');
-                        if (metadata.harga_per_liter) detailParts.push('@ ' + formatRupiah(metadata.harga_per_liter) + '/L');
-                        detailEl.textContent = detailParts.join(' • ') || '-';
-
-                        // OCR text
-                        card.querySelector('.file-ai-text').textContent = text || '(tanpa teks)';
-
-                        // Status
-                        const statusEl = card.querySelector('.file-ai-status');
-                        statusEl.textContent = '✓';
-                        statusEl.className = 'file-ai-status text-success ms-1';
-                    } else {
-                        // api_limit / api_error → mode isi manual untuk foto ini
-                        if (r.status === 'api_limit') hasApiLimit = true; else hasApiError = true;
-
-                        fileState[idx] = { status: 'manual', kategori: '', nominal: '', volume: '', tanggal: '', platNomor: '', text: '', el: null };
-
-                        card.classList.remove('border-light');
-                        card.classList.add('needs-manual', 'border-warning');
-
-                        const badge = card.querySelector('.file-ai-badge');
-                        badge.textContent = r.status === 'api_limit' ? 'AI Limit — Isi Manual' : 'Gagal Analisis — Isi Manual';
-                        badge.className = 'badge file-ai-badge bg-warning text-dark';
-                        card.querySelector('.file-ai-nominal').textContent = '';
-                        card.querySelector('.file-ai-text').textContent = '';
-
-                        const statusEl = card.querySelector('.file-ai-status');
-                        statusEl.textContent = '⚠';
-                        statusEl.className = 'file-ai-status text-warning ms-1';
-
-                        renderManualInputs(card, idx);
-                    }
-                });
-
-                // Sebagian foto bisa saja tidak punya hasil (mis. server berhenti
-                // di tengah batch). Foto seperti itu WAJIB masuk mode manual.
-                files.forEach((_, idx) => {
-                    if (!fileState[idx]) {
-                        markFileManual(idx, 'Belum dianalisis — Isi Manual');
-                        hasApiError = true;
-                    }
-                });
-
-                syncHiddenFields(fieldsWrap);
-                recomputeTotals();
-
-                // ── Validasi kecocokan struk vs permohonan (nominal & plat) ──
-                if (data.validation) {
-                    const valAlert = document.getElementById('strukValidationAlertOp');
-                    const valMsg = document.getElementById('strukValidationMsgOp');
-                    strukValidationFailed = !data.validation.valid;
-                    if (strukValidationFailed) {
-                        if (valMsg) valMsg.textContent = ' ' + (data.validation.message || 'Harap upload struk yang sebenarnya.');
-                        if (valAlert) valAlert.classList.remove('d-none');
-                        Object.entries(fileState).forEach(([idx, s]) => {
-                            if (s && effKategori(s) === 'BBM') {
-                                const c = document.getElementById('fileCard' + idx);
-                                if (c) { c.classList.remove('border-light'); c.classList.add('border-danger'); }
-                            }
-                        });
-                    } else if (valAlert) {
-                        valAlert.classList.add('d-none');
-                    }
-                }
-
-                if (hasApiLimit || hasApiError) {
-                    const alertEl = document.getElementById('aiLimitAlertOp');
-                    alertEl.innerHTML = hasApiLimit
-                        ? '<strong><i class="bi bi-exclamation-triangle"></i> Layanan AI (Gemini) sedang mencapai batas kuota.</strong> Silakan isi data secara manual pada foto yang ditandai kuning, lalu kirim laporan seperti biasa.'
-                        : '<strong><i class="bi bi-exclamation-triangle"></i> Sebagian foto gagal dianalisis AI.</strong> Silakan lengkapi data secara manual pada foto yang ditandai.';
-                    alertEl.classList.remove('d-none');
-                    buildManualRekap();
-                }
-
-                const manualCount = Object.values(fileState).filter(s => s.status === 'manual').length;
-                if (manualCount > 0) {
-                    status.textContent = `${data.results.length - manualCount}/${data.results.length} foto dianalisis AI • ${manualCount} foto perlu diisi manual.`;
-                    status.className = 'small text-warning';
-                } else {
-                    status.textContent = `✓ ${data.results.length} foto dianalisis. Periksa hasil lalu kirim laporan.`;
-                    status.className = 'small text-success';
-                }
-            } catch (e) {
-                // Jaringan mati / server error / AI down: JANGAN berhenti di
-                // pesan error — buka form manual untuk semua foto.
-                enableManualEntry('Tidak dapat menghubungi layanan AI.');
-            }
-        });
-    }
-
-    // ── Operasional: blokir submit bila ada foto yang belum diisi manual ──
-    const formOperational = document.getElementById('formOperational');
-    if (formOperational) {
-        formOperational.addEventListener('submit', function(e) {
-            // ✅ BUG-BBM-002: sinkronkan ulang hidden input tepat sebelum kirim,
-            // agar kategori/nominal manual selalu ikut terkirim ke server.
-            syncHiddenFields(document.getElementById('fileFieldsWrap'));
-
-            // Blokir submit bila validasi struk vs permohonan gagal.
-            if (strukValidationFailed) {
-                e.preventDefault();
-                const msg = document.getElementById('strukValidationMsgOp');
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Struk Berbeda',
-                        text: (msg && msg.textContent) ? msg.textContent.trim() : 'Harap upload struk yang sebenarnya.',
-                        confirmButtonText: 'OK',
-                    });
-                }
-                return;
-            }
-
-            const problems = [];
-
-            Object.entries(fileState).forEach(([idx, s]) => {
-                if (!s || s.status !== 'manual') return;
-                const n = parseInt(idx, 10) + 1;
-                if (!s.kategori) {
-                    problems.push(`Foto ${n}: pilih kategori struk.`);
-                    if (s.el && s.el.kategori) s.el.kategori.classList.add('is-invalid');
-                } else {
-                    if (s.el && s.el.kategori) s.el.kategori.classList.remove('is-invalid');
-                }
-                if (s.kategori && s.kategori !== 'Tambahan' && (s.nominal === '' || s.nominal === null)) {
-                    problems.push(`Foto ${n}: isi nominal.`);
-                    if (s.el && s.el.nominal) s.el.nominal.classList.add('is-invalid');
-                } else {
-                    if (s.el && s.el.nominal) s.el.nominal.classList.remove('is-invalid');
-                }
-            });
-
-            const volumeOp = document.getElementById('volumeOp');
-            const purchaseDateOp = document.getElementById('purchaseDateOp');
-            if (!((parseFloat(volumeOp && volumeOp.value) || 0) > 0)) {
-                problems.push('Volume BBM wajib diisi (minimal 0.01 liter).');
-                if (volumeOp) volumeOp.classList.add('is-invalid');
-            } else if (volumeOp) {
-                volumeOp.classList.remove('is-invalid');
-            }
-            if (!purchaseDateOp || !purchaseDateOp.value) {
-                problems.push('Tanggal pengisian wajib diisi.');
-                if (purchaseDateOp) purchaseDateOp.classList.add('is-invalid');
-            } else if (purchaseDateOp) {
-                purchaseDateOp.classList.remove('is-invalid');
-            }
-
-            if (problems.length > 0) {
-                e.preventDefault();
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Lengkapi Data Manual',
-                        html: '<div style="text-align:left">' + problems.map(p => '&bull; ' + p).join('<br>') + '</div>',
-                        confirmButtonText: 'OK, saya isi',
-                    });
-                }
-            }
-        });
-    }
-});
-</script>
-@endsection
+    @push('scripts')
+        @vite('resources/js/pages/bbm/pelaporan.js')
+    @endpush
+</x-layouts.app>

@@ -1,216 +1,90 @@
-@extends('templates.main')
+@php
+    $canCreate = Auth::user()->hasPermission('spd.create');
+    $canLpj = Auth::user()->hasPermission('lpj.create');
+@endphp
 
-@section('content')
-<div class="pagetitle">
-    <h1>Surat Tugas Perjalanan Dinas</h1>
-    <nav>
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('requester-index') }}">Home</a></li>
-            <li class="breadcrumb-item">SPD</li>
-            <li class="breadcrumb-item active">Surat Tugas</li>
-        </ol>
-    </nav>
-</div>
+<x-layouts.app title="Surat Tugas Saya" :breadcrumbs="['Surat Tugas Saya' => null]">
+    <x-ui.page-header kicker="Surat Tugas" title="Surat Tugas Saya" description="Surat tugas perjalanan dinas yang Anda ajukan beserta status LPJ-nya.">
+        @if ($canCreate)
+            <x-slot:actions>
+                <x-ui.button :href="route('requester.surat.create')"><i class="bi bi-plus-lg"></i> Buat Surat Baru</x-ui.button>
+            </x-slot:actions>
+        @endif
+    </x-ui.page-header>
 
-<section class="section dashboard">
-    {{-- Alert Messages --}}
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-circle me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    {{-- Stats Cards --}}
-    <div class="row mb-4">
-        <div class="col-xxl-3 col-md-6">
-            <div class="card info-card sales-card">
-                <div class="card-body">
-                    <h5 class="card-title">Total Surat</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-file-earmark-text"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ $stats['total'] }}</h6>
-                            <span class="text-muted small pt-2">Semua surat tugas</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xxl-3 col-md-6">
-            <div class="card info-card warning-card">
-                <div class="card-body">
-                    <h5 class="card-title">Pending</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-hourglass-split"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ $stats['pending'] }}</h6>
-                            <span class="text-muted small pt-2">Menunggu validasi</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xxl-3 col-md-6">
-            <div class="card info-card revenue-card">
-                <div class="card-body">
-                    <h5 class="card-title">Disetujui</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-check-circle"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ $stats['approved'] }}</h6>
-                            <span class="text-muted small pt-2">Surat disetujui</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xxl-3 col-md-6">
-            <div class="card info-card customers-card">
-                <div class="card-body">
-                    <h5 class="card-title">Perlu LPJ</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-file-earmark-check"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ $stats['need_lpj'] }}</h6>
-                            <span class="text-muted small pt-2">Belum laporan</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <x-ui.stat-card label="Total Surat" :value="$stats['total']" icon="bi bi-file-earmark-text" hint="Semua surat tugas" />
+        <x-ui.stat-card label="Menunggu" :value="$stats['pending']" icon="bi bi-hourglass-split" tone="warning" hint="Menunggu validasi" />
+        <x-ui.stat-card label="Disetujui" :value="$stats['approved']" icon="bi bi-check-circle" tone="success" hint="Surat disetujui" />
+        <x-ui.stat-card label="Perlu LPJ" :value="$stats['need_lpj']" icon="bi bi-file-earmark-check" :tone="$stats['need_lpj'] ? 'danger' : 'muted'" hint="Belum dilaporkan" />
     </div>
 
-    {{-- Main Card --}}
-    <div class="card">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0"><i class="bi bi-file-earmark-text"></i> Daftar Surat Tugas</h5>
-                @can('permission', 'spd.create')
-                <a href="{{ route('requester.surat.create') }}" class="btn btn-primary">
-                    <i class="bi bi-plus-lg"></i> Buat Surat Baru
-                </a>
-                @endcan
-            </div>
-
-            @if($suratList->isEmpty())
-                <div class="text-center py-5">
-                    <i class="bi bi-file-earmark-x text-muted" style="font-size: 4rem;"></i>
-                    <p class="text-muted mt-3 mb-3">Belum ada surat tugas</p>
-                    @can('permission', 'spd.create')
-                    <a href="{{ route('requester.surat.create') }}" class="btn btn-primary">
-                        <i class="bi bi-plus-lg"></i> Buat Surat Pertama
-                    </a>
-                    @endcan
-                </div>
+    <x-ui.card>
+        <x-ui.card-header title="Surat Tugas Saya" icon="bi bi-file-earmark-text" description="{{ $suratList->count() }} surat, terbaru di atas" />
+        <x-ui.card-content>
+            @if ($suratList->isEmpty())
+                <x-ui.empty-state icon="bi bi-file-earmark-x" title="Belum ada surat tugas" description="Surat yang Anda ajukan akan tampil di sini.">
+                    @if ($canCreate)
+                        <x-ui.button class="mt-2" :href="route('requester.surat.create')"><i class="bi bi-plus-lg"></i> Buat Surat Pertama</x-ui.button>
+                    @endif
+                </x-ui.empty-state>
             @else
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
+                <x-ui.table :datatable="['perPage' => 10]">
+                    <thead>
+                        <tr>
+                            <th>Nomor Surat</th>
+                            <th>Tujuan</th>
+                            <th>Tanggal</th>
+                            <th>Kendaraan</th>
+                            <th>Status</th>
+                            <th>LPJ</th>
+                            <th class="w-20 text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($suratList as $surat)
                             <tr>
-                                <th>Nomor Surat</th>
-                                <th>Tujuan</th>
-                                <th>Tanggal</th>
-                                <th>Kendaraan</th>
-                                <th>Status</th>
-                                <th>LPJ</th>
-                                <th class="text-center">Aksi</th>
+                                <td>
+                                    <span class="font-medium">{{ $surat->nomor_surat }}</span>
+                                    @if ($surat->is_extension)
+                                        <x-ui.badge variant="info" class="mt-1 flex"><i class="bi bi-arrow-repeat"></i> Perpanjangan</x-ui.badge>
+                                    @endif
+                                </td>
+                                <td class="max-w-56 truncate text-muted-foreground" title="{{ $surat->tempat_tujuan }}">{{ $surat->tempat_tujuan }}</td>
+                                <td data-order="{{ $surat->tanggal_berangkat->timestamp }}" class="whitespace-nowrap">
+                                    {{ $surat->tanggal_berangkat->translatedFormat('d M') }} - {{ $surat->tanggal_kembali->translatedFormat('d M Y') }}
+                                    <span class="block text-xs text-muted-foreground">{{ $surat->lama_perjalanan_hari }} hari</span>
+                                </td>
+                                <td><x-ui.badge variant="outline"><i class="bi bi-truck"></i> {{ $surat->vehicle->consumerial_code ?? $surat->vehicle->plat_nomor }}</x-ui.badge></td>
+                                <td><x-spd.status-badge :status="$surat->status" /></td>
+                                <td>
+                                    @if ($surat->status === 'approved')
+                                        @if ($surat->lpjPenggantian)
+                                            <x-spd.status-badge :status="$surat->lpjPenggantian->status" />
+                                        @else
+                                            <x-spd.lpj-deadline :surat="$surat" />
+                                        @endif
+                                    @else
+                                        <span class="text-muted-foreground">-</span>
+                                    @endif
+                                </td>
+                                <td class="text-center">
+                                    <x-ui.dropdown-menu :id="'aksi-surat-' . $surat->id" label="Aksi surat">
+                                        <div class="px-2.5 pb-1.5 pt-1 text-xs text-muted-foreground"><code>{{ $surat->nomor_surat }}</code></div>
+                                        <x-ui.dropdown-item icon="bi bi-eye" :href="route('requester.surat.show', $surat)">Lihat detail</x-ui.dropdown-item>
+                                        @if ($surat->status === 'approved' && ! $surat->lpjPenggantian && $canLpj)
+                                            <x-ui.dropdown-item icon="bi bi-file-earmark-plus" variant="success" :href="route('requester.lpj.create', $surat)">Buat LPJ</x-ui.dropdown-item>
+                                        @endif
+                                        @if ($surat->status === 'approved' && ! $surat->is_extension && $canCreate)
+                                            <x-ui.dropdown-item icon="bi bi-clock-history" :href="route('requester.perpanjangan.create', ['surat_id' => $surat->id])">Ajukan perpanjangan</x-ui.dropdown-item>
+                                        @endif
+                                    </x-ui.dropdown-menu>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($suratList as $surat)
-                                <tr>
-                                    <td>
-                                        <span class="fw-semibold">{{ $surat->nomor_surat }}</span>
-                                        @if($surat->is_extension)
-                                            <br><span class="badge bg-info">Perpanjangan</span>
-                                        @endif
-                                    </td>
-                                    <td>{{ Str::limit($surat->tempat_tujuan, 30) }}</td>
-                                    <td>
-                                        {{ $surat->tanggal_berangkat->translatedFormat('d M') }} - {{ $surat->tanggal_kembali->translatedFormat('d M Y') }}
-                                        <br><span class="badge bg-secondary">{{ $surat->lama_perjalanan_hari }} hari</span>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-dark">{{ $surat->vehicle->consumerial_code ?? $surat->vehicle->plat_nomor }}</span>
-                                    </td>
-                                    <td>
-                                        @if($surat->status == 'pending')
-                                            <span class="badge bg-warning text-dark">Menunggu</span>
-                                        @elseif($surat->status == 'approved')
-                                            <span class="badge bg-success">Disetujui</span>
-                                        @elseif($surat->status == 'completed')
-                                            <span class="badge bg-primary">Selesai</span>
-                                        @else
-                                            <span class="badge bg-danger">Ditolak</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        @if($surat->status == 'approved')
-                                            @if($surat->lpjPenggantian)
-                                                @if($surat->lpjPenggantian->status == 'pending')
-                                                    <span class="badge bg-warning text-dark">LPJ Pending</span>
-                                                @elseif($surat->lpjPenggantian->status == 'approved')
-                                                    <span class="badge bg-success">LPJ Approved</span>
-                                                @else
-                                                    <span class="badge bg-danger">LPJ Ditolak</span>
-                                                @endif
-                                            @else
-                                                @include('partials.lpj-deadline-badge', ['surat' => $surat])
-                                            @endif
-                                        @else
-                                            <span class="text-muted">-</span>
-                                        @endif
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="btn-group">
-                                            {{-- <a href="{{ route('requester.surat.show', $surat) }}"
-                                               class="btn btn-sm btn-outline-primary" title="Detail">
-                                                <i class="bi bi-eye"></i>
-                                            </a> --}}
-                                            @if($surat->status == 'approved' && !$surat->lpjPenggantian)
-                                                @can('permission', 'lpj.create')
-                                                <a href="{{ route('requester.lpj.create', $surat) }}"
-                                                   class="btn btn-sm btn-outline-success" title="Buat LPJ">
-                                                    <i class="bi bi-file-earmark-plus"></i>
-                                                </a>
-                                                @endcan
-                                            @endif
-                                            @if($surat->status == 'approved' && !$surat->is_extension)
-                                                @can('permission', 'spd.create')
-                                                <a href="{{ route('requester.perpanjangan.create') }}?surat_id={{ $surat->id }}"
-                                                   class="btn btn-sm btn-outline-info" title="Ajukan Perpanjangan">
-                                                    <i class="bi bi-clock-history"></i>
-                                                </a>
-                                                @endcan
-                                            @endif
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                        @endforeach
+                    </tbody>
+                </x-ui.table>
             @endif
-        </div>
-    </div>
-</section>
-@endsection
+        </x-ui.card-content>
+    </x-ui.card>
+</x-layouts.app>

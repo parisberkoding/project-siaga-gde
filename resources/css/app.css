@@ -1,11 +1,244 @@
 @import 'tailwindcss';
+@import './theme.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+
+    body {
+        @apply bg-background text-foreground font-sans antialiased;
+    }
+
+    /* Scrollbar ramping tanpa track (seperti T-Cash), supaya tidak menutupi sudut panel. */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in srgb, var(--muted-foreground) 35%, transparent) transparent;
+    }
+
+    /* Rata kiri bawaan untuk kepala tabel; di layer base supaya kelas text-right/text-center tetap menang. */
+    th {
+        text-align: start;
+    }
+
+    /* <dialog> native: preflight menghapus margin auto, kembalikan supaya tetap di tengah. */
+    dialog {
+        @apply m-auto;
+    }
+
+    /* ::backdrop tidak selalu mewarisi variabel CSS, jadi warna ditulis langsung. */
+    dialog::backdrop {
+        background: rgb(0 0 0 / 0.5);
+    }
+}
+
+/* Ornamen sudut kanan atas untuk kartu: dua cincin tipis, semburat warna, dan kisi titik yang memudar.
+   Digambar di ::before (z-index -1 dalam isolate) supaya isi kartu tetap di atasnya. Warna dari --ornament. */
+@utility ornament-corner {
+    --ornament: var(--primary);
+    position: relative;
+    isolation: isolate;
+
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        border-radius: inherit;
+        background:
+            radial-gradient(circle at 100% 0%, transparent 52px, color-mix(in srgb, var(--ornament) 24%, transparent) 53px 54px, transparent 55px),
+            radial-gradient(circle at 100% 0%, transparent 88px, color-mix(in srgb, var(--ornament) 15%, transparent) 89px 90px, transparent 91px),
+            radial-gradient(60% 70% at 100% 0%, color-mix(in srgb, var(--ornament) 15%, transparent), transparent 70%),
+            radial-gradient(color-mix(in srgb, var(--ornament-dot, var(--foreground)) 14%, transparent) 1px, transparent 1px);
+        background-size: auto, auto, auto, 14px 14px;
+        -webkit-mask-image: radial-gradient(75% 85% at 100% 0%, #000 35%, transparent 80%);
+        mask-image: radial-gradient(75% 85% at 100% 0%, #000 35%, transparent 80%);
+    }
+}
+
+/*
+ * simple-datatables: class bawaan library diberi gaya shadcn
+ * (input, select, pagination) supaya tidak perlu CSS dari CDN.
+ */
+@layer components {
+    /* Susunan (datatable.js memindahkannya keluar wadah scroll x-ui.table):
+       [toolbar: cari + per halaman] / [tabel: bingkai + geser ke samping di HP] / [info + halaman]. */
+    /* minmax(0,1fr): lebar mengikuti induk, tidak dipaksa melebar oleh isi (tabel/pagination). */
+    .datatable-wrapper {
+        @apply grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3;
+    }
+
+    .datatable-container {
+        @apply min-w-0 overflow-x-auto rounded-lg border;
+    }
+
+    .datatable-top,
+    .datatable-bottom {
+        @apply flex flex-wrap items-center justify-between gap-2;
+    }
+
+    /* DOM: [per halaman][cari]. row-reverse = cari di kiri; wrap-reverse = di HP baris cari di atas. */
+    .datatable-top {
+        @apply flex-row-reverse flex-wrap-reverse rounded-lg border bg-muted/40 p-2;
+    }
+
+    .datatable-search {
+        @apply relative w-full sm:w-80;
+    }
+
+    /* Toolbar yang dipindah ke luar tabel (opsi controlsTarget ke [data-table-controls]): tanpa panel sendiri,
+       ikut kartu/baris induknya. Kartu kontrol yang kosong (tabel kosong, tidak jadi datatable) disembunyikan. */
+    [data-table-controls] .datatable-top {
+        @apply border-0 bg-transparent p-0 max-sm:w-full sm:flex-nowrap;
+    }
+
+    [data-table-controls]:empty {
+        @apply hidden;
+    }
+
+    /* Tabel di dalam kartu sendiri ([data-table-card]): tabel rapat ke tepi kartu, info + halaman jadi footer kartu. */
+    [data-table-card] .datatable-wrapper {
+        @apply gap-0;
+    }
+
+    [data-table-card] .datatable-container {
+        @apply rounded-none border-0;
+    }
+
+    [data-table-card] .datatable-bottom {
+        @apply border-t px-4 py-3;
+    }
+
+    .datatable-search::before {
+        content: '\F52A'; /* bi-search */
+        font-family: bootstrap-icons;
+        @apply pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground;
+    }
+
+    .datatable-input,
+    .datatable-selector {
+        @apply h-9 rounded-md border border-input bg-card px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50;
+    }
+
+    .datatable-input {
+        @apply w-full pl-9;
+    }
+
+    /* Bawah: info + pagination; HP: keduanya di tengah, info di atas. */
+    .datatable-bottom {
+        @apply max-sm:flex-col max-sm:justify-center;
+    }
+
+    .datatable-dropdown label {
+        @apply flex items-center gap-2 text-sm text-muted-foreground;
+    }
+
+    .datatable-info {
+        @apply text-sm text-muted-foreground;
+    }
+
+    .datatable-sorter {
+        @apply inline-flex items-center gap-1 hover:text-foreground;
+    }
+
+    .datatable-sorter::after {
+        content: '\2195';
+        @apply text-xs text-muted-foreground;
+    }
+
+    .datatable-ascending .datatable-sorter::after {
+        content: '\2191';
+    }
+
+    .datatable-descending .datatable-sorter::after {
+        content: '\2193';
+    }
+
+    /* Pagination bergaya shadcn (sama dengan vendor/pagination/shadcn.blade.php). Juga dipakai daftar kartu
+       tab Menunggu di Permohonan Masuk (pages/bbm/admin-approval.js). */
+    .datatable-pagination-list {
+        @apply flex flex-wrap items-center justify-center gap-1;
+    }
+
+    .datatable-pagination-list-item-link {
+        @apply inline-flex size-8 cursor-pointer items-center justify-center rounded-lg text-sm font-medium tabular-nums transition-colors outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:size-9;
+    }
+
+    /* Tombol sebelumnya / berikutnya (item pertama & terakhir) berbingkai. */
+    .datatable-pagination-list-item:first-child .datatable-pagination-list-item-link,
+    .datatable-pagination-list-item:last-child .datatable-pagination-list-item-link {
+        @apply border bg-card text-base shadow-xs;
+    }
+
+    .datatable-active .datatable-pagination-list-item-link {
+        @apply bg-linear-to-br from-primary to-indigo-600 text-primary-foreground shadow-md shadow-primary/25 hover:text-primary-foreground;
+    }
+
+    .datatable-ellipsis .datatable-pagination-list-item-link {
+        @apply pointer-events-none text-muted-foreground;
+    }
+
+    .datatable-disabled .datatable-pagination-list-item-link {
+        @apply pointer-events-none opacity-50;
+    }
+
+    /* HP: kolom terakhir (Aksi) menempel di kanan saat tabel digeser, supaya aksi selalu terjangkau. */
+    /* Latar padat (tanpa bayangan gradien yang terlihat tembus); header memakai warna header tabel. */
+    .table-sticky-actions :is(th, td):last-child {
+        @apply max-sm:sticky max-sm:right-0 max-sm:z-[1] max-sm:border-l max-sm:bg-card;
+    }
+
+    .table-sticky-actions th:last-child {
+        @apply max-sm:bg-[color-mix(in_srgb,var(--muted)_50%,var(--card))];
+    }
+
+    .datatable-empty {
+        @apply py-8 text-center text-muted-foreground;
+    }
+}
+
+/* Di luar @layer supaya menang atas utilitas bg-card pada komponen. Checkbox kustom (x-ui.checkbox): centang & strip (indeterminate) putih di atas warna primary. */
+[data-slot='checkbox'] {
+    appearance: none;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 80%;
+}
+[data-slot='checkbox']:checked {
+    border-color: var(--primary);
+    background-color: var(--primary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E");
+}
+[data-slot='checkbox']:indeterminate {
+    border-color: var(--primary);
+    background-color: var(--primary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M4 8h8'/%3E%3C/svg%3E");
+}
+
+/* Tooltip ringan: <button data-tooltip="Ubah">. Muncul saat hover/fokus keyboard, di atas elemen. */
+[data-tooltip] {
+    position: relative;
+}
+[data-tooltip]:is(:hover, :focus-visible)::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    z-index: 30;
+    transform: translateX(-50%);
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--foreground);
+    color: var(--background);
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+    pointer-events: none;
 }

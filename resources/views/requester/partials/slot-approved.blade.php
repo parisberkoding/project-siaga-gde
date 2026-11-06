@@ -1,254 +1,98 @@
-<div class="card border-start border-success border-4">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-3">
-            <h6 class="card-title mb-0">
-                <i class="bi bi-check-circle text-success"></i> Slot {{ $slotNum }}
-            </h6>
-            <span class="badge bg-success">APPROVED</span>
-        </div>
+{{-- Slot permohonan yang sudah disetujui: tiket voucher, sisa masa berlaku, cetak voucher, lapor pembelian. --}}
+@php
+    $voucher = $request->approvedRequest;
+    $isVehicle = strtolower($request->vehicle->consumerial_type ?? '') === 'kendaraan';
+    $validUntil = $voucher?->valid_until ? \Carbon\Carbon::parse($voucher->valid_until) : null;
+    $approvedAt = $voucher?->approval_date ? \Carbon\Carbon::parse($voucher->approval_date) : $request->authorization_date;
+    $totalMinutes = $validUntil && $approvedAt ? max(1, $approvedAt->diffInMinutes($validUntil)) : 50 * 60;
+    $leftMinutes = $validUntil ? max(0, (int) now()->diffInMinutes($validUntil, false)) : 0;
+    $percent = (int) round(min(100, $leftMinutes / $totalMinutes * 100));
+    $tone = match (true) {
+        $leftMinutes === 0 => 'destructive',
+        $leftMinutes <= 12 * 60 => 'warning',
+        default => 'success',
+    };
+    $leftLabel = $leftMinutes === 0
+        ? 'Masa berlaku habis'
+        : 'Sisa ' . ($leftMinutes >= 60 ? intdiv($leftMinutes, 60) . ' jam ' : '') . ($leftMinutes % 60) . ' menit';
+@endphp
 
-        <!-- Voucher Box -->
-        <div class="voucher-box mb-3">
-            <div class="text-white text-center">
-                <small><i class="bi bi-ticket-perforated"></i> KODE VOUCHER BBM</small>
-                <div class="voucher-code">{{ $request->approvedRequest->voucher_code ?? 'N/A' }}</div>
+<article class="flex flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+    {{-- Bagian atas tiket: kode voucher dan nominal di atas gradien hijau. --}}
+    <div class="bg-voucher-gradient relative overflow-hidden px-5 pb-5 pt-4 text-white">
+        <i class="bi bi-ticket-perforated pointer-events-none absolute -right-3 -top-1 text-8xl leading-none text-white/10" aria-hidden="true"></i>
+        <div class="relative flex items-center justify-between gap-3">
+            <span class="text-xs font-semibold uppercase tracking-wider text-white/80">Slot {{ $slotNum }}</span>
+            <span class="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-medium ring-1 ring-white/25"><i class="bi bi-check-circle"></i> Disetujui</span>
+        </div>
+        <p class="relative mt-3 text-xs text-white/75">Kode voucher</p>
+        <p class="relative select-all font-mono text-xl font-bold tracking-widest">{{ $voucher->voucher_code ?? 'N/A' }}</p>
+        <div class="relative mt-3 flex items-end justify-between gap-3">
+            <span class="text-2xl font-bold tabular-nums tracking-tight">Rp {{ number_format($request->bill_amounts, 0, ',', '.') }}</span>
+            <span class="rounded-md bg-white/15 px-2 py-0.5 text-xs font-medium">{{ $request->gasoline_type }}</span>
+        </div>
+    </div>
+
+    {{-- Perforasi: garis putus dengan lekukan setengah lingkaran di kiri dan kanan. --}}
+    <div class="relative h-0 border-t-2 border-dashed border-border" aria-hidden="true">
+        <span class="absolute -left-3 -top-3 size-6 rounded-full border bg-background"></span>
+        <span class="absolute -right-3 -top-3 size-6 rounded-full border bg-background"></span>
+    </div>
+
+    <div class="grid gap-4 px-5 pb-4 pt-5 text-sm">
+        <div class="grid gap-1.5">
+            <div class="flex items-center justify-between gap-3 text-xs">
+                <span @class(['font-semibold', 'text-emerald-700' => $tone === 'success', 'text-amber-700' => $tone === 'warning', 'text-destructive' => $tone === 'destructive'])>
+                    <i class="bi bi-hourglass-split"></i> {{ $leftLabel }}
+                </span>
+                <span class="text-muted-foreground">sampai {{ $validUntil?->translatedFormat('d M, H:i') ?? '-' }}</span>
+            </div>
+            <div class="h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Sisa masa berlaku voucher" aria-valuenow="{{ $percent }}" aria-valuemin="0" aria-valuemax="100">
+                <div @class([
+                    'h-full rounded-full bg-linear-to-r',
+                    'from-emerald-400 to-teal-600' => $tone === 'success',
+                    'from-amber-300 to-orange-500' => $tone === 'warning',
+                    'from-red-400 to-destructive' => $tone === 'destructive',
+                ]) style="width: {{ $percent }}%"></div>
             </div>
         </div>
 
-        <table class="table table-sm table-borderless">
-            <tr>
-                <td><strong>Request ID:</strong></td>
-                <td><code>{{ $request->request_number }}</code></td>
-            </tr>
-            <tr>
-                <td><strong>Tanggal Disetujui:</strong></td>
-                <td>{{ $request->authorization_date ? $request->authorization_date->translatedFormat('d M Y H:i') : '-' }}</td>
-            </tr>
-            <tr>
-                <td><strong>Kendaraan/Alat:</strong></td>
-                <td>
-                    {{ $request->vehicle->consumerial_code ?? 'N/A' }}<br>
-                    <small class="text-muted">{{ $request->vehicle->consumerial_name ?? '' }} ({{ $request->vehicle->consumerial_type ?? '' }})</small>
-                </td>
-            </tr>
-            <tr>
-                <td><strong>Nominal:</strong></td>
-                <td><strong class="text-primary">Rp {{ number_format($request->bill_amounts, 0, ',', '.') }}</strong></td>
-            </tr>
-            @if($request->authorizer_notes)
-            <tr>
-                <td><strong>Catatan Admin:</strong></td>
-                <td><em>{{ $request->authorizer_notes }}</em></td>
-            </tr>
-            @endif
-        </table>
-
-        <hr>
-
-        <button class="btn btn-success btn-sm w-100 mb-3"
-                data-bs-toggle="modal"
-                data-bs-target="#voucherModal{{ $slotNum }}">
-            <i class="bi bi-printer"></i> Cetak Voucher BBM
-        </button>
-
-        <hr>
-
-        {{-- 🚀 Laporan BBM → fitur pelaporan (upload struk + AI) --}}
-        <div>
-            <div class="d-flex align-items-center mb-1">
-                <h6 class="mb-0"><i class="bi bi-journal-text"></i> Laporan Pembelian </h6>
+        <div class="flex items-center gap-3">
+            <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                <i class="bi {{ $isVehicle ? 'bi-car-front' : 'bi-tools' }}"></i>
+            </span>
+            <div class="min-w-0">
+                <p class="truncate font-medium">{{ $request->vehicle->consumerial_code ?? 'N/A' }}</p>
+                <p class="truncate text-xs text-muted-foreground">{{ $request->vehicle->consumerial_name ?? '-' }}</p>
             </div>
-            <!-- <small class="text-muted d-block mb-2">
-                Gunakan fitur pelaporan BBM untuk mengupload struk & foto pendukung.
-                Data permohonan <code>{{ $request->request_number }}</code> otomatis terisi.
-            </small> -->
-            @can('permission', 'pelaporan.create')
-            <a href="{{ route('pelaporan.index', ['mode' => 'operational', 'permohonan_id' => $request->id]) }}"
-               class="btn btn-primary w-100">
-                <i class="bi bi-send"></i> Lapor Pembelian 
-            </a>
-            @endcan
         </div>
 
-        {{-- ════════════════════════════════════════════════════════════════
-             FORM LAMA (di-hide sementara) — aktifkan kembali jika diperlukan
-             dengan menghapus komentar di bawah. Ini form manual lama yang
-             kirim ke route requester.submit-report (tanpa fitur AI/OCR).
-        ══════════════════════════════════════════════════════════════════ --}}
-        {{-- @php
-            $isVehicle = $request->vehicle && $request->vehicle->consumerial_type === 'Kendaraan';
-        @endphp
-
-        @if(!$isVehicle)
-        <div class="alert alert-info alert-sm p-2 mb-3">
-            <small><i class="bi bi-info-circle"></i> <strong>Catatan:</strong> Untuk alat/mesin, KM dan foto odometer tidak wajib diisi.</small>
-        </div>
+        @if ($request->authorizer_notes)
+            <p class="flex gap-2 rounded-lg bg-emerald-50 p-3 text-xs text-emerald-900">
+                <i class="bi bi-chat-left-quote text-emerald-600"></i>
+                <span><span class="font-medium">Catatan admin:</span> {{ $request->authorizer_notes }}</span>
+            </p>
         @endif
 
-        <form action="{{ route('requester.submit-report', $request->id) }}"
-              method="POST"
-              enctype="multipart/form-data"
-              id="reportForm{{ $slotNum }}">
-            @csrf
-
-            <div class="mb-2">
-                <label class="form-label">Tanggal Pengisian <span class="text-danger">*</span></label>
-                <input type="date"
-                       class="form-control form-control-sm @error('purchase_date') is-invalid @enderror"
-                       name="purchase_date"
-                       value="{{ old('purchase_date') }}"
-                       required
-                       max="{{ date('Y-m-d') }}">
-                <small class="text-muted">Tanggal transaksi pengisian BBM ke SPBU</small>
-                @error('purchase_date')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-            </div>
-
-            <div class="mb-2">
-                <label class="form-label">Volume Pengisian (Liter) <span class="text-danger">*</span></label>
-                <input type="number"
-                       class="form-control form-control-sm @error('volume_bbm') is-invalid @enderror"
-                       name="volume_bbm"
-                       value="{{ old('volume_bbm') }}"
-                       required
-                       min="0"
-                       step="0.01"
-                       placeholder="Contoh: 25.5">
-                <small class="text-muted">Lihat dari "Volume" pada struk BBM</small>
-                @error('volume_bbm')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-            </div>
-
-            @if($isVehicle)
-            <!-- Field KM Akhir (WAJIB untuk Kendaraan) -->
-            <div class="mb-2">
-                <label class="form-label">KM Akhir <span class="text-danger">*</span></label>
-                <input type="number"
-                       class="form-control form-control-sm @error('km_akhir') is-invalid @enderror"
-                       name="km_akhir"
-                       value="{{ old('km_akhir') }}"
-                       required
-                       min="0"
-                       placeholder="Contoh: 12500">
-                <small class="text-muted">Odometer kendaraan setelah pengisian</small>
-                @error('km_akhir')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-            </div>
-
-            <!-- Foto Odometer (WAJIB untuk Kendaraan) -->
-            <div class="mb-2">
-                <label class="form-label">Foto Odometer <span class="text-danger">*</span></label>
-                <input type="file"
-                       class="form-control form-control-sm @error('foto_km') is-invalid @enderror"
-                       name="foto_km"
-                       accept="image/*"
-                       required
-                       onchange="previewImage(this, 'previewKm{{ $slotNum }}')">
-                <small class="text-muted">Foto speedometer/odometer kendaraan (max 5MB)</small>
-                @error('foto_km')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-                <img id="previewKm{{ $slotNum }}"
-                     class="img-thumbnail mt-2"
-                     style="max-height: 150px; display: none;">
-            </div>
-            @else
-            <!-- Field KM Akhir (OPSIONAL untuk Alat) -->
-            <div class="mb-2">
-                <label class="form-label"> Odoometer Terakhir <small class="text-muted"></small></label>
-                <input type="number"
-                       class="form-control form-control-sm @error('km_akhir') is-invalid @enderror"
-                       name="km_akhir"
-                       value="{{ old('km_akhir', 0) }}"
-                       min="0"
-                       placeholder="Isi 0 jika tidak ada">
-                <small class="text-muted">Isi dengan 0 jika tidak memiliki odometer</small>
-                @error('km_akhir')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-            </div>
-            @endif
-
-            <!-- Foto Struk BBM (WAJIB untuk semua) -->
-            <div class="mb-3">
-                <label class="form-label">Foto Struk BBM <span class="text-danger">*</span></label>
-                <input type="file"
-                       class="form-control form-control-sm @error('foto_struk') is-invalid @enderror"
-                       name="foto_struk"
-                       accept="image/*"
-                       required
-                       onchange="previewImage(this, 'previewStruk{{ $slotNum }}')">
-                <small class="text-muted">Foto struk pembelian dari SPBU (max 5MB)</small>
-                @error('foto_struk')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-                <img id="previewStruk{{ $slotNum }}"
-                     class="img-thumbnail mt-2"
-                     style="max-height: 150px; display: none;">
-            </div>
-
-            <button type="submit"
-                    class="btn btn-primary btn-sm w-100"
-                    id="submitReport{{ $slotNum }}">
-                <i class="bi bi-send"></i> Kirim Laporan
-            </button>
-        </form>
-        --}}
+        <a href="{{ route('requester-show', $request->id) }}" class="truncate font-mono text-xs text-muted-foreground hover:text-foreground hover:underline">{{ $request->request_number }}</a>
     </div>
-</div>
 
-<!-- Include Print Modal -->
-@include('requester.partials.voucher-print-modal', ['request' => $request, 'slotNum' => $slotNum])
+    <div class="mt-auto grid gap-2 border-t bg-muted/30 p-4">
+        @can('permission', 'pelaporan.create')
+            <x-ui.button :href="route('pelaporan.index', ['mode' => 'operational', 'permohonan_id' => $request->id])"
+                         class="bg-linear-to-r from-primary to-indigo-600 shadow-md shadow-primary/20 hover:brightness-110">
+                <i class="bi bi-send"></i> Lapor Pembelian
+            </x-ui.button>
+        @endcan
+        <div class="grid grid-cols-2 gap-2">
+            <x-ui.button variant="outline" size="sm" data-dialog-open="voucher-{{ $request->id }}">
+                <i class="bi bi-printer"></i> Cetak
+            </x-ui.button>
+            <x-ui.button variant="outline" size="sm" :href="route('requester-show', $request->id)">
+                <i class="bi bi-eye"></i> Detail
+            </x-ui.button>
+        </div>
+    </div>
+</article>
 
-
-<style>
-.voucher-box {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 15px;
-    border-radius: 8px;
-}
-
-.voucher-code {
-    font-size: 1.2rem;
-    font-weight: bold;
-    letter-spacing: 2px;
-    font-family: 'Courier New', monospace;
-    padding: 8px;
-    background: rgba(255,255,255,0.2);
-    border-radius: 6px;
-    margin-top: 5px;
-}
-
-.alert-sm {
-    font-size: 0.875rem;
-}
-</style>
-
-<script>
-function previewImage(input, previewId) {
-    const preview = document.getElementById(previewId);
-    if (input.files && input.files[0]) {
-        // Check file size (max 5MB)
-        if (input.files[0].size > 5 * 1024 * 1024) {
-            alert('Ukuran file terlalu besar! Maksimal 5MB');
-            input.value = '';
-            preview.style.display = 'none';
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            preview.src = e.target.result;
-            preview.style.display = 'block';
-        }
-        reader.readAsDataURL(input.files[0]);
-    } else {
-        preview.style.display = 'none';
-    }
-}
-
-</script>
+@include('requester.partials.voucher-print-modal', ['request' => $request])

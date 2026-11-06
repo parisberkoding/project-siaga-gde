@@ -1,157 +1,132 @@
-@extends('templates.main')
+{{--
+  Role & Hak Akses (modul Pengguna & Hak Akses). Dua tampilan lewat ?view=:
+  roles  = kartu role (ubah/hapus memakai endpoint yang ada),
+  matrix = matriks permission x role, hanya baca. Ubah langsung dari matriks butuh endpoint sinkron massal di BE.
+--}}
+@php
+    $view = request('view') === 'matrix' ? 'matrix' : 'roles';
+    $groups = \App\Models\PermissionGroup::with(['permissions' => fn ($q) => $q->orderBy('code')])->orderBy('order')->get();
+    $permTotal = $groups->sum(fn ($g) => $g->permissions->count());
+    $matrixRoles = $roles->where('is_active', true)->values();
+    $owned = $matrixRoles->mapWithKeys(fn ($r) => [$r->id => $r->permissions->pluck('id')->flip()]);
+    $tiles = ['from-blue-600 to-indigo-600', 'from-emerald-500 to-teal-600', 'from-orange-400 to-amber-500', 'from-violet-500 to-purple-600', 'from-cyan-500 to-sky-600', 'from-rose-500 to-pink-600'];
+    $soon = '<span class="ml-1 rounded-full bg-muted px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Segera</span>';
+@endphp
 
-@section('title', $title)
+<x-layouts.app title="Role & Hak Akses" :breadcrumbs="[($view === 'matrix' ? 'Matriks Hak Akses' : 'Daftar Role') => null]">
+    <x-ui.page-header kicker="Pengguna & Hak Akses" title="Role & Hak Akses"
+        description="Atur role dan permission. Setiap pengguna mendapat gabungan permission dari role-nya.">
+        <x-slot:actions>
+            <x-ui.button :href="route('superadmin.rbac.create')"><i class="bi bi-plus-lg"></i> Tambah Role</x-ui.button>
+        </x-slot:actions>
+    </x-ui.page-header>
 
-@section('content')
-
-@if(session('success'))
-<div class="alert alert-success alert-dismissible fade show">
-    <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-@endif
-
-@if(session('error'))
-<div class="alert alert-danger alert-dismissible fade show">
-    <i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-@endif
-
-@if(session('warning'))
-<div class="alert alert-warning alert-dismissible fade show">
-    <i class="bi bi-exclamation-circle me-2"></i>{{ session('warning') }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-@endif
-
-<div class="pagetitle">
-    <h1>Role & Hak Akses (RBAC)</h1>
-    <nav>
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('admin-dashboard') }}">Home</a></li>
-            <li class="breadcrumb-item">RBAC & Hak Akses</li>
-            <li class="breadcrumb-item active">Role</li>
-        </ol>
-    </nav>
-</div>
-
-<div class="d-flex justify-content-end mb-3">
-    <a href="{{ route('superadmin.rbac.create') }}" class="btn btn-dark">
-        <i class="bi bi-plus-lg me-1"></i> Tambah Role Baru
-    </a>
-</div>
-
-<div class="card shadow-sm border-0">
-    <div class="card-header bg-dark text-white rounded-top">
-        <h5 class="mb-0 fw-semibold"><i class="bi bi-shield-lock me-2"></i>Daftar Role</h5>
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <x-ui.stat-card label="Total Role" :value="$roles->count()" icon="bi bi-shield-lock" hint="{{ $roles->where('is_system', true)->count() }} role sistem" />
+        <x-ui.stat-card label="Role Aktif" :value="$roles->where('is_active', true)->count()" icon="bi bi-shield-check" tone="success" hint="Bisa diberikan ke pengguna" />
+        <x-ui.stat-card label="Permission" :value="$permTotal" icon="bi bi-key" tone="muted" hint="{{ $groups->count() }} grup modul" />
+        <x-ui.stat-card label="Role Khusus Unit" :value="$roles->reject->isGlobal()->count()" icon="bi bi-diagram-3" tone="warning" hint="Hanya untuk unit tertentu" />
     </div>
-    <div class="card-body p-3">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>Role</th>
-                        <th>Deskripsi</th>
-                        <th class="text-center">Cakupan</th>
-                        <th class="text-center">Permission</th>
-                        <th class="text-center">User</th>
-                        <th class="text-center">Status</th>
-                        <th class="text-center">System</th>
-                        <th width="160">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($roles as $role)
-                    <tr>
-                        <td>
-                            <strong>{{ $role->name }}</strong>
-                            @if($role->name !== $role->code)
-                                <br><small class="text-muted">code: <code>{{ $role->code }}</code></small>
-                            @endif
-                        </td>
-                        <td><small>{{ $role->description ?? '—' }}</small></td>
-                        <td class="text-center">
-                            @if($role->isGlobal())
-                                <span class="badge bg-dark" title="Berlaku di semua unit">
-                                    <i class="bi bi-globe2 me-1"></i>Global
-                                </span>
+
+    <x-ui.tabs-list>
+        <x-ui.tabs-link :href="route('superadmin.rbac.index')" :active="$view === 'roles'"><i class="bi bi-shield-lock"></i> Daftar Role</x-ui.tabs-link>
+        <x-ui.tabs-link :href="route('superadmin.rbac.index', ['view' => 'matrix'])" :active="$view === 'matrix'"><i class="bi bi-grid-3x3-gap"></i> Matriks Hak Akses</x-ui.tabs-link>
+    </x-ui.tabs-list>
+
+    @if ($view === 'roles')
+        @if ($roles->isEmpty())
+            <x-ui.card><x-ui.card-content><x-ui.empty-state icon="bi bi-shield" title="Belum ada role" /></x-ui.card-content></x-ui.card>
+        @else
+            <div class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+                @foreach ($roles as $i => $r)
+                    <article @class(['flex flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition-shadow hover:shadow-md', 'opacity-70' => ! $r->is_active])>
+                        <div class="flex items-start gap-3 p-5">
+                            <span class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-linear-to-br {{ $tiles[$i % count($tiles)] }} text-lg text-white shadow-md">
+                                <i class="bi {{ $r->is_system ? 'bi-shield-fill-check' : 'bi-shield' }}"></i>
+                            </span>
+                            <div class="grid min-w-0 flex-1 gap-1">
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <h3 class="truncate font-semibold">{{ $r->name }}</h3>
+                                    @if ($r->is_system)<x-ui.badge variant="warning"><i class="bi bi-lock-fill"></i> Sistem</x-ui.badge>@endif
+                                    @unless ($r->is_active)<x-ui.badge variant="danger">Nonaktif</x-ui.badge>@endunless
+                                </div>
+                                @if ($r->name !== $r->code)<code class="text-xs text-muted-foreground">{{ $r->code }}</code>@endif
+                                <p class="line-clamp-2 text-sm text-muted-foreground">{{ $r->description ?: 'Belum ada deskripsi.' }}</p>
+                            </div>
+                        </div>
+                        <div class="mt-auto grid grid-cols-3 divide-x border-t bg-muted/30 text-center">
+                            <div class="px-2 py-3"><span class="block text-lg font-semibold tabular-nums">{{ $r->permissions->count() }}</span><span class="text-xs text-muted-foreground">Permission</span></div>
+                            <div class="px-2 py-3"><span class="block text-lg font-semibold tabular-nums">{{ $r->users_count }}</span><span class="text-xs text-muted-foreground">Pengguna</span></div>
+                            <div class="px-2 py-3"><span class="block truncate text-sm font-semibold">{{ $r->isGlobal() ? 'Global' : ($r->unit->code ?? '-') }}</span><span class="text-xs text-muted-foreground">Cakupan</span></div>
+                        </div>
+                        <div class="flex items-center justify-end gap-2 border-t px-4 py-3">
+                            @if ($r->is_system)
+                                <span class="mr-auto text-xs text-muted-foreground">Role sistem tidak bisa diubah atau dihapus.</span>
                             @else
-                                <span class="badge bg-primary" title="Hanya untuk unit ini">
-                                    <i class="bi bi-diagram-3 me-1"></i>{{ $role->unit->code ?? '—' }}
-                                </span>
-                            @endif
-                        </td>
-                        <td class="text-center">
-                            <span class="badge bg-info">{{ $role->permissions->count() }}</span>
-                        </td>
-                        <td class="text-center">
-                            <span class="badge bg-secondary">{{ $role->users_count }}</span>
-                        </td>
-                        <td class="text-center">
-                            @if($role->is_active)
-                                <span class="badge bg-success">Aktif</span>
-                            @else
-                                <span class="badge bg-danger">Nonaktif</span>
-                            @endif
-                        </td>
-                        <td class="text-center">
-                            @if($role->is_system)
-                                <span class="badge bg-warning text-dark">
-                                    <i class="bi bi-gear me-1"></i>Sistem
-                                </span>
-                            @else
-                                <span class="text-muted">—</span>
-                            @endif
-                        </td>
-                        <td>
-                            <div class="d-flex gap-1">
-                                <a href="{{ route('superadmin.rbac.edit', $role->id) }}"
-                                   class="btn btn-warning btn-sm {{ $role->is_system ? 'disabled' : '' }}"
-                                   title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <form action="{{ route('superadmin.rbac.delete', $role->id) }}"
-                                      method="POST"
-                                      onsubmit="return confirm('Yakin hapus role {{ $role->name }}?')"
-                                      style="display:inline;">
+                                <form action="{{ route('superadmin.rbac.delete', $r->id) }}" method="POST" class="mr-auto"
+                                      data-confirm="{{ $r->users_count ? "Role ini masih dipakai {$r->users_count} pengguna, jadi penghapusan akan ditolak." : 'Role ini akan dihapus permanen.' }}" data-confirm-title="Hapus role {{ $r->name }}?" data-confirm-text="Ya, hapus" data-confirm-variant="destructive">
                                     @csrf
-                                    <button type="submit"
-                                            class="btn btn-danger btn-sm {{ $role->is_system ? 'disabled' : '' }}"
-                                            title="Hapus">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
+                                    <x-ui.button type="submit" variant="ghost" size="sm" class="text-destructive hover:bg-destructive-soft"><i class="bi bi-trash3"></i> Hapus</x-ui.button>
                                 </form>
-                            </div>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="7">
-                            <div class="empty-state">
-                                <i class="bi bi-shield"></i>
-                                <p>Belum ada role. Tambah role baru untuk memulai.</p>
-                            </div>
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+                                <x-ui.button size="sm" variant="outline" :href="route('superadmin.rbac.edit', $r->id)"><i class="bi bi-sliders"></i> Atur permission</x-ui.button>
+                            @endif
+                        </div>
+                    </article>
+                @endforeach
+            </div>
+        @endif
+    @else
+        <x-ui.card class="gap-0 py-0">
+            <div class="flex flex-wrap items-center gap-3 border-b p-4">
+                <div class="relative min-w-60 flex-1">
+                    <i class="bi bi-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+                    <x-ui.input type="search" data-matrix-search placeholder="Cari permission, misalnya bbm.approve" class="pl-9" />
+                </div>
+                <span class="text-xs text-muted-foreground">Hanya baca. Ubah per role lewat Atur permission. Ubah langsung di matriks {!! $soon !!}</span>
+            </div>
+            <div class="max-h-[70vh] overflow-auto">
+                <table class="w-full border-separate border-spacing-0 text-sm">
+                    <thead class="sticky top-0 z-10 bg-card">
+                        <tr>
+                            <th class="sticky left-0 z-20 min-w-64 border-b bg-card px-4 py-3 text-left font-medium">Permission</th>
+                            @foreach ($matrixRoles as $r)
+                                <th class="min-w-24 border-b px-2 py-3 text-center align-bottom text-xs font-medium">
+                                    <a href="{{ $r->is_system ? '#' : route('superadmin.rbac.edit', $r->id) }}" class="line-clamp-2 hover:text-primary" title="{{ $r->name }}">{{ $r->name }}</a>
+                                    <span class="mt-0.5 block font-normal text-muted-foreground tabular-nums">{{ $r->permissions->count() }}</span>
+                                </th>
+                            @endforeach
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($groups as $group)
+                            <tr data-matrix-group>
+                                <td colspan="{{ $matrixRoles->count() + 1 }}" class="sticky left-0 border-b bg-muted/60 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    <i class="bi {{ $group->icon ?? 'bi-shield' }}"></i> {{ $group->name }} <span class="font-normal">({{ $group->permissions->count() }})</span>
+                                </td>
+                            </tr>
+                            @foreach ($group->permissions as $perm)
+                                <tr data-matrix-row data-search="{{ strtolower($perm->code . ' ' . $perm->description) }}" class="hover:bg-muted/40">
+                                    <td class="sticky left-0 border-b bg-card px-4 py-2">
+                                        <code class="text-xs font-medium">{{ $perm->code }}</code>
+                                        <span class="block text-xs text-muted-foreground">{{ $perm->description ?: $perm->action }}</span>
+                                    </td>
+                                    @foreach ($matrixRoles as $r)
+                                        <td class="border-b text-center">
+                                            @if (isset($owned[$r->id][$perm->id]))
+                                                <span class="inline-flex size-6 items-center justify-center rounded-full bg-success-soft text-success" title="{{ $r->name }}: {{ $perm->code }}"><i class="bi bi-check-lg"></i></span>
+                                            @else
+                                                <span class="text-muted-foreground/40">·</span>
+                                            @endif
+                                        </td>
+                                    @endforeach
+                                </tr>
+                            @endforeach
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </x-ui.card>
+    @endif
 
-<style>
-.empty-state {
-    text-align: center;
-    padding: 40px 20px;
-    color: #64748B;
-}
-.empty-state i {
-    font-size: 3rem;
-    margin-bottom: 15px;
-    opacity: 0.5;
-}
-</style>
-
-@endsection
+    @vite('resources/js/pages/rbac/index.js')
+</x-layouts.app>

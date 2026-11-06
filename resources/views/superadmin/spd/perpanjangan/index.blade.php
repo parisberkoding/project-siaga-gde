@@ -1,552 +1,222 @@
-@extends('templates.main')
+@php
+    $rp = fn ($value) => 'Rp ' . number_format((float) $value, 0, ',', '.');
+@endphp
 
-@section('content')
-<div class="pagetitle">
-    <h1>Manajemen Perpanjangan SPD</h1>
-    <nav>
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('superadmin-dashboard') }}">Home</a></li>
-            <li class="breadcrumb-item">SPD</li>
-            <li class="breadcrumb-item active">Perpanjangan</li>
-        </ol>
-    </nav>
-</div>
+<x-layouts.app title="Persetujuan Perpanjangan" :breadcrumbs="['Persetujuan Perpanjangan' => null]">
+    <x-ui.page-header kicker="Admin SPD" title="Persetujuan Perpanjangan SPD" description="Setujui pengajuan perpanjangan, lalu checklist setelah surat perpanjangan dicetak." />
 
-<section class="section dashboard">
-    {{-- Alert Messages --}}
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-circle me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    {{-- Stats Cards --}}
-    <div class="row mb-4">
-        <div class="col-xxl-3 col-md-6">
-            <div class="card info-card warning-card">
-                <div class="card-body">
-                    <h5 class="card-title">Perlu Approval</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-hourglass-split"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ $stats['pending'] }}</h6>
-                            <span class="text-muted small pt-2">Menunggu persetujuan</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xxl-3 col-md-6">
-            <div class="card info-card sales-card">
-                <div class="card-body">
-                    <h5 class="card-title">Perlu Checklist</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-check2-square"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ $stats['acknowledged'] }}</h6>
-                            <span class="text-muted small pt-2">Perlu acknowledge</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xxl-3 col-md-6">
-            <div class="card info-card revenue-card">
-                <div class="card-body">
-                    <h5 class="card-title">Selesai</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-check-circle"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ $stats['done'] }}</h6>
-                            <span class="text-muted small pt-2">Proses selesai</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xxl-3 col-md-6">
-            <div class="card info-card danger-card">
-                <div class="card-body">
-                    <h5 class="card-title">Ditolak</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-x-circle"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ $stats['rejected'] }}</h6>
-                            <span class="text-muted small pt-2">Permohonan ditolak</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <x-ui.stat-card label="Perlu Approval" :value="$stats['pending']" icon="bi bi-hourglass-split" tone="warning" hint="Menunggu persetujuan" />
+        <x-ui.stat-card label="Perlu Checklist" :value="$stats['acknowledged']" icon="bi bi-check2-square" hint="Perlu acknowledge" />
+        <x-ui.stat-card label="Selesai" :value="$stats['done']" icon="bi bi-check-circle" tone="success" hint="Proses selesai" />
+        <x-ui.stat-card label="Ditolak" :value="$stats['rejected']" icon="bi bi-x-circle" tone="danger" hint="Permohonan ditolak" />
     </div>
 
-    {{-- Main Card with Tabs --}}
-    <div class="card">
-        <div class="card-body">
-            <h5 class="card-title">
-                <i class="bi bi-clock-history"></i> Daftar Pengajuan Perpanjangan
-            </h5>
+    <x-ui.tabs default="pending">
+        <x-ui.tabs-list>
+            <x-ui.tabs-trigger value="pending">Perlu Approval
+                @if ($stats['pending'] > 0)<x-ui.badge variant="warning" class="rounded-full">{{ $stats['pending'] }}</x-ui.badge>@endif
+            </x-ui.tabs-trigger>
+            <x-ui.tabs-trigger value="acknowledge">Perlu Checklist
+                @if ($stats['need_acknowledge'] > 0)<x-ui.badge variant="info" class="rounded-full">{{ $stats['need_acknowledge'] }}</x-ui.badge>@endif
+            </x-ui.tabs-trigger>
+            <x-ui.tabs-trigger value="done">Selesai</x-ui.tabs-trigger>
+            <x-ui.tabs-trigger value="rejected">Ditolak</x-ui.tabs-trigger>
+        </x-ui.tabs-list>
 
-            {{-- Tabs --}}
-            <ul class="nav nav-tabs nav-tabs-bordered" id="extTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active position-relative" id="pending-tab" data-bs-toggle="tab"
-                            data-bs-target="#pending" type="button" role="tab">
-                        Perlu Approval
-                        @if($stats['pending'] > 0)
-                            <span class="badge bg-warning text-dark ms-1">{{ $stats['pending'] }}</span>
-                        @endif
-                    </button>
-                </li>
-
-
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link position-relative" id="acknowledge-tab" data-bs-toggle="tab"
-                            data-bs-target="#acknowledge" type="button" role="tab">
-                        Perlu Checklist
-                        @if($stats['need_acknowledge'] > 0)
-                            <span class="badge bg-info ms-1">{{ $stats['need_acknowledge'] }}</span>
-                        @endif
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="done-tab" data-bs-toggle="tab"
-                            data-bs-target="#done" type="button" role="tab">
-                        Selesai
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="rejected-tab" data-bs-toggle="tab"
-                            data-bs-target="#rejected" type="button" role="tab">
-                        Ditolak
-                    </button>
-                </li>
-            </ul>
-
-            {{-- Tab Content --}}
-            <div class="tab-content pt-3" id="extTabsContent">
-                {{-- Pending Tab --}}
-                <div class="tab-pane fade show active" id="pending" role="tabpanel">
-                    @if($ext_pending->isEmpty())
-                        <div class="text-center py-5">
-                            <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
-                            <p class="text-muted mt-3 mb-0">Tidak ada perpanjangan yang perlu diapprove</p>
-                        </div>
-                    @else
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>No. Surat Original</th>
-                                        <th>Driver</th>
-                                        <th>Tujuan</th>
-                                        <th>Perpanjangan</th>
-                                        <th>Durasi</th>
-                                        <th class="text-center">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($ext_pending as $ext)
-                                        <tr>
-                                            <td>
-                                                <span class="fw-semibold">{{ $ext->originalSurat->nomor_surat }}</span>
-                                            </td>
-                                            <td>
-                                                {{ $ext->originalSurat->pengemudi_nama }}
-                                                <br><small class="text-muted">{{ $ext->originalSurat->user->email ?? '' }}</small>
-                                            </td>
-                                            <td>{{ Str::limit($ext->originalSurat->tempat_tujuan, 25) }}</td>
-                                            <td>
-                                                <small class="text-muted">Dari:</small> {{ $ext->tanggal_kembali_original->translatedFormat('d M Y') }}<br>
-                                                <small class="text-success">Ke:</small> <strong>{{ $ext->tanggal_kembali_baru->translatedFormat('d M Y') }}</strong>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-info">+{{ $ext->durasi_tambahan_hari }} hari</span>
-                                                <br>
-                                                @if((float) $ext->budget_tambahan > 0)
-                                                    <small class="text-success">Dana: Rp {{ number_format($ext->budget_tambahan, 0, ',', '.') }}</small>
-                                                @else
-                                                    <small class="text-muted">Dana: diinput Admin GA</small>
-                                                @endif
-                                            </td>
-                                            <td class="text-center">
-                                                <div class="btn-group">
-                                                    <button type="button" class="btn btn-sm btn-success btn-ext-approve"
-                                                            data-id="{{ $ext->id }}"
-                                                            data-nomor="{{ $ext->originalSurat->nomor_surat }}"
-                                                            data-driver="{{ $ext->originalSurat->pengemudi_nama }}"
-                                                            data-durasi="{{ $ext->durasi_tambahan_hari }}"
-                                                            title="Setujui">
-                                                        <i class="bi bi-check-lg"></i>
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-danger btn-ext-reject"
-                                                            data-id="{{ $ext->id }}"
-                                                            data-nomor="{{ $ext->originalSurat->nomor_surat }}"
-                                                            data-driver="{{ $ext->originalSurat->pengemudi_nama }}"
-                                                            title="Tolak">
-                                                        <i class="bi bi-x-lg"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @endif
+        <x-ui.tabs-content value="pending">
+            @if ($ext_pending->isEmpty())
+                <x-ui.empty-state icon="bi bi-check2-all" title="Tidak ada perpanjangan yang perlu disetujui" description="Semua pengajuan perpanjangan sudah diproses." class="bg-card" />
+            @else
+                <div class="grid gap-4 xl:grid-cols-2">
+                    @foreach ($ext_pending->sortBy('created_at') as $ext)
+                        @php
+                            $orig = $ext->originalSurat;
+                            $info = ['nomor' => $orig->nomor_surat, 'driver' => 'Driver: ' . $orig->pengemudi_nama, 'durasi' => 'Tambahan: +' . $ext->durasi_tambahan_hari . ' hari'];
+                        @endphp
+                        <x-ui.queue-card :name="$orig->pengemudi_nama" :subtitle="($ext->nomor_surat_extension ?? $ext->extensionSurat?->nomor_surat ?? '-') . ' · dari ' . $orig->nomor_surat" :since="$ext->created_at" :note="$ext->alasan_perpanjangan"
+                            figure-label="Tambahan" :figure="'+' . $ext->durasi_tambahan_hari . ' hari'" :figure-hint="(float) $ext->budget_tambahan > 0 ? 'Dana: ' . $rp($ext->budget_tambahan) : 'Dana: diinput Admin GA'">
+                            <p class="flex min-w-0 items-center gap-2">
+                                <i class="bi bi-geo-alt text-muted-foreground"></i>
+                                <span class="truncate font-semibold" title="{{ $orig->tempat_tujuan }}">{{ $orig->tempat_tujuan }}</span>
+                            </p>
+                            <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
+                                <i class="bi bi-calendar3"></i> Kembali
+                                <span class="line-through decoration-muted-foreground/60">{{ $ext->tanggal_kembali_original->translatedFormat('d M Y') }}</span>
+                                <span>menjadi</span>
+                                <span class="font-semibold text-foreground">{{ $ext->tanggal_kembali_baru->translatedFormat('d M Y') }}</span>
+                            </p>
+                            <x-slot:actions>
+                                <x-ui.button variant="ghost" size="sm" :href="route('perpanjangan.superadmin.show', $ext)"><i class="bi bi-eye"></i> Detail</x-ui.button>
+                                <x-ui.button variant="outline" size="sm" class="text-destructive hover:bg-destructive-soft hover:text-destructive"
+                                    data-action-dialog="modalReject" :data-url="route('perpanjangan.superadmin.reject', $ext)" :data-info="json_encode($info)">
+                                    <i class="bi bi-x-circle"></i> Tolak
+                                </x-ui.button>
+                                <x-ui.button variant="success" size="sm" data-action-dialog="modalApprove" :data-url="route('perpanjangan.superadmin.approve', $ext)" :data-info="json_encode($info)">
+                                    <i class="bi bi-check-circle"></i> Setujui
+                                </x-ui.button>
+                            </x-slot:actions>
+                        </x-ui.queue-card>
+                    @endforeach
                 </div>
+            @endif
+        </x-ui.tabs-content>
 
-                {{-- Need Acknowledge Tab --}}
-                <div class="tab-pane fade" id="acknowledge" role="tabpanel">
-                    @if($ext_need_acknowledge->isEmpty())
-                        <div class="text-center py-5">
-                            <p class="text-muted mb-0">Tidak ada perpanjangan yang perlu di-checklist</p>
-                        </div>
+        <x-ui.tabs-content value="acknowledge">
+            <x-ui.card class="py-4">
+                <x-ui.card-content class="px-4">
+                    @if ($ext_need_acknowledge->isEmpty())
+                        <x-ui.empty-state icon="bi bi-inbox" title="Tidak ada perpanjangan yang perlu di-checklist" />
                     @else
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead class="table-light">
+                        <x-ui.table :datatable="['perPage' => 10]">
+                            <thead>
+                                <tr><th>No. Surat Perpanjangan</th><th>Driver</th><th>Perpanjangan</th><th>Disetujui</th><th class="w-24 text-center">Aksi</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($ext_need_acknowledge as $ext)
+                                    @php
+                                        $info = ['nomor' => $ext->nomor_surat_extension, 'driver' => 'Driver: ' . $ext->originalSurat->pengemudi_nama, 'durasi' => 'Disetujui: +' . $ext->durasi_tambahan_hari . ' hari'];
+                                    @endphp
                                     <tr>
-                                        <th>No. Surat Perpanjangan</th>
-                                        <th>Driver</th>
-                                        <th>Perpanjangan</th>
-                                        <th>Disetujui</th>
-                                        <th class="text-center">Aksi</th>
+                                        <td>
+                                            <span class="font-medium">{{ $ext->nomor_surat_extension }}</span>
+                                            <span class="block text-xs text-muted-foreground">Dari {{ $ext->originalSurat->nomor_surat }}</span>
+                                        </td>
+                                        <td>{{ $ext->originalSurat->pengemudi_nama }}</td>
+                                        <td>
+                                            <x-ui.badge variant="info">+{{ $ext->durasi_tambahan_hari }} hari</x-ui.badge>
+                                            <span class="block text-xs text-muted-foreground">s/d {{ $ext->tanggal_kembali_baru->translatedFormat('d M Y') }}</span>
+                                        </td>
+                                        <td>
+                                            {{ $ext->approver->nama_lengkap ?? $ext->approver->name ?? '-' }}
+                                            <span class="block text-xs text-muted-foreground">{{ $ext->approved_at->translatedFormat('d M Y H:i') }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <x-ui.button size="sm" data-action-dialog="modalAcknowledge" :data-url="route('perpanjangan.superadmin.acknowledge', $ext)" :data-info="json_encode($info)">
+                                                <i class="bi bi-check2-square"></i> Checklist
+                                            </x-ui.button>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($ext_need_acknowledge as $ext)
-                                        <tr>
-                                            <td>
-                                                <span class="fw-semibold">{{ $ext->nomor_surat_extension }}</span>
-                                                <br><small class="text-muted">Dari: {{ $ext->originalSurat->nomor_surat }}</small>
-                                            </td>
-                                            <td>{{ $ext->originalSurat->pengemudi_nama }}</td>
-                                            <td>
-                                                <span class="badge bg-info">+{{ $ext->durasi_tambahan_hari }} hari</span>
-                                                <br><small>s/d {{ $ext->tanggal_kembali_baru->translatedFormat('d M Y') }}</small>
-                                            </td>
-                                            <td>
-                                                {{ $ext->approver->nama_lengkap ?? $ext->approver->name ?? '-' }}
-                                                <br><small class="text-muted">{{ $ext->approved_at->translatedFormat('d M Y H:i') }}</small>
-                                            </td>
-                                            <td class="text-center">
-                                                <button type="button" class="btn btn-sm btn-info btn-ext-acknowledge"
-                                                        data-id="{{ $ext->id }}"
-                                                        data-nomor="{{ $ext->nomor_surat_extension }}"
-                                                        data-driver="{{ $ext->originalSurat->pengemudi_nama }}"
-                                                        data-durasi="{{ $ext->durasi_tambahan_hari }}">
-                                                    <i class="bi bi-check2-square"></i> Checklist
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+                                @endforeach
+                            </tbody>
+                        </x-ui.table>
                     @endif
-                </div>
+                </x-ui.card-content>
+            </x-ui.card>
+        </x-ui.tabs-content>
 
-                {{-- Done Tab --}}
-                <div class="tab-pane fade" id="done" role="tabpanel">
-                    @if($ext_acknowledged->isEmpty())
-                        <div class="text-center py-5">
-                            <p class="text-muted mb-0">Belum ada perpanjangan yang selesai</p>
-                        </div>
+        <x-ui.tabs-content value="done">
+            <x-ui.card class="py-4">
+                <x-ui.card-content class="px-4">
+                    @if ($ext_acknowledged->isEmpty())
+                        <x-ui.empty-state icon="bi bi-inbox" title="Belum ada perpanjangan yang selesai" />
                     @else
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead class="table-light">
+                        <x-ui.table :datatable="['perPage' => 10]">
+                            <thead>
+                                <tr><th>No. Surat Perpanjangan</th><th>Driver</th><th>Perpanjangan</th><th>Checklist Oleh</th><th class="w-24 text-center">Aksi</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($ext_acknowledged as $ext)
                                     <tr>
-                                        <th>No. Surat Perpanjangan</th>
-                                        <th>Driver</th>
-                                        <th>Perpanjangan</th>
-                                        <th>Checklist Oleh</th>
-                                        <th class="text-center">Aksi</th>
+                                        <td class="font-medium">{{ $ext->nomor_surat_extension }}</td>
+                                        <td>{{ $ext->originalSurat->pengemudi_nama }}</td>
+                                        <td><x-ui.badge variant="success">+{{ $ext->durasi_tambahan_hari }} hari</x-ui.badge></td>
+                                        <td>
+                                            {{ $ext->acknowledger->nama_lengkap ?? $ext->acknowledger->name ?? '-' }}
+                                            <span class="block text-xs text-muted-foreground">{{ $ext->acknowledged_at->translatedFormat('d M Y H:i') }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            @if ($ext->extensionSurat)
+                                                <x-ui.button variant="ghost" size="icon-sm" :href="route('surat.superadmin.show', $ext->extensionSurat)" title="Lihat surat perpanjangan" aria-label="Lihat surat"><i class="bi bi-eye"></i></x-ui.button>
+                                            @else
+                                                <span class="text-muted-foreground" title="Surat perpanjangan tidak ditemukan">-</span>
+                                            @endif
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($ext_acknowledged as $ext)
-                                        <tr>
-                                            <td>
-                                                <span class="fw-semibold">{{ $ext->nomor_surat_extension }}</span>
-                                            </td>
-                                            <td>{{ $ext->originalSurat->pengemudi_nama }}</td>
-                                            <td>
-                                                <span class="badge bg-success">+{{ $ext->durasi_tambahan_hari }} hari</span>
-                                            </td>
-                                            <td>
-                                                {{ $ext->acknowledger->nama_lengkap ?? $ext->acknowledger->name ?? '-' }}
-                                                <br><small class="text-muted">{{ $ext->acknowledged_at->translatedFormat('d M Y H:i') }}</small>
-                                            </td>
-                                            <td class="text-center">
-                                                @if($ext->extensionSurat)
-                                                    <a href="{{ route('surat.superadmin.show', $ext->extensionSurat) }}"
-                                                       class="btn btn-sm btn-outline-primary">
-                                                        <i class="bi bi-eye"></i>
-                                                    </a>
-                                                @else
-                                                    <span class="text-muted" title="Surat perpanjangan tidak ditemukan">-</span>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+                                @endforeach
+                            </tbody>
+                        </x-ui.table>
                     @endif
-                </div>
+                </x-ui.card-content>
+            </x-ui.card>
+        </x-ui.tabs-content>
 
-                {{-- Rejected Tab --}}
-                <div class="tab-pane fade" id="rejected" role="tabpanel">
-                    @if($ext_rejected->isEmpty())
-                        <div class="text-center py-5">
-                            <p class="text-muted mb-0">Tidak ada perpanjangan yang ditolak</p>
-                        </div>
+        <x-ui.tabs-content value="rejected">
+            <x-ui.card class="py-4">
+                <x-ui.card-content class="px-4">
+                    @if ($ext_rejected->isEmpty())
+                        <x-ui.empty-state icon="bi bi-inbox" title="Tidak ada perpanjangan yang ditolak" />
                     @else
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead class="table-light">
+                        <x-ui.table :datatable="['perPage' => 10]">
+                            <thead>
+                                <tr><th>No. Surat Original</th><th>Driver</th><th>Ditolak Oleh</th><th>Alasan</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($ext_rejected as $ext)
                                     <tr>
-                                        <th>No. Surat Original</th>
-                                        <th>Driver</th>
-                                        <th>Ditolak Oleh</th>
-                                        <th>Alasan</th>
+                                        <td class="font-medium">{{ $ext->originalSurat->nomor_surat }}</td>
+                                        <td>{{ $ext->originalSurat->pengemudi_nama }}</td>
+                                        <td>
+                                            {{ $ext->rejector->nama_lengkap ?? $ext->rejector->name ?? '-' }}
+                                            <span class="block text-xs text-muted-foreground">{{ $ext->rejected_at->translatedFormat('d M Y H:i') }}</span>
+                                        </td>
+                                        <td class="max-w-72 truncate text-destructive" title="{{ $ext->rejection_reason }}">{{ $ext->rejection_reason }}</td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($ext_rejected as $ext)
-                                        <tr>
-                                            <td>{{ $ext->originalSurat->nomor_surat }}</td>
-                                            <td>{{ $ext->originalSurat->pengemudi_nama }}</td>
-                                            <td>
-                                                {{ $ext->rejector->nama_lengkap ?? $ext->rejector->name ?? '-' }}
-                                                <br><small class="text-muted">{{ $ext->rejected_at->translatedFormat('d M Y H:i') }}</small>
-                                            </td>
-                                            <td>{{ Str::limit($ext->rejection_reason, 50) }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+                                @endforeach
+                            </tbody>
+                        </x-ui.table>
                     @endif
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
+                </x-ui.card-content>
+            </x-ui.card>
+        </x-ui.tabs-content>
+    </x-ui.tabs>
 
-{{-- Modal Approve --}}
-<div class="modal fade" id="modalApprove" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form id="formApprove" method="POST">
+    {{-- Dialog aksi: action form & ringkasan diisi oleh resources/js/ui/action-dialog.js --}}
+    @foreach ([
+        'modalApprove' => ['title' => 'Setujui Perpanjangan', 'variant' => 'success', 'submit' => 'Ya, Setujui', 'icon' => 'bi-check-lg', 'note' => 'catatan'],
+        'modalReject' => ['title' => 'Tolak Perpanjangan', 'variant' => 'destructive', 'submit' => 'Ya, Tolak', 'icon' => 'bi-x-lg', 'note' => 'alasan'],
+        'modalAcknowledge' => ['title' => 'Checklist Perpanjangan', 'variant' => 'default', 'submit' => 'Checklist Selesai', 'icon' => 'bi-check2-square', 'note' => 'catatan'],
+    ] as $id => $cfg)
+        <x-ui.dialog :id="$id" :title="$cfg['title']" :description="$id === 'modalAcknowledge' ? 'Konfirmasi bahwa perpanjangan ini telah diproses (surat sudah dicetak).' : null">
+            <form method="POST" data-loading class="grid gap-4">
                 @csrf
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title"><i class="bi bi-check-circle"></i> Setujui Perpanjangan</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <div class="grid gap-0.5 rounded-lg border bg-muted/40 p-3 text-sm">
+                    <p class="font-medium" data-info="nomor">-</p>
+                    <p class="text-muted-foreground" data-info="driver">-</p>
+                    @unless ($id === 'modalReject')<p class="text-primary" data-info="durasi">-</p>@endunless
                 </div>
-                <div class="modal-body">
-                    <p>Anda yakin ingin menyetujui perpanjangan ini?</p>
-                    <div class="alert alert-light border">
-                        <strong id="approveNomor">-</strong><br>
-                        <small class="text-muted" id="approveDriver">-</small><br>
-                        <small class="text-info" id="approveDurasi">-</small>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Catatan (Opsional)</label>
-                        <textarea name="catatan" class="form-control" rows="2" placeholder="Catatan tambahan..."></textarea>
-                    </div>
-
-                    {{-- Dana perpanjangan: Admin GA menentukan kapan & berapa.
-                         Baris ini akan tampil sebagai "Perpanjangan" pada
-                         Pemberian Dana surat perpanjangan. --}}
-                    <div class="border rounded p-3 bg-light">
-                        <div class="fw-semibold mb-1">
-                            <i class="bi bi-cash-stack text-success"></i> Pemberian Dana Perpanjangan
-                            <span class="text-muted fw-normal">(opsional)</span>
+                @if ($cfg['note'] === 'alasan')
+                    <x-ui.field label="Alasan Penolakan" required hint="Minimal 10 karakter">
+                        <x-ui.textarea name="alasan" rows="3" required minlength="10" placeholder="Jelaskan alasan penolakan" />
+                    </x-ui.field>
+                @else
+                    <x-ui.field label="Catatan (opsional)">
+                        <x-ui.textarea name="catatan" rows="2" placeholder="Catatan tambahan" />
+                    </x-ui.field>
+                @endif
+                @if ($id === 'modalApprove')
+                    {{-- Dana perpanjangan: nominal tidak diminta dari driver. Baris ini tampil sebagai
+                         "Perpanjangan" pada Pemberian Dana surat perpanjangan; bisa ditambah lagi nanti. --}}
+                    <fieldset class="grid gap-3 rounded-lg border bg-muted/40 p-3">
+                        <legend class="px-1 text-sm font-semibold"><i class="bi bi-cash-stack text-success"></i> Pemberian Dana Perpanjangan <span class="font-normal text-muted-foreground">(opsional)</span></legend>
+                        <p class="text-xs text-muted-foreground">Isi bila dana tambahan diberikan bersamaan dengan persetujuan. Dapat ditambahkan lagi dari detail surat perpanjangan.</p>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <x-ui.field label="Tanggal diberikan"><x-ui.input type="date" name="dana_tanggal" :value="now()->toDateString()" /></x-ui.field>
+                            <x-ui.field label="Nominal (Rp)"><x-ui.input type="number" name="dana_nominal" min="0" step="1000" placeholder="0" /></x-ui.field>
+                            <x-ui.field label="Bentuk">
+                                <x-ui.select name="dana_bentuk"><option value="Tunai">Tunai</option><option value="Transfer">Transfer</option></x-ui.select>
+                            </x-ui.field>
+                            <x-ui.field label="No. referensi bank" hint="Untuk transfer"><x-ui.input name="dana_bank_reference" maxlength="255" /></x-ui.field>
+                            <x-ui.field label="Rekening tujuan" hint="Untuk transfer" class="sm:col-span-2"><x-ui.input name="dana_rek_tujuan" maxlength="255" /></x-ui.field>
+                            <x-ui.field label="Catatan dana" class="sm:col-span-2"><x-ui.input name="dana_catatan" maxlength="255" placeholder="Contoh: tambahan biaya akomodasi perpanjangan" /></x-ui.field>
                         </div>
-                        <p class="small text-muted mb-2">
-                            Nominal tidak diminta dari driver. Isi di sini bila dana tambahan
-                            diberikan bersamaan dengan persetujuan; dapat ditambahkan lagi nanti
-                            dari detail surat perpanjangan.
-                        </p>
-                        <div class="row g-2">
-                            <div class="col-6">
-                                <label class="form-label small mb-1">Tanggal Diberikan</label>
-                                <input type="date" name="dana_tanggal" class="form-control form-control-sm"
-                                       value="{{ now()->toDateString() }}">
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label small mb-1">Nominal (Rp)</label>
-                                <input type="number" name="dana_nominal" class="form-control form-control-sm" min="0" step="1000" placeholder="0">
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label small mb-1">Bentuk</label>
-                                <select name="dana_bentuk" class="form-select form-select-sm" id="danaBentukApprove">
-                                    <option value="Tunai">Tunai</option>
-                                    <option value="Transfer">Transfer</option>
-                                </select>
-                            </div>
-                            <div class="col-6 dana-transfer-field">
-                                <label class="form-label small mb-1">No. Referensi Bank</label>
-                                <input type="text" name="dana_bank_reference" class="form-control form-control-sm" maxlength="255">
-                            </div>
-                            <div class="col-12 dana-transfer-field">
-                                <label class="form-label small mb-1">Rekening Tujuan</label>
-                                <input type="text" name="dana_rek_tujuan" class="form-control form-control-sm" maxlength="255">
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label small mb-1">Catatan</label>
-                                <input type="text" name="dana_catatan" class="form-control form-control-sm" maxlength="255" placeholder="cth: tambahan biaya akomodasi perpanjangan">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-check-lg"></i> Ya, Setujui
-                    </button>
+                    </fieldset>
+                @endif
+                <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <x-ui.button variant="outline" data-dialog-close>Batal</x-ui.button>
+                    <x-ui.button type="submit" :variant="$cfg['variant']"><i class="bi {{ $cfg['icon'] }}"></i> {{ $cfg['submit'] }}</x-ui.button>
                 </div>
             </form>
-        </div>
-    </div>
-</div>
-
-{{-- Modal Reject --}}
-<div class="modal fade" id="modalReject" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form id="formReject" method="POST">
-                @csrf
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title"><i class="bi bi-x-circle"></i> Tolak Perpanjangan</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Anda yakin ingin menolak perpanjangan ini?</p>
-                    <div class="alert alert-light border">
-                        <strong id="rejectNomor">-</strong><br>
-                        <small class="text-muted" id="rejectDriver">-</small>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Alasan Penolakan <span class="text-danger">*</span></label>
-                        <textarea name="alasan" class="form-control" rows="3" required minlength="10" placeholder="Jelaskan alasan penolakan..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-x-lg"></i> Ya, Tolak
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-{{-- Modal Acknowledge --}}
-<div class="modal fade" id="modalAcknowledge" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form id="formAcknowledge" method="POST">
-                @csrf
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title"><i class="bi bi-check2-square"></i> Checklist Perpanjangan</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Konfirmasi bahwa perpanjangan ini telah diproses (surat sudah dicetak)?</p>
-                    <div class="alert alert-light border">
-                        <strong id="ackNomor">-</strong><br>
-                        <small class="text-muted" id="ackDriver">-</small><br>
-                        <small class="text-success" id="ackDurasi">-</small>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Catatan (Opsional)</label>
-                        <textarea name="catatan" class="form-control" rows="2" placeholder="Catatan untuk dokumentasi..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-info">
-                        <i class="bi bi-check2-square"></i> Checklist Selesai
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle Approve Modal
-    document.querySelectorAll('.btn-ext-approve').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const id = this.dataset.id;
-            document.getElementById('approveNomor').textContent = this.dataset.nomor;
-            document.getElementById('approveDriver').textContent = 'Driver: ' + this.dataset.driver;
-            document.getElementById('approveDurasi').textContent = 'Tambahan: +' + this.dataset.durasi + ' hari';
-            document.getElementById('formApprove').action = `{{ url('admin/spd/perpanjangan') }}/${id}/approve`;
-            new bootstrap.Modal(document.getElementById('modalApprove')).show();
-        });
-    });
-
-    // Handle Reject Modal
-    document.querySelectorAll('.btn-ext-reject').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const id = this.dataset.id;
-            document.getElementById('rejectNomor').textContent = this.dataset.nomor;
-            document.getElementById('rejectDriver').textContent = 'Driver: ' + this.dataset.driver;
-            document.getElementById('formReject').action = `{{ url('admin/spd/perpanjangan') }}/${id}/reject`;
-            new bootstrap.Modal(document.getElementById('modalReject')).show();
-        });
-    });
-
-    // Handle Acknowledge Modal
-    document.querySelectorAll('.btn-ext-acknowledge').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const id = this.dataset.id;
-            document.getElementById('ackNomor').textContent = this.dataset.nomor;
-            document.getElementById('ackDriver').textContent = 'Driver: ' + this.dataset.driver;
-            document.getElementById('ackDurasi').textContent = 'Disetujui: +' + this.dataset.durasi + ' hari';
-            document.getElementById('formAcknowledge').action = `{{ url('admin/spd/perpanjangan') }}/${id}/acknowledge`;
-            new bootstrap.Modal(document.getElementById('modalAcknowledge')).show();
-        });
-    });
-
-    // Dana perpanjangan: field bank hanya relevan untuk Transfer.
-    const danaBentuk = document.getElementById('danaBentukApprove');
-    function syncDanaTransferFields() {
-        const isTransfer = danaBentuk && danaBentuk.value === 'Transfer';
-        document.querySelectorAll('.dana-transfer-field').forEach(function (el) {
-            el.classList.toggle('d-none', !isTransfer);
-        });
-    }
-    if (danaBentuk) {
-        danaBentuk.addEventListener('change', syncDanaTransferFields);
-        syncDanaTransferFields();
-    }
-});
-</script>
-@endsection
+        </x-ui.dialog>
+    @endforeach
+</x-layouts.app>

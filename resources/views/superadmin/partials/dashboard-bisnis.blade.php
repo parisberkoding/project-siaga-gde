@@ -1,1271 +1,343 @@
-@extends('templates.main')
-
-@section('title', $title)
-
-@section('content')
 @php
-    // Jangan pernah lompat ke route legacy di luar modul saat periode/filter
-    // berubah — pakai route dashboard yang sedang dibuka.
-    $dashboardUrl = request()->routeIs('modules.dashboard.bbm')
-        ? route('modules.dashboard.bbm')
-        : route('superadmin.dashboard.bisnis');
+    // Filter & periode lewat query string. Catatan: controller hanya membatasi angka ringkasan dengan
+    // start_date/end_date ("period" hanya mengatur pengelompokan grafik), jadi tombol periode di sini
+    // mengirim rentang tanggal supaya angka sesuai label.
+    $base = request()->except(['page']);
+    $urlWith = function (array $params) use ($base) {
+        $query = http_build_query(array_filter(array_merge($base, $params), fn ($value) => filled($value)));
 
-    $periodUrl = function (string $period) use ($dashboardUrl) {
-        // Pertahankan filter aktif, tetapi buang parameter pagination agar
-        // tidak mendarat di halaman kosong setelah periode berganti.
-        $query = collect(request()->query())
-            ->except(['page', 'driver_page', 'pivot_page', 'vehicle_page', 'trip_page'])
-            ->all();
-        $query['period'] = $period;
-
-        return $dashboardUrl.'?'.http_build_query($query);
+        return url()->current() . ($query ? '?' . $query : '');
     };
+
+    $today = now()->toDateString();
+    $presets = [
+        'day' => ['Hari ini', $today, $today],
+        'month' => ['Bulan ini', now()->startOfMonth()->toDateString(), $today],
+        'year' => ['Tahun ini', now()->startOfYear()->toDateString(), $today],
+    ];
+    $start = request('start_date');
+    $end = request('end_date');
+    $activePreset = (! $start && ! $end) ? 'all'
+        : (collect($presets)->search(fn ($preset) => $preset[1] === $start && $preset[2] === $end) ?: 'custom');
+    $rangeLabel = ($start && $end)
+        ? \Illuminate\Support\Carbon::parse($start)->translatedFormat('d M Y') . ' – ' . \Illuminate\Support\Carbon::parse($end)->translatedFormat('d M Y')
+        : 'Semua waktu';
+
+    $filterKeys = ['status', 'gasoline_type', 'vehicle_id', 'requester_id', 'nominal_range'];
+    $statusLabels = ['pending' => 'Menunggu', 'approved' => 'Disetujui', 'completed' => 'Selesai', 'rejected' => 'Ditolak'];
+    $nominalLabels = ['0-100000' => 'Di bawah Rp 100.000', '100000-300000' => 'Rp 100.000 - 300.000', '300000-500000' => 'Rp 300.000 - 500.000', '500000+' => 'Di atas Rp 500.000'];
+    $gasolineTypes = ['Pertamax', 'Pertamina Dex', 'Pertalite'];
+    $vehicleLabel = fn ($id) => ($v = collect($vehicles ?? [])->firstWhere('id', $id)) ? $v->consumerial_code . ' - ' . $v->consumerial_name : $id;
+    $chips = collect([
+        'status' => ['Status', fn ($v) => $statusLabels[$v] ?? $v],
+        'gasoline_type' => ['BBM', fn ($v) => $v],
+        'vehicle_id' => ['Kendaraan', $vehicleLabel],
+        'requester_id' => ['Driver', fn ($v) => collect($drivers ?? [])->firstWhere('id', $v)?->nama_lengkap ?? $v],
+        'nominal_range' => ['Nominal', fn ($v) => $nominalLabels[$v] ?? $v],
+    ])->filter(fn ($cfg, $key) => request()->filled($key))
+      ->map(fn ($cfg, $key) => ['label' => $cfg[0], 'value' => ($cfg[1])(request($key)), 'url' => $urlWith([$key => null])]);
+    $segment = 'inline-flex items-center gap-1.5 justify-center whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium text-muted-foreground sm:py-1.5 transition-colors hover:text-foreground aria-[current=true]:bg-card aria-[current=true]:text-foreground aria-[current=true]:shadow-sm';
+    // Opsi Select filter (x-ui.select-menu).
+    $opts = fn ($all, $pairs) => [['value' => '', 'label' => $all], ...collect($pairs)->map(fn ($label, $value) => ['value' => (string) $value, 'label' => $label])->values()->all()];
+    $filterSelects = [
+        ['status', 'Status', $opts('Semua status', $statusLabels), false],
+        ['gasoline_type', 'Jenis BBM', $opts('Semua jenis', array_combine($gasolineTypes, $gasolineTypes)), false],
+        ['vehicle_id', 'Kendaraan', $opts('Semua kendaraan', collect($vehicles ?? [])->mapWithKeys(fn ($v) => [$v->id => $v->consumerial_code . ' - ' . $v->consumerial_name])), true],
+        ['requester_id', 'Driver / pemohon', $opts('Semua driver', collect($drivers ?? [])->mapWithKeys(fn ($d) => [$d->id => $d->nama_lengkap])), false],
+        ['nominal_range', 'Nominal', $opts('Semua nominal', $nominalLabels), false],
+    ];
+
+    $gasolineData = $stats['gasolineExpenseDistribution'] ?? [];
+    $gasolineTotal = array_sum($gasolineData);
+    // Spasi tak terputus: "Rp" tidak terpisah dari angkanya saat kartu sempit.
+    $rupiah = fn ($value) => "Rp\u{00A0}" . number_format($value ?? 0, 0, ',', '.');
+    $compact = fn ($value) => $value >= 1_000_000 ? "Rp " . number_format($value / 1_000_000, 1, ',', '.') . ' jt' : $rupiah($value);
+
+    // Grafik: warna tetap per jenis BBM; ringkasan tren (total & titik tertinggi) dari data per periode.
+    $gasolineColors = ['Pertamax' => '#0b50a1', 'Pertalite' => '#71a62f', 'Pertamina Dex' => '#ff771d'];
+    $fallbackColors = ['#9747ff', '#4154f1', '#ed1b2f'];
+    $gasolineColor = fn ($type, $index) => $gasolineColors[$type] ?? $fallbackColors[$index % count($fallbackColors)];
+    $chartPeriod = in_array(request('period'), ['day', 'year'], true) ? request('period') : 'month';
+    $periodUnit = ['day' => 'per jam', 'year' => 'per bulan', 'month' => 'per hari'][$chartPeriod];
+    $expense = $stats['expenseOverTime'] ?? [];
+    $expenseTotal = array_sum($expense);
+    $peakKey = $expense ? array_search(max($expense), $expense) : null;
+    $expensePeak = [
+        $peakKey && $chartPeriod === 'month' ? \Illuminate\Support\Carbon::parse($peakKey)->translatedFormat('d M Y') : $peakKey,
+        $expense ? max($expense) : 0,
+    ];
+    $pageData = [
+        'stats' => $stats,
+        'chart' => [
+            'period' => $chartPeriod,
+            'start' => $start,
+            'end' => $end,
+            'colors' => collect(array_keys($gasolineData))->map(fn ($type, $i) => $gasolineColor($type, $i))->all(),
+        ],
+    ];
+    $activeModule = app(\App\Services\ModuleContext::class)->current();
 @endphp
-<style>
-    /* ===== INFO CARDS ===== */
-    .info-card { padding-bottom: 10px; transition: transform 0.25s ease, box-shadow 0.25s ease; }
-    .info-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 24px rgba(13, 44, 114, 0.12) !important;
-    }
-    .info-card h6 {
-        font-size: 28px;
-        color: #093D7D;
-        font-weight: 700;
-        margin: 0;
-        padding: 0;
-    }
-    .card-icon {
-        font-size: 32px;
-        line-height: 0;
-        width: 64px;
-        height: 64px;
-        flex-shrink: 0;
-        flex-grow: 0;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .sales-card .card-icon        { color: #0B50A1; background: #EAF1FA; }
-    .revenue-card .card-icon      { color: #4A7A1C; background: #F2F9E8; }
-    .customers-card .card-icon    { color: #B35B00; background: #ffecdf; }
-    .transactions-card .card-icon { color: #6D28D9; background: #f3e8ff; }
 
-    /* ===== PERIOD DROPDOWN ===== */
-    .period-menu {
-        border-radius: 4px;
-        padding: 10px 0;
-        border: 0;
-        box-shadow: 0 5px 30px 0 rgba(82, 63, 105, 0.2);
-    }
-    .period-menu .dropdown-item {
-        padding: 10px 15px;
-        border-radius: 4px;
-        font-size: 14px;
-    }
-    .period-menu .dropdown-item:hover { background-color: #F4F7FB; }
-
-    /* ===== FILTER PANEL ===== */
-    #advancedFilter .form-control:focus,
-    #advancedFilter .form-select:focus {
-        border-color: #0B50A1;
-        box-shadow: 0 0 0 0.2rem rgba(11, 80, 161, 0.15);
-    }
-
-    /* ===== CHARTS ===== */
-    .chart-card { border-radius: 10px; }
-    .chart-card canvas { max-height: 340px; }
-
-    /* ===== TABLES ===== */
-    .card { border-radius: var(--gde-r-lg); }
-    .card-header { border-radius: 10px 10px 0 0 !important; }
-    .table-hover tbody tr:hover { background-color: rgba(0,123,255,0.05); }
-
-    /* ===== MISC ===== */
-    .section-title {
-        font-size: 15px;
-        font-weight: 700;
-        color: #093D7D;
-        letter-spacing: 0.3px;
-    }
-    .bg-gradient-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-
-    /* ===== MODAL SCROLLABLE ===== */
-    .modal-dialog-scrollable .modal-body { max-height: calc(100vh - 200px); }
-
-    /* ===== PDF LOADING OVERLAY ===== */
-    @keyframes pdfIconPulse {
-        0%, 100% { transform: scale(1); opacity: 1; }
-        50%       { transform: scale(1.08); opacity: 0.85; }
-    }
-</style>
-
-<div class="pagetitle">
-    <h1>{{ $title }}</h1>
-    <nav>
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item">Home</li>
-            <li class="breadcrumb-item active">{{ $title }}</li>
-        </ol>
-    </nav>
-</div><!-- End Page Title -->
-
-<div class="d-flex justify-content-end flex-wrap gap-2 mb-3">
-    @if(Auth::user()->hasPermission('vehicle.report'))
-    <a href="{{ route('superadmin.trip-analysis.index') }}" class="btn btn-outline-secondary shadow-sm">
-        <i class="bi bi-signpost-2 me-2"></i>Trip Analysis
-    </a>
-    @endif
-    @if(Auth::user()->role === 'superadmin')
-    <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#printReportModal">
-        <i class="bi bi-printer-fill me-2"></i>Cetak Laporan Transaksi BBM
-    </button>
-    @endif
-</div>
-
-{{-- ============================================================
-     FILTER PANEL (realtime — auto-submit saat berubah)
-     ============================================================ --}}
-<div class="card border-0 shadow-sm mb-3">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-        <h5 class="mb-0">
-            <i class="bi bi-funnel-fill text-primary me-2"></i>Filter Data Dashboard
-            <span id="filterBadge" class="badge bg-primary ms-2 d-none"></span>
-        </h5>
-        <button class="btn btn-sm btn-outline-secondary" type="button"
-                data-bs-toggle="collapse" data-bs-target="#advancedFilter"
-                aria-expanded="true" aria-controls="advancedFilter">
-            <i class="bi bi-chevron-up me-1"></i> Sembunyikan Filter
-        </button>
-    </div>
-
-    <div class="collapse show" id="advancedFilter">
-        <div class="card-body">
-            <form id="filterForm" method="GET" action="{{ $dashboardUrl }}">
-                <div class="row g-3">
-
-                    <div class="col-md-6 col-lg-3">
-                        <label class="form-label fw-semibold">
-                            <i class="bi bi-calendar-range text-primary"></i> Tanggal Mulai
-                        </label>
-                        <input type="date" class="form-control" name="start_date"
-                               id="filter_start_date" value="{{ request('start_date') }}"
-                               max="{{ date('Y-m-d') }}" onchange="dashboardFilter.submit()">
-                    </div>
-
-                    <div class="col-md-6 col-lg-3">
-                        <label class="form-label fw-semibold">
-                            <i class="bi bi-calendar-check text-success"></i> Tanggal Akhir
-                        </label>
-                        <input type="date" class="form-control" name="end_date"
-                               id="filter_end_date" value="{{ request('end_date') }}"
-                               max="{{ date('Y-m-d') }}" onchange="dashboardFilter.submit()">
-                    </div>
-
-                    <div class="col-md-6 col-lg-3">
-                        <label class="form-label fw-semibold">
-                            <i class="bi bi-flag text-warning"></i> Status Transaksi
-                        </label>
-                        <select class="form-select" name="status" id="filter_status"
-                                onchange="dashboardFilter.submit()">
-                            <option value="">Semua Status</option>
-                            @foreach(['pending', 'approved', 'completed', 'rejected'] as $st)
-                            <option value="{{ $st }}" {{ request('status') == $st ? 'selected' : '' }}>
-                                {{ ucfirst($st) }}
-                            </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="col-md-6 col-lg-3">
-                        <label class="form-label fw-semibold">
-                            <i class="bi bi-fuel-pump text-danger"></i> Jenis BBM
-                        </label>
-                        <select class="form-select" name="gasoline_type" id="filter_gasoline"
-                                onchange="dashboardFilter.submit()">
-                            <option value="">Semua Jenis BBM</option>
-                            @foreach(['Pertamax', 'Pertamina Dex', 'Pertalite'] as $gt)
-                            <option value="{{ $gt }}" {{ request('gasoline_type') == $gt ? 'selected' : '' }}>
-                                {{ $gt }}
-                            </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="col-md-6 col-lg-4">
-                        <label class="form-label fw-semibold">
-                            <i class="bi bi-truck text-info"></i> Kendaraan
-                        </label>
-                        <select class="form-select" name="vehicle_id" id="filter_vehicle"
-                                onchange="dashboardFilter.submit()">
-                            <option value="">Semua Kendaraan</option>
-                            @foreach($vehicles ?? [] as $vehicle)
-                            <option value="{{ $vehicle->id }}"
-                                    {{ request('vehicle_id') == $vehicle->id ? 'selected' : '' }}>
-                                {{ $vehicle->consumerial_code }} - {{ $vehicle->consumerial_name }}
-                            </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="col-md-6 col-lg-4">
-                        <label class="form-label fw-semibold">
-                            <i class="bi bi-person-badge text-secondary"></i> Driver/Pemohon
-                        </label>
-                        <select class="form-select" name="requester_id" id="filter_requester"
-                                onchange="dashboardFilter.submit()">
-                            <option value="">Semua Driver</option>
-                            @foreach($drivers ?? [] as $driver)
-                            <option value="{{ $driver->id }}"
-                                    {{ request('requester_id') == $driver->id ? 'selected' : '' }}>
-                                {{ $driver->nama_lengkap }}
-                            </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="col-md-6 col-lg-4">
-                        <label class="form-label fw-semibold">
-                            <i class="bi bi-cash-stack text-success"></i> Rentang Nominal
-                        </label>
-                        <select class="form-select" name="nominal_range" id="filter_nominal"
-                                onchange="dashboardFilter.submit()">
-                            <option value="">Semua Nominal</option>
-                            <option value="0-100000"      {{ request('nominal_range') == '0-100000'      ? 'selected' : '' }}>&lt; Rp 100.000</option>
-                            <option value="100000-300000" {{ request('nominal_range') == '100000-300000' ? 'selected' : '' }}>Rp 100.000 – Rp 300.000</option>
-                            <option value="300000-500000" {{ request('nominal_range') == '300000-500000' ? 'selected' : '' }}>Rp 300.000 – Rp 500.000</option>
-                            <option value="500000+"       {{ request('nominal_range') == '500000+'       ? 'selected' : '' }}>&gt; Rp 500.000</option>
-                        </select>
-                    </div>
-
-                </div><!-- /.row -->
-
-                <div class="row mt-4">
-                    <div class="col-12 d-flex justify-content-end gap-2 align-items-center">
-                        <span id="filterLoading" class="d-none align-items-center text-muted small">
-                            <span class="spinner-border spinner-border-sm me-2 text-primary" role="status"></span>Memuat data...
-                        </span>
-                        <button type="button" class="btn btn-outline-secondary" onclick="resetFilters()">
-                            <i class="bi bi-arrow-counterclockwise"></i> Reset Filter
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-</div><!-- End Filter Panel -->
-
-{{-- ============================================================
-     RINGKASAN (STAT CARDS)
-     ============================================================ --}}
-<div class="row g-3 mb-4">
-
-    <div class="col-lg-3 col-md-6">
-        <div class="card info-card revenue-card h-100">
-            <div class="card-body">
-                <h5 class="card-title">Total Transaksi
-                    <span>| {{ $stats['periodLabel'] }}</span>
-                </h5>
-                <div class="d-flex align-items-center">
-                    <div class="card-icon rounded-circle">
-                        <i class="bi bi-receipt"></i>
-                    </div>
-                    <div class="ps-3">
-                        <h6>{{ $stats['totalTransactions'] ?? $stats['total'] ?? 0 }}</h6>
-                        <span class="text-muted small pt-2 ps-1">Semua Status</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-3 col-md-6">
-        <div class="card info-card sales-card h-100">
-            <div class="card-body">
-                <h5 class="card-title d-flex justify-content-between align-items-start">
-                    Total Pengeluaran
-                    <span>| {{ $stats['periodLabel'] }}</span>
-                    <a class="text-muted" href="#" data-bs-toggle="dropdown" aria-expanded="false"
-                       title="Ganti periode">
-                        <i class="bi bi-three-dots"></i>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end period-menu">
-                        <li><h6 class="dropdown-header">Periode</h6></li>
-                        <li><a class="dropdown-item" href="{{ $periodUrl('day') }}">Hari Ini</a></li>
-                        <li><a class="dropdown-item" href="{{ $periodUrl('month') }}">Bulan Ini</a></li>
-                        <li><a class="dropdown-item" href="{{ $periodUrl('year') }}">Tahun Ini</a></li>
-                    </ul>
-                </h5>
-                <div class="d-flex align-items-center">
-                    <div class="card-icon rounded-circle">
-                        <i class="bi bi-cash-stack"></i>
-                    </div>
-                    <div class="ps-3">
-                        <h6>Rp {{ number_format($stats['totalExpense'], 0, ',', '.') }}</h6>
-                        <span class="text-muted small pt-2 ps-1">Approved + Completed</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-3 col-md-6">
-        <div class="card info-card customers-card h-100">
-            <div class="card-body">
-                <h5 class="card-title d-flex justify-content-between align-items-start">
-                    Rata-rata Nilai Permohonan
-                    <span>| {{ $stats['periodLabel'] }}</span>
-                    <a class="text-muted" href="#" data-bs-toggle="dropdown" aria-expanded="false"
-                       title="Ganti periode">
-                        <i class="bi bi-three-dots"></i>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end period-menu">
-                        <li><h6 class="dropdown-header">Periode</h6></li>
-                        <li><a class="dropdown-item" href="{{ $periodUrl('day') }}">Hari Ini</a></li>
-                        <li><a class="dropdown-item" href="{{ $periodUrl('month') }}">Bulan Ini</a></li>
-                        <li><a class="dropdown-item" href="{{ $periodUrl('year') }}">Tahun Ini</a></li>
-                    </ul>
-                </h5>
-                <div class="d-flex align-items-center">
-                    <div class="card-icon rounded-circle">
-                        <i class="bi bi-currency-dollar"></i>
-                    </div>
-                    <div class="ps-3">
-                        <h6>Rp {{ number_format($stats['avgRequestValue'] ?? 0, 0, ',', '.') }}</h6>
-                        <span class="text-success small pt-1 fw-bold">Per Permohonan</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-3 col-md-6">
-        <div class="card info-card transactions-card h-100">
-            <div class="card-body">
-                <h5 class="card-title d-flex justify-content-between align-items-start">
-                    Rata-rata Frekuensi
-                    <span>| {{ $stats['periodLabel'] }}</span>
-                    <a class="text-muted" href="#" data-bs-toggle="dropdown" aria-expanded="false"
-                       title="Ganti periode">
-                        <i class="bi bi-three-dots"></i>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end period-menu">
-                        <li><h6 class="dropdown-header">Periode</h6></li>
-                        <li><a class="dropdown-item" href="{{ $periodUrl('day') }}">Hari Ini</a></li>
-                        <li><a class="dropdown-item" href="{{ $periodUrl('month') }}">Bulan Ini</a></li>
-                        <li><a class="dropdown-item" href="{{ $periodUrl('year') }}">Tahun Ini</a></li>
-                    </ul>
-                </h5>
-                <div class="d-flex align-items-center">
-                    <div class="card-icon rounded-circle">
-                        <i class="bi bi-graph-up"></i>
-                    </div>
-                    <div class="ps-3">
-                        <h6>{{ $stats['avgRequestFrequency']['value'] }}</h6>
-                        <span class="text-muted small pt-2 ps-1">{{ $stats['avgRequestFrequency']['label'] }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-</div><!-- /.row stat cards -->
-
-{{-- ============================================================
-     TREN & DISTRIBUSI
-     ============================================================ --}}
-<div class="d-flex align-items-center gap-2 mb-2">
-    <h6 class="section-title mb-0"><i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Analisis Pengeluaran</h6>
-    <div class="dropdown">
-        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
-            <i class="bi bi-calendar3 me-1"></i>{{ $stats['periodLabel'] }}
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end period-menu">
-            <li><a class="dropdown-item" href="{{ $periodUrl('day') }}">Hari Ini</a></li>
-            <li><a class="dropdown-item" href="{{ $periodUrl('month') }}">Bulan Ini</a></li>
-            <li><a class="dropdown-item" href="{{ $periodUrl('year') }}">Tahun Ini</a></li>
-        </ul>
-    </div>
-</div>
-
-<div class="row g-3 mb-4">
-    <div class="col-lg-8">
-        <div class="card chart-card h-100">
-            <div class="card-body d-flex flex-column">
-                <h5 class="card-title">
-                    <i class="bi bi-graph-up-arrow text-primary me-2"></i>
-                    Tren Pengeluaran
-                </h5>
-                <div class="flex-grow-1" style="min-height: 300px; position: relative;">
-                    <canvas id="expenseLineChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-4">
-        <div class="card chart-card h-100">
-            <div class="card-body d-flex flex-column">
-                <h5 class="card-title">
-                    <i class="bi bi-pie-chart-fill text-success me-2"></i>
-                    Distribusi Jenis BBM
-                </h5>
-                <div style="min-height: 240px; position: relative;">
-                    <canvas id="gasolinePieChart"></canvas>
-                </div>
-                <div class="mt-3">
-                    @php
-                        $gasolineData = $stats['gasolineExpenseDistribution'] ?? [];
-                        $gasolineTotal = array_sum($gasolineData);
-                    @endphp
-                    @foreach($gasolineData as $type => $amount)
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="small">{{ $type }}</span>
-                        <span class="badge bg-primary">
-                            Rp {{ number_format($amount, 0, ',', '.') }}
-                            ({{ $gasolineTotal > 0 ? round(($amount / $gasolineTotal) * 100, 1) : 0 }}%)
-                        </span>
-                    </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-    </div>
-</div><!-- /.row chart 1 -->
-
-{{-- ============================================================
-     RANKING TOP 10
-     ============================================================ --}}
-<div class="card chart-card h-100 shadow-sm mb-4">
-    <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <strong><i class="bi bi-trophy-fill me-2 text-warning"></i>Top 10 Konsumsi BBM</strong>
-        <div class="btn-group btn-group-sm" role="group" aria-label="Mode ranking">
-            <button type="button" class="btn btn-outline-primary active" id="rankingVehicleBtn"
-                    onclick="switchRanking('vehicle')">
-                <i class="bi bi-truck me-1"></i>Per Kendaraan
-            </button>
-            <button type="button" class="btn btn-outline-primary" id="rankingDriverBtn"
-                    onclick="switchRanking('driver')">
-                <i class="bi bi-person-badge me-1"></i>Per Driver
-            </button>
-        </div>
-    </div>
-    <div class="card-body" style="min-height: 320px; position: relative;">
-        <canvas id="rankingChart"></canvas>
-    </div>
-</div>
-
-{{-- ============================================================
-     TABEL PIVOT: DATA LENGKAP
-     ============================================================ --}}
-<div class="card shadow-sm mb-4">
-    <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <strong><i class="bi bi-table me-2"></i>Tabel Pivot: Data Lengkap</strong>
-        <div class="d-flex gap-2 align-items-center">
-            <input type="text" class="form-control form-control-sm" id="pivotSearch"
-                   placeholder="Cari..." style="width: 200px;">
-            @if(Auth::user()->hasPermission('bbm.export'))
-            <button class="btn btn-success btn-sm" onclick="exportTableToCSV('pivotTable', 'pivot_data.csv')">
-                <i class="bi bi-file-excel me-1"></i>Export CSV
-            </button>
+<x-layouts.app :title="$title" :breadcrumbs="['Dashboard' => null]">
+    <x-ui.page-header :kicker="$activeModule?->name" :icon="$activeModule?->icon" :title="$title" description="Ringkasan pengeluaran, konsumsi, dan pelaporan BBM.">
+        <x-slot:actions>
+            @if (Auth::user()->hasPermission('vehicle.report'))
+                <x-ui.button variant="outline" class="flex-1 sm:flex-none" :href="route('superadmin.trip-analysis.index')"><i class="bi bi-signpost-2"></i> <span class="sm:hidden">Analisis Trip</span><span class="max-sm:hidden">Analisis Efisiensi Trip</span></x-ui.button>
             @endif
-        </div>
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover table-sm mb-0" id="pivotTable">
-                <thead class="table-light">
-                    <tr>
-                        <th>Request #</th>
-                        <th>Driver</th>
-                        <th>Kendaraan</th>
-                        <th>Tgl Pengajuan</th>
-                        <th class="text-end">Nominal</th>
-                        <th class="text-center">Status</th>
-                        <th>Tgl Pengisian</th>
-                        <th class="text-center">Volume</th>
-                    </tr>
-                </thead>
-                <tbody id="pivotTableBody">
-                    @foreach($pivotData as $row)
-                    <tr>
-                        <td><small class="text-primary">{{ $row['requestNumber'] }}</small></td>
-                        <td>{{ $row['driverName'] }}</td>
-                        <td><small>{{ $row['vehicleDisplay'] }}</small></td>
-                        <td><small>{{ $row['requestAt']->format('d/m/Y') }}</small></td>
-                        <td class="text-end"><strong>Rp {{ number_format($row['nominal'], 0, ',', '.') }}</strong></td>
-                        <td class="text-center">
-                            @if($row['status'] == 'completed')
-                                <span class="badge bg-primary">{{ $row['status'] }}</span>
-                            @elseif($row['status'] == 'approved')
-                                <span class="badge bg-success">{{ $row['status'] }}</span>
-                            @elseif($row['status'] == 'rejected')
-                                <span class="badge bg-danger">{{ $row['status'] }}</span>
-                            @else
-                                <span class="badge bg-warning text-dark">{{ $row['status'] }}</span>
-                            @endif
-                        </td>
-                        <td><small>{{ $row['tanggalPengisian'] ? $row['tanggalPengisian']->format('d/m/Y') : '-' }}</small></td>
-                        <td class="text-center">{{ $row['volumePengisian'] > 0 ? $row['volumePengisian'] . ' L' : '-' }}</td>
-                    </tr>
+            @if (Auth::user()->role === 'superadmin')
+                <x-ui.button class="flex-1 sm:flex-none" data-dialog-open="printReportDialog"><i class="bi bi-printer"></i> <span class="sm:hidden">Cetak Laporan</span><span class="max-sm:hidden">Cetak Laporan Transaksi</span></x-ui.button>
+            @endif
+        </x-slot:actions>
+    </x-ui.page-header>
+
+    {{-- Toolbar periode + filter (pola shadcn data-table toolbar). Semua lewat GET; filter diterapkan
+         dengan tombol, bukan tiap isian berubah, supaya halaman tidak dimuat ulang berkali-kali. --}}
+    <x-ui.card class="gap-0 py-0">
+        <div class="flex flex-wrap items-center gap-2 p-3">
+            {{-- Periode: segmen preset (tautan) + segmen "Kustom" yang membuka kalender rentang. --}}
+            {{-- HP: grid 6 kolom = 2 baris rata (3 preset di atas, Semua waktu + Kustom di bawah), tanpa geser ke samping. --}}
+            <div class="grid w-full grid-cols-6 gap-0.5 rounded-lg bg-muted p-1 sm:inline-flex sm:w-auto sm:flex-wrap sm:items-center" role="group" aria-label="Periode">
+                @foreach ($presets as $key => [$label, $from, $to])
+                    <a href="{{ $urlWith(['period' => $key, 'start_date' => $from, 'end_date' => $to]) }}" class="{{ $segment }} col-span-2"
+                       aria-current="{{ $activePreset === $key ? 'true' : 'false' }}">{{ $label }}</a>
+                @endforeach
+                <a href="{{ $urlWith(['start_date' => null, 'end_date' => null, 'period' => null]) }}" class="{{ $segment }} col-span-3"
+                   aria-current="{{ $activePreset === 'all' ? 'true' : 'false' }}">Semua waktu</a>
+
+                <form method="GET" action="{{ url()->current() }}" data-custom-range class="col-span-3">
+                    @foreach ($filterKeys as $key)
+                        @if (request()->filled($key))<input type="hidden" name="{{ $key }}" value="{{ request($key) }}">@endif
                     @endforeach
-                </tbody>
-            </table>
-        </div>
-        <div class="d-flex justify-content-between align-items-center px-3 py-2">
-            <span class="text-muted small">
-                Menampilkan {{ $pivotData->firstItem() ?? 0 }} – {{ $pivotData->lastItem() ?? 0 }}
-                dari {{ $pivotData->total() }} transaksi
-            </span>
-            <div>{{ $pivotData->links() }}</div>
-        </div>
-    </div>
-</div>
-
-{{-- ============================================================
-     STATISTIK PER DRIVER
-     ============================================================ --}}
-<div class="card shadow-sm mb-4">
-    <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <strong><i class="bi bi-person-check me-2"></i>Statistik Detail per Driver</strong>
-        <input type="text" class="form-control form-control-sm" id="searchDriver"
-               placeholder="Cari driver..." style="max-width: 250px;">
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover table-sm mb-0" id="driverStatsTable">
-                <thead class="table-light">
-                    <tr>
-                        <th>Driver</th>
-                        <th class="text-center">Total</th>
-                        <th class="text-center">Rejected</th>
-                        <th class="text-center">Completed</th>
-                        <th class="text-center">Approved</th>
-                        <th class="text-center">Pending</th>
-                        <th class="text-center">% Pelaporan</th>
-                        <th class="text-end">Rata-rata Nominal</th>
-                    </tr>
-                </thead>
-                <tbody id="driverStatsBody">
-                    @foreach($driverStats as $driver)
-                    <tr>
-                        <td><strong>{{ $driver['driver'] }}</strong></td>
-                        <td class="text-center"><span class="badge bg-primary">{{ $driver['total'] }}</span></td>
-                        <td class="text-center"><span class="badge bg-danger">{{ $driver['rejected'] }}</span></td>
-                        <td class="text-center"><span class="badge bg-success">{{ $driver['completed'] }}</span></td>
-                        <td class="text-center"><span class="badge bg-warning text-dark">{{ $driver['approved'] }}</span></td>
-                        <td class="text-center"><span class="badge bg-info text-dark">{{ $driver['pending'] }}</span></td>
-                        <td class="text-center"><span class="badge bg-secondary">{{ $driver['reportRate'] }}%</span></td>
-                        <td class="text-end">
-                            <span class="text-success fw-bold"
-                                  title="Max: Rp {{ number_format($driver['maxNominal'], 0, ',', '.') }} | Min: Rp {{ number_format($driver['minNominal'], 0, ',', '.') }}"
-                                  style="cursor: help;">
-                                Rp {{ number_format($driver['avgNominal'], 0, ',', '.') }}
-                            </span>
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-        <div class="d-flex justify-content-between align-items-center px-3 py-2">
-            <span class="text-muted small">
-                Menampilkan {{ $driverStats->firstItem() ?? 0 }} – {{ $driverStats->lastItem() ?? 0 }}
-                dari {{ $driverStats->total() }} driver
-            </span>
-            <div>{{ $driverStats->links() }}</div>
-        </div>
-    </div>
-</div>
-
-{{-- ============================================================
-     PERFORMA KM KENDARAAN
-     ============================================================ --}}
-<div class="card shadow-sm mb-4">
-    <div class="card-header bg-light">
-        <strong><i class="bi bi-speedometer2 me-2"></i>Performa KM Kendaraan</strong>
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover table-sm mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Kendaraan</th>
-                        <th class="text-center">Rata-rata KM</th>
-                        <th class="text-center">Total Trip</th>
-                        <th class="text-center">Max KM</th>
-                        <th class="text-center">Min KM</th>
-                        <th class="text-end">Odometer Terakhir</th>
-                        <th class="text-end">Update Terakhir</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($kmPerformance as $vehicle)
-                    <tr>
-                        <td><strong>{{ $vehicle['vehicleDisplay'] }}</strong></td>
-                        <td class="text-center"><span class="badge bg-primary">{{ $vehicle['avgKmDiff'] }} km</span></td>
-                        <td class="text-center">{{ $vehicle['totalTrips'] }}</td>
-                        <td class="text-center">{{ $vehicle['maxKm'] }} km</td>
-                        <td class="text-center">{{ $vehicle['minKm'] }} km</td>
-                        <td class="text-end"><strong>{{ number_format($vehicle['latestOdo'], 0, ',', '.') }}</strong> km</td>
-                        <td class="text-end text-muted small">{{ $vehicle['lastUpdate']->format('d/m/Y H:i') }}</td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-        <div class="d-flex justify-content-between align-items-center px-3 py-2">
-            <span class="text-muted small">
-                Menampilkan {{ $kmPerformance->firstItem() ?? 0 }} – {{ $kmPerformance->lastItem() ?? 0 }}
-                dari {{ $kmPerformance->total() }} kendaraan
-            </span>
-            <div>{{ $kmPerformance->links() }}</div>
-        </div>
-    </div>
-</div>
-
-{{-- ============================================================
-     PDF LOADING OVERLAY
-     ============================================================ --}}
-<div id="pdfLoadingOverlay" style="
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    background: rgba(15, 23, 42, 0.85);
-    backdrop-filter: blur(4px);
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-">
-    <div style="
-        background: #fff;
-        border-radius: 16px;
-        padding: 40px 48px;
-        text-align: center;
-        box-shadow: 0 25px 60px rgba(0,0,0,0.4);
-        min-width: 320px;
-    ">
-        <div style="margin-bottom: 20px;">
-            <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg"
-                 style="animation: pdfIconPulse 1.5s ease-in-out infinite;">
-                <rect width="56" height="56" rx="12" fill="#EEF2FF"/>
-                <path d="M14 12h20l10 10v24H14V12z" stroke="#1a56db" stroke-width="2" fill="#fff"/>
-                <path d="M34 12v10h10" stroke="#1a56db" stroke-width="2" fill="none"/>
-                <rect x="19" y="26" width="18" height="2" rx="1" fill="#1a56db" opacity="0.5"/>
-                <rect x="19" y="31" width="14" height="2" rx="1" fill="#1a56db" opacity="0.5"/>
-                <rect x="19" y="36" width="10" height="2" rx="1" fill="#1a56db" opacity="0.3"/>
-            </svg>
-        </div>
-        <div style="font-size: 17px; font-weight: 700; color: #1e293b; margin-bottom: 6px; font-family: Arial, sans-serif;">
-            Memuat Dokumen Laporan<span id="pdfLoadingDots"></span>
-        </div>
-        <div style="font-size: 13px; color: #64748b; margin-bottom: 24px; font-family: Arial, sans-serif;">
-            Sedang memproses data transaksi BBM...
-        </div>
-        <div style="width:100%;height:8px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin-bottom:14px;">
-            <div id="pdfProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,#1a56db,#60a5fa);border-radius:99px;transition:width 0.3s ease;"></div>
-        </div>
-        <div id="pdfProgressLabel" style="font-size: 12px; color: #94a3b8; font-family: Arial, sans-serif;">0%</div>
-    </div>
-</div>
-
-{{-- ============================================================
-     MODAL: CETAK LAPORAN TRANSAKSI BBM
-     ============================================================ --}}
-<div class="modal fade" id="printReportModal" tabindex="-1" aria-labelledby="printReportModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title fw-bold" id="printReportModalLabel">
-                    <i class="bi bi-printer-fill me-2"></i>Cetak Laporan Transaksi BBM
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <input type="hidden" name="period" value="month">
+                    <x-ui.date-range-picker id="customRange" :from="$start" :to="$end" :max="$today" :trigger-class="$segment . ' w-full cursor-pointer sm:w-auto'" :current="$activePreset === 'custom'">
+                        <i class="bi bi-calendar-range"></i> Kustom
+                    </x-ui.date-range-picker>
+                </form>
             </div>
 
-            <form action="{{ route('superadmin.print-report') }}" method="GET" id="formPrintReport">
-                <div class="modal-body">
+            <span class="inline-flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground"><i class="bi bi-calendar3"></i> <span class="truncate">{{ $rangeLabel }}</span></span>
 
-                    <div class="alert alert-info border-0 shadow-sm">
-                        <i class="bi bi-info-circle-fill me-2"></i>
-                        <small>Pilih rentang tanggal dan status transaksi yang ingin dicetak dalam laporan.</small>
+            <details data-menu class="relative ml-auto shrink-0">
+                <summary class="inline-flex h-9 cursor-pointer list-none items-center gap-2 rounded-md border bg-card px-3 text-sm font-medium shadow-xs transition-colors hover:bg-accent [&::-webkit-details-marker]:hidden">
+                    <i class="bi bi-funnel"></i> Filter
+                    @if ($chips->isNotEmpty())
+                        <span class="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs text-primary-foreground">{{ $chips->count() }}</span>
+                    @endif
+                </summary>
+                {{-- HP: bottom sheet (latar gelap + panel dari bawah); layar lebar: panel dropdown di bawah tombol. --}}
+                <div data-menu-close aria-hidden="true" class="fixed inset-0 z-40 bg-black/40 sm:hidden"></div>
+                <form method="GET" action="{{ url()->current() }}"
+                      data-clean-query class="fixed inset-x-0 bottom-0 z-50 grid max-h-[85dvh] gap-4 overflow-y-auto rounded-t-2xl border bg-popover p-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-popover-foreground shadow-lg sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:z-40 sm:mt-2 sm:max-h-none sm:w-96 sm:overflow-visible sm:rounded-lg sm:pb-4">
+                    @foreach (['start_date', 'end_date', 'period'] as $key)
+                        @if (request()->filled($key))<input type="hidden" name="{{ $key }}" value="{{ request($key) }}">@endif
+                    @endforeach
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-sm font-semibold">Filter transaksi</p>
+                            <p class="text-xs text-muted-foreground">Berlaku untuk ringkasan, grafik, dan ranking.</p>
+                        </div>
+                        <button type="button" data-menu-close aria-label="Tutup filter" class="-m-1 inline-flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground sm:hidden"><i class="bi bi-x-lg"></i></button>
                     </div>
-
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <label for="print_start_date" class="form-label fw-semibold">
-                                <i class="bi bi-calendar-event text-primary me-2"></i>Tanggal Mulai
-                            </label>
-                            <input type="date" class="form-control form-control-lg"
-                                   id="print_start_date" name="start_date" required max="{{ date('Y-m-d') }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="print_end_date" class="form-label fw-semibold">
-                                <i class="bi bi-calendar-check text-success me-2"></i>Tanggal Akhir
-                            </label>
-                            <input type="date" class="form-control form-control-lg"
-                                   id="print_end_date" name="end_date" required max="{{ date('Y-m-d') }}">
-                        </div>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        @foreach ($filterSelects as [$key, $label, $options, $wide])
+                            <x-ui.field :label="$label" :for="'filter_' . $key" :class="$wide ? 'sm:col-span-2' : ''">
+                                <x-ui.select-menu :id="'filter_' . $key" :name="$key" :value="request($key, '')" :options="$options" />
+                            </x-ui.field>
+                        @endforeach
                     </div>
+                    <div class="flex items-center justify-between gap-2 border-t pt-3">
+                        <x-ui.button variant="ghost" size="sm" :href="$urlWith(array_fill_keys($filterKeys, null))">Reset</x-ui.button>
+                        <x-ui.button type="submit" size="sm"><i class="bi bi-check2"></i> Terapkan</x-ui.button>
+                    </div>
+                </form>
+            </details>
+        </div>
 
-                    <hr class="my-4">
+        @if ($chips->isNotEmpty())
+            <div class="flex flex-wrap items-center gap-2 border-t px-3 py-2.5">
+                <span class="text-xs font-medium text-muted-foreground">Filter aktif:</span>
+                @foreach ($chips as $chip)
+                    <a href="{{ $chip['url'] }}" title="Hapus filter {{ $chip['label'] }}"
+                       class="inline-flex items-center gap-1.5 rounded-full border bg-accent/60 py-0.5 pl-2.5 pr-1.5 text-xs text-accent-foreground transition-colors hover:border-destructive/40 hover:bg-destructive-soft hover:text-destructive">
+                        <span class="text-muted-foreground">{{ $chip['label'] }}:</span> <span class="max-w-48 truncate font-medium">{{ $chip['value'] }}</span>
+                        <i class="bi bi-x"></i>
+                    </a>
+                @endforeach
+                <a href="{{ $urlWith(array_fill_keys($filterKeys, null)) }}" class="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Hapus semua</a>
+            </div>
+        @endif
+    </x-ui.card>
 
-                    <div class="mb-4">
-                        <label class="form-label fw-bold mb-3">
-                            <i class="bi bi-funnel-fill text-primary me-2"></i>Filter Berdasarkan Status Transaksi
-                        </label>
-                        <div class="alert alert-warning border-0 mb-3">
-                            <small>
-                                <i class="bi bi-exclamation-triangle me-2"></i>
-                                <strong>Catatan:</strong> Minimal pilih satu status. Jika tidak ada yang dipilih,
-                                sistem akan otomatis mencetak <strong>Approved</strong> dan <strong>Completed</strong>.
-                            </small>
+    <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h2 class="text-lg font-semibold">Ringkasan</h2>
+        <span class="text-sm text-muted-foreground">{{ $rangeLabel }}@if ($chips->isNotEmpty()) &middot; {{ $chips->count() }} filter aktif @endif</span>
+    </div>
+
+    {{-- HP: 2 kolom dengan angka ringkas (short) supaya tidak menumpuk 4 kartu ke bawah. --}}
+    <div class="grid grid-cols-2 gap-3 sm:gap-4 2xl:grid-cols-4">
+        <x-ui.stat-card label="Total transaksi" :value="$stats['totalTransactions'] ?? $stats['total'] ?? 0" short :hint="request('status') ? 'Status ' . ($statusLabels[request('status')] ?? request('status')) : 'Semua status'" icon="bi bi-receipt" />
+        <x-ui.stat-card label="Total pengeluaran" :value="$rupiah($stats['totalExpense'])" :short="$compact($stats['totalExpense'])" hint="Disetujui dan selesai" icon="bi bi-cash-stack" tone="success" />
+        <x-ui.stat-card label="Rata-rata nilai permohonan" :value="$rupiah($stats['avgRequestValue'] ?? 0)" :short="$compact($stats['avgRequestValue'] ?? 0)" hint="Per permohonan" icon="bi bi-currency-exchange" tone="warning" />
+        <x-ui.stat-card label="Rata-rata frekuensi" :value="$stats['avgRequestFrequency']['value']" short :hint="$stats['avgRequestFrequency']['label']" icon="bi bi-graph-up" />
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-3">
+        <x-ui.card class="min-w-0 gap-4 lg:col-span-2">
+            <x-ui.card-header title="Tren pengeluaran" icon="bi bi-graph-up"
+                description="Pengeluaran yang disetujui dan selesai" />
+            <x-ui.card-content class="grid gap-4">
+                @if ($expenseTotal > 0)
+                    <div class="flex flex-wrap gap-x-8 gap-y-2">
+                        <div>
+                            <p class="text-xs text-muted-foreground">Total periode</p>
+                            <p class="text-xl font-bold tabular-nums tracking-tight">{{ $rupiah($expenseTotal) }}</p>
                         </div>
-                        <div class="row g-2">
-                            <div class="col-md-6">
-                                <div class="form-check form-check-inline border rounded p-3 w-100">
-                                    <input class="form-check-input me-2" type="checkbox" name="status[]"
-                                           value="approved" id="statusApproved" checked>
-                                    <label class="form-check-label w-100" for="statusApproved">
-                                        <div class="d-flex align-items-center justify-content-between">
-                                            <div><span class="badge bg-success me-2">✓</span><strong>Approved</strong></div>
-                                            <small class="text-muted">Disetujui Admin</small>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check form-check-inline border rounded p-3 w-100">
-                                    <input class="form-check-input me-2" type="checkbox" name="status[]"
-                                           value="completed" id="statusCompleted" checked>
-                                    <label class="form-check-label w-100" for="statusCompleted">
-                                        <div class="d-flex align-items-center justify-content-between">
-                                            <div><span class="badge bg-primary me-2">✓</span><strong>Completed</strong></div>
-                                            <small class="text-muted">Sudah Lapor</small>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check form-check-inline border rounded p-3 w-100">
-                                    <input class="form-check-input me-2" type="checkbox" name="status[]"
-                                           value="pending" id="statusPending">
-                                    <label class="form-check-label w-100" for="statusPending">
-                                        <div class="d-flex align-items-center justify-content-between">
-                                            <div><span class="badge bg-warning text-dark me-2">⏳</span><strong>Pending</strong></div>
-                                            <small class="text-muted">Menunggu Approval</small>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check form-check-inline border rounded p-3 w-100">
-                                    <input class="form-check-input me-2" type="checkbox" name="status[]"
-                                           value="rejected" id="statusRejected">
-                                    <label class="form-check-label w-100" for="statusRejected">
-                                        <div class="d-flex align-items-center justify-content-between">
-                                            <div><span class="badge bg-danger me-2">✗</span><strong>Rejected</strong></div>
-                                            <small class="text-muted">Ditolak</small>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mt-3 text-center">
-                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleAllStatus(true)">
-                                <i class="bi bi-check-all"></i> Pilih Semua
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAllStatus(false)">
-                                <i class="bi bi-x-circle"></i> Hapus Semua
-                            </button>
+                        <div>
+                            <p class="text-xs text-muted-foreground">Tertinggi {{ $periodUnit }}</p>
+                            <p class="text-xl font-bold tabular-nums tracking-tight">{{ $rupiah($expensePeak[1]) }}
+                                <span class="text-sm font-normal text-muted-foreground">{{ $expensePeak[0] }}</span></p>
                         </div>
                     </div>
+                @endif
+                <div class="relative h-60 w-full min-w-0 sm:h-72"><canvas id="expenseChart" aria-label="Grafik tren pengeluaran BBM" role="img"></canvas></div>
+            </x-ui.card-content>
+        </x-ui.card>
 
-                    <hr class="my-4">
+        <x-ui.card class="min-w-0 gap-4">
+            <x-ui.card-header title="Distribusi jenis BBM" icon="bi bi-pie-chart" description="Porsi pengeluaran per jenis BBM" />
+            <x-ui.card-content class="grid gap-5">
+                <div class="relative mx-auto size-48">
+                    <canvas id="gasolineChart" aria-label="Grafik distribusi jenis BBM" role="img"></canvas>
+                    @if ($gasolineTotal > 0)
+                        <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                            <span class="text-xs text-muted-foreground">Total</span>
+                            <span class="text-base font-bold tabular-nums">{{ $compact($gasolineTotal) }}</span>
+                        </div>
+                    @endif
+                </div>
+                <ul class="grid gap-3 text-sm">
+                    @forelse ($gasolineData as $type => $amount)
+                        @php $percent = $gasolineTotal > 0 ? round($amount / $gasolineTotal * 100, 1) : 0; @endphp
+                        <li class="grid gap-1.5">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="flex items-center gap-2 font-medium"><span class="size-2.5 rounded-full" style="background: {{ $gasolineColor($type, $loop->index) }}"></span>{{ $type }}</span>
+                                <span class="tabular-nums text-muted-foreground">{{ $rupiah($amount) }}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"><div class="h-full rounded-full" style="width: {{ $percent }}%; background: {{ $gasolineColor($type, $loop->index) }}"></div></div>
+                                <span class="w-12 text-right text-xs tabular-nums text-muted-foreground">{{ $percent }}%</span>
+                            </div>
+                        </li>
+                    @empty
+                        <li class="text-center text-muted-foreground">Belum ada pengeluaran pada periode ini.</li>
+                    @endforelse
+                </ul>
+            </x-ui.card-content>
+        </x-ui.card>
+    </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">
-                            <i class="bi bi-fuel-pump text-danger me-2"></i>Filter Jenis BBM (Opsional)
-                        </label>
-                        <select class="form-select" name="gasoline_type">
-                            <option value="">Semua Jenis BBM</option>
-                            @foreach(['Pertamax', 'Pertamina Dex', 'Pertalite'] as $gt)
-                            <option value="{{ $gt }}">{{ $gt }}</option>
+    {{-- Top 5 per kategori: ringkas, cukup untuk melihat siapa/apa penyumbang pengeluaran terbesar. --}}
+    <div class="grid gap-4 lg:grid-cols-2">
+        @foreach ([
+            ['title' => 'Top 5 kendaraan', 'icon' => 'bi bi-truck', 'data' => $stats['vehicleExpense'] ?? [], 'bar' => 'bg-module-bbm'],
+            ['title' => 'Top 5 driver', 'icon' => 'bi bi-person', 'data' => $stats['driverExpense'] ?? [], 'bar' => 'bg-primary'],
+        ] as $ranking)
+            @php $max = max(1, ...array_values($ranking['data'] ?: [0])); @endphp
+            <x-ui.card class="min-w-0 gap-4">
+                <x-ui.card-header :title="$ranking['title']" :icon="$ranking['icon']" description="Pengeluaran BBM terbesar pada periode ini" />
+                <x-ui.card-content>
+                    @if (empty($ranking['data']))
+                        <x-ui.empty-state icon="bi bi-trophy" title="Belum ada data" description="Tidak ada pengeluaran pada periode dan filter ini." />
+                    @else
+                        <ol class="grid gap-3.5">
+                            @foreach (array_slice($ranking['data'], 0, 5, true) as $name => $total)
+                                <li class="grid grid-cols-[1.75rem_1fr] items-center gap-x-3 gap-y-1.5">
+                                    <span @class([
+                                        'row-span-2 flex size-7 items-center justify-center rounded-full text-xs font-bold',
+                                        'bg-warning-soft text-warning' => $loop->first,
+                                        'bg-muted text-muted-foreground' => ! $loop->first,
+                                    ])>{{ $loop->iteration }}</span>
+                                    <div class="flex min-w-0 items-baseline justify-between gap-3 text-sm">
+                                        <span class="truncate font-medium" title="{{ $name }}">{{ $name }}</span>
+                                        <span class="shrink-0 font-semibold tabular-nums">{{ $rupiah($total) }}</span>
+                                    </div>
+                                    <div class="h-1.5 overflow-hidden rounded-full bg-muted">
+                                        <div class="h-full rounded-full {{ $ranking['bar'] }}" style="width: {{ round($total / $max * 100, 1) }}%"></div>
+                                    </div>
+                                </li>
                             @endforeach
-                        </select>
-                    </div>
+                        </ol>
+                    @endif
+                </x-ui.card-content>
+            </x-ui.card>
+        @endforeach
+    </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">
-                            <i class="bi bi-person-check text-info me-2"></i>Diapprove Oleh (Opsional)
-                        </label>
-                        <select class="form-select" name="authorizer_id">
-                            <option value="">-- Semua Approver --</option>
-                            @foreach($approvers as $approver)
-                            <option value="{{ $approver->id }}">
-                                {{ $approver->nama_lengkap }} ({{ $approver->role }})
-                            </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="alert alert-warning border-0 shadow-sm mb-0">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        <small><strong>Perhatian:</strong> Laporan akan langsung dihasilkan sebagai file PDF dan dibuka di tab baru.</small>
-                    </div>
+    @if (Auth::user()->role === 'superadmin')
+        <x-ui.dialog id="printReportDialog" title="Cetak laporan transaksi BBM" description="Pilih rentang tanggal dan status transaksi. PDF dibuka di tab baru." size="lg">
+            <form action="{{ route('superadmin.print-report') }}" method="GET" target="_blank" id="formPrintReport" class="grid gap-5">
+                <input type="hidden" name="download_token">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-ui.field label="Tanggal mulai" for="print_start_date" required>
+                        <x-ui.input type="date" id="print_start_date" name="start_date" required max="{{ date('Y-m-d') }}" />
+                    </x-ui.field>
+                    <x-ui.field label="Tanggal akhir" for="print_end_date" required>
+                        <x-ui.input type="date" id="print_end_date" name="end_date" required max="{{ date('Y-m-d') }}" />
+                    </x-ui.field>
                 </div>
 
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="bi bi-x-circle me-1"></i>Batal
-                    </button>
-                    <button type="submit" class="btn btn-primary shadow-sm" name="export_type" value="pdf">
-                        <i class="bi bi-file-pdf me-1"></i>Cetak PDF
-                    </button>
+                <fieldset class="grid gap-2">
+                    <legend class="mb-2 text-sm font-medium">Status transaksi</legend>
+                    <div class="grid gap-2 sm:grid-cols-2">
+                        @foreach (['approved' => true, 'completed' => true, 'pending' => false, 'rejected' => false] as $status => $checked)
+                            <label class="flex cursor-pointer items-center gap-2 rounded-md border p-3 has-[:checked]:border-primary has-[:checked]:bg-accent">
+                                <x-ui.checkbox name="status[]" value="{{ $status }}" :checked="$checked" />
+                                <x-bbm.status-badge :status="$status" />
+                            </label>
+                        @endforeach
+                    </div>
+                    <p class="text-xs text-muted-foreground">Bila tidak ada yang dipilih, laporan memuat status Disetujui dan Selesai.</p>
+                </fieldset>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-ui.field label="Jenis BBM" for="print_gasoline">
+                        <x-ui.select name="gasoline_type" id="print_gasoline">
+                            <option value="">Semua jenis BBM</option>
+                            @foreach (['Pertamax', 'Pertamina Dex', 'Pertalite'] as $gt)
+                                <option value="{{ $gt }}">{{ $gt }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                    <x-ui.field label="Diproses oleh" for="print_authorizer">
+                        <x-ui.select name="authorizer_id" id="print_authorizer">
+                            <option value="">Semua approver</option>
+                            @foreach ($approvers as $approver)
+                                <option value="{{ $approver->id }}">{{ $approver->nama_lengkap }} ({{ $approver->role }})</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
                 </div>
             </form>
+            <x-slot:footer>
+                <x-ui.button variant="outline" data-dialog-close>Batal</x-ui.button>
+                <x-ui.button type="submit" form="formPrintReport" name="export_type" value="pdf"><i class="bi bi-file-earmark-pdf"></i> Cetak PDF</x-ui.button>
+            </x-slot:footer>
+        </x-ui.dialog>
+
+        <div id="pdfLoadingOverlay" hidden class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <x-ui.card class="w-80 gap-3 px-8 text-center">
+                <i class="bi bi-file-earmark-pdf animate-pulse text-4xl text-primary"></i>
+                <p class="font-semibold">Memuat dokumen laporan</p>
+                <p class="text-sm text-muted-foreground">Sedang memproses data transaksi BBM.</p>
+                <div class="h-2 overflow-hidden rounded-full bg-muted"><div id="pdfProgressBar" class="h-full w-0 rounded-full bg-primary transition-[width] duration-300"></div></div>
+                <p id="pdfProgressLabel" class="text-xs text-muted-foreground">0%</p>
+            </x-ui.card>
         </div>
-    </div>
-</div>
+    @endif
 
-{{-- ============================================================
-     SCRIPTS
-     ============================================================ --}}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"
-     integrity="sha384-9MhbyIRcBVQiiC7FSd7T38oJNj2Zh+EfxS7/vjhBi4OOT78NlHSnzM31EZRWR1LZ"
-     crossorigin="anonymous"></script>
+    <script type="application/json" id="page-data">@json($pageData)</script>
 
-<script>
-(function () {
-    'use strict';
-
-    // ── Data dari server ──
-    const statsData      = @json($stats);
-    const driverStatsData = @json($driverStats);
-
-    // ── Chart instances ──
-    let expenseLineChart = null;
-    let gasolinePieChart = null;
-    let rankingChart     = null;
-
-    // ================================================================
-    // INIT
-    // ================================================================
-    document.addEventListener('DOMContentLoaded', function () {
-        renderExpenseLineChart();
-        renderGasolinePieChart();
-        renderRankingChart('vehicle');
-        initializeSearch();
-        updateFilterBadge();
-    });
-
-    // ================================================================
-    // LINE CHART: TREN PENGELUARAN
-    // ================================================================
-    function renderExpenseLineChart() {
-        const ctx = document.getElementById('expenseLineChart');
-        if (!ctx) return;
-
-        const data = statsData.expenseOverTime || {};
-        if (Object.keys(data).length === 0) return;
-
-        if (expenseLineChart) expenseLineChart.destroy();
-
-        expenseLineChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: Object.keys(data),
-                datasets: [{
-                    label: 'Pengeluaran (Rp)',
-                    data: Object.values(data),
-                    fill: true,
-                    backgroundColor: 'rgba(54, 162, 235, 0.15)',
-                    borderColor: 'rgb(54, 162, 235)',
-                    tension: 0.4,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: true, position: 'top' },
-                    tooltip: {
-                        callbacks: {
-                            label: ctx => 'Rp ' + ctx.parsed.y.toLocaleString('id-ID')
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { callback: val => 'Rp ' + (val / 1000000).toFixed(1) + 'Jt' }
-                    }
-                }
-            }
-        });
-    }
-
-    // ================================================================
-    // PIE CHART: DISTRIBUSI JENIS BBM
-    // ================================================================
-    function renderGasolinePieChart() {
-        const ctx = document.getElementById('gasolinePieChart');
-        if (!ctx) return;
-
-        const data = statsData.gasolineExpenseDistribution || {};
-        if (Object.keys(data).length === 0) return;
-
-        const colors = [
-            'rgba(255, 99, 132, 0.8)',
-            'rgba(54, 162, 235, 0.8)',
-            'rgba(255, 206, 86, 0.8)',
-            'rgba(75, 192, 192, 0.8)',
-            'rgba(153, 102, 255, 0.8)'
-        ];
-
-        if (gasolinePieChart) gasolinePieChart.destroy();
-
-        gasolinePieChart = new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: Object.keys(data),
-                datasets: [{
-                    data: Object.values(data),
-                    backgroundColor: colors.slice(0, Object.keys(data).length),
-                    borderWidth: 2,
-                    borderColor: '#fff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function (context) {
-                                const val   = context.parsed || 0;
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const pct   = ((val / total) * 100).toFixed(1);
-                                return `${context.label}: Rp ${val.toLocaleString('id-ID')} (${pct}%)`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    // ================================================================
-    // BAR CHART: TOP 10 KONSUMSI (Kendaraan / Driver)
-    // ================================================================
-    function renderRankingChart(mode) {
-        const vehicleBtn = document.getElementById('rankingVehicleBtn');
-        const driverBtn  = document.getElementById('rankingDriverBtn');
-        if (vehicleBtn) vehicleBtn.classList.toggle('active', mode === 'vehicle');
-        if (driverBtn)  driverBtn.classList.toggle('active', mode === 'driver');
-
-        const ctx = document.getElementById('rankingChart');
-        if (!ctx) return;
-
-        const raw = mode === 'vehicle'
-            ? (statsData.vehicleExpense || {})
-            : (statsData.driverExpense || {});
-
-        if (Object.keys(raw).length === 0) {
-            if (rankingChart) { rankingChart.destroy(); rankingChart = null; }
-            ctx.parentElement.innerHTML = '<p class="text-center text-muted py-5"><i class="bi bi-inbox fs-1 d-block mb-2"></i>Tidak ada data</p>';
-            return;
-        }
-
-        const sorted = Object.entries(raw).sort((a, b) => b[1] - a[1]).slice(0, 10);
-        const color  = mode === 'vehicle'
-            ? { bg: 'rgba(255, 159, 64, 0.8)',  border: 'rgba(255, 159, 64, 1)' }
-            : { bg: 'rgba(153, 102, 255, 0.8)', border: 'rgba(153, 102, 255, 1)' };
-
-        if (rankingChart) rankingChart.destroy();
-
-        rankingChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: sorted.map(i => i[0]),
-                datasets: [{
-                    label: 'Pengeluaran (Rp)',
-                    data: sorted.map(i => i[1]),
-                    backgroundColor: color.bg,
-                    borderColor: color.border,
-                    borderWidth: 1,
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { callbacks: { label: ctx => 'Rp ' + ctx.parsed.x.toLocaleString('id-ID') } }
-                },
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        ticks: { callback: val => 'Rp ' + (val / 1000000).toFixed(1) + 'Jt' }
-                    }
-                }
-            }
-        });
-    }
-
-    // ================================================================
-    // SEARCH (client-side)
-    // ================================================================
-    function initializeSearch() {
-        const driverSearch = document.getElementById('searchDriver');
-        if (driverSearch) {
-            driverSearch.addEventListener('input', function () {
-                const q = this.value.toLowerCase();
-                document.querySelectorAll('#driverStatsBody tr').forEach(row => {
-                    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
-                });
-            });
-        }
-
-        const pivotSearch = document.getElementById('pivotSearch');
-        if (pivotSearch) {
-            pivotSearch.addEventListener('input', function () {
-                const q = this.value.toLowerCase();
-                document.querySelectorAll('#pivotTableBody tr').forEach(row => {
-                    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
-                });
-            });
-        }
-    }
-
-    // ================================================================
-    // FILTER BADGE
-    // ================================================================
-    function updateFilterBadge() {
-        const params = new URLSearchParams(window.location.search);
-        let active = 0;
-        params.forEach((val, key) => {
-            if (key !== 'period' && val !== '') active++;
-        });
-
-        const badge = document.getElementById('filterBadge');
-        if (badge) {
-            if (active > 0) {
-                badge.textContent = `${active} filter aktif`;
-                badge.classList.remove('d-none');
-            } else {
-                badge.classList.add('d-none');
-            }
-        }
-    }
-
-    // ================================================================
-    // PDF OVERLAY
-    // ================================================================
-    function initPdfOverlay() {
-        var dotsEl, dotsInterval, dotsPhase = 0;
-        var dotStates = ['.', '..', '...', '..', '.'];
-
-        function startDots() {
-            dotsEl = document.getElementById('pdfLoadingDots');
-            dotsPhase = 0;
-            dotsInterval = setInterval(function () {
-                dotsPhase = (dotsPhase + 1) % dotStates.length;
-                if (dotsEl) dotsEl.textContent = dotStates[dotsPhase];
-            }, 400);
-        }
-        function stopDots() { clearInterval(dotsInterval); }
-
-        var progressEl, progressLabelEl, currentProgress = 0, slowCrawlInterval;
-
-        function setProgress(val) {
-            val = Math.round(val);
-            if (progressEl)      progressEl.style.width  = val + '%';
-            if (progressLabelEl) progressLabelEl.textContent = val + '%';
-        }
-
-        function animateProgress() {
-            progressEl      = document.getElementById('pdfProgressBar');
-            progressLabelEl = document.getElementById('pdfProgressLabel');
-            currentProgress = 0;
-
-            var checkpoints = [
-                { target: 15, delay: 300  },
-                { target: 30, delay: 700  },
-                { target: 55, delay: 1400 },
-                { target: 72, delay: 2200 },
-                { target: 85, delay: 3200 },
-            ];
-            var step = 0;
-
-            function runStep() {
-                if (step >= checkpoints.length) {
-                    slowCrawlInterval = setInterval(function () {
-                        if (currentProgress < 94) {
-                            currentProgress += 0.4;
-                            setProgress(Math.min(currentProgress, 94));
-                        } else {
-                            clearInterval(slowCrawlInterval);
-                        }
-                    }, 400);
-                    return;
-                }
-                var cp = checkpoints[step];
-                setTimeout(function () {
-                    currentProgress = cp.target;
-                    setProgress(currentProgress);
-                    step++;
-                    runStep();
-                }, cp.delay);
-            }
-            runStep();
-        }
-
-        function completeProgress() {
-            clearInterval(slowCrawlInterval);
-            setProgress(100);
-        }
-
-        function showOverlay() {
-            var el = document.getElementById('pdfLoadingOverlay');
-            if (el) el.style.display = 'flex';
-            startDots();
-            animateProgress();
-        }
-
-        function hideOverlay() {
-            completeProgress();
-            stopDots();
-            setTimeout(function () {
-                var el = document.getElementById('pdfLoadingOverlay');
-                if (el) el.style.display = 'none';
-                currentProgress = 0;
-                setProgress(0);
-            }, 800);
-        }
-
-        function getCookie(name) {
-            var m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)'));
-            return m ? decodeURIComponent(m[1]) : null;
-        }
-        function deleteCookie(name) {
-            document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-        }
-
-        function startPolling(token) {
-            var cookieName = 'download_ready_' + token;
-            var poll = setInterval(function () {
-                if (getCookie(cookieName) !== null) {
-                    clearInterval(poll);
-                    deleteCookie(cookieName);
-                    hideOverlay();
-                }
-            }, 500);
-            setTimeout(function () { clearInterval(poll); hideOverlay(); }, 60000);
-        }
-
-        var form = document.getElementById('formPrintReport');
-        if (!form) return;
-        form.addEventListener('submit', function () {
-            var token = Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
-            var tokenInput = form.querySelector('input[name="download_token"]');
-            if (!tokenInput) {
-                tokenInput = document.createElement('input');
-                tokenInput.type = 'hidden';
-                tokenInput.name = 'download_token';
-                form.appendChild(tokenInput);
-            }
-            tokenInput.value = token;
-
-            var modalEl = document.getElementById('printReportModal');
-            if (modalEl && window.bootstrap) {
-                var bsModal = bootstrap.Modal.getInstance(modalEl);
-                if (bsModal) bsModal.hide();
-            }
-            showOverlay();
-            startPolling(token);
-        });
-    }
-    document.addEventListener('DOMContentLoaded', initPdfOverlay);
-
-    // ── Expose global helpers ──
-    window.switchRanking    = mode => renderRankingChart(mode);
-    window.updatePeriod     = period => {
-        // Tetap di route/modul yang sedang dibuka, bawa filter lain.
-        const url = new URL(window.location.href);
-        url.searchParams.set('period', period);
-        window.location.href = url.toString();
-    };
-    window.resetFilters     = () => {
-        // Reset filter tanpa keluar dari modul; pertahankan periode aktif.
-        const url = new URL(window.location.href);
-        const period = url.searchParams.get('period');
-        url.search = '';
-        if (period && /^[a-z]+$/.test(period)) {
-            url.searchParams.set('period', period);
-        }
-        const form = document.getElementById('filterForm');
-        if (form) form.reset();
-        window.location.href = url.toString();
-    };
-    window.toggleAllStatus  = checked => document.querySelectorAll('input[name="status[]"]').forEach(cb => cb.checked = checked);
-
-    // ================================================================
-    // REALTIME FILTER (auto-submit saat filter berubah, tanpa tombol)
-    // ================================================================
-    window.dashboardFilter = {
-        _timer: null,
-
-        submit() {
-            const form = document.getElementById('filterForm');
-            if (!form) return;
-
-            clearTimeout(this._timer);
-            this._timer = setTimeout(() => {
-                const loading = document.getElementById('filterLoading');
-                if (loading) {
-                    loading.classList.remove('d-none');
-                    loading.classList.add('d-inline-flex');
-                }
-                form.submit();
-            }, 350);
-        }
-    };
-
-    window.exportTableToCSV  = function (tableId, filename) {
-        const table = document.getElementById(tableId);
-        const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
-        const rows = [];
-        table.querySelectorAll('tbody tr').forEach(row => {
-            if (row.style.display !== 'none') {
-                rows.push(Array.from(row.querySelectorAll('td')).map(td => '"' + td.textContent.trim().replace(/"/g, '""') + '"').join(','));
-            }
-        });
-        const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href     = URL.createObjectURL(blob);
-        link.download = filename;
-        link.click();
-    };
-
-    // Toggle label tombol filter
-    const collapseEl = document.getElementById('advancedFilter');
-    const toggleBtn  = document.querySelector('button[data-bs-target="#advancedFilter"]');
-    if (collapseEl && toggleBtn) {
-        collapseEl.addEventListener('show.bs.collapse', function () {
-            toggleBtn.innerHTML = '<i class="bi bi-chevron-up me-1"></i> Sembunyikan Filter';
-        });
-        collapseEl.addEventListener('hide.bs.collapse', function () {
-            toggleBtn.innerHTML = '<i class="bi bi-chevron-down me-1"></i> Tampilkan Filter';
-        });
-    }
-})();
-</script>
-
-@endsection
+    @push('scripts')
+        @vite('resources/js/pages/bbm/dashboard.js')
+    @endpush
+</x-layouts.app>

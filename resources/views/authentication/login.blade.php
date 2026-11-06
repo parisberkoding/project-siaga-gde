@@ -53,8 +53,13 @@
     <section class="gde-auth__panel">
       <div class="gde-auth__card">
 
-        <h2 class="gde-auth__title">Selamat datang</h2>
-        <p class="gde-auth__sub">Masuk dengan akun SIAGA Anda untuk melanjutkan.</p>
+        <div class="gde-auth__head">
+          <span class="gde-auth__badge" aria-hidden="true"><i class="bi bi-shield-lock"></i></span>
+          <div>
+            <h2 class="gde-auth__title">Selamat datang</h2>
+            <p class="gde-auth__sub">Masuk dengan akun SIAGA Anda untuk melanjutkan.</p>
+          </div>
+        </div>
 
         <!-- Alert Messages untuk error umum dan success -->
         @if(session('success'))
@@ -72,11 +77,9 @@
         @endif
         <!-- End Alert Messages -->
 
-        {{-- Isian otomatis akun superadmin HANYA di lingkungan lokal (APP_ENV=local)
-             untuk mempercepat pengembangan. Jangan pernah aktif di staging/produksi. --}}
+        {{-- Username hanya diisi ulang setelah login gagal (old input), tidak pernah diisi otomatis. --}}
         @php
-          $devPrefill = app()->isLocal();
-          $prefillUsername = old('username', $devPrefill ? 'superadmin_pusat' : '');
+          $prefillUsername = old('username', '');
         @endphp
 
         <form action="{{ route('login-process') }}" class="gde-auth__form" method="POST" id="loginForm" novalidate>
@@ -141,11 +144,17 @@
             <i class="bi bi-arrow-right"></i>
           </button>
 
+          {{-- SSO selalu ditampilkan; selama SSO_ENABLED=false (mis. lokal) tombolnya nonaktif, tanpa redirect ke IdP. --}}
+          <div class="gde-auth__divider">atau</div>
           @if(config('sso.enabled'))
-            <div class="gde-auth__divider">atau</div>
-            <a href="{{ route('sso.redirect') }}" class="gde-btn gde-btn--outline gde-btn--block gde-auth__submit">
+            <a href="{{ route('sso.redirect') }}" class="gde-btn gde-btn--outline-primary gde-btn--block gde-auth__submit">
               <i class="bi bi-shield-lock"></i> Masuk dengan SSO Geodipa
             </a>
+          @else
+            <button type="button" class="gde-btn gde-btn--outline-primary gde-btn--block gde-auth__submit" disabled aria-describedby="ssoHint">
+              <i class="bi bi-shield-lock"></i> Masuk dengan SSO Geodipa
+            </button>
+            <p class="gde-auth__sso-hint" id="ssoHint"><i class="bi bi-info-circle"></i> SSO belum diaktifkan di lingkungan ini.</p>
           @endif
         </form>
 
@@ -154,11 +163,12 @@
           <div>Tidak memiliki hak akses? Hubungi Tim IT untuk mendapatkan hak akses SIAGA.</div>
         </div>
 
-        <a href="{{ route('welcome') }}" class="gde-auth__back">
-          <i class="bi bi-arrow-left"></i> Kembali ke halaman utama
-        </a>
-
       </div>
+
+      {{-- Di luar kartu: layar lebar = pojok kanan atas panel, HP = di bawah kartu. --}}
+      <a href="{{ route('welcome') }}" class="gde-auth__back">
+        <i class="bi bi-arrow-left"></i> Kembali ke halaman utama
+      </a>
     </section>
 
   </main>

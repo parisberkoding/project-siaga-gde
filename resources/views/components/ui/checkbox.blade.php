@@ -1,0 +1,2 @@
+{{-- shadcn/ui Checkbox: kotak kustom dengan ikon centang/strip (gaya di resources/css/app.css, [data-slot=checkbox]). --}}
+<input type="checkbox" data-slot="checkbox" {{ $attributes->class('size-4 shrink-0 cursor-pointer rounded-[5px] border border-input bg-card shadow-xs transition-colors outline-none hover:border-primary/60 focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50') }}>

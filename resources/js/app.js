@@ -1,1 +1,12 @@
 import './bootstrap';
+import './ui/dialog';
+import './ui/forms';
+import './ui/tabs';
+import './ui/sidebar';
+import './ui/datatable';
+import './ui/toast';
+import './ui/dropdown';
+import './ui/select-menu';
+import './ui/date-range-picker';
+import './ui/date-picker';
+import './ui/action-dialog';
