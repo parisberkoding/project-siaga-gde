@@ -36,7 +36,8 @@ document.addEventListener('submit', (event) => {
 document.querySelectorAll('form[data-autosubmit]').forEach((form) => {
     let timer;
     form.addEventListener('input', (event) => {
-        if (!event.target.matches('input[type="search"], input[type="text"]')) return;
+        // Tanpa name = bukan isian filter (mis. kotak cari di daftar x-ui.select-menu searchable): jangan kirim form.
+        if (!event.target.name || !event.target.matches('input[type="search"], input[type="text"]')) return;
         clearTimeout(timer);
         timer = setTimeout(() => form.requestSubmit(), 400);
     });

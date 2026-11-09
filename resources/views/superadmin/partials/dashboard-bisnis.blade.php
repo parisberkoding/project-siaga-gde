@@ -274,50 +274,8 @@
     </div>
 
     @if (Auth::user()->role === 'superadmin')
-        <x-ui.dialog id="printReportDialog" title="Cetak laporan transaksi BBM" description="Pilih rentang tanggal dan status transaksi. PDF dibuka di tab baru." size="lg">
-            <form action="{{ route('superadmin.print-report') }}" method="GET" target="_blank" id="formPrintReport" class="grid gap-5">
-                <input type="hidden" name="download_token">
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <x-ui.field label="Tanggal mulai" for="print_start_date" required>
-                        <x-ui.input type="date" id="print_start_date" name="start_date" required max="{{ date('Y-m-d') }}" />
-                    </x-ui.field>
-                    <x-ui.field label="Tanggal akhir" for="print_end_date" required>
-                        <x-ui.input type="date" id="print_end_date" name="end_date" required max="{{ date('Y-m-d') }}" />
-                    </x-ui.field>
-                </div>
-
-                <fieldset class="grid gap-2">
-                    <legend class="mb-2 text-sm font-medium">Status transaksi</legend>
-                    <div class="grid gap-2 sm:grid-cols-2">
-                        @foreach (['approved' => true, 'completed' => true, 'pending' => false, 'rejected' => false] as $status => $checked)
-                            <label class="flex cursor-pointer items-center gap-2 rounded-md border p-3 has-[:checked]:border-primary has-[:checked]:bg-accent">
-                                <x-ui.checkbox name="status[]" value="{{ $status }}" :checked="$checked" />
-                                <x-bbm.status-badge :status="$status" />
-                            </label>
-                        @endforeach
-                    </div>
-                    <p class="text-xs text-muted-foreground">Bila tidak ada yang dipilih, laporan memuat status Disetujui dan Selesai.</p>
-                </fieldset>
-
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <x-ui.field label="Jenis BBM" for="print_gasoline">
-                        <x-ui.select name="gasoline_type" id="print_gasoline">
-                            <option value="">Semua jenis BBM</option>
-                            @foreach (['Pertamax', 'Pertamina Dex', 'Pertalite'] as $gt)
-                                <option value="{{ $gt }}">{{ $gt }}</option>
-                            @endforeach
-                        </x-ui.select>
-                    </x-ui.field>
-                    <x-ui.field label="Diproses oleh" for="print_authorizer">
-                        <x-ui.select name="authorizer_id" id="print_authorizer">
-                            <option value="">Semua approver</option>
-                            @foreach ($approvers as $approver)
-                                <option value="{{ $approver->id }}">{{ $approver->nama_lengkap }} ({{ $approver->role }})</option>
-                            @endforeach
-                        </x-ui.select>
-                    </x-ui.field>
-                </div>
-            </form>
+        <x-ui.dialog id="printReportDialog" title="Cetak laporan transaksi BBM" description="Pilih periode, status, dan filter. PDF dibuka di tab baru." size="lg">
+            <x-bbm.print-report-form :approvers="$approvers" id="formPrintReport" id-prefix="dash_print" />
             <x-slot:footer>
                 <x-ui.button variant="outline" data-dialog-close>Batal</x-ui.button>
                 <x-ui.button type="submit" form="formPrintReport" name="export_type" value="pdf"><i class="bi bi-file-earmark-pdf"></i> Cetak PDF</x-ui.button>

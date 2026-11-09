@@ -99,9 +99,34 @@ document.addEventListener('toggle', (event) => {
     focusDay(root, root.state.end ?? iso(new Date()));
 }, true);
 
+// Isi nilai tanpa submit (submit=false / chip preset): input tersembunyi, label pemicu, tanda chip aktif.
+// Event "range:change" dikirim dari root dengan detail { from, to }.
+function setRange(root, from, to) {
+    root.querySelector('[data-range-from]').value = from;
+    root.querySelector('[data-range-to]').value = to;
+    const label = root.querySelector('[data-range-label]');
+    if (label) label.textContent = formatRange(from, to);
+    root.querySelectorAll('[data-range-preset]').forEach((b) => {
+        b.setAttribute('aria-pressed', String(b.dataset.rangePreset === `${from},${to}`));
+    });
+    root.dispatchEvent(new CustomEvent('range:change', { bubbles: true, detail: { from, to } }));
+}
+
 document.addEventListener('click', (event) => {
+    const preset = event.target.closest('[data-range-preset]');
+    if (preset) {
+        setRange(rootOf(preset), ...preset.dataset.rangePreset.split(','));
+        return;
+    }
     const root = rootOf(event.target);
     if (!root?.state) return;
+    const apply = event.target.closest('[data-range-apply][type="button"]');
+    if (apply) {
+        setRange(root, root.state.start, root.state.end);
+        root.querySelector('[data-range-calendar]').hidePopover();
+        root.querySelector('[data-range-trigger]').focus();
+        return;
+    }
     const day = event.target.closest('[data-day]');
     const step = event.target.closest('[data-range-step]');
 

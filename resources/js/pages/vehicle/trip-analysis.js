@@ -3,37 +3,41 @@ import { openDialog } from '../../ui/dialog';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const boxes = () => [...document.querySelectorAll('.trip-checkbox')];
+const checkAlls = [...document.querySelectorAll('.trip-check-all')];
 
 // ── Pilih massal ──
+// Tiap trip punya dua checkbox (kartu HP dan baris tabel) dengan value sama; pilihan dihitung per id.
 const bulkBar = $('#bulkBar');
-const checkAll = $('#checkAll');
+const pickedIds = () => [...new Set(boxes().filter((cb) => cb.checked).map((cb) => cb.value))];
 
 function syncBulk() {
-    const all = boxes();
-    const picked = all.filter((cb) => cb.checked);
-    $('#selectedCount').textContent = picked.length;
-    bulkBar.hidden = picked.length === 0;
-    checkAll.checked = all.length > 0 && picked.length === all.length;
-    checkAll.indeterminate = picked.length > 0 && picked.length < all.length;
+    const total = new Set(boxes().map((cb) => cb.value)).size;
+    const picked = pickedIds().length;
+    $('#selectedCount').textContent = picked;
+    bulkBar.hidden = picked === 0;
+    checkAlls.forEach((all) => {
+        all.disabled = total === 0;
+        all.checked = total > 0 && picked === total;
+        all.indeterminate = picked > 0 && picked < total;
+    });
 }
 
-checkAll.disabled = boxes().length === 0;
-checkAll.addEventListener('change', () => {
-    boxes().forEach((cb) => { cb.checked = checkAll.checked; });
+const setAll = (checked) => { boxes().forEach((cb) => { cb.checked = checked; }); syncBulk(); };
+document.addEventListener('change', (e) => {
+    if (e.target.matches('.trip-check-all')) setAll(e.target.checked);
+    if (!e.target.matches('.trip-checkbox')) return;
+    boxes().filter((cb) => cb.value === e.target.value).forEach((cb) => { cb.checked = e.target.checked; });
     syncBulk();
 });
-document.addEventListener('change', (e) => { if (e.target.matches('.trip-checkbox')) syncBulk(); });
-$('[data-clear-selection]').addEventListener('click', () => {
-    boxes().forEach((cb) => { cb.checked = false; });
-    syncBulk();
-});
+$('[data-clear-selection]').addEventListener('click', () => setAll(false));
+syncBulk();
 
 // Id terpilih ditulis ulang ke form sebelum dikirim (forms.js menampilkan konfirmasi lebih dulu).
 const bulkForm = $('#bulkForm');
 bulkForm.addEventListener('submit', () => {
     bulkForm.querySelectorAll('input[name="validation_ids[]"]').forEach((el) => el.remove());
-    boxes().filter((cb) => cb.checked).forEach((cb) => {
-        bulkForm.insertAdjacentHTML('beforeend', `<input type="hidden" name="validation_ids[]" value="${Number(cb.value)}">`);
+    pickedIds().forEach((id) => {
+        bulkForm.insertAdjacentHTML('beforeend', `<input type="hidden" name="validation_ids[]" value="${Number(id)}">`);
     });
 }, true);
 

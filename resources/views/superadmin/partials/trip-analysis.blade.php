@@ -2,6 +2,7 @@
   Analisis Trip & Efisiensi BBM (SuperadminController::indexTripAnalysis). Satu baris = jarak antara dua pengisian BBM
   kendaraan yang sama. Interaksi (pilih massal, dialog validasi, detail transaksi): resources/js/pages/vehicle/trip-analysis.js.
   Foto struk dimuat lewat struk_url (rute ber-autentikasi) saat detail dibuka, bukan base64 di setiap baris.
+  HP: daftar kartu; layar md ke atas: tabel. Centang di keduanya disamakan oleh JS halaman.
 --}}
 @php
     $variant = fn ($badge) => match ($badge) {
@@ -13,16 +14,45 @@
     $devTone = $avgDev < -20 ? 'danger' : ($avgDev < -10 ? 'warning' : 'success');
     $num = fn ($v, $d = 0) => number_format((float) $v, $d, ',', '.');
     $filtered = $alertLevel || $vehicleId || $requesterId || $validated || $search;
+
+    // Opsi filter x-ui.select-menu (shadcn Select): [name, label, opsi, nilai, searchable].
+    $opts = fn ($all, $pairs) => [['value' => '', 'label' => $all], ...collect($pairs)->map(fn ($label, $value) => ['value' => (string) $value, 'label' => $label])->values()->all()];
+    $filterSelects = [
+        ['alert_level', 'Level', $opts('Semua level', ['normal' => 'Normal', 'warning' => 'Perlu Perhatian', 'critical' => 'Kritis']), $alertLevel, false],
+        ['vehicle_id', 'Kendaraan', $opts('Semua kendaraan', $vehicles->mapWithKeys(fn ($v) => [$v->id => $v->consumerial_code . ' · ' . $v->consumerial_name])), $vehicleId, true],
+        ['requester_id', 'Driver', $opts('Semua driver', $drivers->mapWithKeys(fn ($d) => [$d->id => $d->nama_lengkap])), $requesterId, true],
+        ['validated', 'Validasi', $opts('Semua status', ['false' => 'Belum divalidasi', 'true' => 'Sudah divalidasi']), $validated, false],
+    ];
+
+    // Isi dialog detail transaksi (tombol tanggal pengisian).
+    $proof = fn ($trip, $p, $odo, $pos) => json_encode([
+        'position' => $pos,
+        'request' => $p?->permohonan?->request_number,
+        'transaction' => $p?->transaction_id,
+        'datetime' => $p?->purchase_datetime?->translatedFormat('d M Y H:i'),
+        'odo' => $num($odo) . ' km',
+        'volume' => $num($p?->fuel_volume, 2) . ' L',
+        'fuel' => $trip->fuel_type,
+        'struk' => $p?->struk_url,
+    ]);
+    $effTone = fn ($trip) => match ($trip->efficiency_status) {
+        'good' => 'text-success',
+        'fair' => 'text-warning',
+        'poor' => 'text-destructive',
+        default => '',
+    };
+    $rangeTone = fn ($trip) => $trip->is_premature_refuel ? 'bg-destructive' : ($trip->range_usage_percent < 80 ? 'bg-warning' : 'bg-success');
+    $hasPending = $tripAnalyses->contains(fn ($t) => ! $t->validated_at);
 @endphp
 
 <x-layouts.app title="Analisis Efisiensi Trip" :breadcrumbs="['BBM Operasional' => route('modules.dashboard.bbm'), 'Analisis Efisiensi Trip' => null]">
     <x-ui.page-header kicker="Laporan & Analisis" icon="bi bi-signpost-2" title="Analisis Efisiensi Trip"
         description="Jarak, konsumsi BBM, dan deviasi efisiensi antar pengisian. Trip dengan jarak di atas 300 km, isi ulang terlalu cepat, atau deviasi di bawah minus 20 persen perlu divalidasi.">
         <x-slot:actions>
-            <form action="{{ route('superadmin.trip-analysis.superadmin.trip-validations.recalculate-all') }}" method="POST" data-loading
+            <form action="{{ route('superadmin.trip-analysis.superadmin.trip-validations.recalculate-all') }}" method="POST" data-loading class="max-sm:w-full"
                   data-confirm="Semua metrik trip dihitung ulang dari data pengisian. Proses ini bisa memakan waktu." data-confirm-title="Hitung ulang semua metrik?" data-confirm-text="Ya, hitung ulang">
                 @csrf
-                <x-ui.button type="submit" variant="outline" data-loading-text="Menghitung..."><i class="bi bi-arrow-repeat"></i> Hitung Ulang Metrik</x-ui.button>
+                <x-ui.button type="submit" variant="outline" class="max-sm:w-full" data-loading-text="Menghitung..."><i class="bi bi-arrow-repeat"></i> Hitung Ulang Metrik</x-ui.button>
             </form>
         </x-slot:actions>
     </x-ui.page-header>
@@ -31,181 +61,234 @@
         <x-ui.alert variant="destructive" title="Validasi trip gagal disimpan">{{ $errors->first() }}</x-ui.alert>
     @endif
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <x-ui.stat-card label="Trip Teranalisis" :value="$num($stats['total'])" icon="bi bi-map" hint="Sudah dihitung efisiensinya" />
-        <x-ui.stat-card label="Perlu Validasi" :value="$num($stats['needValidation'])" icon="bi bi-clipboard-check" :tone="$stats['needValidation'] ? 'warning' : 'muted'"
-            hint="Jarak 300 km atau lebih, isi ulang cepat, atau boros" :href="route('superadmin.trip-analysis.index', ['validated' => 'false'])" />
-        <x-ui.stat-card label="Perlu Perhatian" :value="$num($stats['warning'])" icon="bi bi-flag" :tone="$stats['warning'] ? 'warning' : 'muted'"
+    {{-- HP: 2 kolom dengan angka ringkas (short), pola Dashboard BBM. --}}
+    <div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
+        <x-ui.stat-card label="Trip Teranalisis" :value="$num($stats['total'])" short icon="bi bi-map" hint="Sudah dihitung efisiensinya" />
+        <x-ui.stat-card label="Perlu Validasi" :value="$num($stats['needValidation'])" short icon="bi bi-clipboard-check" :tone="$stats['needValidation'] ? 'warning' : 'muted'"
+            hint="Jauh, isi ulang cepat, atau boros" :href="route('superadmin.trip-analysis.index', ['validated' => 'false'])" />
+        <x-ui.stat-card label="Perlu Perhatian" :value="$num($stats['warning'])" short icon="bi bi-flag" :tone="$stats['warning'] ? 'warning' : 'muted'"
             hint="Level peringatan" :href="route('superadmin.trip-analysis.index', ['alert_level' => 'warning'])" />
-        <x-ui.stat-card label="Kritis" :value="$num($stats['critical'])" icon="bi bi-shield-exclamation" :tone="$stats['critical'] ? 'danger' : 'muted'"
+        <x-ui.stat-card label="Kritis" :value="$num($stats['critical'])" short icon="bi bi-shield-exclamation" :tone="$stats['critical'] ? 'danger' : 'muted'"
             hint="Level kritis" :href="route('superadmin.trip-analysis.index', ['alert_level' => 'critical'])" />
-        <x-ui.stat-card label="Rata-rata Efisiensi" :value="$num($stats['avgEfficiency'], 2) . ' km/L'" icon="bi bi-speedometer2" tone="success" hint="Efisiensi aktual seluruh trip" />
-        <x-ui.stat-card label="Rata-rata Deviasi" :value="$num($avgDev, 2) . '%'" icon="bi bi-graph-down" :tone="$devTone" hint="Terhadap patokan efisiensi" />
+        <x-ui.stat-card label="Rata-rata Efisiensi" :value="$num($stats['avgEfficiency'], 2) . ' km/L'" short icon="bi bi-speedometer2" tone="success" hint="Efisiensi aktual" />
+        <x-ui.stat-card label="Rata-rata Deviasi" :value="$num($avgDev, 2) . '%'" short icon="bi bi-graph-down" :tone="$devTone" hint="Terhadap patokan" />
     </div>
 
     <x-ui.card class="gap-4 py-4">
         <x-ui.card-content class="px-4 sm:px-6">
             {{-- Filter langsung terkirim saat diubah (data-autosubmit); isian kosong tidak ikut ke URL. --}}
-            <form method="GET" action="{{ route('superadmin.trip-analysis.index') }}" data-autosubmit data-clean-query class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] lg:items-end">
-                <x-ui.field label="Cari" for="tripSearch">
+            <form method="GET" action="{{ route('superadmin.trip-analysis.index') }}" data-autosubmit data-clean-query class="grid grid-cols-2 gap-3 lg:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] lg:items-end">
+                <x-ui.field label="Cari" for="tripSearch" class="col-span-2 lg:col-span-1">
                     <div class="relative">
                         <i class="bi bi-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground"></i>
-                        <x-ui.input type="search" id="tripSearch" name="search" :value="$search" placeholder="Kode, nama kendaraan, atau driver" class="w-full pl-9" />
+                        <x-ui.input type="search" id="tripSearch" name="search" :value="$search" placeholder="Kode, kendaraan, atau driver" class="w-full pl-9" />
                     </div>
                 </x-ui.field>
-                <x-ui.field label="Level" for="alert_level">
-                    <x-ui.select id="alert_level" name="alert_level">
-                        <option value="">Semua level</option>
-                        <option value="normal" @selected($alertLevel === 'normal')>Normal</option>
-                        <option value="warning" @selected($alertLevel === 'warning')>Perlu Perhatian</option>
-                        <option value="critical" @selected($alertLevel === 'critical')>Kritis</option>
-                    </x-ui.select>
-                </x-ui.field>
-                <x-ui.field label="Kendaraan" for="vehicle_id">
-                    <x-ui.select id="vehicle_id" name="vehicle_id">
-                        <option value="">Semua kendaraan</option>
-                        @foreach ($vehicles as $v)
-                            <option value="{{ $v->id }}" @selected($vehicleId == $v->id)>{{ $v->consumerial_code }} · {{ $v->consumerial_name }}</option>
-                        @endforeach
-                    </x-ui.select>
-                </x-ui.field>
-                <x-ui.field label="Driver" for="requester_id">
-                    <x-ui.select id="requester_id" name="requester_id">
-                        <option value="">Semua driver</option>
-                        @foreach ($drivers as $d)
-                            <option value="{{ $d->id }}" @selected($requesterId == $d->id)>{{ $d->nama_lengkap }}</option>
-                        @endforeach
-                    </x-ui.select>
-                </x-ui.field>
-                <x-ui.field label="Validasi" for="validated">
-                    <x-ui.select id="validated" name="validated">
-                        <option value="">Semua status</option>
-                        <option value="false" @selected($validated === 'false')>Belum divalidasi</option>
-                        <option value="true" @selected($validated === 'true')>Sudah divalidasi</option>
-                    </x-ui.select>
-                </x-ui.field>
-                <x-ui.button variant="outline" :href="route('superadmin.trip-analysis.index')" :aria-disabled="$filtered ? null : 'true'"><i class="bi bi-arrow-counterclockwise"></i> Reset</x-ui.button>
+                @foreach ($filterSelects as [$key, $label, $options, $value, $searchable])
+                    <x-ui.field :label="$label" :for="'filter_' . $key">
+                        <x-ui.select-menu :id="'filter_' . $key" :name="$key" :value="(string) $value" :options="$options" :searchable="$searchable" />
+                    </x-ui.field>
+                @endforeach
+                <x-ui.button variant="outline" class="col-span-2 lg:col-span-1" :href="route('superadmin.trip-analysis.index')" :aria-disabled="$filtered ? null : 'true'"><i class="bi bi-arrow-counterclockwise"></i> Reset</x-ui.button>
             </form>
         </x-ui.card-content>
     </x-ui.card>
 
     <x-ui.card class="gap-4">
         <x-ui.card-header title="Data Trip" icon="bi bi-table" :description="$num($tripAnalyses->total()) . ' trip, urut dari jeda isi ulang tersingkat'" />
-        <x-ui.card-content class="grid gap-4">
+        <x-ui.card-content class="grid gap-4 max-sm:px-3">
             {{-- Validasi massal: id terpilih dikirim sebagai validation_ids[], jenis perjalanan dari tombol yang diklik. --}}
             <form method="POST" action="{{ route('superadmin.trip-validations.bulk-validate') }}" id="bulkForm" data-loading
                   data-confirm="Trip terpilih akan divalidasi sekaligus dengan jenis perjalanan yang dipilih." data-confirm-title="Validasi trip terpilih?" data-confirm-text="Ya, validasi">
                 @csrf
             </form>
 
-            <x-ui.table>
-                <thead>
-                    <tr>
-                        <th class="w-10"><x-ui.checkbox id="checkAll" aria-label="Pilih semua trip yang belum divalidasi" /></th>
-                        <th>Driver & Kendaraan</th>
-                        <th>Periode</th>
-                        <th class="text-right">Jarak</th>
-                        <th class="text-right">BBM</th>
-                        <th class="text-right">Efisiensi</th>
-                        <th class="text-right">Deviasi</th>
-                        <th class="min-w-32">Pemakaian Jangkauan</th>
-                        <th>Level</th>
-                        <th class="text-right">Validasi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($tripAnalyses as $trip)
-                        @php
-                            $prev = $trip->transactionProofPrevious;
-                            $last = $trip->transactionProofLatest;
-                            $vehicle = $prev?->permohonan?->consumerialTool;
-                            $range = $trip->range_usage_percent;
-                            $proof = fn ($p, $odo, $pos) => json_encode([
-                                'position' => $pos,
-                                'request' => $p?->permohonan?->request_number,
-                                'transaction' => $p?->transaction_id,
-                                'datetime' => $p?->purchase_datetime?->translatedFormat('d M Y H:i'),
-                                'odo' => $num($odo) . ' km',
-                                'volume' => $num($p?->fuel_volume, 2) . ' L',
-                                'fuel' => $trip->fuel_type,
-                                'struk' => $p?->struk_url,
-                            ]);
-                        @endphp
-                        <tr>
-                            <td>
-                                @unless ($trip->validated_at)
-                                    <x-ui.checkbox class="trip-checkbox" value="{{ $trip->id }}" aria-label="Pilih trip {{ $vehicle->consumerial_code ?? $trip->id }}" />
-                                @endunless
-                            </td>
-                            <td>
-                                <span class="block font-medium">{{ $prev?->permohonan?->requester?->nama_lengkap ?? 'Tidak diketahui' }}</span>
-                                <span class="block text-xs"><span class="font-medium text-primary">{{ $vehicle->consumerial_code ?? '-' }}</span> <span class="text-muted-foreground">{{ $vehicle->consumerial_name ?? '' }}</span></span>
-                            </td>
-                            <td class="whitespace-nowrap text-xs">
-                                <button type="button" data-proof="{{ $proof($prev, $trip->previous_odo, 'previous') }}" class="cursor-pointer font-medium text-primary underline-offset-4 hover:underline">{{ $prev?->purchase_datetime?->translatedFormat('d M y') ?? '-' }}</button>
-                                <i class="bi bi-arrow-right text-muted-foreground"></i>
-                                <button type="button" data-proof="{{ $proof($last, $trip->latest_odo, 'latest') }}" class="cursor-pointer font-medium text-success underline-offset-4 hover:underline">{{ $last?->purchase_datetime?->translatedFormat('d M y') ?? '-' }}</button>
-                                <span class="block text-muted-foreground">{{ $trip->days_between_refuel }} hari</span>
-                            </td>
-                            <td class="text-right">
-                                <x-ui.badge :variant="$trip->diff_odo >= 300 ? 'danger' : 'success'" class="tabular-nums">{{ $num($trip->diff_odo) }} km</x-ui.badge>
-                            </td>
-                            <td class="whitespace-nowrap text-right tabular-nums">{{ $trip->fuel_volume !== null ? $num($trip->fuel_volume, 2) . ' L' : '-' }}</td>
-                            <td class="whitespace-nowrap text-right">
-                                @if ($trip->actual_efficiency)
-                                    <span @class(['font-semibold tabular-nums', 'text-success' => $trip->efficiency_status === 'good', 'text-warning' => $trip->efficiency_status === 'fair', 'text-destructive' => $trip->efficiency_status === 'poor'])>{{ $num($trip->actual_efficiency, 2) }} km/L</span>
-                                    <span class="block text-xs text-muted-foreground">patokan {{ $trip->expected_efficiency !== null ? $num($trip->expected_efficiency, 1) : '-' }}@if ($trip->baseline_override) <span title="Patokan disesuaikan admin">*</span>@endif</span>
-                                @else
-                                    <span class="text-muted-foreground">-</span>
-                                @endif
-                            </td>
-                            <td class="text-right">
-                                @if ($trip->efficiency_deviation_percent !== null)
-                                    <x-ui.badge :variant="$variant($trip->efficiency_status_badge)" class="tabular-nums">{{ $num($trip->efficiency_deviation_percent, 1) }}%</x-ui.badge>
-                                @else
-                                    <span class="text-muted-foreground">-</span>
-                                @endif
-                            </td>
-                            <td>
-                                @if ($range !== null)
-                                    <div class="flex items-center gap-2">
-                                        <div class="h-2 flex-1 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Pemakaian jangkauan tangki" aria-valuenow="{{ round($range) }}" aria-valuemin="0" aria-valuemax="100">
-                                            <div @class(['h-full rounded-full', 'bg-destructive' => $trip->is_premature_refuel, 'bg-warning' => ! $trip->is_premature_refuel && $range < 80, 'bg-success' => ! $trip->is_premature_refuel && $range >= 80]) style="width: {{ min($range, 100) }}%"></div>
-                                        </div>
-                                        <span class="w-10 text-right text-xs tabular-nums">{{ round($range) }}%</span>
+            @if ($tripAnalyses->isEmpty())
+                <x-ui.empty-state icon="bi bi-inbox" title="Belum ada data trip"
+                    :description="$filtered ? 'Tidak ada trip yang cocok dengan filter. Ubah atau reset filter.' : 'Data muncul setelah ada dua pengisian BBM pada kendaraan yang sama. Jalankan Hitung Ulang Metrik bila data lama belum terhitung.'" />
+            @else
+                {{-- HP: daftar kartu. --}}
+                <div class="grid gap-3 md:hidden">
+                    @if ($hasPending)
+                        <label class="flex w-fit cursor-pointer items-center gap-2 px-1 text-sm text-muted-foreground">
+                            <x-ui.checkbox class="trip-check-all" /> Pilih semua yang belum divalidasi
+                        </label>
+                    @endif
+                    <ul class="grid gap-3">
+                        @foreach ($tripAnalyses as $trip)
+                            @php
+                                $prev = $trip->transactionProofPrevious;
+                                $last = $trip->transactionProofLatest;
+                                $vehicle = $prev?->permohonan?->consumerialTool;
+                                $range = $trip->range_usage_percent;
+                            @endphp
+                            <li class="grid gap-3 rounded-xl border bg-card p-3.5 transition-colors has-[.trip-checkbox:checked]:border-primary has-[.trip-checkbox:checked]:bg-accent/40">
+                                <div class="flex items-start gap-3">
+                                    @unless ($trip->validated_at)
+                                        <x-ui.checkbox class="trip-checkbox mt-0.5" value="{{ $trip->id }}" aria-label="Pilih trip {{ $vehicle->consumerial_code ?? $trip->id }}" />
+                                    @endunless
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate font-medium">{{ $prev?->permohonan?->requester?->nama_lengkap ?? 'Tidak diketahui' }}</p>
+                                        <p class="truncate text-xs"><span class="font-medium text-primary">{{ $vehicle->consumerial_code ?? '-' }}</span> <span class="text-muted-foreground">{{ $vehicle->consumerial_name ?? '' }}</span></p>
                                     </div>
-                                    @if ($trip->is_premature_refuel)<span class="text-xs font-medium text-destructive">Isi ulang terlalu cepat</span>@endif
-                                @else
-                                    <span class="text-muted-foreground">-</span>
-                                @endif
-                            </td>
-                            <td><x-ui.badge :variant="$variant($trip->alert_level_badge)">{{ $trip->alert_level_label }}</x-ui.badge></td>
-                            <td class="text-right">
-                                @if ($trip->validated_at)
-                                    <x-ui.badge :variant="$variant($trip->status_badge)">{{ $trip->status_label }}</x-ui.badge>
-                                    @if ($trip->long_trip_notes)
-                                        <span class="mt-1 block max-w-40 truncate text-xs text-muted-foreground" title="{{ $trip->long_trip_notes }}">{{ $trip->long_trip_notes }}</span>
+                                    <x-ui.badge :variant="$variant($trip->alert_level_badge)" class="shrink-0">{{ $trip->alert_level_label }}</x-ui.badge>
+                                </div>
+
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                                    <i class="bi bi-calendar3 text-muted-foreground"></i>
+                                    <button type="button" data-proof="{{ $proof($trip, $prev, $trip->previous_odo, 'previous') }}" class="cursor-pointer font-medium text-primary underline underline-offset-4">{{ $prev?->purchase_datetime?->translatedFormat('d M y') ?? '-' }}</button>
+                                    <i class="bi bi-arrow-right text-muted-foreground"></i>
+                                    <button type="button" data-proof="{{ $proof($trip, $last, $trip->latest_odo, 'latest') }}" class="cursor-pointer font-medium text-success underline underline-offset-4">{{ $last?->purchase_datetime?->translatedFormat('d M y') ?? '-' }}</button>
+                                    <span class="text-muted-foreground">&middot; {{ $trip->days_between_refuel }} hari</span>
+                                </div>
+
+                                <dl class="grid grid-cols-3 gap-x-2 gap-y-2.5 rounded-lg bg-muted/50 p-3 text-xs">
+                                    <div class="min-w-0"><dt class="text-muted-foreground">Jarak</dt><dd @class(['font-semibold tabular-nums', 'text-destructive' => $trip->diff_odo >= 300])>{{ $num($trip->diff_odo) }} km</dd></div>
+                                    <div class="min-w-0"><dt class="text-muted-foreground">BBM</dt><dd class="font-semibold tabular-nums">{{ $trip->fuel_volume !== null ? $num($trip->fuel_volume, 2) . ' L' : '-' }}</dd></div>
+                                    <div class="min-w-0">
+                                        <dt class="text-muted-foreground">Deviasi</dt>
+                                        <dd>
+                                            @if ($trip->efficiency_deviation_percent !== null)
+                                                <x-ui.badge :variant="$variant($trip->efficiency_status_badge)" class="tabular-nums">{{ $num($trip->efficiency_deviation_percent, 1) }}%</x-ui.badge>
+                                            @else
+                                                -
+                                            @endif
+                                        </dd>
+                                    </div>
+                                    <div class="col-span-2 min-w-0">
+                                        <dt class="text-muted-foreground">Efisiensi / patokan</dt>
+                                        <dd class="tabular-nums">
+                                            <span class="font-semibold {{ $effTone($trip) }}">{{ $trip->actual_efficiency ? $num($trip->actual_efficiency, 2) : '-' }}</span>
+                                            <span class="text-muted-foreground">/ {{ $trip->expected_efficiency !== null ? $num($trip->expected_efficiency, 1) : '-' }}@if ($trip->baseline_override)<span title="Patokan disesuaikan admin">*</span>@endif km/L</span>
+                                        </dd>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <dt class="text-muted-foreground">Jangkauan</dt>
+                                        <dd @class(['font-semibold tabular-nums', 'text-destructive' => $trip->is_premature_refuel])>{{ $range !== null ? round($range) . '%' : '-' }}</dd>
+                                    </div>
+                                    @if ($range !== null)
+                                        <div class="col-span-3 grid gap-1">
+                                            <div class="h-1.5 overflow-hidden rounded-full bg-background" role="progressbar" aria-label="Pemakaian jangkauan tangki" aria-valuenow="{{ round($range) }}" aria-valuemin="0" aria-valuemax="100">
+                                                <div class="h-full rounded-full {{ $rangeTone($trip) }}" style="width: {{ min($range, 100) }}%"></div>
+                                            </div>
+                                            @if ($trip->is_premature_refuel)<span class="font-medium text-destructive">Isi ulang terlalu cepat</span>@endif
+                                        </div>
                                     @endif
+                                </dl>
+
+                                @if ($trip->validated_at)
+                                    <div class="flex min-w-0 items-center gap-2">
+                                        <x-ui.badge :variant="$variant($trip->status_badge)" class="shrink-0">{{ $trip->status_label }}</x-ui.badge>
+                                        @if ($trip->long_trip_notes)<span class="truncate text-xs text-muted-foreground">{{ $trip->long_trip_notes }}</span>@endif
+                                    </div>
                                 @else
-                                    <x-ui.button size="sm" data-validate-trip
+                                    <x-ui.button size="sm" class="w-full" data-validate-trip
                                         :data-url="route('superadmin.trip-validations.validate', $trip->id)"
                                         :data-info="($vehicle->consumerial_code ?? '-') . ' · ' . $num($trip->diff_odo) . ' km · ' . $trip->fuel_type"
                                         :data-fuel="$trip->fuel_type">
                                         <i class="bi bi-check2-circle"></i> Validasi
                                     </x-ui.button>
                                 @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="10" class="py-10">
-                                <x-ui.empty-state icon="bi bi-inbox" title="Belum ada data trip"
-                                    :description="$filtered ? 'Tidak ada trip yang cocok dengan filter. Ubah atau reset filter.' : 'Data muncul setelah ada dua pengisian BBM pada kendaraan yang sama. Jalankan Hitung Ulang Metrik bila data lama belum terhitung.'" class="border-0" />
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </x-ui.table>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+
+                {{-- Layar md ke atas: tabel. --}}
+                <div class="max-md:hidden">
+                    <x-ui.table>
+                        <thead>
+                            <tr>
+                                <th class="w-10"><x-ui.checkbox class="trip-check-all" aria-label="Pilih semua trip yang belum divalidasi" /></th>
+                                <th>Driver & Kendaraan</th>
+                                <th>Periode</th>
+                                <th class="text-right">Jarak</th>
+                                <th class="text-right">BBM</th>
+                                <th class="text-right">Efisiensi</th>
+                                <th class="text-right">Deviasi</th>
+                                <th class="min-w-32">Pemakaian Jangkauan</th>
+                                <th>Level</th>
+                                <th class="text-right">Validasi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($tripAnalyses as $trip)
+                                @php
+                                    $prev = $trip->transactionProofPrevious;
+                                    $last = $trip->transactionProofLatest;
+                                    $vehicle = $prev?->permohonan?->consumerialTool;
+                                    $range = $trip->range_usage_percent;
+                                @endphp
+                                <tr>
+                                    <td>
+                                        @unless ($trip->validated_at)
+                                            <x-ui.checkbox class="trip-checkbox" value="{{ $trip->id }}" aria-label="Pilih trip {{ $vehicle->consumerial_code ?? $trip->id }}" />
+                                        @endunless
+                                    </td>
+                                    <td>
+                                        <span class="block font-medium">{{ $prev?->permohonan?->requester?->nama_lengkap ?? 'Tidak diketahui' }}</span>
+                                        <span class="block text-xs"><span class="font-medium text-primary">{{ $vehicle->consumerial_code ?? '-' }}</span> <span class="text-muted-foreground">{{ $vehicle->consumerial_name ?? '' }}</span></span>
+                                    </td>
+                                    <td class="whitespace-nowrap text-xs">
+                                        <button type="button" data-proof="{{ $proof($trip, $prev, $trip->previous_odo, 'previous') }}" class="cursor-pointer font-medium text-primary underline-offset-4 hover:underline">{{ $prev?->purchase_datetime?->translatedFormat('d M y') ?? '-' }}</button>
+                                        <i class="bi bi-arrow-right text-muted-foreground"></i>
+                                        <button type="button" data-proof="{{ $proof($trip, $last, $trip->latest_odo, 'latest') }}" class="cursor-pointer font-medium text-success underline-offset-4 hover:underline">{{ $last?->purchase_datetime?->translatedFormat('d M y') ?? '-' }}</button>
+                                        <span class="block text-muted-foreground">{{ $trip->days_between_refuel }} hari</span>
+                                    </td>
+                                    <td class="text-right">
+                                        <x-ui.badge :variant="$trip->diff_odo >= 300 ? 'danger' : 'success'" class="tabular-nums">{{ $num($trip->diff_odo) }} km</x-ui.badge>
+                                    </td>
+                                    <td class="whitespace-nowrap text-right tabular-nums">{{ $trip->fuel_volume !== null ? $num($trip->fuel_volume, 2) . ' L' : '-' }}</td>
+                                    <td class="whitespace-nowrap text-right">
+                                        @if ($trip->actual_efficiency)
+                                            <span class="font-semibold tabular-nums {{ $effTone($trip) }}">{{ $num($trip->actual_efficiency, 2) }} km/L</span>
+                                            <span class="block text-xs text-muted-foreground">patokan {{ $trip->expected_efficiency !== null ? $num($trip->expected_efficiency, 1) : '-' }}@if ($trip->baseline_override) <span title="Patokan disesuaikan admin">*</span>@endif</span>
+                                        @else
+                                            <span class="text-muted-foreground">-</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-right">
+                                        @if ($trip->efficiency_deviation_percent !== null)
+                                            <x-ui.badge :variant="$variant($trip->efficiency_status_badge)" class="tabular-nums">{{ $num($trip->efficiency_deviation_percent, 1) }}%</x-ui.badge>
+                                        @else
+                                            <span class="text-muted-foreground">-</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if ($range !== null)
+                                            <div class="flex items-center gap-2">
+                                                <div class="h-2 flex-1 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Pemakaian jangkauan tangki" aria-valuenow="{{ round($range) }}" aria-valuemin="0" aria-valuemax="100">
+                                                    <div class="h-full rounded-full {{ $rangeTone($trip) }}" style="width: {{ min($range, 100) }}%"></div>
+                                                </div>
+                                                <span class="w-10 text-right text-xs tabular-nums">{{ round($range) }}%</span>
+                                            </div>
+                                            @if ($trip->is_premature_refuel)<span class="text-xs font-medium text-destructive">Isi ulang terlalu cepat</span>@endif
+                                        @else
+                                            <span class="text-muted-foreground">-</span>
+                                        @endif
+                                    </td>
+                                    <td><x-ui.badge :variant="$variant($trip->alert_level_badge)">{{ $trip->alert_level_label }}</x-ui.badge></td>
+                                    <td class="text-right">
+                                        @if ($trip->validated_at)
+                                            <x-ui.badge :variant="$variant($trip->status_badge)">{{ $trip->status_label }}</x-ui.badge>
+                                            @if ($trip->long_trip_notes)
+                                                <span class="mt-1 block max-w-40 truncate text-xs text-muted-foreground" title="{{ $trip->long_trip_notes }}">{{ $trip->long_trip_notes }}</span>
+                                            @endif
+                                        @else
+                                            <x-ui.button size="sm" data-validate-trip
+                                                :data-url="route('superadmin.trip-validations.validate', $trip->id)"
+                                                :data-info="($vehicle->consumerial_code ?? '-') . ' · ' . $num($trip->diff_odo) . ' km · ' . $trip->fuel_type"
+                                                :data-fuel="$trip->fuel_type">
+                                                <i class="bi bi-check2-circle"></i> Validasi
+                                            </x-ui.button>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </x-ui.table>
+                </div>
+            @endif
 
             {{ $tripAnalyses->withQueryString()->links('vendor.pagination.shadcn') }}
 
@@ -215,9 +298,9 @@
                     trip dipilih
                     <button type="button" data-clear-selection class="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Batal pilih</button>
                 </p>
-                <div class="flex flex-wrap gap-2">
-                    <x-ui.button type="submit" form="bulkForm" name="is_long_trip" value="0" variant="outline"><i class="bi bi-house"></i> Perjalanan Normal</x-ui.button>
-                    <x-ui.button type="submit" form="bulkForm" name="is_long_trip" value="1" variant="success"><i class="bi bi-briefcase"></i> Perjalanan Dinas</x-ui.button>
+                <div class="flex w-full gap-2 sm:w-auto">
+                    <x-ui.button type="submit" form="bulkForm" name="is_long_trip" value="0" variant="outline" class="flex-1 sm:flex-none"><i class="bi bi-house"></i> Perjalanan Normal</x-ui.button>
+                    <x-ui.button type="submit" form="bulkForm" name="is_long_trip" value="1" variant="success" class="flex-1 sm:flex-none"><i class="bi bi-briefcase"></i> Perjalanan Dinas</x-ui.button>
                 </div>
             </div>
         </x-ui.card-content>
@@ -248,7 +331,7 @@
             <fieldset class="grid gap-4 rounded-lg border border-warning/40 bg-warning-soft/40 p-4">
                 <legend class="px-1 text-sm font-semibold"><i class="bi bi-speedometer2 text-warning"></i> Patokan efisiensi BBM</legend>
                 <x-ui.field label="Patokan khusus trip ini (km/L)" for="baselineOverride">
-                    <x-ui.input type="number" id="baselineOverride" name="baseline_override" step="0.1" min="1" max="30" placeholder="Kosongkan untuk patokan standar" />
+                    <x-ui.input type="number" id="baselineOverride" name="baseline_override" step="0.1" min="1" max="30" inputmode="decimal" placeholder="Kosongkan untuk patokan standar" />
                     <p class="text-xs text-muted-foreground" data-baseline-default></p>
                 </x-ui.field>
                 <x-ui.field label="Alasan perubahan patokan" for="baselineReason" hint="Wajib diisi bila patokan diubah, sebagai jejak audit." error="baseline_override_reason">
@@ -266,9 +349,9 @@
     <x-ui.dialog id="proofDialog" title="Detail Transaksi" size="lg">
         <div class="grid gap-4">
             <x-ui.badge variant="info" data-proof-position class="w-fit">-</x-ui.badge>
-            <dl class="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+            <dl class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
                 @foreach (['request' => 'Nomor permohonan', 'transaction' => 'ID transaksi', 'datetime' => 'Waktu pengisian', 'fuel' => 'Jenis BBM', 'odo' => 'Odometer', 'volume' => 'Volume BBM'] as $key => $label)
-                    <div><dt class="text-xs text-muted-foreground">{{ $label }}</dt><dd class="break-all font-medium" data-proof-field="{{ $key }}">-</dd></div>
+                    <div class="min-w-0"><dt class="text-xs text-muted-foreground">{{ $label }}</dt><dd class="break-all font-medium" data-proof-field="{{ $key }}">-</dd></div>
                 @endforeach
             </dl>
             <div class="grid gap-2">
