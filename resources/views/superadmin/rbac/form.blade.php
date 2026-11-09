@@ -101,7 +101,34 @@
                         <x-ui.empty-state icon="bi bi-key" title="Belum ada permission" class="py-10" />
                     @endforelse
                 </div>
-            </x-ui.card>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-dark px-4">
+                    <i class="bi bi-save me-2"></i>
+                    {{ isset($role) ? 'Simpan Perubahan' : 'Buat Role' }}
+                </button>
+                <a href="{{ route('superadmin.rbac.index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x me-1"></i>Batal
+                </a>
+            </div>
+
+        </form>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card border-0 bg-light shadow-sm mb-3">
+            <div class="card-body p-3">
+                <h6 class="fw-semibold mb-3">
+                    <i class="bi bi-question-circle me-2"></i>Tips
+                </h6>
+                <ul class="small mb-0" style="padding-left:16px;">
+                    <li class="mb-2">Buat role spesifik sesuai fungsi, misal <strong>"bbm_officer"</strong> yang hanya bisa request BBM.</li>
+                    <li class="mb-2">Role <strong>"view_only"</strong> hanya perlu permission <code>*.view</code>.</li>
+                    <li class="mb-2">Role sistem tidak bisa diedit atau dihapus.</li>
+                    <li>User bisa punya lebih dari satu role.</li>
+                </ul>
+            </div>
         </div>
 
         <aside class="grid gap-4 lg:sticky lg:top-20">
