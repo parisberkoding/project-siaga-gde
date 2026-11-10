@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class VehicleFuelBaseline extends Model
 {
-    use HasFactory, SoftDeletes;d
+    use HasFactory, SoftDeletes;
 
     protected $table = 'vehicle_fuel_baselines';
 
